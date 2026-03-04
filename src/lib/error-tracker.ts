@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { chatCompletionJSON } from "./openai";
+import { captureError } from "./sentry";
 import { MICRO_DRILL_THRESHOLD } from "./constants";
 
 /** Error types that get tracked */
@@ -37,20 +38,34 @@ export async function trackError(
 
   if (existing) {
     // Increment occurrences
-    await supabase
+    const { error: updateError } = await supabase
       .from("error_patterns")
       .update({
         occurrences: existing.occurrences + 1,
         last_occurred: new Date().toISOString(),
       })
       .eq("id", existing.id);
+
+    if (updateError) {
+      captureError(updateError, "track-error-update", {
+        errorType,
+        description,
+      });
+    }
   } else {
     // Create new error pattern
-    await supabase.from("error_patterns").insert({
+    const { error: insertError } = await supabase.from("error_patterns").insert({
       user_id: userId,
       error_type: errorType,
       error_description: description,
     });
+
+    if (insertError) {
+      captureError(insertError, "track-error-insert", {
+        errorType,
+        description,
+      });
+    }
   }
 }
 
@@ -58,7 +73,14 @@ export async function trackError(
  * Mark an error as resolved after the user demonstrates correct usage.
  */
 export async function resolveError(errorId: string): Promise<void> {
-  await supabase.from("error_patterns").update({ resolved: true }).eq("id", errorId);
+  const { error } = await supabase
+    .from("error_patterns")
+    .update({ resolved: true })
+    .eq("id", errorId);
+
+  if (error) {
+    captureError(error, "resolve-error", { errorId });
+  }
 }
 
 /**
@@ -147,9 +169,15 @@ export interface MicroDrill {
   tip: string;
 }
 
+/** Maximum number of corrections to process per conversation */
+const MAX_CORRECTIONS_PER_CONVERSATION = 10;
+
 /**
  * Extract error patterns from AI corrections in a conversation.
  * Call this after each conversation to feed the error tracker.
+ *
+ * Batches all corrections into a single AI call for efficiency,
+ * capped at MAX_CORRECTIONS_PER_CONVERSATION to limit token usage.
  */
 export async function extractErrorsFromCorrections(
   userId: string,
@@ -160,27 +188,59 @@ export async function extractErrorsFromCorrections(
     category: string;
   }[]
 ): Promise<void> {
-  for (const correction of corrections) {
-    // Generalize the error to a pattern (not the specific instance)
-    const pattern = await chatCompletionJSON<{ pattern: string }>(
-      [
-        {
-          role: "system",
-          content: `Given this French language correction, identify the general grammar/vocabulary rule that was violated. Describe it in a concise, reusable way (not specific to this sentence).
+  if (corrections.length === 0) return;
 
-Original: "${correction.original}"
-Corrected: "${correction.corrected}"
-Explanation: "${correction.explanation}"
+  // Cap corrections to avoid excessively large prompts
+  const capped = corrections.slice(0, MAX_CORRECTIONS_PER_CONVERSATION);
 
-Response: {"pattern": "<concise description of the error pattern>"}
-Example: {"pattern": "Confuses passé composé with imparfait for habitual past actions"}`,
-        },
-      ],
-      { temperature: 0.2, maxTokens: 100 }
-    );
+  // Build a single prompt containing all corrections
+  const correctionsList = capped
+    .map(
+      (c, i) =>
+        `${i + 1}. Original: "${c.original}" | Corrected: "${c.corrected}" | Explanation: "${c.explanation}" | Category: "${c.category}"`
+    )
+    .join("\n");
 
-    if (pattern.pattern) {
-      await trackError(userId, correction.category as ErrorType, pattern.pattern);
+  interface BatchPatternResult {
+    patterns: {
+      original: string;
+      corrected: string;
+      pattern: string;
+      category: string;
+    }[];
+  }
+
+  const result = await chatCompletionJSON<BatchPatternResult>(
+    [
+      {
+        role: "system",
+        content: `Given these French language corrections, identify the general grammar/vocabulary rule that was violated for each one. Describe each pattern in a concise, reusable way (not specific to the sentence).
+
+Corrections:
+${correctionsList}
+
+Response format:
+{"patterns": [{"original": "<original text>", "corrected": "<corrected text>", "pattern": "<concise description of the error pattern>", "category": "<grammar|pronunciation|vocabulary|register>"}]}
+
+Example pattern: "Confuses passe compose with imparfait for habitual past actions"`,
+      },
+    ],
+    { temperature: 0.2, maxTokens: 1024 }
+  );
+
+  if (!result.patterns || result.patterns.length === 0) return;
+
+  // Track each extracted error pattern
+  for (const item of result.patterns) {
+    if (!item.pattern) continue;
+
+    try {
+      await trackError(userId, item.category as ErrorType, item.pattern);
+    } catch (err) {
+      captureError(err instanceof Error ? err : new Error(String(err)), "extract-errors-track", {
+        pattern: item.pattern,
+        category: item.category,
+      });
     }
   }
 }

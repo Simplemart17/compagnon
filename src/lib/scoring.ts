@@ -9,17 +9,20 @@ export function rawToTCFScore(rawPercent: number): TCFScore {
   const clamped = Math.max(0, Math.min(100, rawPercent));
 
   // Non-linear mapping to TCF scale:
-  // - 0-25% maps to 0-99 (below A1)
-  // - 26-50% maps to 100-299 (A1-A2)
+  // - 0-20%  maps to 0-99   (below A1)
+  // - 21-35% maps to 100-199 (A1)
+  // - 36-50% maps to 200-299 (A2)
   // - 51-65% maps to 300-399 (B1)
   // - 66-80% maps to 400-499 (B2)
   // - 81-90% maps to 500-599 (C1)
   // - 91-100% maps to 600-699 (C2)
 
-  if (clamped <= 25) {
-    return Math.round((clamped / 25) * 99);
+  if (clamped <= 20) {
+    return Math.round((clamped / 20) * 99);
+  } else if (clamped <= 35) {
+    return Math.round(100 + ((clamped - 20) / 15) * 99);
   } else if (clamped <= 50) {
-    return Math.round(100 + ((clamped - 25) / 25) * 199);
+    return Math.round(200 + ((clamped - 35) / 15) * 99);
   } else if (clamped <= 65) {
     return Math.round(300 + ((clamped - 50) / 15) * 99);
   } else if (clamped <= 80) {
