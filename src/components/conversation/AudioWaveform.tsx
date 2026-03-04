@@ -1,0 +1,255 @@
+/**
+ * Animated waveform equalizer visualization.
+ * 7 vertical bars animate independently to simulate audio activity.
+ */
+
+import { useEffect } from "react";
+import { View } from "react-native";
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+  type SharedValue,
+} from "react-native-reanimated";
+
+interface AudioWaveformProps {
+  isActive: boolean;
+  speaker?: "user" | "ai" | "idle";
+  size?: number;
+  isConnecting?: boolean;
+  // Legacy prop — accepted but ignored; color is derived from speaker
+  color?: string;
+}
+
+const BAR_PERIODS_MS = [1100, 900, 750, 620, 750, 900, 1100];
+// Fraction of maxBarHeight each bar reaches at its peak
+const BAR_PEAK_FRACTIONS = [0.45, 0.65, 0.85, 1.0, 0.85, 0.65, 0.45];
+
+function getBarColor(speaker: "user" | "ai" | "idle", isConnecting: boolean): string {
+  if (isConnecting) return "rgba(245,166,35,0.6)";
+  if (speaker === "user") return "#F5A623";
+  if (speaker === "ai") return "#FFFFFF";
+  return "rgba(255,255,255,0.22)";
+}
+
+interface BarProps {
+  heightVal: SharedValue<number>;
+  barWidth: number;
+  maxBarHeight: number;
+  color: string;
+}
+
+function Bar({ heightVal, barWidth, maxBarHeight, color }: BarProps) {
+  const animStyle = useAnimatedStyle(() => ({
+    height: heightVal.value,
+  }));
+
+  return (
+    <View
+      style={{
+        width: barWidth,
+        height: maxBarHeight,
+        justifyContent: "flex-end",
+        alignItems: "center",
+      }}
+    >
+      <Reanimated.View
+        style={[
+          {
+            width: barWidth,
+            borderRadius: barWidth / 2,
+            backgroundColor: color,
+          },
+          animStyle,
+        ]}
+      />
+    </View>
+  );
+}
+
+export function AudioWaveform({
+  isActive,
+  speaker = "idle",
+  size = 180,
+  isConnecting = false,
+}: AudioWaveformProps) {
+  const barWidth = size / 28;
+  const maxBarHeight = size * 0.7;
+  const minHeight = size * 0.1;
+  const color = getBarColor(speaker, isConnecting);
+
+  // One shared value per bar
+  const h0 = useSharedValue(minHeight);
+  const h1 = useSharedValue(minHeight);
+  const h2 = useSharedValue(minHeight);
+  const h3 = useSharedValue(minHeight);
+  const h4 = useSharedValue(minHeight);
+  const h5 = useSharedValue(minHeight);
+  const h6 = useSharedValue(minHeight);
+
+  const barHeights = [h0, h1, h2, h3, h4, h5, h6];
+
+  // Ring pulse scale
+  const ringScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (isConnecting) {
+      // All bars pulse in sync at 35% max height
+      const connectingPeak = maxBarHeight * 0.35;
+      barHeights.forEach((h) => {
+        h.value = withRepeat(
+          withSequence(
+            withTiming(connectingPeak, {
+              duration: 700,
+              easing: Easing.inOut(Easing.sin),
+            }),
+            withTiming(minHeight, {
+              duration: 700,
+              easing: Easing.inOut(Easing.sin),
+            })
+          ),
+          -1
+        );
+      });
+      ringScale.value = withRepeat(
+        withSequence(withTiming(1.05, { duration: 1000 }), withTiming(1.0, { duration: 1000 })),
+        -1
+      );
+      return;
+    }
+
+    if (isActive) {
+      // Each bar loops independently between minHeight and its peak
+      barHeights.forEach((h, i) => {
+        const peakH = maxBarHeight * BAR_PEAK_FRACTIONS[i];
+        const period = BAR_PERIODS_MS[i];
+        h.value = withRepeat(
+          withSequence(
+            withTiming(peakH, {
+              duration: period / 2,
+              easing: Easing.inOut(Easing.sin),
+            }),
+            withTiming(minHeight, {
+              duration: period / 2,
+              easing: Easing.inOut(Easing.sin),
+            })
+          ),
+          -1
+        );
+      });
+
+      // Rings slowly pulse when active
+      ringScale.value = withRepeat(
+        withSequence(withTiming(1.05, { duration: 1000 }), withTiming(1.0, { duration: 1000 })),
+        -1
+      );
+    } else {
+      // Collapse to min then do slow breathing
+      barHeights.forEach((h) => {
+        h.value = withTiming(minHeight, { duration: 400 }, (finished) => {
+          if (finished) {
+            h.value = withRepeat(
+              withSequence(
+                withTiming(size * 0.15, { duration: 1500 }),
+                withTiming(size * 0.1, { duration: 1500 })
+              ),
+              -1
+            );
+          }
+        });
+      });
+
+      ringScale.value = withTiming(1.0, { duration: 400 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, isConnecting]);
+
+  const innerRingAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ringScale.value }],
+  }));
+
+  const outerRingAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ringScale.value }],
+  }));
+
+  // Derive ring border colors from bar color with reduced opacity
+  const innerBorderColor = isActive
+    ? speaker === "user"
+      ? "rgba(245,166,35,0.25)"
+      : speaker === "ai"
+        ? "rgba(255,255,255,0.25)"
+        : "rgba(255,255,255,0.06)"
+    : "rgba(255,255,255,0.06)";
+
+  const outerBorderColor = isActive
+    ? speaker === "user"
+      ? "rgba(245,166,35,0.12)"
+      : speaker === "ai"
+        ? "rgba(255,255,255,0.12)"
+        : "rgba(255,255,255,0.03)"
+    : "rgba(255,255,255,0.03)";
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      {/* Outer glow ring */}
+      <Reanimated.View
+        style={[
+          {
+            position: "absolute",
+            width: size * 0.9,
+            height: size * 0.9,
+            borderRadius: size * 0.45,
+            borderWidth: 1,
+            borderColor: outerBorderColor,
+          },
+          outerRingAnimStyle,
+        ]}
+      />
+
+      {/* Inner glow ring */}
+      <Reanimated.View
+        style={[
+          {
+            position: "absolute",
+            width: size * 0.7,
+            height: size * 0.7,
+            borderRadius: size * 0.35,
+            borderWidth: 1,
+            borderColor: innerBorderColor,
+          },
+          innerRingAnimStyle,
+        ]}
+      />
+
+      {/* Bars cluster */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-end",
+          gap: barWidth * 0.6,
+          height: maxBarHeight,
+        }}
+      >
+        {barHeights.map((h, i) => (
+          <Bar
+            key={i}
+            heightVal={h}
+            barWidth={barWidth}
+            maxBarHeight={maxBarHeight}
+            color={color}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
