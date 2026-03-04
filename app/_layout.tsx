@@ -5,6 +5,7 @@ import * as SplashScreen from "expo-splash-screen";
 import * as Sentry from "@sentry/react-native";
 
 import "react-native-reanimated";
+import "@/src/styles/global.css";
 import { useAuth } from "@/src/hooks/use-auth";
 import { NetworkBanner } from "@/src/components/common/NetworkBanner";
 import { ErrorBoundary as AppErrorBoundary } from "@/src/components/common/ErrorBoundary";
@@ -68,7 +69,7 @@ function RootLayoutNav() {
 
   return (
     <AppErrorBoundary>
-      <View style={{ flex: 1 }}>
+      <View className="flex-1">
         <NetworkBanner />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
