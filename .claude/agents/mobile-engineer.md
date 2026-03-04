@@ -35,7 +35,7 @@ src/
   hooks/          — use-auth.ts, use-realtime-voice.ts, use-exercise.ts,
                     use-pronunciation.ts, use-progress.ts,
                     use-audio-recorder.ts, use-audio-player.ts
-  store/          — auth-store.ts, progress-store.ts
+  store/          — auth-store.ts
   components/     — conversation/, practice/, common/
   lib/            — openai.ts, realtime.ts, supabase.ts, pronunciation.ts,
                     scoring.ts, srs.ts, memory.ts, error-tracker.ts
