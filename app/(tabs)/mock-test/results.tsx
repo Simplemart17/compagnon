@@ -9,6 +9,7 @@ import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { LEVEL_COLORS } from "@/src/lib/constants";
+import { Colors } from "@/src/lib/design";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 interface SectionResult {
@@ -33,10 +34,10 @@ const SECTION_LABELS: Record<string, { name: string; emoji: string }> = {
 };
 
 function getScoreColor(tcfScore: number): string {
-  if (tcfScore >= 500) return "#34C759"; // C1+
-  if (tcfScore >= 400) return "#F5A623"; // B2
-  if (tcfScore >= 300) return "#FF9800"; // B1
-  return "#FF3B30"; // Below B1
+  if (tcfScore >= 500) return Colors.success; // C1+
+  if (tcfScore >= 400) return Colors.accent; // B2
+  if (tcfScore >= 300) return Colors.skillWriting; // B1
+  return Colors.error; // Below B1
 }
 
 export default function MockTestResultsScreen() {
@@ -60,79 +61,40 @@ export default function MockTestResultsScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#F5F5F0" }}
+      className="flex-1 bg-surface"
       contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
     >
       {/* Overall Score */}
-      <View style={{ alignItems: "center", marginBottom: 32 }}>
-        <Text style={{ fontSize: 14, color: "#666", marginBottom: 8 }}>Your TCF Score</Text>
+      <View className="items-center mb-8">
+        <Text className="text-sm text-[#4A5568] mb-2">Your TCF Score</Text>
         <View
+          className="w-40 h-40 rounded-full justify-center items-center bg-white"
           style={{
-            width: 160,
-            height: 160,
-            borderRadius: 80,
             borderWidth: 8,
             borderColor: scoreColor,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "#FFFFFF",
           }}
         >
-          <Text
-            style={{
-              fontSize: 44,
-              fontWeight: "900",
-              color: "#1E3A5F",
-            }}
-          >
-            {results.overallTcfScore}
-          </Text>
-          <Text style={{ fontSize: 12, color: "#999" }}>/ 699</Text>
+          <Text className="text-[48px] font-extrabold text-primary">{results.overallTcfScore}</Text>
+          <Text className="text-xs text-[#94A3B8]">/ 699</Text>
         </View>
 
         {/* CEFR Badge */}
         <View
+          className="px-5 py-2 rounded-[20px] mt-4"
           style={{
             backgroundColor: LEVEL_COLORS[results.overallCefrLevel as CEFRLevel] ?? "#999",
-            paddingHorizontal: 20,
-            paddingVertical: 8,
-            borderRadius: 20,
-            marginTop: 16,
           }}
         >
-          <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "800" }}>
-            {results.overallCefrLevel}
-          </Text>
+          <Text className="text-white text-lg font-extrabold">{results.overallCefrLevel}</Text>
         </View>
 
         {/* Distance to C1 */}
         {distanceToC1 > 0 && (
-          <View
-            style={{
-              backgroundColor: "#FFF8F0",
-              borderRadius: 12,
-              padding: 16,
-              marginTop: 16,
-              width: "100%",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 13, color: "#666", marginBottom: 4 }}>
-              Distance to C1 (500+)
-            </Text>
-            <Text style={{ fontSize: 28, fontWeight: "800", color: "#F5A623" }}>
-              {distanceToC1} points
-            </Text>
+          <View className="bg-accent/10 rounded-xl p-4 mt-4 w-full items-center">
+            <Text className="text-[13px] text-[#4A5568] mb-1">Distance to C1 (500+)</Text>
+            <Text className="text-[28px] font-extrabold text-accent">{distanceToC1} points</Text>
             {/* Progress bar to C1 */}
-            <View
-              style={{
-                width: "100%",
-                height: 8,
-                backgroundColor: "#E0E0CE",
-                borderRadius: 4,
-                marginTop: 8,
-              }}
-            >
+            <View className="w-full h-2 bg-surface-300 rounded-sm mt-2">
               <View
                 style={{
                   width: `${Math.min(100, (results.overallTcfScore / 500) * 100)}%`,
@@ -146,18 +108,9 @@ export default function MockTestResultsScreen() {
         )}
 
         {distanceToC1 === 0 && (
-          <View
-            style={{
-              backgroundColor: "#E8F5E9",
-              borderRadius: 12,
-              padding: 16,
-              marginTop: 16,
-              width: "100%",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontSize: 20, fontWeight: "800", color: "#2E7D32" }}>C1 Achieved!</Text>
-            <Text style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
+          <View className="bg-success/10 rounded-xl p-4 mt-4 w-full items-center">
+            <Text className="text-xl font-extrabold text-success">C1 Achieved!</Text>
+            <Text className="text-[13px] text-[#4A5568] mt-1">
               You&apos;ve reached the C1 threshold on this mock test.
             </Text>
           </View>
@@ -165,79 +118,37 @@ export default function MockTestResultsScreen() {
       </View>
 
       {/* Section Breakdown */}
-      <Text
-        style={{
-          fontSize: 18,
-          fontWeight: "700",
-          color: "#1E3A5F",
-          marginBottom: 12,
-        }}
-      >
-        Section Breakdown
-      </Text>
+      <Text className="text-lg font-bold text-primary mb-3">Section Breakdown</Text>
 
-      <View style={{ gap: 12, marginBottom: 24 }}>
+      <View className="gap-3 mb-6">
         {Object.entries(results.sections).map(([sectionKey, sectionResult]) => {
           const meta = SECTION_LABELS[sectionKey];
           const sectionColor = getScoreColor(sectionResult.tcfScore);
 
           return (
-            <View
-              key={sectionKey}
-              style={{
-                backgroundColor: "#FFFFFF",
-                borderRadius: 16,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: "#E0E0CE",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 12,
-                }}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Text style={{ fontSize: 20 }}>{meta?.emoji}</Text>
+            <View key={sectionKey} className="bg-white rounded-2xl p-4 border border-surface-300">
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-xl">{meta?.emoji}</Text>
                   <View>
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#1E3A5F" }}>
-                      {meta?.name}
-                    </Text>
-                    <Text style={{ fontSize: 11, color: "#999" }}>
+                    <Text className="text-base font-bold text-primary">{meta?.name}</Text>
+                    <Text className="text-[11px] text-[#94A3B8]">
                       {sectionResult.correct}/{sectionResult.total} correct
                     </Text>
                   </View>
                 </View>
 
-                <View style={{ alignItems: "flex-end" }}>
-                  <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: "800",
-                      color: sectionColor,
-                    }}
-                  >
+                <View className="items-end">
+                  <Text style={{ fontSize: 22, fontWeight: "800", color: sectionColor }}>
                     {sectionResult.tcfScore}
                   </Text>
                   <View
+                    className="px-2 py-0.5 rounded-md mt-0.5"
                     style={{
                       backgroundColor: LEVEL_COLORS[sectionResult.cefrLevel as CEFRLevel] ?? "#999",
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                      borderRadius: 6,
-                      marginTop: 2,
                     }}
                   >
-                    <Text
-                      style={{
-                        color: "#FFFFFF",
-                        fontSize: 11,
-                        fontWeight: "700",
-                      }}
-                    >
+                    <Text className="text-white text-[11px] font-bold">
                       {sectionResult.cefrLevel}
                     </Text>
                   </View>
@@ -245,13 +156,7 @@ export default function MockTestResultsScreen() {
               </View>
 
               {/* Score bar */}
-              <View
-                style={{
-                  height: 6,
-                  backgroundColor: "#F0F0E8",
-                  borderRadius: 3,
-                }}
-              >
+              <View className="h-1.5 bg-surface-200 rounded-sm">
                 <View
                   style={{
                     height: 6,
@@ -267,32 +172,20 @@ export default function MockTestResultsScreen() {
       </View>
 
       {/* Actions */}
-      <View style={{ gap: 12 }}>
+      <View className="gap-3">
         <TouchableOpacity
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Expo Router typed routes limitation
           onPress={() => router.replace("/(tabs)/mock-test" as any)}
-          style={{
-            backgroundColor: "#1E3A5F",
-            borderRadius: 12,
-            paddingVertical: 16,
-            alignItems: "center",
-          }}
+          className="bg-primary rounded-xl py-4 items-center"
         >
-          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>
-            Take Another Test
-          </Text>
+          <Text className="text-white text-base font-bold">Take Another Test</Text>
         </TouchableOpacity>
         <TouchableOpacity
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Expo Router typed routes limitation
           onPress={() => router.replace("/(tabs)/home" as any)}
-          style={{
-            backgroundColor: "#F0F0E8",
-            borderRadius: 12,
-            paddingVertical: 16,
-            alignItems: "center",
-          }}
+          className="bg-surface-200 rounded-xl py-4 items-center"
         >
-          <Text style={{ color: "#1E3A5F", fontSize: 16, fontWeight: "600" }}>Back to Home</Text>
+          <Text className="text-primary text-base font-semibold">Back to Home</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
