@@ -20,6 +20,7 @@ import { useRouter } from "expo-router";
 import { useExercise } from "@/src/hooks/use-exercise";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
+import { Colors } from "@/src/lib/design";
 
 export default function WritingScreen() {
   const router = useRouter();
@@ -44,41 +45,15 @@ export default function WritingScreen() {
   // Pre-exercise
   if (!exercise.exercise && !exercise.isGenerating) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 24,
-        }}
-      >
-        <Text style={{ fontSize: 64, marginBottom: 16 }}>&#x270D;&#xFE0F;</Text>
-        <Text style={{ fontSize: 22, fontWeight: "700", color: "#1E3A5F", marginBottom: 8 }}>
-          Writing Practice
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: "#666",
-            textAlign: "center",
-            marginBottom: 32,
-            lineHeight: 20,
-          }}
-        >
+      <View className="flex-1 bg-surface justify-center items-center p-6">
+        <Text className="text-[64px] mb-4">&#x270D;&#xFE0F;</Text>
+        <Text className="text-[22px] font-bold text-primary mb-2">Writing Practice</Text>
+        <Text className="text-sm text-[#4A5568] text-center mb-8 leading-5">
           Write in French and get AI-powered evaluation{"\n"}on grammar, cohesion, vocabulary, and
           register.
         </Text>
-        <TouchableOpacity
-          onPress={handleGenerate}
-          style={{
-            backgroundColor: "#1E3A5F",
-            borderRadius: 12,
-            paddingHorizontal: 32,
-            paddingVertical: 16,
-          }}
-        >
-          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>Generate Task</Text>
+        <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
+          <Text className="text-white text-base font-bold">Generate Task</Text>
         </TouchableOpacity>
       </View>
     );
@@ -87,18 +62,9 @@ export default function WritingScreen() {
   // Loading
   if (exercise.isGenerating) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <ActivityIndicator size="large" color="#1E3A5F" />
-        <Text style={{ color: "#666", marginTop: 16, fontSize: 14 }}>
-          Generating writing task...
-        </Text>
+      <View className="flex-1 bg-surface justify-center items-center">
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text className="text-[#4A5568] mt-4 text-sm">Generating writing task...</Text>
       </View>
     );
   }
@@ -107,24 +73,22 @@ export default function WritingScreen() {
   if (exercise.evaluation) {
     const eval_ = exercise.evaluation;
     const dimensions = [
-      { label: "Grammar & Syntax", score: eval_.grammarScore, color: "#2196F3" },
-      { label: "Cohesion & Coherence", score: eval_.cohesionScore, color: "#4CAF50" },
-      { label: "Lexical Richness", score: eval_.lexicalRichnessScore, color: "#FF9800" },
-      { label: "Register", score: eval_.registerScore, color: "#9C27B0" },
+      { label: "Grammar & Syntax", score: eval_.grammarScore, color: Colors.skillListening },
+      { label: "Cohesion & Coherence", score: eval_.cohesionScore, color: Colors.skillReading },
+      { label: "Lexical Richness", score: eval_.lexicalRichnessScore, color: Colors.skillWriting },
+      { label: "Register", score: eval_.registerScore, color: Colors.skillGrammar },
     ];
 
     return (
       <ScrollView
-        style={{ flex: 1, backgroundColor: "#F5F5F0" }}
+        className="flex-1 bg-surface"
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
       >
         {/* Overall score */}
-        <View style={{ alignItems: "center", marginBottom: 24 }}>
+        <View className="items-center mb-6">
           <View
+            className="w-[120px] h-[120px] rounded-full justify-center items-center bg-white"
             style={{
-              width: 120,
-              height: 120,
-              borderRadius: 60,
               borderWidth: 5,
               borderColor:
                 eval_.overallScore >= 70
@@ -132,59 +96,25 @@ export default function WritingScreen() {
                   : eval_.overallScore >= 50
                     ? "#F5A623"
                     : "#FF3B30",
-              justifyContent: "center",
-              alignItems: "center",
-              backgroundColor: "#FFFFFF",
             }}
           >
-            <Text
-              style={{
-                fontSize: 36,
-                fontWeight: "800",
-                color: "#1E3A5F",
-              }}
-            >
-              {eval_.overallScore}
-            </Text>
-            <Text style={{ fontSize: 12, color: "#666" }}>/ 100</Text>
+            <Text className="text-[36px] font-extrabold text-primary">{eval_.overallScore}</Text>
+            <Text className="text-xs text-[#4A5568]">/ 100</Text>
           </View>
         </View>
 
         {/* 4 Dimension scores */}
-        <View style={{ gap: 12, marginBottom: 24 }}>
+        <View className="gap-3 mb-6">
           {dimensions.map((dim) => (
-            <View
-              key={dim.label}
-              style={{
-                backgroundColor: "#FFFFFF",
-                borderRadius: 12,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: "#E0E0CE",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "#1E3A5F" }}>
-                  {dim.label}
-                </Text>
+            <View key={dim.label} className="bg-white rounded-xl p-3.5 border border-surface-300">
+              <View className="flex-row justify-between mb-2">
+                <Text className="text-sm font-semibold text-primary">{dim.label}</Text>
                 <Text style={{ fontSize: 14, fontWeight: "700", color: dim.color }}>
                   {dim.score}/25
                 </Text>
               </View>
               {/* Progress bar */}
-              <View
-                style={{
-                  height: 6,
-                  backgroundColor: "#F0F0E8",
-                  borderRadius: 3,
-                }}
-              >
+              <View className="h-1.5 bg-surface-200 rounded-sm">
                 <View
                   style={{
                     height: 6,
@@ -200,47 +130,20 @@ export default function WritingScreen() {
 
         {/* Errors */}
         {eval_.errors.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: "#1E3A5F",
-                marginBottom: 12,
-              }}
-            >
-              Corrections
-            </Text>
+          <View className="mb-6">
+            <Text className="text-lg font-bold text-primary mb-3">Corrections</Text>
             {eval_.errors.map((err, i) => (
               <View
                 key={i}
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  borderRadius: 12,
-                  padding: 14,
-                  marginBottom: 8,
-                  borderLeftWidth: 3,
-                  borderLeftColor: "#FF3B30",
-                }}
+                className="bg-white rounded-xl p-3.5 mb-2"
+                style={{ borderLeftWidth: 3, borderLeftColor: Colors.error }}
               >
-                <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 4 }}>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: "#CC3333",
-                      textDecorationLine: "line-through",
-                    }}
-                  >
-                    {err.original}
-                  </Text>
-                  <Text style={{ color: "#999", marginHorizontal: 6 }}>{"\u2192"}</Text>
-                  <Text style={{ fontSize: 14, color: "#2E7D32", fontWeight: "600" }}>
-                    {err.correction}
-                  </Text>
+                <View className="flex-row flex-wrap mb-1">
+                  <Text className="text-sm text-error line-through">{err.original}</Text>
+                  <Text className="text-[#94A3B8] mx-1.5">{"\u2192"}</Text>
+                  <Text className="text-sm text-success font-semibold">{err.correction}</Text>
                 </View>
-                <Text style={{ fontSize: 12, color: "#666", fontStyle: "italic" }}>
-                  {err.explanation}
-                </Text>
+                <Text className="text-xs text-[#4A5568] italic">{err.explanation}</Text>
               </View>
             ))}
           </View>
@@ -248,28 +151,11 @@ export default function WritingScreen() {
 
         {/* Suggestions */}
         {eval_.suggestions.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: "#1E3A5F",
-                marginBottom: 12,
-              }}
-            >
-              Suggestions
-            </Text>
+          <View className="mb-6">
+            <Text className="text-lg font-bold text-primary mb-3">Suggestions</Text>
             {eval_.suggestions.map((suggestion, i) => (
-              <View
-                key={i}
-                style={{
-                  backgroundColor: "#F0F7FF",
-                  borderRadius: 10,
-                  padding: 12,
-                  marginBottom: 6,
-                }}
-              >
-                <Text style={{ fontSize: 14, color: "#333", lineHeight: 20 }}>{suggestion}</Text>
+              <View key={i} className="bg-primary/5 rounded-[10px] p-3 mb-1.5">
+                <Text className="text-sm text-primary leading-5">{suggestion}</Text>
               </View>
             ))}
           </View>
@@ -277,27 +163,13 @@ export default function WritingScreen() {
 
         {/* Rewrite suggestion */}
         {eval_.rewriteSuggestion && (
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: "#1E3A5F",
-                marginBottom: 12,
-              }}
-            >
-              Suggested Rewrite
-            </Text>
+          <View className="mb-6">
+            <Text className="text-lg font-bold text-primary mb-3">Suggested Rewrite</Text>
             <View
-              style={{
-                backgroundColor: "#E8F5E9",
-                borderRadius: 12,
-                padding: 16,
-                borderLeftWidth: 3,
-                borderLeftColor: "#34C759",
-              }}
+              className="bg-success/10 rounded-xl p-4"
+              style={{ borderLeftWidth: 3, borderLeftColor: Colors.success }}
             >
-              <Text style={{ fontSize: 14, color: "#333", lineHeight: 22, fontStyle: "italic" }}>
+              <Text className="text-sm text-primary leading-[22px] italic">
                 {eval_.rewriteSuggestion}
               </Text>
             </View>
@@ -306,44 +178,24 @@ export default function WritingScreen() {
 
         {/* Your original text */}
         {userText.trim().length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "700",
-                color: "#1E3A5F",
-                marginBottom: 12,
-              }}
-            >
-              Your Text
-            </Text>
+          <View className="mb-6">
+            <Text className="text-lg font-bold text-primary mb-3">Your Text</Text>
             <View
-              style={{
-                backgroundColor: "#FFFFFF",
-                borderRadius: 12,
-                padding: 16,
-                borderLeftWidth: 3,
-                borderLeftColor: "#1E3A5F",
-              }}
+              className="bg-white rounded-xl p-4"
+              style={{ borderLeftWidth: 3, borderLeftColor: Colors.primary }}
             >
-              <Text style={{ fontSize: 14, color: "#333", lineHeight: 22 }}>{userText}</Text>
+              <Text className="text-sm text-primary leading-[22px]">{userText}</Text>
             </View>
           </View>
         )}
 
         {/* Actions */}
-        <View style={{ flexDirection: "row", gap: 12 }}>
+        <View className="flex-row gap-3">
           <TouchableOpacity
             onPress={() => router.back()}
-            style={{
-              flex: 1,
-              backgroundColor: "#F0F0E8",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
+            className="flex-1 bg-surface-200 rounded-xl py-3.5 items-center"
           >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "#1E3A5F" }}>Back</Text>
+            <Text className="text-[15px] font-semibold text-primary">Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
@@ -362,15 +214,9 @@ export default function WritingScreen() {
                 ]
               );
             }}
-            style={{
-              flex: 1,
-              backgroundColor: "#1E3A5F",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
+            className="flex-1 bg-primary rounded-xl py-3.5 items-center"
           >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>New Task</Text>
+            <Text className="text-[15px] font-semibold text-white">New Task</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -382,55 +228,37 @@ export default function WritingScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#F5F5F0" }}
+      className="flex-1 bg-surface"
       contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
       keyboardShouldPersistTaps="handled"
     >
       {/* Task prompt */}
-      <View
-        style={{
-          backgroundColor: "#1E3A5F",
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 20,
-        }}
-      >
-        <Text style={{ fontSize: 12, color: "#F5A623", fontWeight: "700", marginBottom: 8 }}>
+      <View className="bg-primary rounded-2xl p-5 mb-5">
+        <Text className="text-xs text-accent font-bold mb-2">
           TASK {writingPrompt?.taskNumber} | {writingPrompt?.minWords}-{writingPrompt?.maxWords}{" "}
           words
         </Text>
-        <Text style={{ fontSize: 16, color: "#FFFFFF", lineHeight: 24 }}>
-          {writingPrompt?.prompt}
-        </Text>
+        <Text className="text-base text-white leading-6">{writingPrompt?.prompt}</Text>
         {writingPrompt?.context && (
-          <Text style={{ fontSize: 13, color: "#FFFFFF88", marginTop: 8, fontStyle: "italic" }}>
-            {writingPrompt.context}
-          </Text>
+          <Text className="text-[13px] text-white/70 mt-2 italic">{writingPrompt.context}</Text>
         )}
       </View>
 
       {/* Writing area */}
       <View
-        style={{
-          backgroundColor: "#FFFFFF",
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 16,
-          borderWidth: 1,
-          borderColor: "#E0E0CE",
-          minHeight: 200,
-        }}
+        className="bg-white rounded-2xl p-4 mb-4 border border-surface-300"
+        style={{ minHeight: 200 }}
       >
         <TextInput
           value={userText}
           onChangeText={setUserText}
           placeholder="Write your response in French..."
-          placeholderTextColor="#999"
+          placeholderTextColor={Colors.textTertiary}
           multiline
           textAlignVertical="top"
           style={{
             fontSize: 15,
-            color: "#333",
+            color: Colors.textPrimary,
             lineHeight: 24,
             minHeight: 180,
           }}
@@ -438,23 +266,16 @@ export default function WritingScreen() {
       </View>
 
       {/* Word count */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          marginBottom: 20,
-        }}
-      >
+      <View className="flex-row justify-between mb-5">
         <Text
+          className="text-[13px] font-semibold"
           style={{
-            fontSize: 13,
             color: wordCount >= (writingPrompt?.minWords ?? 0) ? "#34C759" : "#999",
-            fontWeight: "600",
           }}
         >
           {wordCount} words
         </Text>
-        <Text style={{ fontSize: 13, color: "#999" }}>
+        <Text className="text-[13px] text-[#94A3B8]">
           Target: {writingPrompt?.minWords}-{writingPrompt?.maxWords}
         </Text>
       </View>
@@ -463,25 +284,25 @@ export default function WritingScreen() {
       <TouchableOpacity
         onPress={handleSubmit}
         disabled={exercise.isEvaluating || userText.trim().length < 20}
+        accessibilityRole="button"
+        accessibilityLabel="Submit writing for evaluation"
+        accessibilityState={{ disabled: exercise.isEvaluating || userText.trim().length < 20 }}
+        className="rounded-xl py-4 items-center"
         style={{
           backgroundColor:
             exercise.isEvaluating || userText.trim().length < 20 ? "#E0E0CE" : "#F5A623",
-          borderRadius: 12,
-          paddingVertical: 16,
-          alignItems: "center",
         }}
       >
         {exercise.isEvaluating ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View className="flex-row items-center gap-2">
             <ActivityIndicator color="#999" size="small" />
-            <Text style={{ color: "#999", fontSize: 15, fontWeight: "600" }}>Evaluating...</Text>
+            <Text className="text-[#94A3B8] text-[15px] font-semibold">Evaluating...</Text>
           </View>
         ) : (
           <Text
+            className="text-base font-bold"
             style={{
               color: userText.trim().length < 20 ? "#999" : "#FFFFFF",
-              fontSize: 16,
-              fontWeight: "700",
             }}
           >
             Submit for Evaluation
@@ -490,15 +311,13 @@ export default function WritingScreen() {
       </TouchableOpacity>
 
       {userText.trim().length > 0 && userText.trim().length < 20 && (
-        <Text style={{ color: "#F5A623", fontSize: 12, marginTop: 8, textAlign: "center" }}>
+        <Text className="text-accent text-xs mt-2 text-center">
           Minimum 20 characters required ({20 - userText.trim().length} more needed)
         </Text>
       )}
 
       {exercise.error && (
-        <Text style={{ color: "#FF3B30", fontSize: 13, marginTop: 12, textAlign: "center" }}>
-          {exercise.error}
-        </Text>
+        <Text className="text-error text-[13px] mt-3 text-center">{exercise.error}</Text>
       )}
     </ScrollView>
   );

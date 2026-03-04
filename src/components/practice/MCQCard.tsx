@@ -5,9 +5,12 @@
  * Shows correct/incorrect feedback after answering.
  */
 
+import React, { useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 
+import { hapticLight, hapticSuccess, hapticError } from "@/src/lib/haptics";
 import type { MCQContent } from "@/src/types/exercise";
+import { Colors } from "@/src/lib/design";
 
 interface MCQCardProps {
   question: MCQContent;
@@ -16,16 +19,35 @@ interface MCQCardProps {
   onSelect: (answerId: string) => void;
 }
 
-export function MCQCard({ question, selectedAnswer, showResult, onSelect }: MCQCardProps) {
+export const MCQCard = React.memo(function MCQCard({
+  question,
+  selectedAnswer,
+  showResult,
+  onSelect,
+}: MCQCardProps) {
+  // Fire haptic feedback when results are revealed after selection
+  const prevShowResult = useRef(showResult);
+  useEffect(() => {
+    if (showResult && !prevShowResult.current && selectedAnswer) {
+      const correctOption = question.options.find((o) => o.isCorrect);
+      if (selectedAnswer === correctOption?.id) {
+        hapticSuccess();
+      } else {
+        hapticError();
+      }
+    }
+    prevShowResult.current = showResult;
+  }, [showResult, selectedAnswer, question.options]);
+
   return (
-    <View style={{ gap: 12 }}>
+    <View className="gap-3">
       {/* Question text */}
-      <Text style={{ fontSize: 17, fontWeight: "600", color: "#1E3A5F", lineHeight: 24 }}>
+      <Text className="text-[17px] font-semibold leading-6 text-primary" accessibilityRole="text">
         {question.question}
       </Text>
 
       {/* Options */}
-      <View style={{ gap: 10 }}>
+      <View className="gap-2.5" accessibilityRole="radiogroup">
         {question.options.map((option, index) => {
           const isSelected = selectedAnswer === option.id;
           const isCorrect = option.isCorrect;
@@ -35,19 +57,19 @@ export function MCQCard({ question, selectedAnswer, showResult, onSelect }: MCQC
           let textColor = "#1E3A5F";
 
           if (showResult && isSelected && isCorrect) {
-            bgColor = "#E8F5E9";
+            bgColor = Colors.success10;
             borderColor = "#34C759";
-            textColor = "#2E7D32";
+            textColor = Colors.success;
           } else if (showResult && isSelected && !isCorrect) {
-            bgColor = "#FFEBEE";
+            bgColor = Colors.error10;
             borderColor = "#FF3B30";
-            textColor = "#CC3333";
+            textColor = Colors.error;
           } else if (showResult && isCorrect) {
-            bgColor = "#E8F5E9";
+            bgColor = Colors.success10;
             borderColor = "#34C759";
-            textColor = "#2E7D32";
+            textColor = Colors.success;
           } else if (isSelected) {
-            bgColor = "#E3F2FD";
+            bgColor = Colors.primary5;
             borderColor = "#1E3A5F";
             textColor = "#1E3A5F";
           }
@@ -57,57 +79,51 @@ export function MCQCard({ question, selectedAnswer, showResult, onSelect }: MCQC
           return (
             <TouchableOpacity
               key={option.id}
-              onPress={() => !showResult && onSelect(option.id)}
+              onPress={() => {
+                if (!showResult) {
+                  hapticLight();
+                  onSelect(option.id);
+                }
+              }}
               disabled={showResult}
+              accessibilityRole="radio"
+              accessibilityLabel={`Option ${letter}: ${option.text}`}
+              accessibilityState={{ selected: isSelected }}
+              accessibilityHint={showResult ? undefined : "Double tap to select this answer"}
+              className="flex-row items-center gap-3 rounded-xl p-3.5"
               style={{
-                flexDirection: "row",
-                alignItems: "center",
                 backgroundColor: bgColor,
-                borderRadius: 12,
-                padding: 14,
                 borderWidth: 1.5,
                 borderColor,
-                gap: 12,
               }}
             >
               <View
+                className="h-8 w-8 items-center justify-center rounded-full"
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
                   backgroundColor: isSelected ? borderColor : "#F0F0E8",
-                  justifyContent: "center",
-                  alignItems: "center",
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "700",
-                    color: isSelected ? "#FFFFFF" : "#666",
-                  }}
+                  className="text-sm font-bold"
+                  style={{ color: isSelected ? "#FFFFFF" : "#666" }}
                 >
                   {letter}
                 </Text>
               </View>
               <Text
+                className="flex-1 text-[15px] leading-[22px]"
                 style={{
-                  flex: 1,
-                  fontSize: 15,
                   color: textColor,
                   fontWeight: isSelected ? "600" : "400",
-                  lineHeight: 22,
                 }}
               >
                 {option.text}
               </Text>
 
               {/* Result icons */}
-              {showResult && isSelected && isCorrect && (
-                <Text style={{ fontSize: 18 }}>&#10003;</Text>
-              )}
+              {showResult && isSelected && isCorrect && <Text className="text-lg">&#10003;</Text>}
               {showResult && isSelected && !isCorrect && (
-                <Text style={{ fontSize: 18, color: "#FF3B30" }}>&#10007;</Text>
+                <Text className="text-lg text-error">&#10007;</Text>
               )}
             </TouchableOpacity>
           );
@@ -117,22 +133,17 @@ export function MCQCard({ question, selectedAnswer, showResult, onSelect }: MCQC
       {/* Explanation (shown after answering) */}
       {showResult && (
         <View
+          className="rounded-xl p-3.5"
           style={{
-            backgroundColor: "#F0F7FF",
-            borderRadius: 12,
-            padding: 14,
+            backgroundColor: Colors.primary5,
             borderLeftWidth: 3,
-            borderLeftColor: "#1E3A5F",
+            borderLeftColor: Colors.primary,
           }}
         >
-          <Text style={{ fontSize: 12, fontWeight: "700", color: "#1E3A5F", marginBottom: 4 }}>
-            Explanation
-          </Text>
-          <Text style={{ fontSize: 14, color: "#333", lineHeight: 20 }}>
-            {question.explanation}
-          </Text>
+          <Text className="mb-1 text-xs font-bold text-primary">Explanation</Text>
+          <Text className="text-sm leading-5 text-primary">{question.explanation}</Text>
         </View>
       )}
     </View>
   );
-}
+});

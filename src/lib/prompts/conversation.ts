@@ -68,7 +68,7 @@ When you use an idiom the user might not know, briefly explain it within the flo
 - When the user makes a weak argument, challenge them: "Certes, mais ne pensez-vous pas que..."
 - Encourage use of advanced connectors:
   Cependant, Néanmoins, Toutefois, Il faut admettre que, Force est de constater que,
-  Quoiqu'il en soit, En revanche, D'une part... d'autre part, Il n'en demeure pas moins que,
+  Quoi qu'il en soit, En revanche, D'une part... d'autre part, Il n'en demeure pas moins que,
   Bien que (+ subjonctif), Quand bien même, À supposer que
 - Score their argumentation quality in the Correction Report`;
   }

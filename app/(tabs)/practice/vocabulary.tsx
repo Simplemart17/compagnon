@@ -6,20 +6,31 @@
  * Uses SM-2 algorithm from src/lib/srs.ts to schedule reviews.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   ActivityIndicator,
   TextInput,
   RefreshControl,
 } from "react-native";
 
+import {
+  cacheWithFallback,
+  invalidateCache,
+  enqueueWrite,
+  CACHE_KEYS,
+  CACHE_TTL,
+} from "@/src/lib/cache";
+import { isOnline } from "@/src/lib/network";
+import { captureError } from "@/src/lib/sentry";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/lib/supabase";
 import { LEVEL_COLORS } from "@/src/lib/constants";
+import { Colors } from "@/src/lib/design";
 import { calculateNextReview } from "@/src/lib/srs";
 import type { ReviewQuality, SRSState } from "@/src/lib/srs";
 import type { CEFRLevel } from "@/src/types/cefr";
@@ -43,10 +54,10 @@ type TabView = "review" | "all";
 
 /** Rating buttons shown on the review card */
 const RATING_OPTIONS: { label: string; quality: ReviewQuality; color: string }[] = [
-  { label: "Forgot", quality: 0, color: "#FF3B30" },
-  { label: "Hard", quality: 2, color: "#FF9800" },
-  { label: "Good", quality: 4, color: "#2196F3" },
-  { label: "Easy", quality: 5, color: "#34C759" },
+  { label: "Forgot", quality: 0, color: Colors.error },
+  { label: "Hard", quality: 2, color: Colors.skillWriting },
+  { label: "Good", quality: 4, color: Colors.skillListening },
+  { label: "Easy", quality: 5, color: Colors.success },
 ];
 
 export default function VocabularyScreen() {
@@ -65,32 +76,45 @@ export default function VocabularyScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [reviewedCount, setReviewedCount] = useState(0);
 
-  /** Fetch all vocabulary for the user */
+  // Track whether data is from cache so we can show an indicator
+  const [isOfflineData, setIsOfflineData] = useState(false);
+
+  /** Fetch all vocabulary for the user, with cache fallback for offline use */
   const fetchVocabulary = useCallback(async () => {
     if (!user?.id) return;
 
-    const { data, error } = await supabase
-      .from("vocabulary")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("cefr_level", { ascending: true })
-      .order("french_word", { ascending: true });
+    try {
+      const { data: vocabulary, fromCache } = await cacheWithFallback<VocabWord[]>(
+        user.id,
+        CACHE_KEYS.VOCABULARY,
+        async () => {
+          const { data, error } = await supabase
+            .from("vocabulary")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("cefr_level", { ascending: true })
+            .order("french_word", { ascending: true });
 
-    if (error) {
-      console.error("Failed to fetch vocabulary:", error.message);
-      return;
+          if (error) throw error;
+          return (data ?? []) as VocabWord[];
+        },
+        CACHE_TTL.VOCABULARY
+      );
+
+      const words = vocabulary ?? [];
+      setWords(words);
+      setIsOfflineData(fromCache);
+
+      // Filter words due for review
+      const now = new Date();
+      const due = words.filter((w) => new Date(w.next_review) <= now);
+      setDueWords(due);
+      setCurrentIndex(0);
+      setIsRevealed(false);
+      setReviewedCount(0);
+    } catch (err) {
+      captureError(err, "fetch-vocabulary");
     }
-
-    const vocabulary = (data ?? []) as VocabWord[];
-    setWords(vocabulary);
-
-    // Filter words due for review
-    const now = new Date();
-    const due = vocabulary.filter((w) => new Date(w.next_review) <= now);
-    setDueWords(due);
-    setCurrentIndex(0);
-    setIsRevealed(false);
-    setReviewedCount(0);
   }, [user?.id]);
 
   useEffect(() => {
@@ -103,11 +127,12 @@ export default function VocabularyScreen() {
     setRefreshing(false);
   }, [fetchVocabulary]);
 
-  /** Rate a word and update Supabase with the new SRS values */
+  /** Rate a word and update Supabase with the new SRS values.
+   *  If offline, queue the write for later retry. */
   const handleRate = useCallback(
     async (quality: ReviewQuality) => {
       const word = dueWords[currentIndex];
-      if (!word || isUpdating) return;
+      if (!word || isUpdating || !user?.id) return;
 
       setIsUpdating(true);
 
@@ -119,19 +144,42 @@ export default function VocabularyScreen() {
 
       const update = calculateNextReview(currentState, quality);
 
-      const { error } = await supabase
-        .from("vocabulary")
-        .update({
-          ease_factor: update.easeFactor,
-          interval_days: update.intervalDays,
-          repetitions: update.repetitions,
-          next_review: update.nextReview.toISOString(),
-        })
-        .eq("id", word.id);
+      const updatePayload = {
+        ease_factor: update.easeFactor,
+        interval_days: update.intervalDays,
+        repetitions: update.repetitions,
+        next_review: update.nextReview.toISOString(),
+      };
 
-      if (error) {
-        console.error("Failed to update vocabulary:", error.message);
+      const online = await isOnline();
+      if (online) {
+        const { error } = await supabase.from("vocabulary").update(updatePayload).eq("id", word.id);
+
+        if (error) {
+          captureError(error, "update-vocabulary-srs");
+        }
+      } else {
+        // Queue the write for when network returns
+        await enqueueWrite({
+          table: "vocabulary",
+          operation: "update",
+          payload: updatePayload,
+          filter: { column: "id", value: word.id },
+        });
       }
+
+      // Invalidate vocabulary cache so next fetch gets fresh data
+      void invalidateCache(user.id, CACHE_KEYS.VOCABULARY);
+
+      // Optimistically update local state so the word is no longer "due"
+      const updatedWord: VocabWord = {
+        ...word,
+        ease_factor: update.easeFactor,
+        interval_days: update.intervalDays,
+        repetitions: update.repetitions,
+        next_review: update.nextReview.toISOString(),
+      };
+      setWords((prev) => prev.map((w) => (w.id === word.id ? updatedWord : w)));
 
       setIsUpdating(false);
       setIsRevealed(false);
@@ -144,11 +192,11 @@ export default function VocabularyScreen() {
         await fetchVocabulary();
       }
     },
-    [currentIndex, dueWords, isUpdating, fetchVocabulary]
+    [currentIndex, dueWords, isUpdating, user?.id, fetchVocabulary]
   );
 
   /** Format a relative date for display */
-  const formatNextReview = (dateStr: string): string => {
+  const formatNextReview = useCallback((dateStr: string): string => {
     const date = new Date(dateStr);
     const now = new Date();
     const diffMs = date.getTime() - now.getTime();
@@ -159,7 +207,7 @@ export default function VocabularyScreen() {
     if (diffDays < 7) return `In ${diffDays} days`;
     if (diffDays < 30) return `In ${Math.ceil(diffDays / 7)} weeks`;
     return `In ${Math.ceil(diffDays / 30)} months`;
-  };
+  }, []);
 
   /** Filter words for the "All Words" search */
   const filteredWords = searchQuery.trim()
@@ -170,19 +218,102 @@ export default function VocabularyScreen() {
       )
     : words;
 
+  // ---------- FlatList helpers (must be declared before any early returns) ----------
+  const vocabKeyExtractor = useCallback((item: VocabWord) => item.id, []);
+
+  const renderVocabItem = useCallback(
+    ({ item }: { item: VocabWord }) => {
+      const isDue = new Date(item.next_review) <= new Date();
+      return (
+        <View
+          className="bg-white rounded-[14px] p-4 flex-row items-center gap-3 mb-2.5"
+          style={{
+            borderWidth: 1,
+            borderColor: isDue ? "#F5A623" : "#E0E0CE",
+          }}
+        >
+          {/* CEFR badge */}
+          <View
+            className="rounded-lg px-2 py-1 items-center"
+            style={{
+              backgroundColor: LEVEL_COLORS[item.cefr_level] ?? "#999",
+              minWidth: 36,
+            }}
+          >
+            <Text className="text-[11px] font-bold text-white">{item.cefr_level}</Text>
+          </View>
+
+          {/* Word details */}
+          <View className="flex-1">
+            <Text className="text-base font-bold text-primary">{item.french_word}</Text>
+            <Text className="text-[13px] text-[#4A5568] mt-0.5">{item.english_translation}</Text>
+          </View>
+
+          {/* Review status */}
+          <View className="items-end">
+            <Text
+              style={{
+                fontSize: 11,
+                color: isDue ? "#F5A623" : "#999",
+                fontWeight: isDue ? "600" : "400",
+              }}
+            >
+              {formatNextReview(item.next_review)}
+            </Text>
+          </View>
+        </View>
+      );
+    },
+    [formatNextReview]
+  );
+
+  const vocabListHeader = useMemo(
+    () => (
+      <View>
+        {/* Search bar */}
+        <View className="bg-white rounded-xl border border-surface-300 px-4 py-3 mb-4 flex-row items-center">
+          <Text className="text-base mr-2 text-[#94A3B8]">{"🔍"}</Text>
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search words..."
+            placeholderTextColor={Colors.textTertiary}
+            className="flex-1 text-[15px] text-primary"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Text className="text-base text-[#94A3B8]">{"✕"}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Word count */}
+        <Text className="text-[13px] text-[#4A5568] mb-3">
+          {filteredWords.length} word{filteredWords.length !== 1 ? "s" : ""}
+          {searchQuery.trim() ? " found" : ""}
+        </Text>
+      </View>
+    ),
+    [searchQuery, filteredWords.length]
+  );
+
+  const vocabListEmpty = useMemo(
+    () => (
+      <View className="items-center pt-10">
+        <Text className="text-sm text-[#94A3B8]">No words match your search.</Text>
+      </View>
+    ),
+    []
+  );
+
   // ---------- Loading State ----------
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <ActivityIndicator size="large" color="#1E3A5F" />
-        <Text style={{ color: "#666", marginTop: 16, fontSize: 14 }}>Loading vocabulary...</Text>
+      <View className="flex-1 bg-surface justify-center items-center">
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text className="text-[#4A5568] mt-4 text-sm">Loading vocabulary...</Text>
       </View>
     );
   }
@@ -190,34 +321,10 @@ export default function VocabularyScreen() {
   // ---------- Empty State ----------
   if (words.length === 0) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 24,
-        }}
-      >
-        <Text style={{ fontSize: 64, marginBottom: 16 }}>{"📚"}</Text>
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "700",
-            color: "#1E3A5F",
-            marginBottom: 8,
-          }}
-        >
-          No Vocabulary Yet
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: "#666",
-            textAlign: "center",
-            lineHeight: 20,
-          }}
-        >
+      <View className="flex-1 bg-surface justify-center items-center p-6">
+        <Text className="text-[64px] mb-4">{"📚"}</Text>
+        <Text className="text-[22px] font-bold text-primary mb-2">No Vocabulary Yet</Text>
+        <Text className="text-sm text-[#4A5568] text-center leading-5">
           Words from your conversations and exercises{"\n"}will appear here for spaced repetition
           review.
         </Text>
@@ -230,15 +337,7 @@ export default function VocabularyScreen() {
 
   // ---------- Tab Bar ----------
   const renderTabBar = () => (
-    <View
-      style={{
-        flexDirection: "row",
-        marginBottom: 16,
-        backgroundColor: "#E0E0CE",
-        borderRadius: 12,
-        padding: 4,
-      }}
-    >
+    <View className="flex-row mb-4 bg-surface-300 rounded-xl p-1">
       {(["review", "all"] as TabView[]).map((tab) => {
         const isActive = activeTab === tab;
         const label =
@@ -248,17 +347,14 @@ export default function VocabularyScreen() {
           <TouchableOpacity
             key={tab}
             onPress={() => setActiveTab(tab)}
+            className="flex-1 py-2.5 rounded-[10px] items-center"
             style={{
-              flex: 1,
-              paddingVertical: 10,
-              borderRadius: 10,
               backgroundColor: isActive ? "#FFFFFF" : "transparent",
-              alignItems: "center",
             }}
           >
             <Text
+              className="text-sm"
               style={{
-                fontSize: 14,
                 fontWeight: isActive ? "700" : "500",
                 color: isActive ? "#1E3A5F" : "#666",
               }}
@@ -275,49 +371,18 @@ export default function VocabularyScreen() {
   const renderReviewCard = () => {
     if (reviewComplete) {
       return (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 24,
-          }}
-        >
-          <Text style={{ fontSize: 64, marginBottom: 16 }}>{"🎉"}</Text>
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: "700",
-              color: "#1E3A5F",
-              marginBottom: 8,
-            }}
-          >
-            All Caught Up!
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#666",
-              textAlign: "center",
-              lineHeight: 20,
-              marginBottom: 24,
-            }}
-          >
+        <View className="flex-1 justify-center items-center p-6">
+          <Text className="text-[64px] mb-4">{"🎉"}</Text>
+          <Text className="text-[22px] font-bold text-primary mb-2">All Caught Up!</Text>
+          <Text className="text-sm text-[#4A5568] text-center leading-5 mb-6">
             You reviewed {reviewedCount} word{reviewedCount !== 1 ? "s" : ""}.{"\n"}Come back later
             for more reviews.
           </Text>
           <TouchableOpacity
             onPress={() => setActiveTab("all")}
-            style={{
-              backgroundColor: "#1E3A5F",
-              borderRadius: 12,
-              paddingHorizontal: 24,
-              paddingVertical: 14,
-            }}
+            className="bg-primary rounded-xl px-6 py-3.5"
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}>
-              View All Words
-            </Text>
+            <Text className="text-white text-[15px] font-bold">View All Words</Text>
           </TouchableOpacity>
         </View>
       );
@@ -325,48 +390,17 @@ export default function VocabularyScreen() {
 
     if (dueWords.length === 0) {
       return (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 24,
-          }}
-        >
-          <Text style={{ fontSize: 64, marginBottom: 16 }}>{"✅"}</Text>
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: "700",
-              color: "#1E3A5F",
-              marginBottom: 8,
-            }}
-          >
-            No Reviews Due
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#666",
-              textAlign: "center",
-              lineHeight: 20,
-              marginBottom: 24,
-            }}
-          >
+        <View className="flex-1 justify-center items-center p-6">
+          <Text className="text-[64px] mb-4">{"✅"}</Text>
+          <Text className="text-[22px] font-bold text-primary mb-2">No Reviews Due</Text>
+          <Text className="text-sm text-[#4A5568] text-center leading-5 mb-6">
             All your words are up to date.{"\n"}Check back later or browse your full word list.
           </Text>
           <TouchableOpacity
             onPress={() => setActiveTab("all")}
-            style={{
-              backgroundColor: "#1E3A5F",
-              borderRadius: 12,
-              paddingHorizontal: 24,
-              paddingVertical: 14,
-            }}
+            className="bg-primary rounded-xl px-6 py-3.5"
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "700" }}>
-              View All Words
-            </Text>
+            <Text className="text-white text-[15px] font-bold">View All Words</Text>
           </TouchableOpacity>
         </View>
       );
@@ -376,47 +410,25 @@ export default function VocabularyScreen() {
     if (!word) return null;
 
     return (
-      <View style={{ flex: 1 }}>
+      <View className="flex-1">
         {/* Progress indicator */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <Text style={{ fontSize: 13, color: "#666" }}>
+        <View className="flex-row justify-between items-center mb-4">
+          <Text className="text-[13px] text-[#4A5568]">
             Card {currentIndex + 1} of {dueWords.length}
           </Text>
           <View
-            style={{
-              backgroundColor: LEVEL_COLORS[word.cefr_level] ?? "#999",
-              borderRadius: 8,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
-            }}
+            className="rounded-lg px-2.5 py-1"
+            style={{ backgroundColor: LEVEL_COLORS[word.cefr_level] ?? "#999" }}
           >
-            <Text style={{ fontSize: 12, fontWeight: "700", color: "#FFFFFF" }}>
-              {word.cefr_level}
-            </Text>
+            <Text className="text-xs font-bold text-white">{word.cefr_level}</Text>
           </View>
         </View>
 
         {/* Progress bar */}
-        <View
-          style={{
-            height: 4,
-            backgroundColor: "#E0E0CE",
-            borderRadius: 2,
-            marginBottom: 24,
-          }}
-        >
+        <View className="h-1 bg-surface-300 rounded-sm mb-6">
           <View
+            className="h-1 rounded-sm bg-accent"
             style={{
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: "#F5A623",
               width: `${((currentIndex + 1) / dueWords.length) * 100}%`,
             }}
           />
@@ -426,15 +438,9 @@ export default function VocabularyScreen() {
         <TouchableOpacity
           onPress={() => setIsRevealed(true)}
           activeOpacity={isRevealed ? 1 : 0.7}
+          className="bg-white rounded-[20px] border border-surface-300 p-8 justify-center items-center"
           style={{
-            backgroundColor: "#FFFFFF",
-            borderRadius: 20,
-            borderWidth: 1,
-            borderColor: "#E0E0CE",
-            padding: 32,
             minHeight: 280,
-            justifyContent: "center",
-            alignItems: "center",
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.05,
@@ -443,81 +449,31 @@ export default function VocabularyScreen() {
           }}
         >
           {/* French word */}
-          <Text
-            style={{
-              fontSize: 32,
-              fontWeight: "700",
-              color: "#1E3A5F",
-              textAlign: "center",
-              marginBottom: 8,
-            }}
-          >
+          <Text className="text-[32px] font-bold text-primary text-center mb-2">
             {word.french_word}
           </Text>
 
           {/* Phonetic */}
           {word.phonetic && (
-            <Text
-              style={{
-                fontSize: 16,
-                color: "#999",
-                marginBottom: 16,
-                fontStyle: "italic",
-              }}
-            >
-              {word.phonetic}
-            </Text>
+            <Text className="text-base text-[#94A3B8] mb-4 italic">{word.phonetic}</Text>
           )}
 
           {!isRevealed ? (
-            <Text style={{ fontSize: 14, color: "#999", marginTop: 16 }}>
-              Tap to reveal translation
-            </Text>
+            <Text className="text-sm text-[#94A3B8] mt-4">Tap to reveal translation</Text>
           ) : (
-            <View style={{ alignItems: "center", marginTop: 16 }}>
+            <View className="items-center mt-4">
               {/* Divider */}
-              <View
-                style={{
-                  width: 60,
-                  height: 2,
-                  backgroundColor: "#E0E0CE",
-                  marginBottom: 16,
-                }}
-              />
+              <View className="w-[60px] h-0.5 bg-surface-300 mb-4" />
 
               {/* English translation */}
-              <Text
-                style={{
-                  fontSize: 22,
-                  fontWeight: "600",
-                  color: "#F5A623",
-                  textAlign: "center",
-                  marginBottom: 12,
-                }}
-              >
+              <Text className="text-[22px] font-semibold text-accent text-center mb-3">
                 {word.english_translation}
               </Text>
 
               {/* Context sentence */}
               {word.context_sentence && (
-                <View
-                  style={{
-                    backgroundColor: "#F5F5F0",
-                    borderRadius: 12,
-                    padding: 16,
-                    marginTop: 8,
-                    width: "100%",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: "#666",
-                      fontStyle: "italic",
-                      textAlign: "center",
-                      lineHeight: 20,
-                    }}
-                  >
+                <View className="bg-surface rounded-xl p-4 mt-2 w-full">
+                  <Text className="text-[13px] text-[#4A5568] italic text-center leading-5">
                     {word.context_sentence}
                   </Text>
                 </View>
@@ -528,41 +484,23 @@ export default function VocabularyScreen() {
 
         {/* Rating buttons (visible after reveal) */}
         {isRevealed && (
-          <View style={{ marginTop: 24 }}>
-            <Text
-              style={{
-                fontSize: 13,
-                color: "#666",
-                textAlign: "center",
-                marginBottom: 12,
-              }}
-            >
+          <View className="mt-6">
+            <Text className="text-[13px] text-[#4A5568] text-center mb-3">
               How well did you know this?
             </Text>
-            <View style={{ flexDirection: "row", gap: 8 }}>
+            <View className="flex-row gap-2">
               {RATING_OPTIONS.map(({ label, quality, color }) => (
                 <TouchableOpacity
                   key={label}
                   onPress={() => handleRate(quality)}
                   disabled={isUpdating}
+                  className="flex-1 rounded-xl py-3.5 items-center"
                   style={{
-                    flex: 1,
                     backgroundColor: color,
-                    borderRadius: 12,
-                    paddingVertical: 14,
-                    alignItems: "center",
                     opacity: isUpdating ? 0.5 : 1,
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontWeight: "700",
-                      color: "#FFFFFF",
-                    }}
-                  >
-                    {label}
-                  </Text>
+                  <Text className="text-[13px] font-bold text-white">{label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -574,140 +512,58 @@ export default function VocabularyScreen() {
 
   // ---------- Word List ----------
   const renderWordList = () => (
-    <View style={{ flex: 1 }}>
-      {/* Search bar */}
-      <View
-        style={{
-          backgroundColor: "#FFFFFF",
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: "#E0E0CE",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          marginBottom: 16,
-          flexDirection: "row",
-          alignItems: "center",
-        }}
-      >
-        <Text style={{ fontSize: 16, marginRight: 8, color: "#999" }}>{"🔍"}</Text>
-        <TextInput
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search words..."
-          placeholderTextColor="#999"
-          style={{
-            flex: 1,
-            fontSize: 15,
-            color: "#1E3A5F",
-          }}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
-            <Text style={{ fontSize: 16, color: "#999" }}>{"✕"}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Word count */}
-      <Text style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
-        {filteredWords.length} word{filteredWords.length !== 1 ? "s" : ""}
-        {searchQuery.trim() ? " found" : ""}
-      </Text>
-
-      {/* Word list */}
-      {filteredWords.length === 0 ? (
-        <View style={{ alignItems: "center", paddingTop: 40 }}>
-          <Text style={{ fontSize: 14, color: "#999" }}>No words match your search.</Text>
-        </View>
-      ) : (
-        <View style={{ gap: 10 }}>
-          {filteredWords.map((word) => {
-            const isDue = new Date(word.next_review) <= new Date();
-            return (
-              <View
-                key={word.id}
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: isDue ? "#F5A623" : "#E0E0CE",
-                  padding: 16,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                {/* CEFR badge */}
-                <View
-                  style={{
-                    backgroundColor: LEVEL_COLORS[word.cefr_level] ?? "#999",
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    minWidth: 36,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      fontWeight: "700",
-                      color: "#FFFFFF",
-                    }}
-                  >
-                    {word.cefr_level}
-                  </Text>
-                </View>
-
-                {/* Word details */}
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "700",
-                      color: "#1E3A5F",
-                    }}
-                  >
-                    {word.french_word}
-                  </Text>
-                  <Text style={{ fontSize: 13, color: "#666", marginTop: 2 }}>
-                    {word.english_translation}
-                  </Text>
-                </View>
-
-                {/* Review status */}
-                <View style={{ alignItems: "flex-end" }}>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: isDue ? "#F5A623" : "#999",
-                      fontWeight: isDue ? "600" : "400",
-                    }}
-                  >
-                    {formatNextReview(word.next_review)}
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
+    <View className="flex-1">
+      <FlatList
+        data={filteredWords}
+        keyExtractor={vocabKeyExtractor}
+        renderItem={renderVocabItem}
+        ListHeaderComponent={vocabListHeader}
+        ListEmptyComponent={vocabListEmpty}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      />
     </View>
   );
 
+  // ---------- Offline Banner ----------
+  const renderOfflineBanner = () => {
+    if (!isOfflineData) return null;
+    return (
+      <View className="bg-accent/10 rounded-[10px] px-3.5 py-2.5 mb-3 flex-row items-center gap-2">
+        <Text className="text-xs text-accent flex-1">
+          Showing cached data. Changes will sync when you are back online.
+        </Text>
+      </View>
+    );
+  };
+
   // ---------- Main Render ----------
+  if (activeTab === "all") {
+    // "All Words" tab uses FlatList -- avoid nesting inside ScrollView
+    return (
+      <View className="flex-1 bg-surface p-5 pb-0">
+        {renderOfflineBanner()}
+        {renderTabBar()}
+        {renderWordList()}
+      </View>
+    );
+  }
+
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#F5F5F0" }}
+      className="flex-1 bg-surface"
       contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#1E3A5F" />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={Colors.primary}
+        />
       }
     >
+      {renderOfflineBanner()}
       {renderTabBar()}
-      {activeTab === "review" ? renderReviewCard() : renderWordList()}
+      {renderReviewCard()}
     </ScrollView>
   );
 }

@@ -13,6 +13,16 @@ import { supabase } from "./supabase";
 import { captureError } from "./sentry";
 
 /**
+ * Get the local date as a YYYY-MM-DD string.
+ * Uses the device's local timezone instead of UTC to avoid
+ * streak resets near midnight in non-UTC timezones.
+ */
+function getLocalDateString(date?: Date): string {
+  const d = date ?? new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
  * Update the user's streak and last_active_date.
  *
  * Logic:
@@ -30,12 +40,12 @@ export async function updateStreak(userId: string): Promise<void> {
 
     if (!profile) return;
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
     if (profile.last_active_date === today) return; // Already counted today
 
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split("T")[0];
+    const yesterdayStr = getLocalDateString(yesterday);
 
     const newStreak =
       profile.last_active_date === yesterdayStr ? (profile.streak_days ?? 0) + 1 : 1;
@@ -122,7 +132,7 @@ export async function incrementDailyActivity(
   }
 ): Promise<void> {
   try {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
     const { data: existing } = await supabase
       .from("daily_activity")
       .select("minutes_practiced, exercises_completed, conversations_completed, words_learned")
@@ -154,8 +164,10 @@ export async function incrementDailyActivity(
 /**
  * Check if user should be promoted to next CEFR level.
  *
- * Promotion criteria: average score across all practiced skills >= 80%
- * for at least 5 total exercises at the current level.
+ * Promotion criteria:
+ * - At least 10 total exercises completed at the current CEFR level
+ * - At least 3 different skills practiced at the current level
+ * - Average score across all practiced skills at the current level >= 85%
  *
  * Only promotes one level at a time. Updates profiles.current_cefr_level.
  */
@@ -173,19 +185,25 @@ export async function checkCefrPromotion(userId: string): Promise<void> {
     const currentIdx = CEFR_ORDER.indexOf(currentLevel);
     if (currentIdx >= CEFR_ORDER.length - 1) return; // Already at C2
 
+    // Only consider skill_progress rows that match the user's current CEFR level
     const { data: skills } = await supabase
       .from("skill_progress")
-      .select("score, exercises_completed")
-      .eq("user_id", userId);
+      .select("skill, score, exercises_completed")
+      .eq("user_id", userId)
+      .eq("cefr_level", currentLevel);
 
     if (!skills || skills.length === 0) return;
 
+    // Require at least 3 different skills practiced
+    const distinctSkills = new Set(skills.map((s) => s.skill));
+    if (distinctSkills.size < 3) return;
+
     const totalExercises = skills.reduce((sum, s) => sum + (s.exercises_completed ?? 0), 0);
-    if (totalExercises < 5) return; // Too few exercises to judge
+    if (totalExercises < 10) return; // Too few exercises to judge
 
     const avgScore = skills.reduce((sum, s) => sum + (s.score ?? 0), 0) / skills.length;
 
-    if (avgScore >= 80) {
+    if (avgScore >= 85) {
       const nextLevel = CEFR_ORDER[currentIdx + 1];
       const { error } = await supabase
         .from("profiles")

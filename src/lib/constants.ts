@@ -15,11 +15,12 @@ export const TCF = {
   MIN_SCORE: 0,
   MAX_SCORE: 699,
   C1_MIN: 500,
-  LISTENING_QUESTIONS: 39,
-  LISTENING_MINUTES: 35,
-  READING_QUESTIONS: 39,
-  READING_MINUTES: 60,
-  GRAMMAR_QUESTIONS: 39,
+  LISTENING_QUESTIONS: 29,
+  LISTENING_MINUTES: 25,
+  READING_QUESTIONS: 29,
+  READING_MINUTES: 45,
+  GRAMMAR_QUESTIONS: 18,
+  GRAMMAR_MINUTES: 15,
   SPEAKING_MINUTES: 12,
   WRITING_MINUTES: 60,
 } as const;
@@ -35,12 +36,12 @@ export const SKILL_LABELS: Record<TCFSkill, { en: string; fr: string }> = {
 
 /** CEFR level colors for UI badges */
 export const LEVEL_COLORS: Record<CEFRLevel, string> = {
-  A1: "#8BC34A",
-  A2: "#4CAF50",
-  B1: "#2196F3",
-  B2: "#3F51B5",
-  C1: "#9C27B0",
-  C2: "#F44336",
+  A1: "#66BB6A",
+  A2: "#10B981",
+  B1: "#3B82F6",
+  B2: "#1E3A5F",
+  C1: "#8B5CF6",
+  C2: "#EC4899",
 };
 
 /** Conversation topics organized by CEFR level */

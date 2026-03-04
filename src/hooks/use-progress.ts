@@ -5,8 +5,9 @@
  * skill levels, daily activity, streaks, and error patterns.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import { cacheWithFallback, invalidateCache, CACHE_KEYS, CACHE_TTL } from "@/src/lib/cache";
 import { captureError } from "@/src/lib/sentry";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
@@ -65,45 +66,108 @@ export function useProgress(): UseProgressReturn {
     error: null,
   });
 
+  /** Track whether any data was served from cache so we can show a subtle indicator */
+  const fromCacheRef = useRef(false);
+
   const refresh = useCallback(async () => {
     if (!user) return;
 
     setState((s) => ({ ...s, isLoading: true }));
 
     try {
-      // Fetch all in parallel
-      const [skillsRes, todayRes, recentRes, errorsRes, profileRes] = await Promise.all([
-        supabase.from("skill_progress").select("*").eq("user_id", user.id),
-        supabase
-          .from("daily_activity")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("date", new Date().toISOString().split("T")[0])
-          .maybeSingle(),
-        supabase
-          .from("daily_activity")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("date", { ascending: false })
-          .limit(7),
-        supabase
-          .from("error_patterns")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("resolved", false)
-          .order("occurrences", { ascending: false })
-          .limit(5),
-        supabase.from("profiles").select("streak_days").eq("id", user.id).single(),
-      ]);
+      // Fetch all in parallel, each with its own cache fallback
+      const [skillsResult, todayResult, recentResult, errorsResult, streakResult] =
+        await Promise.all([
+          cacheWithFallback<SkillProgressData[]>(
+            user.id,
+            CACHE_KEYS.SKILLS,
+            async () => {
+              const { data, error } = await supabase
+                .from("skill_progress")
+                .select("*")
+                .eq("user_id", user.id);
+              if (error) throw error;
+              return (data ?? []) as SkillProgressData[];
+            },
+            CACHE_TTL.SKILLS
+          ),
+          cacheWithFallback<DailyActivityData | null>(
+            user.id,
+            CACHE_KEYS.DAILY_ACTIVITY_TODAY,
+            async () => {
+              const { data, error } = await supabase
+                .from("daily_activity")
+                .select("*")
+                .eq("user_id", user.id)
+                .eq("date", new Date().toISOString().split("T")[0])
+                .maybeSingle();
+              if (error) throw error;
+              return (data as DailyActivityData) ?? null;
+            },
+            CACHE_TTL.DAILY_ACTIVITY
+          ),
+          cacheWithFallback<DailyActivityData[]>(
+            user.id,
+            CACHE_KEYS.RECENT_ACTIVITY,
+            async () => {
+              const { data, error } = await supabase
+                .from("daily_activity")
+                .select("*")
+                .eq("user_id", user.id)
+                .order("date", { ascending: false })
+                .limit(7);
+              if (error) throw error;
+              return (data ?? []) as DailyActivityData[];
+            },
+            CACHE_TTL.DAILY_ACTIVITY
+          ),
+          cacheWithFallback<ErrorPatternData[]>(
+            user.id,
+            CACHE_KEYS.TOP_ERRORS,
+            async () => {
+              const { data, error } = await supabase
+                .from("error_patterns")
+                .select("*")
+                .eq("user_id", user.id)
+                .eq("resolved", false)
+                .order("occurrences", { ascending: false })
+                .limit(5);
+              if (error) throw error;
+              return (data ?? []) as ErrorPatternData[];
+            },
+            CACHE_TTL.ERRORS
+          ),
+          cacheWithFallback<number>(
+            user.id,
+            CACHE_KEYS.STREAK,
+            async () => {
+              const { data, error } = await supabase
+                .from("profiles")
+                .select("streak_days")
+                .eq("id", user.id)
+                .single();
+              if (error) throw error;
+              return data?.streak_days ?? 0;
+            },
+            CACHE_TTL.STREAK
+          ),
+        ]);
+
+      fromCacheRef.current =
+        skillsResult.fromCache ||
+        todayResult.fromCache ||
+        recentResult.fromCache ||
+        errorsResult.fromCache ||
+        streakResult.fromCache;
 
       setState({
-        skills: (skillsRes.data ?? []) as SkillProgressData[],
-        todayActivity: (todayRes.data as DailyActivityData) ?? null,
-        recentActivity: (recentRes.data ?? []) as DailyActivityData[],
-        topErrors: (errorsRes.data ?? []) as ErrorPatternData[],
-        streakDays: profileRes.data?.streak_days ?? 0,
+        skills: skillsResult.data ?? [],
+        todayActivity: todayResult.data ?? null,
+        recentActivity: recentResult.data ?? [],
+        topErrors: errorsResult.data ?? [],
+        streakDays: streakResult.data ?? 0,
         isLoading: false,
-        error: null,
+        error: fromCacheRef.current ? "Showing cached data (offline)" : null,
       });
     } catch (err) {
       captureError(err, "progress-loading");
@@ -119,6 +183,12 @@ export function useProgress(): UseProgressReturn {
       try {
         await incrementDailyActivity(user.id, { minutes });
         await updateStreak(user.id);
+        // Invalidate caches that were just mutated
+        await Promise.all([
+          invalidateCache(user.id, CACHE_KEYS.DAILY_ACTIVITY_TODAY),
+          invalidateCache(user.id, CACHE_KEYS.RECENT_ACTIVITY),
+          invalidateCache(user.id, CACHE_KEYS.STREAK),
+        ]);
         await refresh();
       } catch (err) {
         captureError(err, "log-activity");

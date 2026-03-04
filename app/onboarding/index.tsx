@@ -58,7 +58,7 @@ const STEP_COPY: Record<Step, { title: string; subtitle: string }> = {
   },
 };
 
-// ─── Animated pill for step progress ──────────────────────────────────────────
+// --- Animated pill for step progress ---
 
 interface StepPillProps {
   active: boolean;
@@ -92,7 +92,7 @@ function StepPill({ active }: StepPillProps) {
   );
 }
 
-// ─── Staggered list item wrapper ──────────────────────────────────────────────
+// --- Staggered list item wrapper ---
 
 interface StaggeredItemProps {
   index: number;
@@ -125,7 +125,7 @@ function StaggeredItem({ index, stepKey, children }: StaggeredItemProps) {
   return <Animated.View style={animatedStyle}>{children}</Animated.View>;
 }
 
-// ─── Main component ────────────────────────────────────────────────────────────
+// --- Main component ---
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -170,86 +170,54 @@ export default function OnboardingScreen() {
   const copy = STEP_COPY[step];
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F5F0" }}>
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
+    <View className="flex-1 bg-surface">
+      {/* -- Header -- */}
       <View
+        className="bg-primary px-6 pb-7 rounded-b-[28px]"
         style={{
-          backgroundColor: "#1E3A5F",
           paddingTop: insets.top + 20,
-          paddingHorizontal: 24,
-          paddingBottom: 28,
-          borderBottomLeftRadius: 40,
-          borderBottomRightRadius: 40,
-          // Simulate depth with shadow
+          // Shadow kept inline -- NativeWind shadow support is limited on native
           shadowColor: "#0D2240",
           shadowOpacity: 0.35,
           shadowRadius: 20,
           shadowOffset: { width: 0, height: 8 },
           elevation: 12,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
         }}
       >
         {/* Brand */}
-        <Text
-          style={{
-            color: "#F5A623",
-            fontSize: 11,
-            fontWeight: "800",
-            letterSpacing: 3,
-            marginBottom: 20,
-          }}
-        >
+        <Text className="text-[#FFD180] text-[11px] font-extrabold tracking-[3px] mb-5">
           COMPAGNON
         </Text>
 
         {/* Step progress pills */}
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 8,
-            marginBottom: 24,
-          }}
-        >
+        <View className="flex-row gap-2 mb-6">
           {STEPS.map((s) => (
             <StepPill key={s} active={s === step} />
           ))}
         </View>
 
         {/* Step title */}
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: "800",
-            color: "#FFFFFF",
-            marginBottom: 6,
-            lineHeight: 34,
-          }}
-        >
+        <Text className="text-[28px] font-extrabold text-white mb-[6px] leading-[34px]">
           {copy.title}
         </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: "rgba(255,255,255,0.65)",
-            lineHeight: 20,
-          }}
-        >
-          {copy.subtitle}
-        </Text>
+        <Text className="text-sm text-white/65 leading-5">{copy.subtitle}</Text>
       </View>
 
-      {/* ── Scrollable content ───────────────────────────────────────────────── */}
+      {/* -- Scrollable content -- */}
       <ScrollView
-        style={{ flex: 1 }}
+        className="flex-1"
         contentContainerStyle={{
           paddingTop: 24,
-          paddingHorizontal: 20,
+          paddingHorizontal: 24,
           paddingBottom: 120,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Step: level ───────────────────────────────────────────────────── */}
+        {/* -- Step: level -- */}
         {step === "level" && (
-          <View style={{ gap: 10 }}>
+          <View className="gap-[10px]">
             {CEFR_ORDER.map((level, index) => {
               const isSelected = selectedLevel === level;
               return (
@@ -257,15 +225,12 @@ export default function OnboardingScreen() {
                   <TouchableOpacity
                     onPress={() => setSelectedLevel(level)}
                     activeOpacity={0.75}
+                    className="flex-row items-center overflow-hidden"
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
                       backgroundColor: isSelected ? "#1E3A5F" : "#FFFFFF",
                       borderRadius: 14,
                       borderWidth: 1,
                       borderColor: isSelected ? "#1E3A5F" : "#E0E0CE",
-                      overflow: "hidden",
-                      // Card shadow
                       shadowColor: "#1E3A5F",
                       shadowOpacity: isSelected ? 0.18 : 0.05,
                       shadowRadius: 8,
@@ -275,70 +240,35 @@ export default function OnboardingScreen() {
                   >
                     {/* Amber left accent strip */}
                     {isSelected && (
-                      <View
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 4,
-                          backgroundColor: "#F5A623",
-                        }}
-                      />
+                      <View className="absolute left-0 top-0 bottom-0 w-1 bg-accent" />
                     )}
 
                     <View
-                      style={{
-                        paddingVertical: 16,
-                        paddingLeft: isSelected ? 20 : 16,
-                        paddingRight: 16,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 12,
-                        flex: 1,
-                      }}
+                      className="flex-row items-center gap-3 flex-1 py-4 pr-4"
+                      style={{ paddingLeft: isSelected ? 20 : 16 }}
                     >
                       {/* Level color badge */}
                       <View
-                        style={{
-                          backgroundColor: LEVEL_COLORS[level],
-                          paddingHorizontal: 10,
-                          paddingVertical: 5,
-                          borderRadius: 8,
-                          minWidth: 42,
-                          alignItems: "center",
-                        }}
+                        className="px-[10px] py-[5px] rounded-lg min-w-[42px] items-center"
+                        style={{ backgroundColor: LEVEL_COLORS[level] }}
                       >
-                        <Text
-                          style={{
-                            color: "#FFFFFF",
-                            fontWeight: "700",
-                            fontSize: 13,
-                          }}
-                        >
-                          {level}
-                        </Text>
+                        <Text className="text-white font-bold text-[13px]">{level}</Text>
                       </View>
 
                       {/* Name + description */}
-                      <View style={{ flex: 1 }}>
+                      <View className="flex-1">
                         <Text
-                          style={{
-                            fontWeight: "700",
-                            fontSize: 15,
-                            color: isSelected ? "#FFFFFF" : "#1E3A5F",
-                            marginBottom: 2,
-                          }}
+                          className="font-bold text-[15px] mb-[2px]"
+                          style={{ color: isSelected ? "#FFFFFF" : "#1E3A5F" }}
                         >
                           {CEFR_LEVELS[level].name}
                         </Text>
                         <Text
-                          style={{
-                            fontSize: 12,
-                            color: isSelected ? "rgba(255,255,255,0.65)" : "#999999",
-                            lineHeight: 16,
-                          }}
+                          className="text-xs leading-4"
                           numberOfLines={1}
+                          style={{
+                            color: isSelected ? "rgba(255,255,255,0.65)" : "#999999",
+                          }}
                         >
                           {CEFR_LEVELS[level].description}
                         </Text>
@@ -351,9 +281,9 @@ export default function OnboardingScreen() {
           </View>
         )}
 
-        {/* ── Step: goal ────────────────────────────────────────────────────── */}
+        {/* -- Step: goal -- */}
         {step === "goal" && (
-          <View style={{ gap: 10 }}>
+          <View className="gap-[10px]">
             {GOALS.map((goal, index) => {
               const isSelected = selectedGoal === goal.id;
               return (
@@ -361,14 +291,12 @@ export default function OnboardingScreen() {
                   <TouchableOpacity
                     onPress={() => setSelectedGoal(goal.id)}
                     activeOpacity={0.75}
+                    className="flex-row items-center overflow-hidden"
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
                       backgroundColor: isSelected ? "#1E3A5F" : "#FFFFFF",
                       borderRadius: 14,
                       borderWidth: 1,
                       borderColor: isSelected ? "#1E3A5F" : "#E0E0CE",
-                      overflow: "hidden",
                       shadowColor: "#1E3A5F",
                       shadowOpacity: isSelected ? 0.18 : 0.05,
                       shadowRadius: 8,
@@ -378,50 +306,26 @@ export default function OnboardingScreen() {
                   >
                     {/* Amber left accent strip */}
                     {isSelected && (
-                      <View
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 4,
-                          backgroundColor: "#F5A623",
-                        }}
-                      />
+                      <View className="absolute left-0 top-0 bottom-0 w-1 bg-accent" />
                     )}
 
                     <View
-                      style={{
-                        paddingVertical: 16,
-                        paddingLeft: isSelected ? 20 : 16,
-                        paddingRight: 16,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 14,
-                        flex: 1,
-                      }}
+                      className="flex-row items-center gap-[14px] flex-1 py-4 pr-4"
+                      style={{ paddingLeft: isSelected ? 20 : 16 }}
                     >
                       {/* Emoji container */}
                       <View
+                        className="w-[44px] h-[44px] rounded-xl justify-center items-center"
                         style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: 12,
                           backgroundColor: isSelected ? "rgba(245,166,35,0.2)" : "rgba(0,0,0,0.05)",
-                          justifyContent: "center",
-                          alignItems: "center",
                         }}
                       >
-                        <Text style={{ fontSize: 22 }}>{goal.emoji}</Text>
+                        <Text className="text-[22px]">{goal.emoji}</Text>
                       </View>
 
                       <Text
-                        style={{
-                          fontWeight: "700",
-                          fontSize: 16,
-                          color: isSelected ? "#FFFFFF" : "#1E3A5F",
-                          flex: 1,
-                        }}
+                        className="font-bold text-base flex-1"
+                        style={{ color: isSelected ? "#FFFFFF" : "#1E3A5F" }}
                       >
                         {goal.label}
                       </Text>
@@ -433,15 +337,9 @@ export default function OnboardingScreen() {
           </View>
         )}
 
-        {/* ── Step: daily ───────────────────────────────────────────────────── */}
+        {/* -- Step: daily -- */}
         {step === "daily" && (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 12,
-            }}
-          >
+          <View className="flex-row flex-wrap gap-3">
             {DAILY_OPTIONS.map((opt, index) => {
               const isSelected = selectedMinutes === opt.minutes;
               return (
@@ -449,16 +347,15 @@ export default function OnboardingScreen() {
                   <TouchableOpacity
                     onPress={() => setSelectedMinutes(opt.minutes)}
                     activeOpacity={0.75}
+                    className="items-center overflow-hidden"
                     style={{
-                      width: (Dimensions.get("window").width - 40 - 12) / 2,
+                      width: (Dimensions.get("window").width - 48 - 12) / 2,
                       backgroundColor: isSelected ? "#1E3A5F" : "#FFFFFF",
                       borderRadius: 16,
                       borderWidth: 1,
                       borderColor: isSelected ? "#1E3A5F" : "#E0E0CE",
                       paddingVertical: 24,
                       paddingHorizontal: 16,
-                      alignItems: "center",
-                      overflow: "hidden",
                       shadowColor: "#1E3A5F",
                       shadowOpacity: isSelected ? 0.2 : 0.05,
                       shadowRadius: 10,
@@ -467,33 +364,17 @@ export default function OnboardingScreen() {
                     }}
                   >
                     {/* Top amber strip on selected */}
-                    {isSelected && (
-                      <View
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: 4,
-                          backgroundColor: "#F5A623",
-                        }}
-                      />
-                    )}
+                    {isSelected && <View className="absolute top-0 left-0 right-0 h-1 bg-accent" />}
 
                     <Text
-                      style={{
-                        fontSize: 30,
-                        fontWeight: "800",
-                        color: isSelected ? "#F5A623" : "#1E3A5F",
-                        marginBottom: 6,
-                      }}
+                      className="text-[30px] font-extrabold mb-[6px]"
+                      style={{ color: isSelected ? "#F5A623" : "#1E3A5F" }}
                     >
                       {opt.label}
                     </Text>
                     <Text
+                      className="text-[13px] font-semibold"
                       style={{
-                        fontSize: 13,
-                        fontWeight: "600",
                         color: isSelected ? "rgba(255,255,255,0.75)" : "#999999",
                       }}
                     >
@@ -507,31 +388,18 @@ export default function OnboardingScreen() {
         )}
       </ScrollView>
 
-      {/* ── Bottom CTA bar ───────────────────────────────────────────────────── */}
+      {/* -- Bottom CTA bar -- */}
       <View
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          paddingHorizontal: 20,
-          paddingBottom: insets.bottom + 16,
-          paddingTop: 16,
-          backgroundColor: "#F5F5F0",
-          // Top border fade
-          borderTopWidth: 1,
-          borderTopColor: "rgba(0,0,0,0.06)",
-        }}
+        className="absolute bottom-0 left-0 right-0 px-5 pt-4 bg-surface border-t border-black/[0.06]"
+        style={{ paddingBottom: insets.bottom + 16 }}
       >
         <TouchableOpacity
           onPress={handleContinue}
           disabled={loading}
           activeOpacity={0.85}
+          className="rounded-xl py-[18px] items-center"
           style={{
             backgroundColor: isFinalStep ? "#F5A623" : "#1E3A5F",
-            borderRadius: 16,
-            paddingVertical: 18,
-            alignItems: "center",
             opacity: loading ? 0.7 : 1,
             shadowColor: "#1E3A5F",
             shadowOpacity: 0.2,
@@ -543,15 +411,8 @@ export default function OnboardingScreen() {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text
-              style={{
-                color: "#FFFFFF",
-                fontSize: 17,
-                fontWeight: "700",
-                letterSpacing: 0.3,
-              }}
-            >
-              {isFinalStep ? "Passer le test de placement" : "Continuer →"}
+            <Text className="text-white text-[17px] font-bold tracking-wide">
+              {isFinalStep ? "Passer le test de placement" : "Continuer \u2192"}
             </Text>
           )}
         </TouchableOpacity>

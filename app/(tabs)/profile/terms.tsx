@@ -15,7 +15,7 @@ const sections: Section[] = [
   },
   {
     heading: "2. Description of Service",
-    body: "Companion is an AI-powered French language learning application that provides voice conversation practice, structured exercises, pronunciation assessment, and progress tracking to help users prepare for the TCF (Test de Connaissance du Français) exam and improve general French proficiency.",
+    body: "Companion is an AI-powered French language learning application that provides voice conversation practice, structured exercises, pronunciation assessment, and progress tracking to help users prepare for the TCF (Test de Connaissance du Fran\u00E7ais) exam and improve general French proficiency.",
   },
   {
     heading: "3. Account Registration",
@@ -23,7 +23,7 @@ const sections: Section[] = [
   },
   {
     heading: "4. Acceptable Use",
-    body: "You agree not to:\n\n• Use the service for any unlawful purpose\n• Attempt to reverse-engineer, decompile, or extract the app's source code\n• Use automated tools to scrape or overload the service\n• Impersonate other users or provide false identity information\n• Upload audio content intended to deceive or harm others\n• Attempt to circumvent rate limits or other usage controls\n• Use the service to generate content that is harmful, defamatory, or illegal",
+    body: "You agree not to:\n\n\u2022 Use the service for any unlawful purpose\n\u2022 Attempt to reverse-engineer, decompile, or extract the app's source code\n\u2022 Use automated tools to scrape or overload the service\n\u2022 Impersonate other users or provide false identity information\n\u2022 Upload audio content intended to deceive or harm others\n\u2022 Attempt to circumvent rate limits or other usage controls\n\u2022 Use the service to generate content that is harmful, defamatory, or illegal",
   },
   {
     heading: "5. AI-Generated Content",
@@ -69,46 +69,18 @@ const sections: Section[] = [
 
 export default function TermsScreen() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F5F0" }} edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-surface" edges={["bottom"]}>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "800",
-            color: "#1E3A5F",
-            marginBottom: 4,
-          }}
-        >
-          Terms of Service
-        </Text>
-        <Text style={{ fontSize: 13, color: "#999", marginBottom: 28 }}>
-          Last updated: {LAST_UPDATED}
-        </Text>
+        <Text className="mb-1 text-[22px] font-extrabold text-primary">Terms of Service</Text>
+        <Text className="mb-7 text-[13px] text-[#999]">Last updated: {LAST_UPDATED}</Text>
 
         {sections.map((section) => (
-          <View key={section.heading} style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: "#1E3A5F",
-                marginBottom: 8,
-              }}
-            >
-              {section.heading}
-            </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                color: "#444",
-                lineHeight: 22,
-              }}
-            >
-              {section.body}
-            </Text>
+          <View key={section.heading} className="mb-6">
+            <Text className="mb-2 text-lg font-bold text-primary">{section.heading}</Text>
+            <Text className="text-sm leading-[22px] text-[#444]">{section.body}</Text>
           </View>
         ))}
       </ScrollView>

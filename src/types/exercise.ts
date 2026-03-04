@@ -38,6 +38,11 @@ export interface WritingEvaluation {
   errors: WritingError[];
   suggestions: string[];
   rewriteSuggestion?: string;
+  tcfEstimatedScore?: number;
+  vocabularyDiversityRatio?: number;
+  connectorsUsed?: string[];
+  connectorsMissing?: string[];
+  summary?: string;
 }
 
 /** A specific error found in user's writing */

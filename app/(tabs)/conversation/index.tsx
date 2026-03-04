@@ -14,6 +14,7 @@ import { CONVERSATION_TOPICS } from "@/src/lib/constants";
 import type { ConversationTopic } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { CEFR_ORDER } from "@/src/types/cefr";
+import { Colors } from "@/src/lib/design";
 
 const CEFR_STRIP_COLORS: Record<string, string> = {
   A1: "#A8D5A2",
@@ -25,18 +26,18 @@ const CEFR_STRIP_COLORS: Record<string, string> = {
 };
 
 const TOPIC_EMOJIS: Record<string, string> = {
-  "Se présenter": "👋",
-  "Commander au café": "☕",
-  "Demander son chemin": "🗺️",
-  "Décrire sa famille": "👨‍👩‍👧",
-  "Chez le médecin": "🏥",
-  "Plans du week-end": "📅",
-  "Au travail": "💼",
-  "Parler de ses voyages": "✈️",
-  "Débattre d'actualités": "📰",
-  "Cinéma et culture": "🎬",
-  "Gastronomie française": "🍷",
-  "Philosophie et société": "🧠",
+  "Se pr\u00e9senter": "\uD83D\uDC4B",
+  "Commander au caf\u00e9": "\u2615",
+  "Demander son chemin": "\uD83D\uDDFA\uFE0F",
+  "D\u00e9crire sa famille": "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67",
+  "Chez le m\u00e9decin": "\uD83C\uDFE5",
+  "Plans du week-end": "\uD83D\uDCC5",
+  "Au travail": "\uD83D\uDCBC",
+  "Parler de ses voyages": "\u2708\uFE0F",
+  "D\u00e9battre d\u2019actualit\u00e9s": "\uD83D\uDCF0",
+  "Cin\u00e9ma et culture": "\uD83C\uDFAC",
+  "Gastronomie fran\u00e7aise": "\uD83C\uDF77",
+  "Philosophie et soci\u00e9t\u00e9": "\uD83E\uDDE0",
 };
 
 type LevelFilter = "All" | CEFRLevel;
@@ -44,7 +45,7 @@ type LevelFilter = "All" | CEFRLevel;
 function getDifficultyDots(level: string): number {
   const idx = CEFR_ORDER.indexOf(level as CEFRLevel);
   if (idx < 0) return 1;
-  // A1=1, A2=2, B1=3, B2=4, C1=5, C2=6 — clamp to 3 dots max
+  // A1=1, A2=2, B1=3, B2=4, C1=5, C2=6 -- clamp to 3 dots max
   return Math.min(Math.ceil((idx + 1) / 2), 3);
 }
 
@@ -81,7 +82,7 @@ function CardItem({ item, index, onPress }: CardItemProps) {
   }));
 
   const stripColor = CEFR_STRIP_COLORS[item.cefr_level] ?? "#1E3A5F";
-  const emoji = TOPIC_EMOJIS[item.titleFr] ?? "💬";
+  const emoji = TOPIC_EMOJIS[item.titleFr] ?? "\uD83D\uDCAC";
   const difficultyDots = getDifficultyDots(item.cefr_level);
 
   return (
@@ -95,14 +96,11 @@ function CardItem({ item, index, onPress }: CardItemProps) {
           scale.value = withTiming(1.0, { duration: 150 });
         }}
         activeOpacity={1}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.titleFr} - ${item.title}. ${item.description}`}
+        className="bg-white rounded-2xl mb-3 mx-5 p-4 pl-[22px]"
         style={{
-          backgroundColor: "#FFFFFF",
-          borderRadius: 18,
-          marginBottom: 12,
-          marginHorizontal: 20,
-          padding: 16,
-          paddingLeft: 22,
-          shadowColor: "#1E3A5F",
+          shadowColor: Colors.primary,
           shadowOpacity: 0.08,
           shadowRadius: 10,
           shadowOffset: { width: 0, height: 4 },
@@ -111,96 +109,52 @@ function CardItem({ item, index, onPress }: CardItemProps) {
       >
         {/* Left accent strip */}
         <View
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 8,
-            bottom: 8,
-            width: 4,
-            borderRadius: 4,
-            backgroundColor: stripColor,
-          }}
+          className="absolute left-0 top-2 bottom-2 w-1 rounded-full"
+          style={{ backgroundColor: stripColor }}
         />
 
         {/* Content row */}
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View className="flex-row items-center">
           {/* Icon circle */}
           <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: stripColor + "20",
-              justifyContent: "center",
-              alignItems: "center",
-              marginRight: 12,
-            }}
+            className="w-11 h-11 rounded-full justify-center items-center mr-3"
+            style={{ backgroundColor: stripColor + "20" }}
           >
-            <Text style={{ fontSize: 22 }}>{emoji}</Text>
+            <Text className="text-[22px]">{emoji}</Text>
           </View>
 
           {/* Titles */}
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 17, fontWeight: "700", color: "#1E3A5F" }} numberOfLines={1}>
+          <View className="flex-1">
+            <Text className="text-base font-bold text-primary" numberOfLines={1}>
               {item.titleFr}
             </Text>
-            <Text style={{ fontSize: 13, color: "#8A8A7A", marginTop: 1 }} numberOfLines={1}>
+            <Text className="text-[13px] text-[#6B7C93] mt-[1px]" numberOfLines={1}>
               {item.title}
             </Text>
           </View>
         </View>
 
         {/* Description */}
-        <Text
-          style={{
-            fontSize: 13,
-            color: "#9A9A8A",
-            lineHeight: 19,
-            marginTop: 8,
-          }}
-          numberOfLines={2}
-        >
+        <Text className="text-[13px] text-[#94A3B8] leading-[19px] mt-2" numberOfLines={2}>
           {item.description}
         </Text>
 
         {/* Footer row */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: 10,
-          }}
-        >
+        <View className="flex-row justify-between items-center mt-[10px]">
           {/* CEFR badge */}
-          <View
-            style={{
-              backgroundColor: stripColor + "22",
-              borderRadius: 8,
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 11,
-                fontWeight: "700",
-                color: stripColor,
-              }}
-            >
+          <View className="rounded-lg px-2 py-[3px]" style={{ backgroundColor: stripColor + "22" }}>
+            <Text className="text-[11px] font-bold" style={{ color: stripColor }}>
               {item.cefr_level}
             </Text>
           </View>
 
           {/* Difficulty dots */}
-          <View style={{ flexDirection: "row", gap: 4 }}>
+          <View className="flex-row gap-1">
             {[1, 2, 3].map((dot) => (
               <View
                 key={dot}
+                className="w-[7px] h-[7px] rounded-full"
                 style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: 3.5,
                   backgroundColor: dot <= difficultyDots ? stripColor : "#E0E0CE",
                 }}
               />
@@ -252,136 +206,89 @@ export default function ConversationTopicsScreen() {
   const initials = profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : "?";
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F5F0" }}>
+    <View className="flex-1 bg-surface">
       {/* Hero section */}
       <View
-        style={{
-          backgroundColor: "#1E3A5F",
-          borderBottomLeftRadius: 32,
-          borderBottomRightRadius: 32,
-          paddingBottom: 24,
-          paddingTop: insets.top + 16,
-          paddingHorizontal: 24,
-        }}
+        className="bg-primary rounded-b-[28px] pb-6 px-6"
+        style={{ paddingTop: insets.top + 16 }}
       >
         {/* Depth overlay */}
         <View
+          className="absolute bottom-0 left-0 right-0 rounded-b-[32px]"
           style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
             height: "50%",
             backgroundColor: "rgba(10,25,55,0.4)",
-            borderBottomLeftRadius: 32,
-            borderBottomRightRadius: 32,
           }}
           pointerEvents="none"
         />
 
         {/* Row 1: CEFR badge + initials */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <View className="flex-row justify-between items-center">
           <View
+            className="rounded-[20px] px-[10px] py-1"
             style={{
               backgroundColor: "rgba(245,166,35,0.2)",
               borderColor: "#F5A623",
               borderWidth: 1,
-              borderRadius: 20,
-              paddingHorizontal: 10,
-              paddingVertical: 4,
             }}
           >
-            <Text style={{ fontSize: 12, fontWeight: "700", color: "#F5A623" }}>{userLevel}</Text>
+            <Text className="text-xs font-bold text-accent">{userLevel}</Text>
           </View>
 
-          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+          <View className="flex-row gap-2 items-center">
             <TouchableOpacity
               onPress={() => router.push("/(tabs)/conversation/history")}
+              accessibilityRole="button"
+              accessibilityLabel="Conversation history"
+              className="rounded-[20px] px-3 py-[6px]"
               style={{
                 backgroundColor: "rgba(255,255,255,0.1)",
                 borderColor: "rgba(255,255,255,0.2)",
                 borderWidth: 1,
-                borderRadius: 20,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
               }}
             >
-              <Text style={{ fontSize: 12, fontWeight: "600", color: "rgba(255,255,255,0.8)" }}>
+              <Text className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.8)" }}>
                 History
               </Text>
             </TouchableOpacity>
             <View
+              className="w-9 h-9 rounded-[18px] justify-center items-center"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
                 backgroundColor: "rgba(255,255,255,0.15)",
                 borderColor: "rgba(255,255,255,0.25)",
                 borderWidth: 1,
-                justifyContent: "center",
-                alignItems: "center",
               }}
             >
-              <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFFFFF" }}>{initials}</Text>
+              <Text className="text-base font-bold text-white">{initials}</Text>
             </View>
           </View>
         </View>
 
         {/* Row 2: Heading */}
-        <Text
-          style={{
-            fontSize: 26,
-            fontWeight: "800",
-            color: "#FFFFFF",
-            letterSpacing: -0.3,
-            marginTop: 12,
-          }}
-        >
+        <Text className="text-[26px] font-extrabold text-white tracking-[-0.3px] mt-3">
           Parlez avec Compagnon
         </Text>
 
         {/* Row 3: Subheading */}
-        <Text
-          style={{
-            fontSize: 14,
-            color: "rgba(255,255,255,0.6)",
-            marginTop: 6,
-          }}
-        >
+        <Text className="text-sm mt-[6px]" style={{ color: "rgba(255,255,255,0.6)" }}>
           Choose a topic and start speaking.
         </Text>
 
         {/* Row 4: Stat chips */}
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 8,
-            marginTop: 24,
-            flexWrap: "wrap",
-          }}
-        >
-          {[`🔥 ${streak} day streak`, "💬 Practice", `⭐ ${userLevel}`].map((label) => (
+        <View className="flex-row gap-2 mt-6 flex-wrap">
+          {[
+            `\uD83D\uDD25 ${streak} day streak`,
+            "\uD83D\uDCAC Practice",
+            `\u2B50 ${userLevel}`,
+          ].map((label) => (
             <View
               key={label}
-              style={{
-                backgroundColor: "rgba(255,255,255,0.1)",
-                borderRadius: 10,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-              }}
+              className="rounded-[10px] px-[10px] py-[6px]"
+              style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
             >
               <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "600",
-                  color: "rgba(255,255,255,0.85)",
-                }}
+                className="text-[11px] font-semibold"
+                style={{ color: "rgba(255,255,255,0.85)" }}
               >
                 {label}
               </Text>
@@ -390,36 +297,27 @@ export default function ConversationTopicsScreen() {
         </View>
       </View>
 
-      {/* Level filter bar — only show levels that have topics */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "center",
-          paddingHorizontal: 20,
-          paddingVertical: 12,
-          gap: 10,
-        }}
-      >
+      {/* Level filter bar -- only show levels that have topics */}
+      <View className="flex-row justify-center px-5 py-3 gap-[10px]">
         {(["All", ...availableLevels] as const).map((level) => {
           const isActive = selectedLevel === level;
           return (
             <TouchableOpacity
               key={level}
               onPress={() => setSelectedLevel(level as LevelFilter)}
+              accessibilityRole="button"
+              accessibilityLabel={`Filter by level: ${level}`}
+              accessibilityState={{ selected: isActive }}
+              className="flex-1 max-w-[80px] rounded-[20px] py-2 items-center"
               style={{
-                flex: 1,
-                maxWidth: 80,
                 backgroundColor: isActive ? "#1E3A5F" : "#FFFFFF",
                 borderColor: isActive ? "#1E3A5F" : "#E0E0CE",
                 borderWidth: 1,
-                borderRadius: 20,
-                paddingVertical: 8,
-                alignItems: "center",
               }}
             >
               <Text
+                className="text-[13px]"
                 style={{
-                  fontSize: 13,
                   fontWeight: isActive ? "700" : "600",
                   color: isActive ? "#FFFFFF" : "#8A8A7A",
                 }}

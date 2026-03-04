@@ -15,6 +15,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
+import { Colors } from "@/src/lib/design";
 
 export default function ReadingScreen() {
   const router = useRouter();
@@ -57,48 +58,18 @@ export default function ReadingScreen() {
   // Pre-exercise
   if (!exercise.exercise && !exercise.isGenerating) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 24,
-        }}
-      >
-        <Text style={{ fontSize: 64, marginBottom: 16 }}>&#x1F4D6;</Text>
-        <Text style={{ fontSize: 22, fontWeight: "700", color: "#1E3A5F", marginBottom: 8 }}>
-          Reading Practice
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: "#666",
-            textAlign: "center",
-            marginBottom: 32,
-            lineHeight: 20,
-          }}
-        >
+      <View className="flex-1 bg-surface justify-center items-center p-6">
+        <Text className="text-[64px] mb-4">&#x1F4D6;</Text>
+        <Text className="text-[22px] font-bold text-primary mb-2">Reading Practice</Text>
+        <Text className="text-sm text-[#4A5568] text-center mb-8 leading-5">
           Read a French passage and answer comprehension questions.
           {"\n"}Tap highlighted words for explanations in French!
         </Text>
-        <TouchableOpacity
-          onPress={handleGenerate}
-          style={{
-            backgroundColor: "#1E3A5F",
-            borderRadius: 12,
-            paddingHorizontal: 32,
-            paddingVertical: 16,
-          }}
-        >
-          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>
-            Generate Exercise
-          </Text>
+        <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
+          <Text className="text-white text-base font-bold">Generate Exercise</Text>
         </TouchableOpacity>
         {exercise.error && (
-          <Text style={{ color: "#FF3B30", fontSize: 13, marginTop: 16, textAlign: "center" }}>
-            {exercise.error}
-          </Text>
+          <Text className="text-error text-[13px] mt-4 text-center">{exercise.error}</Text>
         )}
       </View>
     );
@@ -107,16 +78,9 @@ export default function ReadingScreen() {
   // Loading
   if (exercise.isGenerating) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <ActivityIndicator size="large" color="#1E3A5F" />
-        <Text style={{ color: "#666", marginTop: 16, fontSize: 14 }}>Generating passage...</Text>
+      <View className="flex-1 bg-surface justify-center items-center">
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text className="text-[#4A5568] mt-4 text-sm">Generating passage...</Text>
       </View>
     );
   }
@@ -132,10 +96,7 @@ export default function ReadingScreen() {
     }
 
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: "#F5F5F0" }}
-        contentContainerStyle={{ padding: 20 }}
-      >
+      <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ padding: 20 }}>
         <ScoreCard
           score={exercise.score}
           totalQuestions={totalQuestions}
@@ -161,37 +122,26 @@ export default function ReadingScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#F5F5F0" }}
+      className="flex-1 bg-surface"
       contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
     >
       {/* Passage */}
       <TouchableOpacity
         onPress={() => setShowPassage(!showPassage)}
-        style={{
-          backgroundColor: "#FFFFFF",
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 20,
-          borderWidth: 1,
-          borderColor: "#E0E0CE",
-        }}
+        className="bg-white rounded-2xl p-5 mb-5 border border-surface-300"
       >
         <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: showPassage ? 12 : 0,
-          }}
+          className="flex-row justify-between items-center"
+          style={{ marginBottom: showPassage ? 12 : 0 }}
         >
-          <Text style={{ fontSize: 13, fontWeight: "700", color: "#1E3A5F" }}>Reading Passage</Text>
-          <Text style={{ fontSize: 12, color: "#999" }}>
+          <Text className="text-[13px] font-bold text-primary">Reading Passage</Text>
+          <Text className="text-xs text-[#94A3B8]">
             {showPassage ? "Tap to hide" : "Tap to show"}
           </Text>
         </View>
 
         {showPassage && exercise.exercise?.passage && (
-          <Text style={{ fontSize: 15, color: "#333", lineHeight: 24 }}>
+          <Text className="text-[15px] text-primary leading-6">
             {exercise.exercise.passage.split(/(\s+)/).map((word, idx) => {
               const cleanWord = word.replace(/[.,;:!?'"()]/g, "").toLowerCase();
               const isExplainable = explainableWords.includes(cleanWord);
@@ -202,7 +152,7 @@ export default function ReadingScreen() {
                     key={idx}
                     onPress={() => handleWordTap(word)}
                     style={{
-                      color: "#1E3A5F",
+                      color: Colors.textPrimary,
                       fontWeight: "600",
                       textDecorationLine: "underline",
                       textDecorationStyle: "dotted",
@@ -220,32 +170,17 @@ export default function ReadingScreen() {
 
       {/* Info about tap-to-explain */}
       {explainableWords.length > 0 && showPassage && (
-        <Text
-          style={{
-            fontSize: 11,
-            color: "#999",
-            textAlign: "center",
-            marginBottom: 16,
-            fontStyle: "italic",
-          }}
-        >
+        <Text className="text-[11px] text-[#94A3B8] text-center mb-4 italic">
           Tap underlined words for explanations in French
         </Text>
       )}
 
       {/* Question counter */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <Text style={{ fontSize: 13, color: "#666" }}>
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-[13px] text-[#4A5568]">
           Question {exercise.currentQuestionIndex + 1} of {totalQuestions}
         </Text>
-        <Text style={{ fontSize: 13, color: "#666" }}>
+        <Text className="text-[13px] text-[#4A5568]">
           {answeredQuestions.size}/{totalQuestions} answered
         </Text>
       </View>
@@ -261,29 +196,18 @@ export default function ReadingScreen() {
       )}
 
       {/* Navigation */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          marginTop: 24,
-          gap: 12,
-        }}
-      >
+      <View className="flex-row justify-between mt-6 gap-3">
         <TouchableOpacity
           onPress={exercise.previousQuestion}
           disabled={exercise.currentQuestionIndex === 0}
+          className="flex-1 rounded-xl py-3.5 items-center"
           style={{
-            flex: 1,
             backgroundColor: exercise.currentQuestionIndex === 0 ? "#E0E0CE" : "#F0F0E8",
-            borderRadius: 12,
-            paddingVertical: 14,
-            alignItems: "center",
           }}
         >
           <Text
+            className="text-[15px] font-semibold"
             style={{
-              fontSize: 15,
-              fontWeight: "600",
               color: exercise.currentQuestionIndex === 0 ? "#999" : "#1E3A5F",
             }}
           >
@@ -294,32 +218,22 @@ export default function ReadingScreen() {
         {exercise.currentQuestionIndex < totalQuestions - 1 ? (
           <TouchableOpacity
             onPress={exercise.nextQuestion}
-            style={{
-              flex: 1,
-              backgroundColor: "#1E3A5F",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
+            className="flex-1 bg-primary rounded-xl py-3.5 items-center"
           >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Next</Text>
+            <Text className="text-[15px] font-semibold text-white">Next</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             onPress={handleFinish}
             disabled={answeredQuestions.size < totalQuestions}
+            className="flex-1 rounded-xl py-3.5 items-center"
             style={{
-              flex: 1,
               backgroundColor: answeredQuestions.size < totalQuestions ? "#E0E0CE" : "#F5A623",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
             }}
           >
             <Text
+              className="text-[15px] font-bold"
               style={{
-                fontSize: 15,
-                fontWeight: "700",
                 color: answeredQuestions.size < totalQuestions ? "#999" : "#FFFFFF",
               }}
             >
@@ -339,51 +253,19 @@ export default function ReadingScreen() {
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setSelectedWord(null)}
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            padding: 32,
-          }}
+          className="flex-1 justify-center p-8"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
         >
-          <View
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 16,
-              padding: 24,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: "800",
-                color: "#1E3A5F",
-                marginBottom: 8,
-              }}
-            >
-              {selectedWord}
-            </Text>
-            <Text
-              style={{
-                fontSize: 15,
-                color: "#333",
-                lineHeight: 24,
-                fontStyle: "italic",
-              }}
-            >
+          <View className="bg-white rounded-2xl p-6">
+            <Text className="text-[22px] font-extrabold text-primary mb-2">{selectedWord}</Text>
+            <Text className="text-[15px] text-primary leading-6 italic">
               {selectedWord && exercise.exercise?.wordExplanations?.[selectedWord]}
             </Text>
             <TouchableOpacity
               onPress={() => setSelectedWord(null)}
-              style={{
-                marginTop: 16,
-                backgroundColor: "#F0F0E8",
-                borderRadius: 10,
-                paddingVertical: 10,
-                alignItems: "center",
-              }}
+              className="mt-4 bg-surface-200 rounded-[10px] py-2.5 items-center"
             >
-              <Text style={{ fontWeight: "600", color: "#1E3A5F" }}>Close</Text>
+              <Text className="font-semibold text-primary">Close</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

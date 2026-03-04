@@ -1,8 +1,15 @@
 import { useEffect } from "react";
 
+import {
+  cacheWithFallback,
+  invalidateCache,
+  clearUserCache,
+  flushWriteQueue,
+  CACHE_KEYS,
+  CACHE_TTL,
+} from "@/src/lib/cache";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
-import { useProgressStore } from "@/src/store/progress-store";
 import type { UserProfile } from "@/src/types/user";
 
 /** Initialize auth listener and load user profile */
@@ -39,10 +46,30 @@ export function useAuth() {
   }, []);
 
   async function loadProfile(userId: string) {
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
+    try {
+      const { data: profile } = await cacheWithFallback<UserProfile | null>(
+        userId,
+        CACHE_KEYS.PROFILE,
+        async () => {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", userId)
+            .single();
+          if (error) throw error;
+          return data as UserProfile;
+        },
+        CACHE_TTL.PROFILE
+      );
 
-    if (data && !error) {
-      setProfile(data as UserProfile);
+      if (profile) {
+        setProfile(profile);
+      }
+
+      // Flush any queued writes now that we have connectivity
+      void flushWriteQueue(supabase);
+    } catch {
+      // Both network and cache failed -- profile stays null
     }
     setLoading(false);
   }
@@ -67,10 +94,13 @@ export function useAuth() {
   }
 
   async function signOut() {
+    const userId = user?.id;
     const { error } = await supabase.auth.signOut();
     if (!error) {
+      if (userId) {
+        void clearUserCache(userId);
+      }
       useAuthStore.getState().reset();
-      useProgressStore.getState().reset();
     }
     return { error };
   }
@@ -99,13 +129,17 @@ export function useAuth() {
         .single();
 
       if (upsertData && !upsertError) {
-        setProfile(upsertData as UserProfile);
+        const updatedProfile = upsertData as UserProfile;
+        setProfile(updatedProfile);
+        void invalidateCache(user.id, CACHE_KEYS.PROFILE);
       }
       return { data: upsertData, error: upsertError };
     }
 
     if (data && !error) {
-      setProfile(data as UserProfile);
+      const updatedProfile = data as UserProfile;
+      setProfile(updatedProfile);
+      void invalidateCache(user.id, CACHE_KEYS.PROFILE);
     }
     return { data, error };
   }

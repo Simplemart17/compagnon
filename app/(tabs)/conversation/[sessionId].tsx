@@ -33,6 +33,7 @@ import Reanimated, {
 
 import { useRealtimeVoice } from "@/src/hooks/use-realtime-voice";
 import { useAuthStore } from "@/src/store/auth-store";
+import { hapticMedium } from "@/src/lib/haptics";
 import { retrieveMemories } from "@/src/lib/memory";
 import { getTopErrors } from "@/src/lib/error-tracker";
 import { captureError } from "@/src/lib/sentry";
@@ -41,6 +42,7 @@ import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
 import type { ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
+import { Colors } from "@/src/lib/design";
 
 type ViewMode = "waveform" | "transcript";
 
@@ -55,23 +57,10 @@ function PendingAiCard({ text }: { text: string }) {
   }, []);
 
   return (
-    <View
-      style={{
-        backgroundColor: "rgba(255,255,255,0.08)",
-        borderRadius: 16,
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        marginHorizontal: 28,
-        marginTop: 16,
-      }}
-    >
+    <View className="bg-white/[0.08] rounded-2xl px-5 py-3 mx-7 mt-4">
       <Text
-        style={{
-          fontSize: 15,
-          lineHeight: 22,
-          color: "rgba(255,255,255,0.85)",
-          fontStyle: "italic",
-        }}
+        className="text-[15px] leading-[22px] italic"
+        style={{ color: "rgba(255,255,255,0.85)" }}
         numberOfLines={3}
       >
         {text}
@@ -157,10 +146,12 @@ export default function ConversationSessionScreen() {
   }, [conversation.status, conversation, router]);
 
   const handleStart = useCallback(async () => {
+    hapticMedium();
     await conversation.start();
   }, [conversation]);
 
   const handleEnd = useCallback(() => {
+    hapticMedium();
     conversation.end();
   }, [conversation]);
 
@@ -203,9 +194,7 @@ export default function ConversationSessionScreen() {
         ? "#F5A623"
         : conversation.status === "error"
           ? "#FF3B30"
-          : conversation.status === "ended"
-            ? "rgba(255,255,255,0.3)"
-            : "rgba(255,255,255,0.3)";
+          : "rgba(255,255,255,0.3)";
 
   // Status text / subtitle
   function getStatusContent(): { main: string; sub: string; dimMain: boolean } {
@@ -230,36 +219,27 @@ export default function ConversationSessionScreen() {
   const statusContent = getStatusContent();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0D2240" }}>
+    <SafeAreaView className="flex-1 bg-[#0D2240]">
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Radial glow behind waveform area */}
         <View
+          className="absolute rounded-full"
           style={{
-            position: "absolute",
             top: "20%",
             left: "50%",
             marginLeft: -130,
             width: 260,
             height: 260,
-            borderRadius: 130,
             backgroundColor: "rgba(30,58,95,0.5)",
           }}
           pointerEvents="none"
         />
 
         {/* Header */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-          }}
-        >
+        <View className="flex-row items-center justify-between px-4 py-3">
           {/* Back button */}
           <TouchableOpacity
             onPress={() => {
@@ -268,49 +248,24 @@ export default function ConversationSessionScreen() {
               }
               router.back();
             }}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: "rgba(255,255,255,0.1)",
-              borderColor: "rgba(255,255,255,0.15)",
-              borderWidth: 1,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            className="w-10 h-10 rounded-full bg-white/10 border border-white/15 justify-center items-center"
           >
-            <Text style={{ fontSize: 18, color: "#FFFFFF" }}>{"\u2190"}</Text>
+            <Text className="text-lg text-white">{"\u2190"}</Text>
           </TouchableOpacity>
 
           {/* Center: topic + status */}
-          <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 8 }}>
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: "#FFFFFF",
-              }}
-              numberOfLines={1}
-            >
+          <View className="flex-1 items-center px-2">
+            <Text className="text-[15px] font-bold text-white" numberOfLines={1}>
               {topic}
             </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 5,
-                marginTop: 3,
-              }}
-            >
+            <View className="flex-row items-center gap-[5px] mt-[3px]">
               <View
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: statusDotColor,
-                }}
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: statusDotColor }}
               />
-              <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
+              <Text className="text-[11px] text-white/[0.55]">
                 {conversation.status === "connected"
                   ? formatDuration(conversation.durationSeconds)
                   : conversation.status === "connecting"
@@ -325,30 +280,21 @@ export default function ConversationSessionScreen() {
           </View>
 
           {/* View toggle segmented pill */}
-          <View
-            style={{
-              backgroundColor: "rgba(255,255,255,0.08)",
-              borderRadius: 20,
-              padding: 3,
-              flexDirection: "row",
-            }}
-          >
+          <View className="bg-white/[0.08] rounded-[20px] p-[3px] flex-row">
             {(["waveform", "transcript"] as ViewMode[]).map((segMode) => {
               const isActive = viewMode === segMode;
               return (
                 <TouchableOpacity
                   key={segMode}
                   onPress={() => setViewMode(segMode)}
+                  className="px-2.5 py-[5px] rounded-[17px]"
                   style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 17,
                     backgroundColor: isActive ? "rgba(255,255,255,0.18)" : "transparent",
                   }}
                 >
                   <Text
+                    className="text-[11px]"
                     style={{
-                      fontSize: 11,
                       fontWeight: isActive ? "700" : "400",
                       color: isActive ? "#FFFFFF" : "rgba(255,255,255,0.45)",
                     }}
@@ -362,39 +308,16 @@ export default function ConversationSessionScreen() {
         </View>
 
         {/* Topic banner */}
-        <View style={{ alignItems: "center", marginBottom: 8 }}>
-          <View
-            style={{
-              backgroundColor: "rgba(245,166,35,0.08)",
-              borderRadius: 12,
-              paddingVertical: 6,
-              paddingHorizontal: 16,
-              marginHorizontal: 32,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "600",
-                color: "#F5A623",
-                textAlign: "center",
-              }}
-            >
-              {topic}
-            </Text>
+        <View className="items-center mb-2">
+          <View className="bg-accent/[0.08] rounded-xl py-1.5 px-4 mx-8">
+            <Text className="text-[13px] font-semibold text-accent text-center">{topic}</Text>
           </View>
         </View>
 
         {/* Main Content Area */}
-        <View style={{ flex: 1 }}>
+        <View className="flex-1">
           {viewMode === "waveform" ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
+            <View className="flex-1 justify-center items-center">
               <AudioWaveform
                 isActive={conversation.isSpeaking || conversation.isAiSpeaking}
                 speaker={
@@ -406,27 +329,17 @@ export default function ConversationSessionScreen() {
 
               {/* Status text block */}
               {statusContent.main.length > 0 && (
-                <View style={{ alignItems: "center", marginTop: 24 }}>
+                <View className="items-center mt-6">
                   <Text
+                    className="text-xl font-semibold italic text-center"
                     style={{
-                      fontSize: 20,
-                      fontWeight: "600",
-                      fontStyle: "italic",
                       color: statusContent.dimMain ? "rgba(255,255,255,0.55)" : "#FFFFFF",
-                      textAlign: "center",
                     }}
                   >
                     {statusContent.main}
                   </Text>
                   {statusContent.sub.length > 0 && (
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        color: "rgba(255,255,255,0.45)",
-                        marginTop: 4,
-                        textAlign: "center",
-                      }}
-                    >
+                    <Text className="text-[13px] text-white/[0.45] mt-1 text-center">
                       {statusContent.sub}
                     </Text>
                   )}
@@ -438,21 +351,10 @@ export default function ConversationSessionScreen() {
                 <PendingAiCard text={conversation.pendingAiText} />
               )}
 
-              {/* Recent corrections overlay — absolute above controls */}
+              {/* Recent corrections overlay -- absolute above controls */}
               {conversation.allCorrections.length > 0 && (
-                <View
-                  style={{
-                    position: "absolute",
-                    bottom: 100,
-                    left: 16,
-                    right: 16,
-                  }}
-                >
-                  <CorrectionBubble
-                    corrections={conversation.allCorrections.slice(-2)}
-                    compact
-                    theme="dark"
-                  />
+                <View className="absolute bottom-[100px] left-4 right-4">
+                  <CorrectionBubble corrections={conversation.allCorrections.slice(-2)} compact />
                 </View>
               )}
             </View>
@@ -467,27 +369,17 @@ export default function ConversationSessionScreen() {
 
         {/* Text Input */}
         {showTextInput && conversation.status === "connected" && (
-          <View
-            style={{
-              backgroundColor: "rgba(255,255,255,0.08)",
-              borderRadius: 28,
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              marginHorizontal: 16,
-              marginBottom: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+          <View className="bg-white/[0.08] rounded-[28px] px-4 py-2 mx-4 mb-3 flex-row items-center gap-2">
             <TextInput
               value={textInput}
               onChangeText={setTextInput}
               placeholder="Type in French..."
               placeholderTextColor="rgba(255,255,255,0.35)"
+              accessibilityLabel="Type a message in French"
+              accessibilityHint="Type your message and press send"
               style={{
                 flex: 1,
-                color: "#FFFFFF",
+                color: Colors.textOnDark,
                 fontSize: 15,
                 paddingVertical: 4,
               }}
@@ -496,35 +388,22 @@ export default function ConversationSessionScreen() {
             />
             <TouchableOpacity
               onPress={handleSendText}
-              style={{
-                backgroundColor: "#F5A623",
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+              className="bg-accent w-10 h-10 rounded-full justify-center items-center"
             >
-              <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "700" }}>{"\u2191"}</Text>
+              <Text className="text-white text-lg font-bold">{"\u2191"}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* Bottom Controls */}
         <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 20,
-            paddingBottom: 24,
-            paddingTop: 12,
-            borderTopWidth: 0.5,
-            borderTopColor: "rgba(255,255,255,0.08)",
-          }}
+          className="flex-row justify-center items-center gap-5 pb-6 pt-3"
+          style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.08)" }}
         >
           {conversation.status === "idle" && (
-            <View style={{ alignItems: "center", justifyContent: "center" }}>
+            <View className="items-center justify-center">
               {/* Glowing ring */}
               <Reanimated.View
                 style={[
@@ -541,37 +420,26 @@ export default function ConversationSessionScreen() {
               />
               <TouchableOpacity
                 onPress={handleStart}
+                accessibilityRole="button"
+                accessibilityLabel="Start conversation"
+                accessibilityHint="Double tap to begin voice conversation"
+                className="bg-success w-20 h-20 rounded-full justify-center items-center"
                 style={{
-                  backgroundColor: "#34C759",
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  shadowColor: "#34C759",
+                  shadowColor: Colors.success,
                   shadowOpacity: 0.5,
                   shadowRadius: 20,
                   shadowOffset: { width: 0, height: 6 },
                   elevation: 10,
                 }}
               >
-                <Text style={{ color: "#FFFFFF", fontSize: 32 }}>{"\u25B6"}</Text>
+                <Text className="text-white text-[32px]">{"\u25B6"}</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {conversation.status === "connecting" && (
-            <View
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                backgroundColor: "rgba(245, 166, 35, 0.3)",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: "#F5A623", fontSize: 14, fontWeight: "600" }}>Connecting</Text>
+            <View className="w-20 h-20 rounded-full bg-accent/30 justify-center items-center">
+              <Text className="text-accent text-sm font-semibold">Connecting</Text>
             </View>
           )}
 
@@ -580,22 +448,19 @@ export default function ConversationSessionScreen() {
               {/* Keyboard toggle */}
               <TouchableOpacity
                 onPress={() => setShowTextInput((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showTextInput ? "Hide text input" : "Show text input"}
+                accessibilityState={{ expanded: showTextInput }}
+                className="w-[52px] h-[52px] rounded-full justify-center items-center"
                 style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
                   backgroundColor: showTextInput ? "rgba(245,166,35,0.2)" : "rgba(255,255,255,0.1)",
                   borderWidth: 1,
                   borderColor: showTextInput ? "#F5A623" : "rgba(255,255,255,0.2)",
-                  justifyContent: "center",
-                  alignItems: "center",
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 22,
-                    color: showTextInput ? "#F5A623" : "#FFFFFF",
-                  }}
+                  className="text-[22px]"
+                  style={{ color: showTextInput ? "#F5A623" : "#FFFFFF" }}
                 >
                   {"\u2328"}
                 </Text>
@@ -604,44 +469,33 @@ export default function ConversationSessionScreen() {
               {/* End button */}
               <TouchableOpacity
                 onPress={handleEnd}
+                accessibilityRole="button"
+                accessibilityLabel="End conversation"
+                className="bg-error w-[68px] h-[68px] rounded-full justify-center items-center"
                 style={{
-                  backgroundColor: "#FF3B30",
-                  width: 68,
-                  height: 68,
-                  borderRadius: 34,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  shadowColor: "#FF3B30",
+                  shadowColor: Colors.error,
                   shadowOpacity: 0.45,
                   shadowRadius: 14,
                   shadowOffset: { width: 0, height: 4 },
                 }}
               >
-                <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "700" }}>
-                  {"\u25A0"}
-                </Text>
+                <Text className="text-white text-2xl font-bold">{"\u25A0"}</Text>
               </TouchableOpacity>
 
               {/* Transcript toggle */}
               <TouchableOpacity
                 onPress={() => setViewMode((v) => (v === "transcript" ? "waveform" : "transcript"))}
+                className="w-[52px] h-[52px] rounded-full justify-center items-center"
                 style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
                   backgroundColor:
                     viewMode === "transcript" ? "rgba(245,166,35,0.2)" : "rgba(255,255,255,0.1)",
                   borderWidth: 1,
                   borderColor: viewMode === "transcript" ? "#F5A623" : "rgba(255,255,255,0.2)",
-                  justifyContent: "center",
-                  alignItems: "center",
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 22,
-                    color: viewMode === "transcript" ? "#F5A623" : "#FFFFFF",
-                  }}
+                  className="text-[22px]"
+                  style={{ color: viewMode === "transcript" ? "#F5A623" : "#FFFFFF" }}
                 >
                   {"\u2261"}
                 </Text>
@@ -652,251 +506,108 @@ export default function ConversationSessionScreen() {
           {conversation.status === "ended" && !feedbackVisible && (
             <TouchableOpacity
               onPress={() => router.back()}
-              style={{
-                backgroundColor: "#F5A623",
-                borderRadius: 12,
-                paddingHorizontal: 32,
-                paddingVertical: 16,
-              }}
+              className="bg-accent rounded-xl px-8 py-4"
             >
-              <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>Done</Text>
+              <Text className="text-white text-base font-bold">Done</Text>
             </TouchableOpacity>
           )}
 
           {conversation.status === "error" && (
-            <View style={{ alignItems: "center" }}>
-              <Text
-                style={{
-                  color: "#FF6B6B",
-                  fontSize: 14,
-                  textAlign: "center",
-                  marginBottom: 12,
-                  marginHorizontal: 32,
-                }}
-              >
-                {conversation.error}
-              </Text>
-              <View style={{ flexDirection: "row", gap: 12 }}>
+            <View className="items-center">
+              <Text className="text-error text-sm text-center mb-3 mx-8">{conversation.error}</Text>
+              <View className="flex-row gap-3">
                 <TouchableOpacity
                   onPress={() => router.back()}
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.1)",
-                    borderColor: "rgba(255,255,255,0.2)",
-                    borderWidth: 1.5,
-                    borderRadius: 24,
-                    paddingHorizontal: 24,
-                    paddingVertical: 12,
-                  }}
+                  className="bg-white/10 border-[1.5px] border-white/20 rounded-3xl px-6 py-3"
                 >
-                  <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 15, fontWeight: "600" }}>
-                    Back
-                  </Text>
+                  <Text className="text-white/80 text-[15px] font-semibold">Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleStart}
-                  style={{
-                    backgroundColor: "rgba(245,166,35,0.15)",
-                    borderColor: "#F5A623",
-                    borderWidth: 1.5,
-                    borderRadius: 24,
-                    paddingHorizontal: 28,
-                    paddingVertical: 12,
-                  }}
+                  className="border-[1.5px] border-accent rounded-3xl px-7 py-3"
+                  style={{ backgroundColor: "rgba(245,166,35,0.15)" }}
                 >
-                  <Text style={{ color: "#F5A623", fontSize: 15, fontWeight: "700" }}>Retry</Text>
+                  <Text className="text-accent text-[15px] font-bold">Retry</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
         </View>
 
-        {/* Feedback Summary — bottom sheet style */}
+        {/* Feedback Summary -- bottom sheet style */}
         {feedbackVisible && conversation.status === "ended" && (
           <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(8,18,35,0.92)",
-              justifyContent: "flex-end",
-            }}
+            className="absolute top-0 left-0 right-0 bottom-0 justify-end"
+            style={{ backgroundColor: "rgba(8,18,35,0.92)" }}
           >
             <View
+              className="bg-[#152B48] pt-4 px-6 pb-10"
               style={{
-                backgroundColor: "#122B4F",
                 borderTopLeftRadius: 28,
                 borderTopRightRadius: 28,
-                paddingTop: 16,
-                paddingHorizontal: 24,
-                paddingBottom: 40,
                 maxHeight: "78%",
               }}
             >
               {/* Drag handle */}
-              <View
-                style={{
-                  width: 40,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: "rgba(255,255,255,0.2)",
-                  alignSelf: "center",
-                  marginBottom: 20,
-                }}
-              />
+              <View className="w-10 h-1 rounded-sm bg-white/20 self-center mb-5" />
 
-              <Text
-                style={{
-                  fontSize: 22,
-                  fontWeight: "800",
-                  color: "#FFFFFF",
-                }}
-              >
-                Bilan de conversation
-              </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: "rgba(255,255,255,0.5)",
-                  marginBottom: 16,
-                  marginTop: 4,
-                }}
-              >
+              <Text className="text-[22px] font-extrabold text-white">Bilan de conversation</Text>
+              <Text className="text-[13px] text-white/[0.65] mb-4 mt-1">
                 {formatDuration(conversation.durationSeconds)} • {conversation.transcript.length}{" "}
                 messages
               </Text>
 
               {/* Stat tiles */}
-              <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: "rgba(255,255,255,0.07)",
-                    borderRadius: 16,
-                    padding: 16,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 28,
-                      fontWeight: "800",
-                      color: "#FFFFFF",
-                    }}
-                  >
+              <View className="flex-row gap-3 mb-4">
+                <View className="flex-1 bg-white/[0.07] rounded-2xl p-4 items-center">
+                  <Text className="text-[28px] font-extrabold text-white">
                     {conversation.transcript.filter((t) => t.role === "user").length}
                   </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: "rgba(255,255,255,0.5)",
-                      marginTop: 4,
-                    }}
-                  >
-                    Your turns
-                  </Text>
+                  <Text className="text-[11px] text-white/[0.65] mt-1">Your turns</Text>
                 </View>
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: "rgba(255,255,255,0.07)",
-                    borderRadius: 16,
-                    padding: 16,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 28,
-                      fontWeight: "800",
-                      color: "#F5A623",
-                    }}
-                  >
+                <View className="flex-1 bg-white/[0.07] rounded-2xl p-4 items-center">
+                  <Text className="text-[28px] font-extrabold text-accent">
                     {conversation.allCorrections.length}
                   </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: "rgba(255,255,255,0.5)",
-                      marginTop: 4,
-                    }}
-                  >
-                    Corrections
-                  </Text>
+                  <Text className="text-[11px] text-white/[0.65] mt-1">Corrections</Text>
                 </View>
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false} style={{ flexShrink: 1 }}>
                 {/* AI Feedback Summary */}
                 {conversation.feedback && (
-                  <View
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.07)",
-                      borderRadius: 16,
-                      padding: 16,
-                      marginBottom: 12,
-                    }}
-                  >
+                  <View className="bg-white/[0.07] rounded-2xl p-4 mb-3">
                     <Text
-                      style={{
-                        fontSize: 14,
-                        color: "rgba(255,255,255,0.85)",
-                        lineHeight: 20,
-                        marginBottom: 12,
-                      }}
+                      className="text-sm leading-5 mb-3"
+                      style={{ color: "rgba(255,255,255,0.85)" }}
                     >
                       {conversation.feedback.summary}
                     </Text>
-                    <View style={{ flexDirection: "row", gap: 16, marginBottom: 12 }}>
-                      <View style={{ flex: 1, alignItems: "center" }}>
-                        <Text style={{ fontSize: 22, fontWeight: "800", color: "#34C759" }}>
+                    <View className="flex-row gap-4 mb-3">
+                      <View className="flex-1 items-center">
+                        <Text className="text-[22px] font-extrabold text-success">
                           {conversation.feedback.fluencyRating}/5
                         </Text>
-                        <Text
-                          style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}
-                        >
-                          Fluency
-                        </Text>
+                        <Text className="text-[10px] text-white/[0.65] mt-0.5">Fluency</Text>
                       </View>
-                      <View style={{ flex: 1, alignItems: "center" }}>
-                        <Text style={{ fontSize: 22, fontWeight: "800", color: "#F5A623" }}>
+                      <View className="flex-1 items-center">
+                        <Text className="text-[22px] font-extrabold text-accent">
                           {conversation.feedback.grammarRating}/5
                         </Text>
-                        <Text
-                          style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}
-                        >
-                          Grammar
-                        </Text>
+                        <Text className="text-[10px] text-white/[0.65] mt-0.5">Grammar</Text>
                       </View>
-                      <View style={{ flex: 1, alignItems: "center" }}>
-                        <Text style={{ fontSize: 22, fontWeight: "800", color: "#2196F3" }}>
+                      <View className="flex-1 items-center">
+                        <Text className="text-[22px] font-extrabold text-[#3B82F6]">
                           {conversation.feedback.vocabularyUsed}
                         </Text>
-                        <Text
-                          style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}
-                        >
-                          Words
-                        </Text>
+                        <Text className="text-[10px] text-white/[0.65] mt-0.5">Words</Text>
                       </View>
                     </View>
                     {conversation.feedback.strengths.length > 0 && (
-                      <View style={{ marginBottom: 8 }}>
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: "700",
-                            color: "#34C759",
-                            marginBottom: 4,
-                          }}
-                        >
-                          Strengths
-                        </Text>
+                      <View className="mb-2">
+                        <Text className="text-xs font-bold text-success mb-1">Strengths</Text>
                         {conversation.feedback.strengths.map((s, i) => (
-                          <Text
-                            key={i}
-                            style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 18 }}
-                          >
+                          <Text key={i} className="text-xs text-white/70 leading-[18px]">
                             + {s}
                           </Text>
                         ))}
@@ -904,21 +615,9 @@ export default function ConversationSessionScreen() {
                     )}
                     {conversation.feedback.improvements.length > 0 && (
                       <View>
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: "700",
-                            color: "#F5A623",
-                            marginBottom: 4,
-                          }}
-                        >
-                          Areas to improve
-                        </Text>
+                        <Text className="text-xs font-bold text-accent mb-1">Areas to improve</Text>
                         {conversation.feedback.improvements.map((s, i) => (
-                          <Text
-                            key={i}
-                            style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 18 }}
-                          >
+                          <Text key={i} className="text-xs text-white/70 leading-[18px]">
                             - {s}
                           </Text>
                         ))}
@@ -928,27 +627,16 @@ export default function ConversationSessionScreen() {
                 )}
 
                 {conversation.allCorrections.length > 0 ? (
-                  <CorrectionBubble corrections={conversation.allCorrections} theme="dark" />
+                  <CorrectionBubble corrections={conversation.allCorrections} />
                 ) : (
                   <View
+                    className="rounded-2xl border p-5 my-3 items-center"
                     style={{
                       backgroundColor: "rgba(52,199,89,0.12)",
-                      borderRadius: 16,
-                      borderWidth: 1,
                       borderColor: "rgba(52,199,89,0.3)",
-                      padding: 20,
-                      marginVertical: 12,
-                      alignItems: "center",
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: 17,
-                        fontWeight: "700",
-                        color: "#34C759",
-                        textAlign: "center",
-                      }}
-                    >
+                    <Text className="text-[17px] font-bold text-success text-center">
                       Impeccable ! Aucune correction.
                     </Text>
                   </View>
@@ -960,24 +648,9 @@ export default function ConversationSessionScreen() {
                     setFeedbackVisible(false);
                     router.back();
                   }}
-                  style={{
-                    backgroundColor: "#1E3A5F",
-                    borderRadius: 16,
-                    height: 52,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    marginTop: 20,
-                  }}
+                  className="bg-primary rounded-xl h-[52px] justify-center items-center mt-5"
                 >
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "700",
-                      color: "#FFFFFF",
-                    }}
-                  >
-                    Terminé
-                  </Text>
+                  <Text className="text-base font-bold text-white">Terminé</Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>

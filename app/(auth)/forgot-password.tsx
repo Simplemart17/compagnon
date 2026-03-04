@@ -21,6 +21,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import { supabase } from "@/src/lib/supabase";
+import { Colors } from "@/src/lib/design";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.38;
@@ -72,17 +73,22 @@ export default function ForgotPasswordScreen() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
-    setLoading(false);
-
-    if (error) {
-      Alert.alert("Error", error.message);
-    } else {
-      Alert.alert(
-        "Check Your Email",
-        "If an account exists with that email, we sent password reset instructions.",
-        [{ text: "OK", onPress: () => router.back() }]
-      );
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) {
+        Alert.alert("Error", error.message);
+      } else {
+        Alert.alert(
+          "Check Your Email",
+          "If an account exists with that email, we sent password reset instructions.",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred.";
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -97,59 +103,31 @@ export default function ForgotPasswordScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0D2240" }} edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-[#0D2240]" edges={["top"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        className="flex-1"
       >
         {/* Hero Section */}
         <View
+          className="bg-[#0D2240] items-center justify-center"
           style={{
             height: HERO_HEIGHT,
-            backgroundColor: "#0D2240",
-            alignItems: "center",
-            justifyContent: "center",
             paddingTop: insets.top > 0 ? 0 : 16,
           }}
         >
-          {/* App name — smaller at top */}
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "600",
-              color: "rgba(255,255,255,0.5)",
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              marginBottom: 20,
-            }}
-          >
+          {/* App name -- smaller at top */}
+          <Text className="text-base font-semibold text-white/50 tracking-[2px] uppercase mb-5">
             Compagnon
           </Text>
 
           {/* Large key emoji as hero focal point */}
-          <Text style={{ fontSize: 52, marginBottom: 16 }}>🔑</Text>
+          <Text className="text-[52px] mb-4">🔑</Text>
 
           {/* Amber accent line */}
-          <View
-            style={{
-              width: 48,
-              height: 4,
-              backgroundColor: "#F5A623",
-              borderRadius: 2,
-              marginBottom: 14,
-            }}
-          />
+          <View className="w-12 h-1 bg-accent rounded-full mb-[14px]" />
 
-          <Text
-            style={{
-              fontSize: 14,
-              color: "rgba(255,255,255,0.5)",
-              letterSpacing: 0.3,
-              fontStyle: "italic",
-            }}
-          >
-            Récupérez votre accès
-          </Text>
+          <Text className="text-sm text-white/50 tracking-wide italic">Récupérez votre accès</Text>
         </View>
 
         {/* White Card */}
@@ -160,7 +138,7 @@ export default function ForgotPasswordScreen() {
               backgroundColor: "#FFFFFF",
               borderTopLeftRadius: 32,
               borderTopRightRadius: 32,
-              paddingHorizontal: 28,
+              paddingHorizontal: 24,
               paddingTop: 32,
               paddingBottom: insets.bottom + 16,
               shadowColor: "#000",
@@ -173,68 +151,38 @@ export default function ForgotPasswordScreen() {
           ]}
         >
           {/* Card Title */}
-          <Text
-            style={{
-              fontSize: 26,
-              fontWeight: "800",
-              color: "#1E3A5F",
-              marginBottom: 10,
-            }}
-          >
+          <Text className="text-[26px] font-extrabold text-primary mb-[10px]">
             Mot de passe oublié
           </Text>
 
           {/* Description */}
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#888888",
-              lineHeight: 21,
-              marginBottom: 28,
-            }}
-          >
+          <Text className="text-sm text-[#6B7C93] leading-[21px] mb-7">
             Saisissez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre
             mot de passe.
           </Text>
 
           {/* Email Input */}
-          <View style={{ marginBottom: 24 }}>
+          <View className="mb-6">
             <View
+              className="flex-row items-center bg-white rounded-[14px] py-4 px-4"
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: "#FFFFFF",
-                borderRadius: 14,
                 borderWidth: 1.5,
-                borderColor: emailFocused ? "#F5A623" : "#E8E8E0",
-                paddingVertical: 16,
-                paddingHorizontal: 16,
+                borderColor: emailFocused ? Colors.accent : Colors.gray200,
               }}
             >
-              <Text
-                style={{
-                  fontSize: 16,
-                  marginRight: 10,
-                  opacity: emailFocused ? 1 : 0.4,
-                }}
-              >
+              <Text className="text-base mr-[10px]" style={{ opacity: emailFocused ? 1 : 0.4 }}>
                 ✉️
               </Text>
               <TextInput
                 placeholder="Adresse e-mail"
-                placeholderTextColor="#AAAAAA"
+                placeholderTextColor={Colors.textTertiary}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 onFocus={() => setEmailFocused(true)}
                 onBlur={() => setEmailFocused(false)}
-                style={{
-                  flex: 1,
-                  fontSize: 15,
-                  color: "#1E3A5F",
-                  padding: 0,
-                }}
+                className="flex-1 text-[15px] text-primary p-0"
               />
             </View>
           </View>
@@ -246,25 +194,13 @@ export default function ForgotPasswordScreen() {
               onPressIn={handleButtonPressIn}
               onPressOut={handleButtonPressOut}
               disabled={loading}
-              style={{
-                backgroundColor: "#1E3A5F",
-                borderRadius: 16,
-                paddingVertical: 17,
-                alignItems: "center",
-                opacity: loading ? 0.7 : 1,
-              }}
+              className="bg-primary rounded-xl py-[17px] items-center"
+              style={{ opacity: loading ? 0.7 : 1 }}
             >
               {loading ? (
-                <ActivityIndicator color="#F5A623" />
+                <ActivityIndicator color={Colors.accent} />
               ) : (
-                <Text
-                  style={{
-                    color: "#F5A623",
-                    fontSize: 16,
-                    fontWeight: "700",
-                    letterSpacing: 0.3,
-                  }}
-                >
+                <Text className="text-accent text-base font-bold tracking-wide">
                   Envoyer le lien
                 </Text>
               )}
@@ -274,24 +210,15 @@ export default function ForgotPasswordScreen() {
           {/* Back Ghost Button */}
           <TouchableOpacity
             onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to login"
+            className="items-center mt-5 py-3 min-h-[44px] rounded-xl"
             style={{
-              alignItems: "center",
-              marginTop: 20,
-              paddingVertical: 12,
-              borderRadius: 14,
               borderWidth: 1.5,
-              borderColor: "#E8E8E0",
+              borderColor: Colors.gray200,
             }}
           >
-            <Text
-              style={{
-                color: "#888888",
-                fontSize: 14,
-                fontWeight: "500",
-              }}
-            >
-              ← Retour
-            </Text>
+            <Text className="text-[#6B7C93] text-sm font-medium">← Retour</Text>
           </TouchableOpacity>
         </Reanimated.View>
       </KeyboardAvoidingView>

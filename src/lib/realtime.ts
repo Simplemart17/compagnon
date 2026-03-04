@@ -22,6 +22,8 @@ export type RealtimeEvent =
   | { type: "response.audio.done" }
   | { type: "response.text.delta"; delta: string }
   | { type: "response.text.done"; text: string }
+  | { type: "response.audio_transcript.delta"; delta: string }
+  | { type: "response.audio_transcript.done"; transcript: string }
   | { type: "response.done"; response: Record<string, unknown> }
   | { type: "input_audio_buffer.speech_started" }
   | { type: "input_audio_buffer.speech_stopped" }

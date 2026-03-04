@@ -53,46 +53,18 @@ const sections: Section[] = [
 
 export default function PrivacyPolicyScreen() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F5F0" }} edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-surface" edges={["bottom"]}>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "800",
-            color: "#1E3A5F",
-            marginBottom: 4,
-          }}
-        >
-          Privacy Policy
-        </Text>
-        <Text style={{ fontSize: 13, color: "#999", marginBottom: 28 }}>
-          Last updated: {LAST_UPDATED}
-        </Text>
+        <Text className="mb-1 text-[22px] font-extrabold text-primary">Privacy Policy</Text>
+        <Text className="mb-7 text-[13px] text-[#999]">Last updated: {LAST_UPDATED}</Text>
 
         {sections.map((section) => (
-          <View key={section.heading} style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: "#1E3A5F",
-                marginBottom: 8,
-              }}
-            >
-              {section.heading}
-            </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                color: "#444",
-                lineHeight: 22,
-              }}
-            >
-              {section.body}
-            </Text>
+          <View key={section.heading} className="mb-6">
+            <Text className="mb-2 text-lg font-bold text-primary">{section.heading}</Text>
+            <Text className="text-sm leading-[22px] text-[#444]">{section.body}</Text>
           </View>
         ))}
       </ScrollView>

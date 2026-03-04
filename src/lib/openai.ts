@@ -133,44 +133,84 @@ export async function generateSpeech(
     speed?: number;
   }
 ): Promise<string> {
-  const { data, error } = await supabase.functions.invoke("ai-proxy", {
-    body: {
-      action: "tts",
-      input: text,
-      voice: options?.voice ?? "nova",
-      speed: options?.speed ?? 1.0,
-    },
-  });
+  await requireNetwork();
 
-  if (error) throw new Error(`TTS error: ${error.message}`);
+  const maxRetries = 1;
+  let lastError: Error | null = null;
 
-  // Edge function returns binary audio — convert to base64
-  if (data instanceof Blob) {
-    const buffer = await data.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-proxy", {
+        body: {
+          action: "tts",
+          input: text,
+          voice: options?.voice ?? "nova",
+          speed: options?.speed ?? 1.0,
+        },
+      });
+
+      if (error) throw new Error(`TTS error: ${error.message}`);
+
+      // Edge function returns binary audio — convert to base64
+      if (data instanceof Blob) {
+        const buffer = await data.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      }
+
+      if (typeof data === "string") return data;
+
+      throw new Error("Unexpected TTS response format");
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      if (attempt < maxRetries && isRetryable(lastError)) {
+        await sleep(1000);
+        continue;
+      }
+
+      throw lastError;
     }
-    return btoa(binary);
   }
 
-  if (typeof data === "string") return data;
-
-  throw new Error("Unexpected TTS response format");
+  throw lastError ?? new Error("TTS request failed");
 }
 
 /** Generate text embeddings for companion memory */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const { data, error } = await supabase.functions.invoke("ai-proxy", {
-    body: {
-      action: "embedding",
-      input: text,
-    },
-  });
+  await requireNetwork();
 
-  if (error) throw new Error(`Embedding error: ${error.message}`);
-  if (data?.error) throw new Error(`OpenAI error: ${data.error}`);
+  const maxRetries = 1;
+  let lastError: Error | null = null;
 
-  return data?.data?.[0]?.embedding ?? [];
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-proxy", {
+        body: {
+          action: "embedding",
+          input: text,
+        },
+      });
+
+      if (error) throw new Error(`Embedding error: ${error.message}`);
+      if (data?.error) throw new Error(`OpenAI error: ${data.error}`);
+
+      return data?.data?.[0]?.embedding ?? [];
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      if (attempt < maxRetries && isRetryable(lastError)) {
+        await sleep(1000);
+        continue;
+      }
+
+      throw lastError;
+    }
+  }
+
+  throw lastError ?? new Error("Embedding request failed");
 }

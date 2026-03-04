@@ -10,6 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { TCF } from "@/src/lib/constants";
+import { Colors, Shadows, skillTint } from "@/src/lib/design";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,11 +35,9 @@ function FullSimCard({ onPress }: FullSimCardProps) {
 
   return (
     <Animated.View
+      className="mx-5 mt-[15px] rounded-3xl"
       style={[
         {
-          marginHorizontal: 20,
-          marginTop: 15,
-          borderRadius: 24,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.25,
@@ -56,98 +55,56 @@ function FullSimCard({ onPress }: FullSimCardProps) {
           scale.value = withTiming(1, { duration: 120 });
         }}
         onPress={onPress}
-        style={{
-          backgroundColor: "#1E3A5F",
-          borderRadius: 24,
-          padding: 24,
-          overflow: "hidden",
-        }}
+        accessibilityRole="button"
+        accessibilityLabel="TCF Complet. Full simulation with 3 mandatory sections, approximately 95 minutes"
+        className="bg-primary rounded-3xl p-6 overflow-hidden"
       >
         {/* Subtle inner overlay for depth */}
         <View
+          className="absolute w-[120px] h-[120px] rounded-full"
           style={{
-            position: "absolute",
             top: 0,
             right: 0,
-            width: 120,
-            height: 120,
-            borderRadius: 60,
             backgroundColor: "rgba(245,166,35,0.06)",
             transform: [{ translateX: 40 }, { translateY: -40 }],
           }}
         />
 
         {/* Badge */}
-        <Text
-          style={{
-            color: "#F5A623",
-            fontSize: 10,
-            fontWeight: "700",
-            letterSpacing: 1.5,
-            marginBottom: 10,
-          }}
-        >
-          SIMULATION COMPL{"\u00C8"}TE
+        <Text className="text-accent text-[10px] font-bold tracking-[1.5px] mb-[10px]">
+          SIMULATION COMPLÈTE
         </Text>
 
         {/* Title */}
-        <Text
-          style={{
-            color: "#FFFFFF",
-            fontSize: 22,
-            fontWeight: "800",
-            marginBottom: 8,
-          }}
-        >
-          TCF Complet
-        </Text>
+        <Text className="text-white text-[22px] font-extrabold mb-2">TCF Complet</Text>
 
         {/* Description */}
-        <Text
-          style={{
-            color: "rgba(255,255,255,0.7)",
-            fontSize: 13,
-            lineHeight: 20,
-            marginBottom: 16,
-          }}
-        >
+        <Text className="text-[13px] leading-5 mb-4" style={{ color: "rgba(255,255,255,0.7)" }}>
           3 sections obligatoires : {"\xC9"}coute ({TCF.LISTENING_MINUTES} min) + Lecture (
           {TCF.READING_MINUTES} min) + Grammaire
         </Text>
 
         {/* Bottom row: time pill + section dots */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+        <View className="flex-row items-center justify-between">
           {/* ~95 min amber pill */}
           <View
+            className="rounded-2xl px-[14px] py-[6px]"
             style={{
               backgroundColor: "rgba(245,166,35,0.2)",
-              borderRadius: 20,
-              paddingHorizontal: 14,
-              paddingVertical: 6,
               borderWidth: 1,
               borderColor: "rgba(245,166,35,0.4)",
             }}
           >
-            <Text style={{ color: "#F5A623", fontSize: 12, fontWeight: "700" }}>~95 min</Text>
+            <Text className="text-accent text-xs font-bold">~95 min</Text>
           </View>
 
           {/* 3 section dots: blue, green, purple */}
-          <View style={{ flexDirection: "row", gap: 6 }}>
-            {["#2196F3", "#4CAF50", "#9C27B0"].map((color, i) => (
+          <View className="flex-row gap-[6px]">
+            {[Colors.skillListening, Colors.skillReading, Colors.skillGrammar].map((color, i) => (
               <View
                 key={i}
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 5,
-                  backgroundColor: color,
-                }}
+                className="w-[10px] h-[10px] rounded-full"
+                style={{ backgroundColor: color }}
               />
             ))}
           </View>
@@ -212,51 +169,29 @@ function SectionCard({
           scale.value = withTiming(1, { duration: 120 });
         }}
         onPress={onPress}
-        style={{
-          backgroundColor: "#FFFFFF",
-          borderRadius: 20,
-          flexDirection: "row",
-          alignItems: "center",
-          padding: 16,
-          gap: 14,
-          shadowColor: "#1E3A5F",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.07,
-          shadowRadius: 8,
-          elevation: 3,
-          overflow: "hidden",
-        }}
+        accessibilityRole="button"
+        accessibilityLabel={`${nameFr} - ${nameSub}${metaText ? `. ${metaText}` : ""}`}
+        className="bg-white rounded-2xl flex-row items-center p-4 gap-[14px] overflow-hidden"
+        style={{ ...Shadows.card }}
       >
         {/* Left accent strip */}
         <View
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 4,
-            backgroundColor: accentColor,
-          }}
+          className="absolute left-0 top-0 bottom-0 w-1"
+          style={{ backgroundColor: accentColor }}
         />
 
         {/* Icon circle */}
         <View
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 26,
-            backgroundColor: `${accentColor}18`,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+          className="w-[52px] h-[52px] rounded-[26px] justify-center items-center"
+          style={{ backgroundColor: skillTint(accentColor, 0.09) }}
         >
-          <Text style={{ fontSize: 24 }}>{emoji}</Text>
+          <Text className="text-[24px]">{emoji}</Text>
         </View>
 
         {/* Labels */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: "700", color: "#1E3A5F" }}>{nameFr}</Text>
-          <Text style={{ fontSize: 12, color: "#999", marginTop: 3 }}>
+        <View className="flex-1">
+          <Text className="text-base font-bold text-primary">{nameFr}</Text>
+          <Text className="text-xs text-[#94A3B8] mt-[3px]">
             {nameSub}
             {metaText ? `  |  ${metaText}` : ""}
           </Text>
@@ -264,16 +199,12 @@ function SectionCard({
 
         {/* Arrow circle */}
         <View
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            backgroundColor: `${accentColor}18`,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+          className="w-8 h-8 rounded-2xl justify-center items-center"
+          style={{ backgroundColor: skillTint(accentColor, 0.09) }}
         >
-          <Text style={{ color: accentColor, fontSize: 16, fontWeight: "700" }}>{"\u2192"}</Text>
+          <Text className="text-base font-bold" style={{ color: accentColor }}>
+            {"\u2192"}
+          </Text>
         </View>
       </Pressable>
     </Animated.View>
@@ -300,7 +231,7 @@ const SECTIONS: {
     questions: 10,
     minutes: TCF.LISTENING_MINUTES,
     emoji: "\uD83C\uDFA7",
-    color: "#2196F3",
+    color: Colors.skillListening,
   },
   {
     id: "reading",
@@ -309,7 +240,7 @@ const SECTIONS: {
     questions: 10,
     minutes: TCF.READING_MINUTES,
     emoji: "\uD83D\uDCD6",
-    color: "#4CAF50",
+    color: Colors.skillReading,
   },
   {
     id: "grammar",
@@ -318,7 +249,7 @@ const SECTIONS: {
     questions: 10,
     minutes: null,
     emoji: "\uD83E\uDDE0",
-    color: "#9C27B0",
+    color: Colors.skillGrammar,
   },
 ];
 
@@ -331,59 +262,29 @@ export default function MockTestScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F5F0" }}>
+    <View className="flex-1 bg-surface">
       {/* ------------------------------------------------------------------ */}
       {/* Hero header                                                          */}
       {/* ------------------------------------------------------------------ */}
       <View
+        className="bg-primary px-6 pb-8 rounded-b-[28px] items-center"
         style={{
-          backgroundColor: "#1E3A5F",
           paddingTop: insets.top + 20,
-          paddingBottom: 32,
-          paddingHorizontal: 24,
-          borderBottomLeftRadius: 32,
-          borderBottomRightRadius: 32,
-          alignItems: "center",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
-          elevation: 8,
+          ...Shadows.hero,
         }}
       >
         {/* Thin amber horizontal line above TCF */}
-        <View
-          style={{
-            width: 60,
-            height: 2,
-            backgroundColor: "#F5A623",
-            borderRadius: 1,
-            marginBottom: 10,
-          }}
-        />
+        <View className="w-[60px] h-[2px] bg-accent rounded-sm mb-[10px]" />
 
         {/* TCF large title */}
-        <Text
-          style={{
-            fontSize: 48,
-            fontWeight: "800",
-            color: "#F5A623",
-            letterSpacing: 4,
-            lineHeight: 56,
-          }}
-        >
+        <Text className="text-[48px] font-extrabold text-accent tracking-[4px] leading-[56px]">
           TCF
         </Text>
 
         {/* Subtitle */}
         <Text
-          style={{
-            fontSize: 12,
-            color: "rgba(255,255,255,0.65)",
-            letterSpacing: 0.5,
-            textAlign: "center",
-            marginTop: 4,
-          }}
+          className="text-xs tracking-[0.5px] text-center mt-1"
+          style={{ color: "rgba(255,255,255,0.65)" }}
         >
           Test de Connaissance du Fran{"\xE7"}ais
         </Text>
@@ -393,7 +294,7 @@ export default function MockTestScreen() {
       {/* Scrollable content                                                   */}
       {/* ------------------------------------------------------------------ */}
       <ScrollView
-        style={{ flex: 1 }}
+        className="flex-1"
         contentContainerStyle={{ paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
       >
@@ -401,21 +302,12 @@ export default function MockTestScreen() {
         <FullSimCard onPress={() => startTest("full")} />
 
         {/* Section label */}
-        <Text
-          style={{
-            fontSize: 15,
-            fontWeight: "700",
-            color: "#1E3A5F",
-            marginHorizontal: 20,
-            marginTop: 28,
-            marginBottom: 12,
-          }}
-        >
+        <Text className="text-lg font-bold text-primary mx-5 mt-7 mb-3">
           Sections individuelles
         </Text>
 
         {/* Individual section cards */}
-        <View style={{ paddingHorizontal: 20, gap: 12 }}>
+        <View className="px-5 gap-3">
           {SECTIONS.map((section, index) => (
             <SectionCard
               key={section.id}

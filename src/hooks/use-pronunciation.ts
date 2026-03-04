@@ -58,12 +58,12 @@ export function usePronunciation(): UsePronunciationReturn {
 
   const finishAssessment = useCallback(
     async (referenceText: string): Promise<PronunciationResult | null> => {
-      setState((s) => ({ ...s, isAssessing: true, error: null }));
+      setState((prev) => ({ ...prev, isAssessing: true, error: null }));
 
       try {
         const uri = await recorder.stopRecording();
         if (!uri) {
-          setState((s) => ({ ...s, isAssessing: false, error: "No audio recorded" }));
+          setState((prev) => ({ ...prev, isAssessing: false, error: "No audio recorded" }));
           return null;
         }
 
@@ -74,31 +74,33 @@ export function usePronunciation(): UsePronunciationReturn {
 
         const result = await assessPronunciation(base64, referenceText);
 
-        const newHistory = [...state.history, result];
-        const weakSounds = identifyWeakSounds(newHistory);
-
-        setState((s) => ({
-          ...s,
-          isAssessing: false,
-          result,
-          history: newHistory,
-          weakSounds,
-        }));
+        // Use functional updater to avoid stale closure over state.history
+        setState((prev) => {
+          const newHistory = [...prev.history, result];
+          const weakSounds = identifyWeakSounds(newHistory);
+          return {
+            ...prev,
+            isAssessing: false,
+            result,
+            history: newHistory,
+            weakSounds,
+          };
+        });
 
         return result;
       } catch (err) {
         captureError(err, "pronunciation-assessment");
         const message = err instanceof Error ? err.message : "Assessment failed";
-        setState((s) => ({ ...s, isAssessing: false, error: message }));
+        setState((prev) => ({ ...prev, isAssessing: false, error: message }));
         return null;
       }
     },
-    [recorder, state.history]
+    [recorder]
   );
 
   const assessFromUri = useCallback(
     async (uri: string, referenceText: string): Promise<PronunciationResult | null> => {
-      setState((s) => ({ ...s, isAssessing: true, error: null }));
+      setState((prev) => ({ ...prev, isAssessing: true, error: null }));
 
       try {
         const base64 = await FileSystem.readAsStringAsync(uri, {
@@ -107,26 +109,28 @@ export function usePronunciation(): UsePronunciationReturn {
 
         const result = await assessPronunciation(base64, referenceText);
 
-        const newHistory = [...state.history, result];
-        const weakSounds = identifyWeakSounds(newHistory);
-
-        setState((s) => ({
-          ...s,
-          isAssessing: false,
-          result,
-          history: newHistory,
-          weakSounds,
-        }));
+        // Use functional updater to avoid stale closure over state.history
+        setState((prev) => {
+          const newHistory = [...prev.history, result];
+          const weakSounds = identifyWeakSounds(newHistory);
+          return {
+            ...prev,
+            isAssessing: false,
+            result,
+            history: newHistory,
+            weakSounds,
+          };
+        });
 
         return result;
       } catch (err) {
         captureError(err, "pronunciation-assessment");
         const message = err instanceof Error ? err.message : "Assessment failed";
-        setState((s) => ({ ...s, isAssessing: false, error: message }));
+        setState((prev) => ({ ...prev, isAssessing: false, error: message }));
         return null;
       }
     },
-    [state.history]
+    []
   );
 
   const clearResult = useCallback(() => {

@@ -17,6 +17,7 @@ import { captureError } from "@/src/lib/sentry";
 import { chatCompletionJSON } from "@/src/lib/openai";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { LEVEL_COLORS } from "@/src/lib/constants";
+import { CEFR_LEVELS } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { MCQContent } from "@/src/types/exercise";
 
@@ -33,13 +34,14 @@ interface PlacementResponse {
   questions: PlacementQuestion[];
 }
 
-/** CEFR level to question index mapping (1-indexed question numbers) */
+/** CEFR level to question index mapping (1-indexed question numbers)
+ *  Distribution: A1:3, A2:3, B1:3, B2:3, C1:2, C2:1 = 15 total */
 const LEVEL_RANGES: { level: CEFRLevel; start: number; end: number }[] = [
-  { level: "A1", start: 1, end: 2 },
-  { level: "A2", start: 3, end: 5 },
-  { level: "B1", start: 6, end: 8 },
-  { level: "B2", start: 9, end: 11 },
-  { level: "C1", start: 12, end: 14 },
+  { level: "A1", start: 1, end: 3 },
+  { level: "A2", start: 4, end: 6 },
+  { level: "B1", start: 7, end: 9 },
+  { level: "B2", start: 10, end: 12 },
+  { level: "C1", start: 13, end: 14 },
   { level: "C2", start: 15, end: 15 },
 ];
 
@@ -77,19 +79,59 @@ function previousLevel(level: CEFRLevel): CEFRLevel {
   return idx > 0 ? order[idx - 1] : "A1";
 }
 
-const SYSTEM_PROMPT = `You are a French language placement test generator for the TCF (Test de Connaissance du Français) exam.
+const SYSTEM_PROMPT = `You are an expert French language placement test generator aligned with the TCF (Test de Connaissance du Francais) exam standards and the CEFR framework.
 
-Generate exactly 15 multiple-choice questions testing French grammar and vocabulary.
-The questions MUST increase in difficulty following CEFR levels:
-- Questions 1-2: A1 level (basic greetings, articles, simple present tense)
-- Questions 3-5: A2 level (past tense, object pronouns, everyday vocabulary)
-- Questions 6-8: B1 level (subjunctive basics, relative pronouns, conditional)
-- Questions 9-11: B2 level (complex subjunctive, passive voice, nuanced vocabulary)
-- Questions 12-14: C1 level (literary tenses, advanced syntax, idiomatic expressions)
-- Question 15: C2 level (subtle stylistic distinctions, rare grammatical forms)
+Generate exactly 15 multiple-choice questions. Each question MUST test a DIFFERENT linguistic competency. Vary across these categories:
+- Grammar (verb conjugation, agreement, tense usage, syntax)
+- Vocabulary (contextual word choice, synonyms, collocations)
+- Reading comprehension (short passage with inference question)
+- Pragmatics (appropriate response in social context)
 
+Question distribution by CEFR level (15 total):
+
+Questions 1-3: A1 level (3 questions)
+  - Competencies: definite/indefinite articles, present tense of etre/avoir/aller, basic greetings and politeness, cardinal numbers, gender agreement
+  - Vocabulary: top-500 frequency words only (famille, maison, manger, jour, bonjour, etc.)
+  - Distractors: common beginner confusions (le/la/les mix-ups, je suis/j'ai confusion, tu/vous errors)
+
+Questions 4-6: A2 level (3 questions)
+  - Competencies: passe compose with avoir and etre (auxiliary choice), direct/indirect object pronouns, near future (aller + infinitive), prepositions of place
+  - Vocabulary: top-1000 frequency words (acheter, comprendre, voyage, travail, etc.)
+  - Distractors: passe compose auxiliary errors (j'ai alle vs je suis alle), pronoun placement errors, gender/number agreement mistakes
+
+Questions 7-9: B1 level (3 questions)
+  - Competencies: imparfait vs passe compose, relative pronouns (qui/que/dont/ou), conditional present, basic subjunctive after il faut que
+  - Vocabulary: top-3000 frequency words, abstract nouns (experience, developpement, responsabilite)
+  - Distractors: imparfait/passe compose confusion in context, wrong relative pronoun choice, conditional/future mix-ups
+
+Questions 10-12: B2 level (3 questions)
+  - Competencies: subjunctive in subordinate clauses (bien que, pour que, avant que), passive voice, concession/opposition connectors, plus-que-parfait
+  - Vocabulary: top-5000 frequency words, formal register (neanmoins, en revanche, s'averer)
+  - Distractors: indicative where subjunctive is needed, incorrect connector choice, register-inappropriate vocabulary
+
+Questions 13-14: C1 level (2 questions)
+  - Competencies: literary tenses (passe simple recognition), advanced syntax (mise en relief, inversion), nuanced connector usage (quoique, en depit de, force est de constater)
+  - Vocabulary: academic and literary register (apprehender, corroborer, inherent)
+  - Distractors: near-synonyms with subtle meaning differences, formal vs literary register confusion
+
+Question 15: C2 level (1 question)
+  - Competencies: subtle stylistic distinctions, rare grammatical forms (subjonctif plus-que-parfait, ne expletif), literary/rhetorical devices
+  - Vocabulary: rare or highly specialized expressions, proverbs, double-meaning words
+  - Distractors: plausible but subtly incorrect collocations, archaic vs modern usage
+
+IMPORTANT RULES FOR DISTRACTORS:
+- Every wrong answer must be a PLAUSIBLE mistake a learner at that level would actually make
+- Never include obviously absurd or ungrammatical options that can be eliminated without knowing French
+- For grammar questions, distractors should reflect real interference errors (L1 transfer, overgeneralization)
+- The correct answer position (a/b/c/d) should be varied across questions -- do NOT always put it in the same slot
+
+EXPLANATION REQUIREMENTS:
+- Each explanation must be 1-2 sentences in English
+- State WHY the correct answer is right (cite the grammar rule or usage pattern)
+- Briefly note what common mistake the distractors represent
+
+All questions and options must be written entirely in French. Explanations in English.
 Each question must have exactly 4 options with exactly 1 correct answer.
-All questions and options must be in French. Explanations in English.
 
 You MUST respond with this EXACT JSON structure:
 {
@@ -102,14 +144,14 @@ You MUST respond with this EXACT JSON structure:
         { "id": "c", "text": "Option text", "isCorrect": false },
         { "id": "d", "text": "Option text", "isCorrect": false }
       ],
-      "explanation": "Explanation in English"
+      "explanation": "Brief explanation in English stating the rule and why distractors are wrong."
     }
   ]
 }
 
 CRITICAL: Each option object MUST have "isCorrect" as a boolean (true/false). Exactly ONE option per question must have "isCorrect": true. Do NOT use a separate "correct_answer" field.`;
 
-// ─── Level congratulation phrases ────────────────────────────────────────────
+// --- Level congratulation phrases ---
 
 const LEVEL_CONGRATS: Record<CEFRLevel, { phrase: string; sub: string }> = {
   A1: {
@@ -117,12 +159,12 @@ const LEVEL_CONGRATS: Record<CEFRLevel, { phrase: string; sub: string }> = {
     sub: "You're at the beginning of a wonderful journey.",
   },
   A2: {
-    phrase: "Très bien !",
+    phrase: "Tr\u00e8s bien !",
     sub: "You have solid foundations to build upon.",
   },
   B1: {
     phrase: "Bravo !",
-    sub: "You're a true intermediate — half way there.",
+    sub: "You're a true intermediate -- half way there.",
   },
   B2: {
     phrase: "Excellent !",
@@ -138,7 +180,155 @@ const LEVEL_CONGRATS: Record<CEFRLevel, { phrase: string; sub: string }> = {
   },
 };
 
-// ─── Loading pulse animation ──────────────────────────────────────────────────
+/** Build a textual summary of test results for the results screen */
+function buildResultsSummary(
+  determined: CEFRLevel,
+  wrongs: Record<CEFRLevel, number>,
+  corrects: Record<CEFRLevel, number>,
+  stopped: boolean
+): { masteryLevel: CEFRLevel | null; struggleLevel: CEFRLevel | null; summary: string } {
+  const order: CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
+
+  // Mastery = highest level with all questions correct
+  let masteryLevel: CEFRLevel | null = null;
+  for (const level of order) {
+    const range = LEVEL_RANGES.find((r) => r.level === level);
+    if (!range) continue;
+    const totalAtLevel = range.end - range.start + 1;
+    // Only count levels that were fully attempted
+    if (corrects[level] + wrongs[level] >= totalAtLevel && wrongs[level] === 0) {
+      masteryLevel = level;
+    }
+  }
+
+  // Struggle = first level where 2+ errors occurred
+  let struggleLevel: CEFRLevel | null = null;
+  for (const level of order) {
+    const attempted = corrects[level] + wrongs[level];
+    if (attempted > 0 && wrongs[level] >= 2) {
+      struggleLevel = level;
+      break;
+    }
+  }
+
+  // Build natural language summary
+  let summary: string;
+  if (determined === "C2") {
+    summary =
+      "Outstanding performance across all levels. You demonstrate near-native mastery of French.";
+  } else if (determined === "C1") {
+    summary = "You showed strong advanced skills. Some C2-level nuances remain to be mastered.";
+  } else if (masteryLevel && struggleLevel) {
+    summary = `You showed strong ${masteryLevel} skills and some ${determined} knowledge. Errors began at the ${struggleLevel} level.`;
+  } else if (masteryLevel) {
+    summary = `You demonstrated solid mastery at ${masteryLevel}${stopped ? ". The test stopped early to avoid unnecessary difficulty." : ` and partial ${determined} ability.`}`;
+  } else {
+    summary = `You showed emerging ${determined} skills. Practice will help you build a stronger foundation.`;
+  }
+
+  return { masteryLevel, struggleLevel, summary };
+}
+
+/** Status label for a level in the results screen */
+function getLevelStatusLabel(
+  level: CEFRLevel,
+  correct: number,
+  total: number,
+  determined: CEFRLevel,
+  masteryLevel: CEFRLevel | null,
+  struggleLevel: CEFRLevel | null
+): { text: string; color: string } | null {
+  const order: CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
+  const levelIdx = order.indexOf(level);
+  const determinedIdx = order.indexOf(determined);
+
+  if (correct === total && total > 0) {
+    return { text: "Mastered", color: "#34C759" };
+  }
+  if (level === struggleLevel) {
+    return { text: "Needs work", color: "#FF9500" };
+  }
+  if (levelIdx > determinedIdx) {
+    return null; // Not reached
+  }
+  if (correct > 0 && correct < total) {
+    return { text: "Partial", color: "#F5A623" };
+  }
+  return null;
+}
+
+// --- Shimmer skeleton bar ---
+
+interface SkeletonBarProps {
+  width: number | `${number}%`;
+  height: number;
+  borderRadius?: number;
+  style?: Record<string, unknown>;
+}
+
+function SkeletonBar({ width, height, borderRadius = 6, style }: SkeletonBarProps) {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.7, { duration: 800, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.3, { duration: 800, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      false
+    );
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: "rgba(255,255,255,0.15)",
+        },
+        animatedStyle,
+        style,
+      ]}
+    />
+  );
+}
+
+// --- Loading skeleton screen ---
+
+function LoadingSkeleton() {
+  return (
+    <View className="flex-1 px-5 pt-8">
+      {/* Fake question text lines */}
+      <SkeletonBar width="90%" height={16} style={{ marginBottom: 8 }} />
+      <SkeletonBar width="70%" height={16} style={{ marginBottom: 24 }} />
+
+      {/* Fake option cards */}
+      {[0, 1, 2, 3].map((i) => (
+        <View
+          key={i}
+          className="flex-row items-center rounded-xl p-[14px] mb-[10px] gap-3"
+          style={{
+            backgroundColor: "rgba(255,255,255,0.06)",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.08)",
+          }}
+        >
+          <SkeletonBar width={32} height={32} borderRadius={16} />
+          <SkeletonBar width="70%" height={14} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// --- Loading pulse animation ---
 
 function LoadingPulse() {
   const scale = useSharedValue(1);
@@ -176,14 +366,8 @@ function LoadingPulse() {
     >
       {/* Inner ring */}
       <View
-        style={{
-          width: 86,
-          height: 86,
-          borderRadius: 43,
-          backgroundColor: "rgba(245,166,35,0.15)",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
+        className="w-[86px] h-[86px] rounded-[43px] justify-center items-center"
+        style={{ backgroundColor: "rgba(245,166,35,0.15)" }}
       >
         <ActivityIndicator size="large" color="#F5A623" />
       </View>
@@ -191,7 +375,7 @@ function LoadingPulse() {
   );
 }
 
-// ─── Animated progress bar ────────────────────────────────────────────────────
+// --- Animated progress bar ---
 
 interface ProgressBarProps {
   progress: number; // 0 to 1
@@ -212,14 +396,7 @@ function AnimatedProgressBar({ progress }: ProgressBarProps) {
   }));
 
   return (
-    <View
-      style={{
-        height: 4,
-        backgroundColor: "rgba(255,255,255,0.2)",
-        borderRadius: 2,
-        overflow: "hidden",
-      }}
-    >
+    <View className="h-1 bg-white/20 rounded-full overflow-hidden">
       <Animated.View
         style={[
           {
@@ -234,7 +411,7 @@ function AnimatedProgressBar({ progress }: ProgressBarProps) {
   );
 }
 
-// ─── Main component ────────────────────────────────────────────────────────────
+// --- Main component ---
 
 export default function PlacementTestScreen() {
   const router = useRouter();
@@ -254,6 +431,16 @@ export default function PlacementTestScreen() {
 
   // Track wrong answers per level
   const [wrongPerLevel, setWrongPerLevel] = useState<Record<CEFRLevel, number>>({
+    A1: 0,
+    A2: 0,
+    B1: 0,
+    B2: 0,
+    C1: 0,
+    C2: 0,
+  });
+
+  // Track correct answers per level (for results summary)
+  const [correctPerLevel, setCorrectPerLevel] = useState<Record<CEFRLevel, number>>({
     A1: 0,
     A2: 0,
     B1: 0,
@@ -282,12 +469,12 @@ export default function PlacementTestScreen() {
           {
             role: "user",
             content:
-              'Generate a 15-question French placement test. Return JSON with a "questions" array.',
+              'Generate a 15-question French placement test covering grammar, vocabulary, reading comprehension, and pragmatics. Distribute: A1(3), A2(3), B1(3), B2(3), C1(2), C2(1). Vary the correct answer position. Return JSON with a "questions" array.',
           },
         ],
         {
           model: "gpt-4o",
-          temperature: 0.8,
+          temperature: 0.5,
           maxTokens: 4096,
         }
       );
@@ -298,7 +485,7 @@ export default function PlacementTestScreen() {
 
       // Normalize: ensure every question has options as an array of {id, text, isCorrect}
       const normalized = response.questions.map((q) => {
-        const raw = q as Record<string, unknown>;
+        const raw = q as unknown as Record<string, unknown>;
         let opts: { id: string; text: string; isCorrect: boolean }[] = [];
         const rawOpts: unknown = q.options;
 
@@ -369,7 +556,7 @@ export default function PlacementTestScreen() {
       );
       if (!valid) {
         console.warn(
-          "[placement-test] Some questions have 0 or >1 correct answers — retrying generation"
+          "[placement-test] Some questions have 0 or >1 correct answers -- retrying generation"
         );
         throw new Error("Invalid question format received. Retrying...");
       }
@@ -419,11 +606,16 @@ export default function PlacementTestScreen() {
     setSelectedAnswer(answerId);
     setShowResult(true);
 
-    const currentQuestion = questions[currentIndex];
-    const isCorrect = currentQuestion.options.some((o) => o.id === answerId && o.isCorrect);
+    const currentQ = questions[currentIndex];
+    const isCorrect = currentQ.options.some((o) => o.id === answerId && o.isCorrect);
+    const questionLevel = levelForQuestion(currentIndex + 1);
 
-    if (!isCorrect) {
-      const questionLevel = levelForQuestion(currentIndex + 1);
+    if (isCorrect) {
+      setCorrectPerLevel((prev) => ({
+        ...prev,
+        [questionLevel]: prev[questionLevel] + 1,
+      }));
+    } else {
       const updatedWrongs = {
         ...wrongPerLevel,
         [questionLevel]: wrongPerLevel[questionLevel] + 1,
@@ -497,94 +689,40 @@ export default function PlacementTestScreen() {
 
   const answeredCount = currentIndex + (showResult ? 1 : 0);
 
-  // ── Loading State ────────────────────────────────────────────────────────────
+  // -- Loading State --
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#1E3A5F",
-          justifyContent: "center",
-          alignItems: "center",
-          paddingHorizontal: 32,
-        }}
-      >
-        {/* Layered dark overlay at top for depth */}
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 200,
-            backgroundColor: "rgba(13,34,64,0.4)",
-          }}
-          pointerEvents="none"
-        />
+      <View className="flex-1 bg-primary">
+        {/* Header area with branding + pulse */}
+        <View className="items-center px-8 pb-7" style={{ paddingTop: insets.top + 24 }}>
+          <Text className="text-accent text-[11px] font-extrabold tracking-[2px] mb-5">
+            TEST DE PLACEMENT
+          </Text>
 
-        <Text
-          style={{
-            color: "#F5A623",
-            fontSize: 18,
-            fontWeight: "800",
-            letterSpacing: 2,
-            marginBottom: 32,
-          }}
-        >
-          Compagnon
-        </Text>
+          <LoadingPulse />
 
-        <LoadingPulse />
+          <Text className="text-white text-xl font-bold mt-6 text-center">
+            Preparing your test...
+          </Text>
+          <Text className="text-white/55 text-sm mt-2 text-center leading-[21px]">
+            15 questions across 6 CEFR levels
+          </Text>
+        </View>
 
-        <Text
-          style={{
-            color: "#FFFFFF",
-            fontSize: 22,
-            fontWeight: "700",
-            marginTop: 32,
-            textAlign: "center",
-          }}
-        >
-          Génération du test...
-        </Text>
-        <Text
-          style={{
-            color: "rgba(255,255,255,0.6)",
-            fontSize: 14,
-            marginTop: 10,
-            textAlign: "center",
-            lineHeight: 21,
-          }}
-        >
-          Notre IA génère des questions personnalisées{"\n"}pour déterminer votre niveau de
-          français.
-        </Text>
+        {/* Skeleton preview of question card */}
+        <LoadingSkeleton />
       </View>
     );
   }
 
-  // ── Error State ──────────────────────────────────────────────────────────────
+  // -- Error State --
   if (error && questions.length === 0) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-          paddingHorizontal: 32,
-        }}
-      >
+      <View className="flex-1 bg-surface justify-center items-center px-8">
         {/* Error circle */}
         <View
+          className="w-[90px] h-[90px] rounded-[45px] bg-error justify-center items-center mb-6"
           style={{
-            width: 90,
-            height: 90,
-            borderRadius: 45,
-            backgroundColor: "#FF3B30",
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: 24,
             shadowColor: "#FF3B30",
             shadowOpacity: 0.35,
             shadowRadius: 16,
@@ -592,40 +730,19 @@ export default function PlacementTestScreen() {
             elevation: 8,
           }}
         >
-          <Text style={{ fontSize: 36, color: "#FFFFFF", fontWeight: "800" }}>!</Text>
+          <Text className="text-4xl text-white font-extrabold">!</Text>
         </View>
 
-        <Text
-          style={{
-            fontSize: 20,
-            fontWeight: "700",
-            color: "#1E3A5F",
-            marginBottom: 10,
-            textAlign: "center",
-          }}
-        >
+        <Text className="text-xl font-bold text-primary mb-[10px] text-center">
           Une erreur est survenue
         </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: "#666666",
-            marginBottom: 32,
-            textAlign: "center",
-            lineHeight: 21,
-          }}
-        >
-          {error}
-        </Text>
+        <Text className="text-sm text-[#666666] mb-8 text-center leading-[21px]">{error}</Text>
 
         <TouchableOpacity
           onPress={() => generateQuestions(0)}
           activeOpacity={0.85}
+          className="bg-primary rounded-[14px] py-4 px-10"
           style={{
-            backgroundColor: "#1E3A5F",
-            borderRadius: 14,
-            paddingVertical: 16,
-            paddingHorizontal: 40,
             shadowColor: "#1E3A5F",
             shadowOpacity: 0.25,
             shadowRadius: 12,
@@ -633,27 +750,31 @@ export default function PlacementTestScreen() {
             elevation: 6,
           }}
         >
-          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>Réessayer</Text>
+          <Text className="text-white text-base font-bold">Réessayer</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // ── Results Screen ───────────────────────────────────────────────────────────
+  // -- Results Screen --
   if (testFinished) {
     const congrats = LEVEL_CONGRATS[determinedLevel];
     const levelColor = LEVEL_COLORS[determinedLevel];
+    const { masteryLevel, struggleLevel, summary } = buildResultsSummary(
+      determinedLevel,
+      wrongPerLevel,
+      correctPerLevel,
+      stoppedEarly
+    );
 
     return (
-      <View style={{ flex: 1, backgroundColor: "#F5F5F0" }}>
-        {/* Hero header — navy */}
+      <View className="flex-1 bg-surface">
+        {/* Hero header -- navy */}
         <View
+          className="bg-primary items-center px-6"
           style={{
-            backgroundColor: "#1E3A5F",
             paddingTop: insets.top + 24,
             paddingBottom: 70,
-            alignItems: "center",
-            paddingHorizontal: 24,
             borderBottomLeftRadius: 40,
             borderBottomRightRadius: 40,
             shadowColor: "#0D2240",
@@ -664,28 +785,15 @@ export default function PlacementTestScreen() {
           }}
         >
           {/* "Votre niveau" label */}
-          <Text
-            style={{
-              color: "#F5A623",
-              fontSize: 11,
-              fontWeight: "800",
-              letterSpacing: 3,
-              marginBottom: 20,
-            }}
-          >
+          <Text className="text-accent text-[11px] font-extrabold tracking-[3px] mb-5">
             VOTRE NIVEAU
           </Text>
 
           {/* Large CEFR badge circle */}
           <View
+            className="w-[100px] h-[100px] rounded-full justify-center items-center mb-[18px]"
             style={{
-              width: 100,
-              height: 100,
-              borderRadius: 50,
               backgroundColor: levelColor,
-              justifyContent: "center",
-              alignItems: "center",
-              marginBottom: 18,
               shadowColor: levelColor,
               shadowOpacity: 0.5,
               shadowRadius: 20,
@@ -693,38 +801,19 @@ export default function PlacementTestScreen() {
               elevation: 10,
             }}
           >
-            <Text style={{ fontSize: 34, fontWeight: "800", color: "#FFFFFF" }}>
-              {determinedLevel}
-            </Text>
+            <Text className="text-[34px] font-extrabold text-white">{determinedLevel}</Text>
           </View>
 
           {/* Congratulation phrase */}
-          <Text
-            style={{
-              color: "#FFFFFF",
-              fontSize: 26,
-              fontWeight: "800",
-              marginBottom: 8,
-              textAlign: "center",
-            }}
-          >
+          <Text className="text-white text-[26px] font-extrabold mb-2 text-center">
             {congrats.phrase}
           </Text>
-          <Text
-            style={{
-              color: "rgba(255,255,255,0.65)",
-              fontSize: 14,
-              textAlign: "center",
-              lineHeight: 20,
-            }}
-          >
-            {congrats.sub}
-          </Text>
+          <Text className="text-white/65 text-sm text-center leading-5">{congrats.sub}</Text>
         </View>
 
         {/* Scrollable results body */}
         <ScrollView
-          style={{ flex: 1 }}
+          className="flex-1"
           contentContainerStyle={{
             paddingTop: 28,
             paddingHorizontal: 20,
@@ -732,12 +821,10 @@ export default function PlacementTestScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Performance summary card */}
+          {/* Summary card */}
           <View
+            className="bg-white rounded-[20px] p-5 mb-4"
             style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 20,
-              padding: 20,
               borderWidth: 1,
               borderColor: "#E0E0CE",
               shadowColor: "#1E3A5F",
@@ -745,18 +832,48 @@ export default function PlacementTestScreen() {
               shadowRadius: 10,
               shadowOffset: { width: 0, height: 3 },
               elevation: 3,
-              marginBottom: 20,
             }}
           >
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "800",
-                color: "#1E3A5F",
-                letterSpacing: 1,
-                marginBottom: 16,
-              }}
-            >
+            <Text className="text-[13px] font-extrabold text-primary tracking-[1px] mb-3">
+              ANALYSIS
+            </Text>
+            <Text className="text-[15px] text-[#333333] leading-[22px] mb-[14px]">{summary}</Text>
+
+            {/* Mastery / Struggle indicators */}
+            <View className="flex-row gap-[10px] flex-wrap">
+              {masteryLevel && (
+                <View className="flex-row items-center bg-[#E8F5E9] rounded-[10px] px-3 py-[7px] gap-[6px]">
+                  <Text className="text-sm">&#10003;</Text>
+                  <Text className="text-[13px] font-semibold text-[#2E7D32]">
+                    {masteryLevel} mastered
+                  </Text>
+                </View>
+              )}
+              {struggleLevel && (
+                <View className="flex-row items-center bg-[#FFF3E0] rounded-[10px] px-3 py-[7px] gap-[6px]">
+                  <Text className="text-sm">&#9888;</Text>
+                  <Text className="text-[13px] font-semibold text-[#E65100]">
+                    {struggleLevel} needs practice
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Performance per-level card */}
+          <View
+            className="bg-white rounded-[20px] p-5 mb-5"
+            style={{
+              borderWidth: 1,
+              borderColor: "#E0E0CE",
+              shadowColor: "#1E3A5F",
+              shadowOpacity: 0.07,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 3,
+            }}
+          >
+            <Text className="text-[13px] font-extrabold text-primary tracking-[1px] mb-4">
               PERFORMANCE PAR NIVEAU
             </Text>
 
@@ -771,107 +888,77 @@ export default function PlacementTestScreen() {
               if (questionsAnswered <= 0) return null;
               const wrong = wrongPerLevel[level];
               const correct = questionsAnswered - wrong;
+              const statusLabel = getLevelStatusLabel(
+                level,
+                correct,
+                questionsAnswered,
+                determinedLevel,
+                masteryLevel,
+                struggleLevel
+              );
 
               return (
                 <View
                   key={level}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    paddingVertical: 10,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#F0F0EA",
-                  }}
+                  className="flex-row items-center justify-between py-[10px]"
+                  style={{ borderBottomWidth: 1, borderBottomColor: "#F0F0EA" }}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <View className="flex-row items-center gap-[10px]">
                     <View
-                      style={{
-                        backgroundColor: LEVEL_COLORS[level],
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        borderRadius: 8,
-                        minWidth: 40,
-                        alignItems: "center",
-                      }}
+                      className="px-[10px] py-1 rounded-lg min-w-[40px] items-center"
+                      style={{ backgroundColor: LEVEL_COLORS[level] }}
                     >
-                      <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 12 }}>
-                        {level}
-                      </Text>
+                      <Text className="text-white font-bold text-xs">{level}</Text>
                     </View>
                     {/* Mini progress bar */}
-                    <View
-                      style={{
-                        width: 80,
-                        height: 6,
-                        backgroundColor: "#F0F0EA",
-                        borderRadius: 3,
-                        overflow: "hidden",
-                      }}
-                    >
+                    <View className="w-20 h-[6px] bg-[#F0F0EA] rounded-full overflow-hidden">
                       <View
+                        className="h-[6px] rounded-full"
                         style={{
                           width: `${(correct / questionsAnswered) * 100}%`,
-                          height: 6,
                           backgroundColor: LEVEL_COLORS[level],
-                          borderRadius: 3,
                         }}
                       />
                     </View>
                   </View>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: "600",
-                      color: correct === questionsAnswered ? "#34C759" : "#333333",
-                    }}
-                  >
-                    {correct}/{questionsAnswered}
-                  </Text>
+                  <View className="flex-row items-center gap-2">
+                    {statusLabel && (
+                      <Text
+                        className="text-[11px] font-semibold"
+                        style={{ color: statusLabel.color }}
+                      >
+                        {statusLabel.text}
+                      </Text>
+                    )}
+                    <Text
+                      className="text-sm font-semibold min-w-[30px] text-right"
+                      style={{
+                        color: correct === questionsAnswered ? "#34C759" : "#333333",
+                      }}
+                    >
+                      {correct}/{questionsAnswered}
+                    </Text>
+                  </View>
                 </View>
               );
             })}
           </View>
 
           {/* Error message if saving failed */}
-          {error && (
-            <Text
-              style={{
-                color: "#FF3B30",
-                fontSize: 14,
-                marginBottom: 12,
-                textAlign: "center",
-              }}
-            >
-              {error}
-            </Text>
-          )}
+          {error && <Text className="text-error text-sm mb-3 text-center">{error}</Text>}
         </ScrollView>
 
         {/* CTA button */}
         <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            paddingHorizontal: 20,
-            paddingBottom: insets.bottom + 16,
-            paddingTop: 16,
-            backgroundColor: "#F5F5F0",
-            borderTopWidth: 1,
-            borderTopColor: "rgba(0,0,0,0.06)",
-          }}
+          className="absolute bottom-0 left-0 right-0 px-5 pt-4 bg-surface border-t border-black/[0.06]"
+          style={{ paddingBottom: insets.bottom + 16 }}
         >
           <TouchableOpacity
             onPress={handleFinish}
             disabled={isSubmitting}
             activeOpacity={0.85}
+            className="bg-accent rounded-2xl py-[18px] items-center"
             style={{
-              backgroundColor: "#F5A623",
-              borderRadius: 16,
-              paddingVertical: 18,
-              alignItems: "center",
               opacity: isSubmitting ? 0.7 : 1,
               shadowColor: "#F5A623",
               shadowOpacity: 0.35,
@@ -883,14 +970,7 @@ export default function PlacementTestScreen() {
             {isSubmitting ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontSize: 17,
-                  fontWeight: "700",
-                  letterSpacing: 0.3,
-                }}
-              >
+              <Text className="text-white text-[17px] font-bold tracking-wide">
                 Commencer l&apos;apprentissage !
               </Text>
             )}
@@ -900,16 +980,14 @@ export default function PlacementTestScreen() {
     );
   }
 
-  // ── Question Screen ──────────────────────────────────────────────────────────
+  // -- Question Screen --
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F5F0" }}>
+    <View className="flex-1 bg-surface">
       {/* Header */}
       <View
+        className="bg-primary px-6 pb-5"
         style={{
-          backgroundColor: "#1E3A5F",
           paddingTop: insets.top + 16,
-          paddingHorizontal: 24,
-          paddingBottom: 20,
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
           shadowColor: "#0D2240",
@@ -920,59 +998,35 @@ export default function PlacementTestScreen() {
         }}
       >
         {/* Row: label + counter */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 14,
-          }}
-        >
-          <Text
-            style={{
-              color: "#F5A623",
-              fontSize: 11,
-              fontWeight: "800",
-              letterSpacing: 2,
-            }}
-          >
+        <View className="flex-row justify-between items-center mb-[14px]">
+          <Text className="text-accent text-[11px] font-extrabold tracking-[2px]">
             TEST DE PLACEMENT
           </Text>
-          <Text
-            style={{
-              color: "rgba(255,255,255,0.8)",
-              fontSize: 13,
-              fontWeight: "600",
-            }}
-          >
-            {currentIndex + 1} / {TOTAL_QUESTIONS}
+          <Text className="text-white/80 text-[13px] font-semibold">
+            Question {currentIndex + 1} of {TOTAL_QUESTIONS}
           </Text>
         </View>
 
         {/* Animated progress bar */}
         <AnimatedProgressBar progress={(currentIndex + 1) / TOTAL_QUESTIONS} />
 
-        {/* CEFR level badge for current question */}
-        <View style={{ marginTop: 14 }}>
+        {/* CEFR level badge + name for current question */}
+        <View className="mt-[14px] flex-row items-center gap-2">
           <View
-            style={{
-              alignSelf: "flex-start",
-              backgroundColor: LEVEL_COLORS[currentQuestionLevel],
-              paddingHorizontal: 12,
-              paddingVertical: 5,
-              borderRadius: 20,
-            }}
+            className="px-3 py-[5px] rounded-[20px]"
+            style={{ backgroundColor: LEVEL_COLORS[currentQuestionLevel] }}
           >
-            <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 12 }}>
-              {currentQuestionLevel}
-            </Text>
+            <Text className="text-white font-bold text-xs">{currentQuestionLevel}</Text>
           </View>
+          <Text className="text-white/55 text-xs font-medium">
+            {CEFR_LEVELS[currentQuestionLevel].name}
+          </Text>
         </View>
       </View>
 
       {/* Question card */}
       <ScrollView
-        style={{ flex: 1 }}
+        className="flex-1"
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingTop: 20,
@@ -993,27 +1047,15 @@ export default function PlacementTestScreen() {
       {/* Next / Finish button */}
       {showResult && (
         <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            paddingHorizontal: 20,
-            paddingBottom: insets.bottom + 16,
-            paddingTop: 16,
-            backgroundColor: "#F5F5F0",
-            borderTopWidth: 1,
-            borderTopColor: "rgba(0,0,0,0.06)",
-          }}
+          className="absolute bottom-0 left-0 right-0 px-5 pt-4 bg-surface border-t border-black/[0.06]"
+          style={{ paddingBottom: insets.bottom + 16 }}
         >
           <TouchableOpacity
             onPress={handleNext}
             activeOpacity={0.85}
+            className="rounded-2xl py-[18px] items-center"
             style={{
               backgroundColor: stoppedEarly ? "#F5A623" : "#1E3A5F",
-              borderRadius: 16,
-              paddingVertical: 18,
-              alignItems: "center",
               shadowColor: stoppedEarly ? "#F5A623" : "#1E3A5F",
               shadowOpacity: 0.25,
               shadowRadius: 12,
@@ -1021,17 +1063,10 @@ export default function PlacementTestScreen() {
               elevation: 6,
             }}
           >
-            <Text
-              style={{
-                color: "#FFFFFF",
-                fontSize: 17,
-                fontWeight: "700",
-                letterSpacing: 0.3,
-              }}
-            >
+            <Text className="text-white text-[17px] font-bold tracking-wide">
               {stoppedEarly || currentIndex >= questions.length - 1
                 ? "Voir les résultats"
-                : "Question suivante →"}
+                : "Question suivante \u2192"}
             </Text>
           </TouchableOpacity>
         </View>

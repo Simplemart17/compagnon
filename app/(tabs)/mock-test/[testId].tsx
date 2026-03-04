@@ -6,7 +6,16 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  BackHandler,
+  Platform,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -19,6 +28,7 @@ import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
 import { updateStreak, incrementDailyActivity, checkCefrPromotion } from "@/src/lib/activity";
 import { MCQCard } from "@/src/components/practice/MCQCard";
+import { hapticLight } from "@/src/lib/haptics";
 import type { MCQContent } from "@/src/types/exercise";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -28,7 +38,7 @@ interface TestState {
   sections: Section[];
   currentSectionIndex: number;
   questions: Record<Section, MCQContent[]>;
-  answers: Record<string, string>; // `${section}_${index}` → answerId
+  answers: Record<string, string>; // `${section}_${index}` -> answerId
   timeRemaining: number;
   status: "loading" | "active" | "finished";
 }
@@ -40,15 +50,15 @@ const SECTION_META: Record<
   listening: {
     name: "Listening",
     nameFr: "Compréhension Orale",
-    timeMinutes: 35,
-    questionCount: 10,
+    timeMinutes: 25,
+    questionCount: 29,
   },
-  reading: { name: "Reading", nameFr: "Compréhension Écrite", timeMinutes: 60, questionCount: 10 },
+  reading: { name: "Reading", nameFr: "Compréhension Écrite", timeMinutes: 45, questionCount: 29 },
   grammar: {
     name: "Grammar",
     nameFr: "Structures de la Langue",
-    timeMinutes: 30,
-    questionCount: 10,
+    timeMinutes: 15,
+    questionCount: 18,
   },
 };
 
@@ -75,6 +85,7 @@ export default function MockTestSessionScreen() {
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<string>>(new Set());
   const [activeTestId, setActiveTestId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const endTimeRef = useRef<number>(0);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cefrLevel = (profile?.target_cefr_level ??
@@ -114,7 +125,7 @@ export default function MockTestSessionScreen() {
           })
           .eq("id", activeTestId);
       } catch {
-        // Non-critical — silently fail
+        // Non-critical -- silently fail
       }
     },
     [activeTestId]
@@ -179,7 +190,7 @@ export default function MockTestSessionScreen() {
               options: { id: string; text: string; isCorrect: boolean }[];
               explanation: string;
             }[];
-          }>([{ role: "system", content: prompt }], { temperature: 0.7 });
+          }>([{ role: "system", content: prompt }], { temperature: 0.4, maxTokens: 4096 });
 
           // For listening/reading, attach passage text to questions that reference a passageId
           if (result.passages && result.passages.length > 0) {
@@ -239,26 +250,52 @@ export default function MockTestSessionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Timer countdown
+  // Timer countdown -- uses absolute endTime to avoid drift from setInterval
   useEffect(() => {
     if (state.status !== "active") return;
 
+    // Compute the absolute end time once when the timer starts (or resumes).
+    // On subsequent ticks we derive remaining from Date.now().
+    if (endTimeRef.current === 0 && state.timeRemaining > 0) {
+      endTimeRef.current = Date.now() + state.timeRemaining * 1000;
+    }
+
     timerRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
       setState((s) => {
-        if (s.timeRemaining <= 1) {
-          // Time's up — auto-finish
+        if (remaining <= 0) {
           return { ...s, timeRemaining: 0, status: "finished" };
         }
-        return { ...s, timeRemaining: s.timeRemaining - 1 };
+        return { ...s, timeRemaining: remaining };
       });
     }, 1000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status]);
 
-  // Navigate to results when finished — persist to Supabase first
+  // BackHandler guard -- confirm before leaving during an active test (Android)
+  useEffect(() => {
+    if (state.status !== "active" || Platform.OS !== "android") return;
+
+    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
+      Alert.alert("Leave Test?", "Your progress has been saved. You can resume this test later.", [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: () => router.back(),
+        },
+      ]);
+      return true; // Prevent default back behavior
+    });
+
+    return () => handler.remove();
+  }, [state.status, router]);
+
+  // Navigate to results when finished -- persist to Supabase first
   useEffect(() => {
     if (state.status === "finished") {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -356,6 +393,7 @@ export default function MockTestSessionScreen() {
 
   const handleAnswer = useCallback(
     (answerId: string) => {
+      hapticLight();
       const key = `${currentSection}_${currentQuestionIndex}`;
       setState((s) => {
         const newState = { ...s, answers: { ...s.answers, [key]: answerId } };
@@ -426,17 +464,10 @@ export default function MockTestSessionScreen() {
   // Loading screen
   if (state.status === "loading") {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
+      <SafeAreaView className="flex-1 bg-surface justify-center items-center">
         <ActivityIndicator size="large" color="#1E3A5F" />
-        <Text style={{ color: "#666", marginTop: 16, fontSize: 14 }}>Generating TCF test...</Text>
-        <Text style={{ color: "#999", marginTop: 4, fontSize: 12 }}>This may take a moment</Text>
+        <Text className="text-[#666] mt-4 text-sm">Generating TCF test...</Text>
+        <Text className="text-[#999] mt-1 text-xs">This may take a moment</Text>
       </SafeAreaView>
     );
   }
@@ -448,55 +479,45 @@ export default function MockTestSessionScreen() {
   const isTimeLow = state.timeRemaining < 300; // < 5 min
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F5F0" }}>
+    <SafeAreaView className="flex-1 bg-surface">
       {/* Header with timer */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          backgroundColor: "#1E3A5F",
-        }}
-      >
+      <View className="flex-row items-center justify-between px-4 py-3 bg-primary">
         <View>
-          <Text style={{ color: "#F5A623", fontSize: 11, fontWeight: "700" }}>
-            {sectionMeta.nameFr}
-          </Text>
-          <Text style={{ color: "#FFFFFF88", fontSize: 11 }}>
+          <Text className="text-accent text-[11px] font-bold">{sectionMeta.nameFr}</Text>
+          <Text className="text-white/[0.53] text-[11px]">
             Section {state.currentSectionIndex + 1}/{state.sections.length}
           </Text>
         </View>
 
-        <View style={{ alignItems: "center" }}>
+        <View
+          className="items-center"
+          accessibilityLabel={`${formatTime(state.timeRemaining)} remaining`}
+          accessibilityRole="timer"
+        >
           <Text
+            className="text-xl font-extrabold"
             style={{
               color: isTimeLow ? "#FF3B30" : "#FFFFFF",
-              fontSize: 20,
-              fontWeight: "800",
               fontVariant: ["tabular-nums"],
             }}
           >
             {formatTime(state.timeRemaining)}
           </Text>
-          <Text style={{ color: "#FFFFFF66", fontSize: 10 }}>remaining</Text>
+          <Text className="text-white/[0.4] text-[10px]">remaining</Text>
         </View>
 
-        <TouchableOpacity onPress={handleFinish}>
-          <Text style={{ color: "#FF3B30", fontSize: 13, fontWeight: "600" }}>End Test</Text>
+        <TouchableOpacity
+          onPress={handleFinish}
+          accessibilityRole="button"
+          accessibilityLabel="End test"
+          accessibilityHint="Double tap to submit the test"
+        >
+          <Text className="text-error text-[13px] font-semibold">End Test</Text>
         </TouchableOpacity>
       </View>
 
       {/* Question progress */}
-      <View
-        style={{
-          flexDirection: "row",
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          gap: 3,
-        }}
-      >
+      <View className="flex-row px-4 py-2 gap-[3px]">
         {currentQuestions.map((_, i) => {
           const key = `${currentSection}_${i}`;
           const answered = answeredQuestions.has(key);
@@ -504,10 +525,8 @@ export default function MockTestSessionScreen() {
             <TouchableOpacity
               key={i}
               onPress={() => setCurrentQuestionIndex(i)}
+              className="flex-1 h-1 rounded-sm"
               style={{
-                flex: 1,
-                height: 4,
-                borderRadius: 2,
                 backgroundColor:
                   i === currentQuestionIndex ? "#1E3A5F" : answered ? "#34C759" : "#E0E0CE",
               }}
@@ -516,9 +535,9 @@ export default function MockTestSessionScreen() {
         })}
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         {/* Question number */}
-        <Text style={{ fontSize: 13, color: "#999", marginBottom: 12 }}>
+        <Text className="text-[13px] text-[#999] mb-3">
           Question {currentQuestionIndex + 1} of {currentQuestions.length}
         </Text>
 
@@ -535,30 +554,23 @@ export default function MockTestSessionScreen() {
 
       {/* Bottom navigation */}
       <View
-        style={{
-          flexDirection: "row",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          gap: 12,
-          borderTopWidth: 1,
-          borderTopColor: "#E0E0CE",
-        }}
+        className="flex-row px-4 py-3 gap-3"
+        style={{ borderTopWidth: 1, borderTopColor: "#E0E0CE" }}
       >
         <TouchableOpacity
           onPress={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
           disabled={currentQuestionIndex === 0}
+          accessibilityRole="button"
+          accessibilityLabel="Previous question"
+          accessibilityState={{ disabled: currentQuestionIndex === 0 }}
+          className="flex-1 rounded-xl py-3.5 items-center"
           style={{
-            flex: 1,
             backgroundColor: currentQuestionIndex === 0 ? "#E0E0CE" : "#F0F0E8",
-            borderRadius: 12,
-            paddingVertical: 14,
-            alignItems: "center",
           }}
         >
           <Text
+            className="text-[15px] font-semibold"
             style={{
-              fontSize: 15,
-              fontWeight: "600",
               color: currentQuestionIndex === 0 ? "#999" : "#1E3A5F",
             }}
           >
@@ -569,41 +581,30 @@ export default function MockTestSessionScreen() {
         {!isLastQuestion ? (
           <TouchableOpacity
             onPress={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
-            style={{
-              flex: 1,
-              backgroundColor: "#1E3A5F",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
+            accessibilityRole="button"
+            accessibilityLabel="Next question"
+            className="flex-1 bg-primary rounded-xl py-3.5 items-center"
           >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Next</Text>
+            <Text className="text-[15px] font-semibold text-white">Next</Text>
           </TouchableOpacity>
         ) : isLastSection ? (
           <TouchableOpacity
             onPress={handleFinish}
-            style={{
-              flex: 1,
-              backgroundColor: "#F5A623",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
+            accessibilityRole="button"
+            accessibilityLabel="Submit test"
+            accessibilityHint="Double tap to finish and submit your test"
+            className="flex-1 bg-accent rounded-xl py-3.5 items-center"
           >
-            <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFFFFF" }}>Submit Test</Text>
+            <Text className="text-[15px] font-bold text-white">Submit Test</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             onPress={handleNextSection}
-            style={{
-              flex: 1,
-              backgroundColor: "#34C759",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
+            accessibilityRole="button"
+            accessibilityLabel="Go to next section"
+            className="flex-1 bg-success rounded-xl py-3.5 items-center"
           >
-            <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFFFFF" }}>Next Section</Text>
+            <Text className="text-[15px] font-bold text-white">Next Section</Text>
           </TouchableOpacity>
         )}
       </View>

@@ -10,6 +10,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { errorResponse } from "../_shared/errors.ts";
 
+const ALLOWED_MODELS = ["gpt-4o", "gpt-4o-mini"];
+
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -72,6 +74,8 @@ Deno.serve(async (req: Request) => {
         if (!params.messages || !Array.isArray(params.messages)) {
           return errorResponse({ code: "INVALID_PARAMS", message: "Missing or invalid 'messages' array", status: 400, corsHeaders });
         }
+        // Validate model against allowlist — default to gpt-4o if not allowed
+        const chatModel = ALLOWED_MODELS.includes(params.model) ? params.model : "gpt-4o";
         openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -79,7 +83,7 @@ Deno.serve(async (req: Request) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: params.model ?? "gpt-4o",
+            model: chatModel,
             messages: params.messages,
             temperature: params.temperature ?? 0.7,
             max_tokens: params.maxTokens ?? 2048,
@@ -102,7 +106,7 @@ Deno.serve(async (req: Request) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "tts-1",
+            model: "gpt-4o-mini-tts",
             input: params.input,
             voice: params.voice ?? "nova",
             speed: params.speed ?? 1.0,
@@ -130,6 +134,7 @@ Deno.serve(async (req: Request) => {
         if (!params.input) {
           return errorResponse({ code: "INVALID_PARAMS", message: "Missing 'input' for embedding", status: 400, corsHeaders });
         }
+        // Hardcode embedding model — ignore any client-provided model
         openaiResponse = await fetch("https://api.openai.com/v1/embeddings", {
           method: "POST",
           headers: {

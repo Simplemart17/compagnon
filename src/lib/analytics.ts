@@ -1,14 +1,16 @@
 /**
  * Lightweight analytics event tracking.
  *
- * Events are stored locally and flushed to Supabase daily_activity
- * and optionally to an external analytics provider (Sentry, PostHog, etc.)
- * when integrated.
+ * Events are recorded as Sentry breadcrumbs so they appear in error reports.
+ * When a dedicated analytics backend is added (e.g. PostHog), the trackEvent
+ * function should forward events there as well.
  *
  * Usage:
  *   trackEvent("exercise_completed", { skill: "grammar", score: 85 });
  *   trackEvent("conversation_started", { topic: "Au restaurant" });
  */
+
+import * as Sentry from "@sentry/react-native";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,39 +32,27 @@ type EventName =
   | "data_exported"
   | "account_deleted";
 
-interface AnalyticsEvent {
-  name: EventName;
-  properties?: Record<string, string | number | boolean>;
-  timestamp: string;
-}
-
-// ---------------------------------------------------------------------------
-// In-memory buffer (flushes are non-blocking, fire-and-forget)
-// ---------------------------------------------------------------------------
-
-const eventBuffer: AnalyticsEvent[] = [];
-const MAX_BUFFER_SIZE = 50;
-
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
+/**
+ * Track an analytics event.
+ *
+ * Currently records as a Sentry breadcrumb so events appear alongside error
+ * reports. Replace or extend with a dedicated analytics provider when ready.
+ */
 export function trackEvent(
   name: EventName,
   properties?: Record<string, string | number | boolean>
 ): void {
-  const event: AnalyticsEvent = {
-    name,
-    properties,
-    timestamp: new Date().toISOString(),
-  };
-
-  eventBuffer.push(event);
-
-  // Prevent unbounded memory growth
-  if (eventBuffer.length > MAX_BUFFER_SIZE) {
-    eventBuffer.splice(0, eventBuffer.length - MAX_BUFFER_SIZE);
-  }
+  // Record as Sentry breadcrumb for error-report context
+  Sentry.addBreadcrumb({
+    category: "analytics",
+    message: name,
+    data: properties,
+    level: "info",
+  });
 
   // Log in dev for debugging
   if (__DEV__) {
@@ -71,23 +61,15 @@ export function trackEvent(
 }
 
 /**
- * Get a snapshot of buffered events (for debugging or export).
- */
-export function getBufferedEvents(): readonly AnalyticsEvent[] {
-  return [...eventBuffer];
-}
-
-/**
- * Clear the event buffer.
- */
-export function clearEventBuffer(): void {
-  eventBuffer.length = 0;
-}
-
-/**
- * Screen view tracker — call from screen focus effects.
+ * Screen view tracker -- call from screen focus effects.
  */
 export function trackScreenView(screenName: string): void {
+  Sentry.addBreadcrumb({
+    category: "navigation",
+    message: `screen_view: ${screenName}`,
+    level: "info",
+  });
+
   if (__DEV__) {
     console.warn(`[Analytics] screen_view: ${screenName}`);
   }
