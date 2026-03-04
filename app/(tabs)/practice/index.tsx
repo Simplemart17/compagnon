@@ -10,12 +10,26 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { SKILL_LABELS } from "@/src/lib/constants";
+import { Colors, Shadows, skillTint } from "@/src/lib/design";
 
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
 
-type PracticeSkill = "listening" | "reading" | "writing" | "grammar";
+type PracticeSkill =
+  | "listening"
+  | "reading"
+  | "writing"
+  | "grammar"
+  | "pronunciation"
+  | "dictation";
+
+/** Extend SKILL_LABELS with pronunciation and dictation (not TCFSkills, so not in constants) */
+const PRACTICE_LABELS: Record<PracticeSkill, { en: string; fr: string }> = {
+  ...SKILL_LABELS,
+  pronunciation: { en: "Pronunciation", fr: "Prononciation" },
+  dictation: { en: "Dictation", fr: "Dict\u00e9e" },
+};
 
 const PRACTICE_SKILLS: {
   skill: PracticeSkill;
@@ -26,26 +40,38 @@ const PRACTICE_SKILLS: {
   {
     skill: "listening",
     emoji: "\uD83C\uDFA7",
-    color: "#2196F3",
+    color: Colors.skillListening,
     description: "Listen to passages and answer comprehension questions",
   },
   {
     skill: "reading",
     emoji: "\uD83D\uDCD6",
-    color: "#4CAF50",
+    color: Colors.skillReading,
     description: "Read texts and test your comprehension",
   },
   {
     skill: "writing",
     emoji: "\u270D\uFE0F",
-    color: "#FF9800",
+    color: Colors.skillWriting,
     description: "Write essays and get AI-powered feedback",
   },
   {
     skill: "grammar",
     emoji: "\uD83E\uDDE0",
-    color: "#9C27B0",
+    color: Colors.skillGrammar,
     description: "Master French grammar and vocabulary",
+  },
+  {
+    skill: "pronunciation",
+    emoji: "\uD83C\uDF99",
+    color: Colors.skillPronunciation,
+    description: "Read aloud and get phoneme-level pronunciation feedback",
+  },
+  {
+    skill: "dictation",
+    emoji: "\uD83D\uDCDD",
+    color: Colors.skillDictation,
+    description: "Listen to French sentences and type what you hear",
   },
 ];
 
@@ -97,66 +123,42 @@ function SkillCard({
           scale.value = withTiming(1, { duration: 120 });
         }}
         onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${titleFr} - ${titleEn}. ${description}`}
+        className="bg-white rounded-2xl overflow-hidden flex-row items-center p-4 gap-[14px]"
         style={{
-          backgroundColor: "#FFFFFF",
-          borderRadius: 20,
-          overflow: "hidden",
-          flexDirection: "row",
-          alignItems: "center",
-          padding: 16,
-          gap: 14,
-          shadowColor: "#1E3A5F",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.07,
-          shadowRadius: 8,
-          elevation: 3,
+          ...Shadows.card,
         }}
       >
         {/* Left accent strip */}
         <View
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 4,
-            backgroundColor: accentColor,
-          }}
+          className="absolute left-0 top-0 bottom-0 w-1"
+          style={{ backgroundColor: accentColor }}
         />
 
         {/* Icon circle */}
         <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: `${accentColor}18`,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+          className="w-14 h-14 rounded-[28px] justify-center items-center"
+          style={{ backgroundColor: skillTint(accentColor, 0.09) }}
         >
-          <Text style={{ fontSize: 26 }}>{emoji}</Text>
+          <Text className="text-[26px]">{emoji}</Text>
         </View>
 
         {/* Labels */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#1E3A5F" }}>{titleFr}</Text>
-          <Text style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{titleEn}</Text>
-          <Text style={{ fontSize: 12, color: "#aaa", marginTop: 4 }}>{description}</Text>
+        <View className="flex-1">
+          <Text className="text-base font-bold text-primary">{titleFr}</Text>
+          <Text className="text-xs text-[#6B7C93] mt-[2px]">{titleEn}</Text>
+          <Text className="text-xs text-[#94A3B8] mt-1">{description}</Text>
         </View>
 
         {/* Arrow circle */}
         <View
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            backgroundColor: `${accentColor}18`,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+          className="w-7 h-7 rounded-[14px] justify-center items-center"
+          style={{ backgroundColor: skillTint(accentColor, 0.09) }}
         >
-          <Text style={{ color: accentColor, fontSize: 14, fontWeight: "700" }}>{"\u2192"}</Text>
+          <Text className="text-sm font-bold" style={{ color: accentColor }}>
+            {"\u2192"}
+          </Text>
         </View>
       </Pressable>
     </Animated.View>
@@ -197,58 +199,37 @@ function VocabularyCard({ onPress }: VocabularyCardProps) {
           scale.value = withTiming(1, { duration: 120 });
         }}
         onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel="Vocabulaire - Vocabulary. Review with spaced repetition"
+        className="rounded-2xl flex-row items-center p-[18px] gap-4 overflow-hidden"
         style={{
-          backgroundColor: "rgba(245,166,35,0.12)",
-          borderRadius: 20,
+          backgroundColor: Colors.accent10,
           borderWidth: 1,
-          borderColor: "#F5A623",
-          flexDirection: "row",
-          alignItems: "center",
-          padding: 18,
-          gap: 16,
-          overflow: "hidden",
+          borderColor: Colors.accent,
         }}
       >
         {/* VEDETTE badge */}
-        <View
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            backgroundColor: "#F5A623",
-            borderRadius: 6,
-            paddingHorizontal: 7,
-            paddingVertical: 3,
-          }}
-        >
-          <Text style={{ color: "#FFFFFF", fontSize: 9, fontWeight: "700", letterSpacing: 1 }}>
-            VEDETTE
-          </Text>
+        <View className="absolute top-2 right-2 bg-accent rounded-md px-[7px] py-[3px]">
+          <Text className="text-white text-[9px] font-bold tracking-[1px]">VEDETTE</Text>
         </View>
 
         {/* Icon circle */}
         <View
+          className="w-[52px] h-[52px] rounded-[26px] justify-center items-center"
           style={{
-            width: 52,
-            height: 52,
-            borderRadius: 26,
-            backgroundColor: "rgba(245,166,35,0.2)",
-            justifyContent: "center",
-            alignItems: "center",
+            backgroundColor: Colors.accent20,
             borderWidth: 1.5,
-            borderColor: "rgba(245,166,35,0.4)",
+            borderColor: Colors.accent30,
           }}
         >
-          <Text style={{ fontSize: 24 }}>{"\uD83D\uDCDA"}</Text>
+          <Text className="text-[24px]">{"\uD83D\uDCDA"}</Text>
         </View>
 
         {/* Labels */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#1E3A5F" }}>Vocabulaire</Text>
-          <Text style={{ fontSize: 13, color: "#888", marginTop: 2 }}>Vocabulary</Text>
-          <Text style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
-            Review with spaced repetition
-          </Text>
+        <View className="flex-1">
+          <Text className="text-base font-bold text-primary">Vocabulaire</Text>
+          <Text className="text-[13px] text-[#6B7C93] mt-[2px]">Vocabulary</Text>
+          <Text className="text-xs text-[#94A3B8] mt-1">Review with spaced repetition</Text>
         </View>
       </Pressable>
     </Animated.View>
@@ -264,57 +245,33 @@ export default function PracticeScreen() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F5F0" }}>
+    <View className="flex-1 bg-surface">
       {/* ------------------------------------------------------------------ */}
       {/* Hero header                                                          */}
       {/* ------------------------------------------------------------------ */}
       <View
+        className="bg-primary pb-7 px-6 rounded-b-[28px]"
         style={{
-          backgroundColor: "#1E3A5F",
           paddingTop: insets.top + 16,
-          paddingBottom: 28,
-          paddingHorizontal: 24,
-          borderBottomLeftRadius: 32,
-          borderBottomRightRadius: 32,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.12,
-          shadowRadius: 12,
-          elevation: 8,
+          ...Shadows.hero,
         }}
       >
-        <Text
-          style={{
-            fontSize: 26,
-            fontWeight: "800",
-            color: "#FFFFFF",
-            marginBottom: 6,
-          }}
-        >
-          Entra{"\xEE"}nement
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: "rgba(255,255,255,0.65)",
-            marginBottom: 20,
-          }}
-        >
-          Choisissez une comp{"\xE9"}tence {"\xE0"} pratiquer.
+        <Text className="text-[26px] font-extrabold text-white mb-[6px]">Entraînement</Text>
+        <Text className="text-sm mb-5" style={{ color: "rgba(255,255,255,0.65)" }}>
+          Choisissez une compétence à pratiquer.
         </Text>
 
         {/* Decorative colored dots */}
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {["#2196F3", "#4CAF50", "#FF9800", "#9C27B0"].map((color, i) => (
-            <View
-              key={i}
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: color,
-              }}
-            />
+        <View className="flex-row gap-2">
+          {[
+            Colors.skillListening,
+            Colors.skillReading,
+            Colors.skillWriting,
+            Colors.skillGrammar,
+            Colors.skillPronunciation,
+            Colors.skillDictation,
+          ].map((color, i) => (
+            <View key={i} className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
           ))}
         </View>
       </View>
@@ -323,7 +280,7 @@ export default function PracticeScreen() {
       {/* Scrollable content                                                   */}
       {/* ------------------------------------------------------------------ */}
       <ScrollView
-        style={{ flex: 1 }}
+        className="flex-1"
         contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
@@ -335,12 +292,12 @@ export default function PracticeScreen() {
           <SkillCard
             key={skill}
             emoji={emoji}
-            titleFr={SKILL_LABELS[skill].fr}
-            titleEn={SKILL_LABELS[skill].en}
+            titleFr={PRACTICE_LABELS[skill].fr}
+            titleEn={PRACTICE_LABELS[skill].en}
             description={description}
             accentColor={color}
             delay={(index + 1) * 70}
-            onPress={() => router.push({ pathname: `/(tabs)/practice/${skill}` })}
+            onPress={() => router.push(`/(tabs)/practice/${skill}` as `/(tabs)/practice/grammar`)}
           />
         ))}
       </ScrollView>

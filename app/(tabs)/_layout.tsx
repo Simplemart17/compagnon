@@ -2,8 +2,10 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
-const TAB_ACTIVE_COLOR = "#1E3A5F";
-const TAB_INACTIVE_COLOR = "#999999";
+import { Colors } from "@/src/lib/design";
+
+const TAB_ACTIVE_COLOR = Colors.primary;
+const TAB_INACTIVE_COLOR = Colors.textTertiary;
 
 export default function TabLayout() {
   return (
@@ -12,8 +14,8 @@ export default function TabLayout() {
         tabBarActiveTintColor: TAB_ACTIVE_COLOR,
         tabBarInactiveTintColor: TAB_INACTIVE_COLOR,
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopColor: "#E0E0CE",
+          backgroundColor: Colors.surfaceWhite,
+          borderTopColor: Colors.border,
           paddingBottom: 4,
           height: 88,
         },
@@ -22,9 +24,9 @@ export default function TabLayout() {
           fontWeight: "600",
         },
         headerStyle: {
-          backgroundColor: "#1E3A5F",
+          backgroundColor: Colors.primary,
         },
-        headerTintColor: "#FFFFFF",
+        headerTintColor: Colors.textOnDark,
         headerTitleStyle: {
           fontWeight: "700",
         },
