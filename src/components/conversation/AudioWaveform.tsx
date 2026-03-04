@@ -1,6 +1,10 @@
 /**
  * Animated waveform equalizer visualization.
  * 7 vertical bars animate independently to simulate audio activity.
+ *
+ * Note: Most styles in this component remain inline because they are
+ * dynamically computed from the `size` prop and animated via Reanimated
+ * shared values. className is used where static layout classes apply.
  */
 
 import { useEffect } from "react";
@@ -20,7 +24,7 @@ interface AudioWaveformProps {
   speaker?: "user" | "ai" | "idle";
   size?: number;
   isConnecting?: boolean;
-  // Legacy prop — accepted but ignored; color is derived from speaker
+  /** @deprecated Color is now derived from speaker prop. This prop is ignored. */
   color?: string;
 }
 
@@ -48,14 +52,7 @@ function Bar({ heightVal, barWidth, maxBarHeight, color }: BarProps) {
   }));
 
   return (
-    <View
-      style={{
-        width: barWidth,
-        height: maxBarHeight,
-        justifyContent: "flex-end",
-        alignItems: "center",
-      }}
-    >
+    <View className="items-center justify-end" style={{ width: barWidth, height: maxBarHeight }}>
       <Reanimated.View
         style={[
           {
@@ -193,14 +190,7 @@ export function AudioWaveform({
     : "rgba(255,255,255,0.03)";
 
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
+    <View className="items-center justify-center" style={{ width: size, height: size }}>
       {/* Outer glow ring */}
       <Reanimated.View
         style={[
@@ -233,9 +223,8 @@ export function AudioWaveform({
 
       {/* Bars cluster */}
       <View
+        className="flex-row items-end"
         style={{
-          flexDirection: "row",
-          alignItems: "flex-end",
           gap: barWidth * 0.6,
           height: maxBarHeight,
         }}

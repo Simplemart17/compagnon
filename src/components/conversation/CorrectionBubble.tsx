@@ -1,11 +1,11 @@
 /**
  * Correction Bubble Component
  *
- * Shows "You said X → A native would say Y" with tap for explanation.
+ * Shows "You said X -> A native would say Y" with tap for explanation.
  * Dark-mode card design with animated entry.
  */
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Reanimated, {
   useSharedValue,
@@ -15,24 +15,23 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import type { Correction } from "@/src/types/conversation";
+import { Colors } from "@/src/lib/design";
 
 interface CorrectionBubbleProps {
   corrections: Correction[];
   compact?: boolean;
-  theme?: "dark" | "light";
 }
 
-const DARK_CATEGORY: Record<string, { bg: string; text: string; label: string }> = {
-  grammar: { bg: "rgba(255,59,48,0.2)", text: "#FF6B6B", label: "Grammar" },
+const CATEGORY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  grammar: { bg: "rgba(255,59,48,0.2)", text: Colors.error, label: "Grammar" },
   pronunciation: { bg: "rgba(90,164,207,0.2)", text: "#7DBFE8", label: "Pronunciation" },
-  vocabulary: { bg: "rgba(245,166,35,0.2)", text: "#F5A623", label: "Vocabulary" },
-  register: { bg: "rgba(52,199,89,0.2)", text: "#5DD67A", label: "Register" },
+  vocabulary: { bg: "rgba(245,166,35,0.2)", text: Colors.accent, label: "Vocabulary" },
+  register: { bg: "rgba(52,199,89,0.2)", text: Colors.success, label: "Register" },
 };
 
-export function CorrectionBubble({
+export const CorrectionBubble = React.memo(function CorrectionBubble({
   corrections,
   compact = false,
-  theme: _theme = "dark",
 }: CorrectionBubbleProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
@@ -59,41 +58,27 @@ export function CorrectionBubble({
   // compact mode shows at most 2 corrections
   const visibleCorrections = compact ? corrections.slice(0, 2) : corrections;
 
-  const categoryStyles = DARK_CATEGORY;
+  const categoryStyles = CATEGORY_STYLES;
 
   return (
     <Reanimated.View style={animStyle}>
       <View
+        className="rounded-[20px] border p-3.5"
         style={{
           backgroundColor: "rgba(255,255,255,0.09)",
-          borderRadius: 20,
-          borderWidth: 1,
           borderColor: "rgba(245,166,35,0.3)",
-          padding: 14,
         }}
       >
         {/* Top accent marker */}
         <View
-          style={{
-            width: 40,
-            height: 3,
-            borderRadius: 1.5,
-            backgroundColor: "rgba(245,166,35,0.7)",
-            alignSelf: "center",
-            marginBottom: 10,
-          }}
+          className="mb-2.5 h-[3px] w-10 self-center rounded-sm"
+          style={{ backgroundColor: "rgba(245,166,35,0.7)" }}
         />
 
         {/* Section label */}
         <Text
-          style={{
-            fontSize: 10,
-            fontWeight: "700",
-            color: "rgba(245,166,35,0.75)",
-            textTransform: "uppercase",
-            letterSpacing: 0.8,
-            marginBottom: 8,
-          }}
+          className="mb-2 text-[10px] font-bold uppercase tracking-wider"
+          style={{ color: "rgba(245,166,35,0.75)" }}
         >
           Compagnon noticed
         </Text>
@@ -112,93 +97,37 @@ export function CorrectionBubble({
               }}
             >
               {/* Category badge */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 5,
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: catStyle.bg,
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                    borderRadius: 4,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 9,
-                      fontWeight: "600",
-                      color: catStyle.text,
-                    }}
-                  >
+              <View className="mb-1.5 flex-row items-center">
+                <View className="rounded px-1.5 py-0.5" style={{ backgroundColor: catStyle.bg }}>
+                  <Text className="text-[9px] font-semibold" style={{ color: catStyle.text }}>
                     {catStyle.label}
                   </Text>
                 </View>
               </View>
 
-              {/* Original → Corrected */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontStyle: "italic",
-                    color: "rgba(255,107,107,0.85)",
-                  }}
-                >
+              {/* Original -> Corrected */}
+              <View className="flex-row flex-wrap items-center">
+                <Text className="text-sm italic" style={{ color: "rgba(255,107,107,0.85)" }}>
                   {correction.original}
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: "rgba(255,255,255,0.3)",
-                    marginHorizontal: 8,
-                  }}
-                >
+                <Text className="mx-2 text-[13px]" style={{ color: "rgba(255,255,255,0.3)" }}>
                   {"\u2192"}
                 </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "700",
-                    color: "#34C759",
-                  }}
-                >
-                  {correction.corrected}
-                </Text>
+                <Text className="text-sm font-bold text-success">{correction.corrected}</Text>
               </View>
 
               {/* Explanation (expandable) */}
               {isExpanded && (
                 <Text
-                  style={{
-                    fontSize: 12,
-                    color: "rgba(255,255,255,0.55)",
-                    marginTop: 5,
-                    lineHeight: 18,
-                    fontStyle: "italic",
-                  }}
+                  className="mt-1.5 text-xs italic leading-[18px]"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
                 >
                   {correction.explanation}
                 </Text>
               )}
 
               {!isExpanded && (
-                <Text
-                  style={{
-                    fontSize: 10,
-                    color: "rgba(255,255,255,0.25)",
-                    marginTop: 3,
-                  }}
-                >
+                <Text className="mt-1 text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>
                   Tap for explanation
                 </Text>
               )}
@@ -208,4 +137,4 @@ export function CorrectionBubble({
       </View>
     </Reanimated.View>
   );
-}
+});

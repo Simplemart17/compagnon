@@ -1,13 +1,14 @@
 /**
  * Conversation Transcript View
  *
- * Displays the scrollable transcript of the voice conversation.
+ * Displays the virtualized, scrollable transcript of the voice conversation.
  * Shows user messages, AI responses, and inline corrections.
  * Each new message entry animates in from its side.
+ * Uses FlatList for virtualization to keep long conversations performant.
  */
 
-import { useRef, useEffect, useState } from "react";
-import { View, Text, ScrollView } from "react-native";
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { View, Text, FlatList } from "react-native";
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,6 +17,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import type { TranscriptEntry } from "@/src/hooks/use-realtime-voice";
+import { Colors } from "@/src/lib/design";
 
 import { CorrectionBubble } from "./CorrectionBubble";
 
@@ -39,7 +41,10 @@ function getDisplayText(text: string): string {
   return text;
 }
 
-function AnimatedMessage({ entry, shouldAnimate }: AnimatedMessageProps) {
+const AnimatedMessage = React.memo(function AnimatedMessage({
+  entry,
+  shouldAnimate,
+}: AnimatedMessageProps) {
   const isUser = entry.role === "user";
 
   const opacity = useSharedValue(shouldAnimate ? 0 : 1);
@@ -62,11 +67,9 @@ function AnimatedMessage({ entry, shouldAnimate }: AnimatedMessageProps) {
     <Reanimated.View style={[{ alignSelf: isUser ? "flex-end" : "flex-start" }, animStyle]}>
       {/* Role label */}
       <Text
+        className="mb-0.5 text-[10px] font-bold"
         style={{
-          fontSize: 10,
-          fontWeight: "700",
           color: isUser ? "rgba(245,166,35,0.6)" : "rgba(255,255,255,0.4)",
-          marginBottom: 3,
           textAlign: isUser ? "right" : "left",
         }}
       >
@@ -75,22 +78,18 @@ function AnimatedMessage({ entry, shouldAnimate }: AnimatedMessageProps) {
 
       {/* Bubble */}
       <View
+        className="rounded-[20px] border px-3.5 py-[11px]"
         style={{
           maxWidth: isUser ? 280 : 295,
-          backgroundColor: isUser ? "rgba(245,166,35,0.22)" : "rgba(255,255,255,0.1)",
-          borderRadius: 20,
+          backgroundColor: isUser ? Colors.bubbleUser : Colors.bubbleAi,
           borderTopRightRadius: isUser ? 6 : 20,
           borderTopLeftRadius: isUser ? 20 : 6,
-          borderWidth: 1,
-          borderColor: isUser ? "rgba(245,166,35,0.35)" : "rgba(255,255,255,0.12)",
-          paddingHorizontal: 14,
-          paddingVertical: 11,
+          borderColor: isUser ? Colors.bubbleUserBorder : Colors.bubbleAiBorder,
         }}
       >
         <Text
+          className="text-[15px] leading-[22px]"
           style={{
-            fontSize: 15,
-            lineHeight: 22,
             color: isUser ? "#FFFFFF" : "rgba(255,255,255,0.92)",
             fontStyle: isUser ? "italic" : "normal",
           }}
@@ -101,13 +100,13 @@ function AnimatedMessage({ entry, shouldAnimate }: AnimatedMessageProps) {
 
       {/* Corrections below AI messages */}
       {entry.role === "assistant" && entry.corrections && entry.corrections.length > 0 && (
-        <View style={{ marginTop: 6 }}>
-          <CorrectionBubble corrections={entry.corrections} compact theme="dark" />
+        <View className="mt-1.5">
+          <CorrectionBubble corrections={entry.corrections} compact />
         </View>
       )}
     </Reanimated.View>
   );
-}
+});
 
 function TypingIndicator() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -120,38 +119,23 @@ function TypingIndicator() {
   }, []);
 
   return (
-    <View style={{ alignSelf: "flex-start" }}>
-      <Text
-        style={{
-          fontSize: 10,
-          fontWeight: "700",
-          color: "rgba(255,255,255,0.4)",
-          marginBottom: 3,
-        }}
-      >
+    <View className="self-start">
+      <Text className="mb-0.5 text-[10px] font-bold" style={{ color: "rgba(255,255,255,0.4)" }}>
         Compagnon
       </Text>
       <View
+        className="flex-row items-center gap-1.5 rounded-[20px] border px-4 py-3.5"
         style={{
           backgroundColor: "rgba(255,255,255,0.1)",
-          borderRadius: 20,
           borderTopLeftRadius: 6,
-          borderWidth: 1,
           borderColor: "rgba(255,255,255,0.12)",
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          flexDirection: "row",
-          gap: 6,
-          alignItems: "center",
         }}
       >
         {[0, 1, 2].map((i) => (
           <View
             key={i}
+            className="h-2 w-2 rounded-full"
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
               backgroundColor: "rgba(255,255,255,0.7)",
               opacity: activeIndex === i ? 1 : 0.25,
             }}
@@ -174,30 +158,20 @@ function PendingAiBubble({ text }: { text: string }) {
 
   return (
     <View style={{ alignSelf: "flex-start", maxWidth: "82%" }}>
-      <Text
-        style={{
-          fontSize: 10,
-          fontWeight: "700",
-          color: "rgba(255,255,255,0.4)",
-          marginBottom: 3,
-        }}
-      >
+      <Text className="mb-0.5 text-[10px] font-bold" style={{ color: "rgba(255,255,255,0.4)" }}>
         Compagnon
       </Text>
       <View
+        className="rounded-[20px] border px-3.5 py-[11px]"
         style={{
           backgroundColor: "rgba(255,255,255,0.1)",
-          borderRadius: 20,
           borderTopLeftRadius: 6,
-          borderWidth: 1,
           borderColor: "rgba(255,255,255,0.12)",
-          paddingHorizontal: 14,
-          paddingVertical: 11,
         }}
       >
-        <Text style={{ fontSize: 15, color: "rgba(255,255,255,0.92)", lineHeight: 22 }}>
+        <Text className="text-[15px] leading-[22px]" style={{ color: "rgba(255,255,255,0.92)" }}>
           {text}
-          <Text style={{ color: cursorVisible ? "#F5A623" : "transparent" }}>|</Text>
+          <Text style={{ color: cursorVisible ? Colors.accent : "transparent" }}>|</Text>
         </Text>
       </View>
     </View>
@@ -205,7 +179,7 @@ function PendingAiBubble({ text }: { text: string }) {
 }
 
 export function TranscriptView({ transcript, pendingAiText, isAiSpeaking }: TranscriptViewProps) {
-  const scrollRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList<TranscriptEntry>>(null);
   const prevLengthRef = useRef(transcript.length);
 
   // Track which entries are "new" (should animate in)
@@ -218,31 +192,47 @@ export function TranscriptView({ transcript, pendingAiText, isAiSpeaking }: Tran
     prevLengthRef.current = transcript.length;
   }, [transcript.length]);
 
-  // Auto-scroll to bottom on new entries
+  // Auto-scroll to bottom on new entries or pending AI text changes
   useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
+    if (transcript.length > 0) {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }
   }, [transcript.length, pendingAiText]);
 
+  const keyExtractor = useCallback((item: TranscriptEntry) => item.id, []);
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: TranscriptEntry; index: number }) => (
+      <AnimatedMessage entry={item} shouldAnimate={index >= animateFromIndex.current} />
+    ),
+    []
+  );
+
+  /** Footer renders streaming AI text and typing indicator below the list */
+  const renderFooter = useCallback(() => {
+    const showPending = pendingAiText.length > 0;
+    const showTyping = isAiSpeaking && pendingAiText.length === 0;
+
+    if (!showPending && !showTyping) return null;
+
+    return (
+      <View className="mt-3">
+        {showPending && <PendingAiBubble text={pendingAiText} />}
+        {showTyping && <TypingIndicator />}
+      </View>
+    );
+  }, [pendingAiText, isAiSpeaking]);
+
   return (
-    <ScrollView
-      ref={scrollRef}
-      style={{ flex: 1 }}
+    <FlatList
+      ref={flatListRef}
+      data={transcript}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      ListFooterComponent={renderFooter}
+      className="flex-1"
       contentContainerStyle={{ padding: 16, gap: 12 }}
       showsVerticalScrollIndicator={false}
-    >
-      {transcript.map((entry, index) => (
-        <AnimatedMessage
-          key={entry.id}
-          entry={entry}
-          shouldAnimate={index >= animateFromIndex.current}
-        />
-      ))}
-
-      {/* Streaming AI text with blinking cursor */}
-      {pendingAiText.length > 0 && <PendingAiBubble text={pendingAiText} />}
-
-      {/* Typing dots when AI is speaking but no text yet */}
-      {isAiSpeaking && pendingAiText.length === 0 && <TypingIndicator />}
-    </ScrollView>
+    />
   );
 }

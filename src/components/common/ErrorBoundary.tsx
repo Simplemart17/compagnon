@@ -37,48 +37,19 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "#F5F5F0",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 32,
-          }}
-        >
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>{"\u26A0\uFE0F"}</Text>
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "700",
-              color: "#1E3A5F",
-              marginBottom: 8,
-              textAlign: "center",
-            }}
-          >
+        <View className="flex-1 items-center justify-center bg-surface p-8">
+          <Text className="mb-4 text-5xl">{"\u26A0\uFE0F"}</Text>
+          <Text className="mb-2 text-center text-xl font-bold text-primary">
             Something went wrong
           </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#666",
-              textAlign: "center",
-              marginBottom: 24,
-              lineHeight: 20,
-            }}
-          >
+          <Text className="mb-6 text-center text-sm leading-5 text-[#666]">
             {this.state.error?.message ?? "An unexpected error occurred."}
           </Text>
           <TouchableOpacity
             onPress={this.handleRetry}
-            style={{
-              backgroundColor: "#1E3A5F",
-              borderRadius: 12,
-              paddingHorizontal: 32,
-              paddingVertical: 14,
-            }}
+            className="rounded-xl bg-primary px-8 py-3.5"
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}>Try Again</Text>
+            <Text className="text-base font-semibold text-white">Try Again</Text>
           </TouchableOpacity>
         </View>
       );
