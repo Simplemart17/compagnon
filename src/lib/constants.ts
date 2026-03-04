@@ -1,12 +1,6 @@
 import type { CEFRLevel, TCFSkill } from "@/src/types/cefr";
 import type { ConversationTopic } from "@/src/types/conversation";
 
-/** Default daily practice goal in minutes */
-export const DEFAULT_DAILY_GOAL = 15;
-
-/** Number of correct uses to mark an error pattern as resolved */
-export const ERROR_RESOLVED_THRESHOLD = 5;
-
 /** Number of occurrences before generating a micro-drill */
 export const MICRO_DRILL_THRESHOLD = 3;
 

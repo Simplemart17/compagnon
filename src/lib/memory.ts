@@ -4,13 +4,6 @@ import { chatCompletionJSON, generateEmbedding } from "./openai";
 /** Memory types stored in companion_memory table */
 export type MemoryType = "personal_fact" | "preference" | "topic_discussed" | "milestone";
 
-interface MemoryRecord {
-  id: string;
-  content: string;
-  memory_type: MemoryType;
-  created_at: string;
-}
-
 interface ExtractedFact {
   content: string;
   type: MemoryType;
@@ -137,42 +130,4 @@ async function fetchRecentMemories(userId: string, limit: number): Promise<strin
     .limit(limit);
 
   return data?.map((m) => m.content) ?? [];
-}
-
-/**
- * Delete a specific memory (e.g., if the user asks to forget something).
- */
-export async function deleteMemory(memoryId: string): Promise<void> {
-  const { error } = await supabase.from("companion_memory").delete().eq("id", memoryId);
-
-  if (error) {
-    throw new Error(`Failed to delete memory: ${error.message}`);
-  }
-}
-
-/**
- * Get all memories for a user, grouped by type.
- */
-export async function getAllMemories(userId: string): Promise<Record<MemoryType, MemoryRecord[]>> {
-  const { data } = await supabase
-    .from("companion_memory")
-    .select("id, content, memory_type, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
-
-  const grouped: Record<MemoryType, MemoryRecord[]> = {
-    personal_fact: [],
-    preference: [],
-    topic_discussed: [],
-    milestone: [],
-  };
-
-  for (const item of data ?? []) {
-    const type = item.memory_type as MemoryType;
-    if (grouped[type]) {
-      grouped[type].push(item as MemoryRecord);
-    }
-  }
-
-  return grouped;
 }

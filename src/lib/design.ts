@@ -7,6 +7,8 @@
 
 import { TextStyle, ViewStyle } from "react-native";
 
+import type { TCFSkill } from "@/src/types/cefr";
+
 // ---------------------------------------------------------------------------
 // Colors
 // ---------------------------------------------------------------------------
@@ -87,6 +89,15 @@ export const Colors = {
   bubbleAi: "rgba(255,255,255,0.1)",
   bubbleAiBorder: "rgba(255,255,255,0.12)",
 } as const;
+
+/** TCF skill → accent color mapping */
+export const SKILL_COLORS: Record<TCFSkill, string> = {
+  listening: Colors.skillListening,
+  reading: Colors.skillReading,
+  speaking: Colors.skillPronunciation,
+  writing: Colors.skillWriting,
+  grammar: Colors.skillGrammar,
+};
 
 /** Generate a tinted background from a skill color */
 export function skillTint(color: string, opacity: number = 0.1): string {
