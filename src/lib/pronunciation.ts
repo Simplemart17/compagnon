@@ -98,7 +98,7 @@ function parsePronunciationResult(azureResult: AzurePronunciationResult): Pronun
   const words: WordScore[] = (nBest.Words ?? []).map((w: AzureWord) => ({
     word: w.Word,
     accuracyScore: w.PronunciationAssessment?.AccuracyScore ?? 0,
-    errorType: w.PronunciationAssessment?.ErrorType ?? "None",
+    errorType: (w.PronunciationAssessment?.ErrorType ?? "None") as WordScore["errorType"],
     phonemes: (w.Phonemes ?? []).map((p: AzurePhoneme) => ({
       phoneme: p.Phoneme,
       accuracyScore: p.PronunciationAssessment?.AccuracyScore ?? 0,
@@ -119,7 +119,7 @@ function parsePronunciationResult(azureResult: AzurePronunciationResult): Pronun
     accuracyScore: assessment.AccuracyScore ?? 0,
     fluencyScore: assessment.FluencyScore ?? 0,
     completenessScore: assessment.CompletenessScore ?? 0,
-    prosodyScore: assessment.PronScore ?? 0,
+    prosodyScore: assessment.ProsodyScore ?? assessment.PronScore ?? 0,
     overallScore: assessment.PronScore ?? 0,
     words,
     weakPhonemes,
