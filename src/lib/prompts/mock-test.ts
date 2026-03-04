@@ -6,7 +6,7 @@ export function buildMockTestPrompt(params: {
   targetLevel: CEFRLevel;
   questionCount?: number;
 }): string {
-  const { section, targetLevel, questionCount } = params;
+  const { section, questionCount } = params;
 
   const sectionConfig = SECTION_CONFIGS[section];
   const count = questionCount ?? sectionConfig.defaultQuestions;
@@ -14,22 +14,24 @@ export function buildMockTestPrompt(params: {
   return `You are a professional TCF (Test de Connaissance du Français) test designer. Generate a realistic mock test section.
 
 ## Test Section: ${sectionConfig.name}
-- Target assessment range: A1 to ${targetLevel} (progressive difficulty)
+- Assessment range: A1 to C2 (full TCF spectrum, progressive difficulty)
 - Number of questions: ${count}
 
 ## TCF Question Distribution
-The TCF uses progressive difficulty. Questions get harder throughout the test:
-- Questions 1-${Math.floor(count * 0.25)}: A1-A2 level (basic comprehension)
-- Questions ${Math.floor(count * 0.25) + 1}-${Math.floor(count * 0.5)}: A2-B1 level (intermediate)
-- Questions ${Math.floor(count * 0.5) + 1}-${Math.floor(count * 0.75)}: B1-B2 level (upper intermediate)
-- Questions ${Math.floor(count * 0.75) + 1}-${count}: B2-${targetLevel} level (advanced)
+The TCF uses progressive difficulty. Questions MUST span the entire A1-to-C2 range:
+- Questions 1-${Math.floor(count * 0.2)}: A1-A2 level (basic comprehension)
+- Questions ${Math.floor(count * 0.2) + 1}-${Math.floor(count * 0.45)}: A2-B1 level (intermediate)
+- Questions ${Math.floor(count * 0.45) + 1}-${Math.floor(count * 0.7)}: B1-B2 level (upper intermediate)
+- Questions ${Math.floor(count * 0.7) + 1}-${Math.floor(count * 0.85)}: B2-C1 level (advanced)
+- Questions ${Math.floor(count * 0.85) + 1}-${count}: C1-C2 level (mastery)
 
 ${sectionConfig.instructions}
 
 ## Scoring Calibration
 Each correct answer = 1 point. The total raw score maps to TCF 0-699 scale:
-- 0-25%: Below A1 (0-99)
-- 26-50%: A1-A2 (100-299)
+- 0-20%: Below A1 (0-99)
+- 21-35%: A1 (100-199)
+- 36-50%: A2 (200-299)
 - 51-65%: B1 (300-399)
 - 66-80%: B2 (400-499)
 - 81-90%: C1 (500-599)
@@ -64,35 +66,35 @@ Each correct answer = 1 point. The total raw score maps to TCF 0-699 scale:
 const SECTION_CONFIGS = {
   listening: {
     name: "Compréhension Orale",
-    defaultQuestions: 39,
-    timeLimitMinutes: 35,
+    defaultQuestions: 29,
+    timeLimitMinutes: 25,
     instructions: `## Listening Section Design
-- Generate 8-10 audio passages of increasing difficulty
+- Generate 6-8 audio passages of increasing difficulty
 - Each passage has 3-5 associated questions
 - Passage types: short dialogues, announcements, interviews, radio segments, lectures
 - Early passages: slow, clear, short (A1-A2)
-- Later passages: native speed, complex, longer (B2-C1)
+- Later passages: native speed, complex, longer (B2-C2)
 - Questions test: main idea, specific details, speaker intent, inference`,
   },
   reading: {
     name: "Compréhension Écrite",
-    defaultQuestions: 39,
-    timeLimitMinutes: 60,
+    defaultQuestions: 29,
+    timeLimitMinutes: 45,
     instructions: `## Reading Section Design
-- Generate 8-10 reading passages of increasing difficulty
+- Generate 6-8 reading passages of increasing difficulty
 - Each passage has 3-5 associated questions
 - Passage types: signs, menus, emails, articles, academic texts, literary excerpts
 - Early passages: short, simple vocabulary (A1-A2)
-- Later passages: long, complex, specialized vocabulary (B2-C1)
+- Later passages: long, complex, specialized vocabulary (B2-C2)
 - Questions test: literal comprehension, inference, vocabulary in context, author's purpose`,
   },
   grammar: {
     name: "Maîtrise des Structures de la Langue",
-    defaultQuestions: 39,
-    timeLimitMinutes: 30,
+    defaultQuestions: 18,
+    timeLimitMinutes: 15,
     instructions: `## Grammar Section Design
 - Standalone MCQ questions (no passages needed)
-- Progressive difficulty from A1 to C1
+- Progressive difficulty from A1 to C2
 - Mix of question types:
   * Fill in the blank with correct verb form
   * Choose the correct preposition/article/pronoun

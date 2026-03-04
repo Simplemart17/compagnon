@@ -56,17 +56,48 @@ Response format: {"facts": [{"content": "...", "type": "..."}]}`,
 
   if (!facts.facts || facts.facts.length === 0) return;
 
-  // Generate embeddings and store each fact
-  for (const fact of facts.facts) {
-    const embedding = await generateEmbedding(fact.content);
+  // Generate embeddings in parallel using Promise.allSettled
+  const embeddingResults = await Promise.allSettled(
+    facts.facts.map((fact) => generateEmbedding(fact.content))
+  );
 
-    await supabase.from("companion_memory").insert({
+  // Collect successfully embedded memories into a batch for a single insert
+  const memoryRows: {
+    user_id: string;
+    content: string;
+    embedding: string;
+    memory_type: MemoryType;
+    source_conversation_id: string;
+  }[] = [];
+
+  for (let i = 0; i < facts.facts.length; i++) {
+    const embeddingResult = embeddingResults[i];
+    if (embeddingResult.status === "rejected") {
+      console.error(
+        `Failed to generate embedding for fact "${facts.facts[i].content}":`,
+        embeddingResult.reason instanceof Error
+          ? embeddingResult.reason.message
+          : String(embeddingResult.reason)
+      );
+      continue;
+    }
+
+    memoryRows.push({
       user_id: userId,
-      content: fact.content,
-      embedding: JSON.stringify(embedding),
-      memory_type: fact.type,
+      content: facts.facts[i].content,
+      embedding: JSON.stringify(embeddingResult.value),
+      memory_type: facts.facts[i].type,
       source_conversation_id: conversationId,
     });
+  }
+
+  if (memoryRows.length === 0) return;
+
+  // Batch insert all memories in a single Supabase call
+  const { error } = await supabase.from("companion_memory").insert(memoryRows);
+
+  if (error) {
+    console.error(`Failed to batch-insert memories: ${error.message}`);
   }
 }
 
@@ -112,7 +143,11 @@ async function fetchRecentMemories(userId: string, limit: number): Promise<strin
  * Delete a specific memory (e.g., if the user asks to forget something).
  */
 export async function deleteMemory(memoryId: string): Promise<void> {
-  await supabase.from("companion_memory").delete().eq("id", memoryId);
+  const { error } = await supabase.from("companion_memory").delete().eq("id", memoryId);
+
+  if (error) {
+    throw new Error(`Failed to delete memory: ${error.message}`);
+  }
 }
 
 /**

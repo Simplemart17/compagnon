@@ -32,7 +32,7 @@ ${taskExpectations}
 - Expected connectors by level:
   A1-A2: et, mais, parce que, alors, aussi
   B1-B2: cependant, en effet, par conséquent, d'une part...d'autre part, en revanche
-  C1-C2: néanmoins, toutefois, force est de constater, il n'en demeure pas moins, en l'occurrence, quoiqu'il en soit
+  C1-C2: néanmoins, toutefois, force est de constater, il n'en demeure pas moins, en l'occurrence, quoi qu'il en soit
 - Logical flow between sentences and paragraphs
 - Clear introduction, development, and conclusion structure
 - Paragraph organization
