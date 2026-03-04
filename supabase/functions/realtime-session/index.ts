@@ -10,6 +10,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { errorResponse } from "../_shared/errors.ts";
 
+const ALLOWED_REALTIME_MODELS = ["gpt-4o-realtime-preview", "gpt-4o-mini-realtime-preview"];
+
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -58,7 +60,10 @@ Deno.serve(async (req: Request) => {
 
     // Request ephemeral token from OpenAI
     const body = await req.json();
-    const model = body.model ?? "gpt-4o-realtime-preview";
+    // Validate model against allowlist — default to gpt-4o-realtime-preview if not allowed
+    const model = ALLOWED_REALTIME_MODELS.includes(body.model)
+      ? body.model
+      : "gpt-4o-realtime-preview";
     const voice = body.voice ?? "nova";
 
     const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
