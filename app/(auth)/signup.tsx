@@ -22,6 +22,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import { useAuth } from "@/src/hooks/use-auth";
+import { Colors } from "@/src/lib/design";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.32;
@@ -81,16 +82,21 @@ export default function SignUpScreen() {
     }
 
     setLoading(true);
-    const { error } = await signUpWithEmail(email.trim(), password, fullName.trim());
-    setLoading(false);
-
-    if (error) {
-      Alert.alert("Sign Up Failed", error.message);
-    } else {
-      Alert.alert(
-        "Check Your Email",
-        "We sent you a confirmation link. Please verify your email to continue."
-      );
+    try {
+      const { error } = await signUpWithEmail(email.trim(), password, fullName.trim());
+      if (error) {
+        Alert.alert("Sign Up Failed", error.message);
+      } else {
+        Alert.alert(
+          "Check Your Email",
+          "We sent you a confirmation link. Please verify your email to continue."
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred.";
+      Alert.alert("Sign Up Failed", message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -105,76 +111,34 @@ export default function SignUpScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0D2240" }} edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-[#0D2240]" edges={["top"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        className="flex-1"
       >
         {/* Hero Section */}
         <View
+          className="bg-[#0D2240] items-center justify-center"
           style={{
             height: HERO_HEIGHT,
-            backgroundColor: "#0D2240",
-            alignItems: "center",
-            justifyContent: "center",
             paddingTop: insets.top > 0 ? 0 : 16,
           }}
         >
           {/* Decorative top dots */}
-          <View
-            style={{
-              flexDirection: "row",
-              gap: 6,
-              marginBottom: 20,
-              opacity: 0.3,
-            }}
-          >
+          <View className="flex-row gap-[6px] mb-5 opacity-30">
             {[0, 1, 2, 3, 4].map((i) => (
-              <View
-                key={i}
-                style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: "#F5A623",
-                }}
-              />
+              <View key={i} className="w-1 h-1 rounded-full bg-accent" />
             ))}
           </View>
 
-          <Text
-            style={{
-              fontSize: 42,
-              fontWeight: "800",
-              color: "#FFFFFF",
-              letterSpacing: -0.5,
-              marginBottom: 10,
-            }}
-          >
+          <Text className="text-[42px] font-extrabold text-white tracking-tight mb-[10px]">
             Compagnon
           </Text>
 
           {/* Amber accent line */}
-          <View
-            style={{
-              width: 48,
-              height: 4,
-              backgroundColor: "#F5A623",
-              borderRadius: 2,
-              marginBottom: 14,
-            }}
-          />
+          <View className="w-12 h-1 bg-accent rounded-full mb-[14px]" />
 
-          <Text
-            style={{
-              fontSize: 14,
-              color: "rgba(255,255,255,0.6)",
-              fontStyle: "italic",
-              letterSpacing: 0.3,
-            }}
-          >
-            Commencez votre voyage
-          </Text>
+          <Text className="text-sm text-white/60 italic tracking-wide">Commencez votre voyage</Text>
         </View>
 
         {/* White Card */}
@@ -196,7 +160,7 @@ export default function SignUpScreen() {
         >
           <ScrollView
             contentContainerStyle={{
-              paddingHorizontal: 28,
+              paddingHorizontal: 24,
               paddingTop: 32,
               paddingBottom: insets.bottom + 24,
             }}
@@ -204,137 +168,83 @@ export default function SignUpScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Card Title */}
-            <Text
-              style={{
-                fontSize: 26,
-                fontWeight: "800",
-                color: "#1E3A5F",
-                marginBottom: 24,
-              }}
-            >
-              Créer un compte
-            </Text>
+            <Text className="text-[26px] font-extrabold text-primary mb-6">Créer un compte</Text>
 
             {/* Full Name Input */}
-            <View style={{ marginBottom: 14 }}>
+            <View className="mb-[14px]">
               <View
+                className="flex-row items-center bg-white rounded-[14px] py-4 px-4"
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: "#FFFFFF",
-                  borderRadius: 14,
                   borderWidth: 1.5,
-                  borderColor: nameFocused ? "#F5A623" : "#E8E8E0",
-                  paddingVertical: 16,
-                  paddingHorizontal: 16,
+                  borderColor: nameFocused ? Colors.accent : Colors.gray200,
                 }}
               >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    marginRight: 10,
-                    opacity: nameFocused ? 1 : 0.4,
-                  }}
-                >
+                <Text className="text-base mr-[10px]" style={{ opacity: nameFocused ? 1 : 0.4 }}>
                   👤
                 </Text>
                 <TextInput
                   placeholder="Nom complet"
-                  placeholderTextColor="#AAAAAA"
+                  placeholderTextColor={Colors.textTertiary}
                   value={fullName}
                   onChangeText={setFullName}
                   autoCapitalize="words"
                   onFocus={() => setNameFocused(true)}
                   onBlur={() => setNameFocused(false)}
-                  style={{
-                    flex: 1,
-                    fontSize: 15,
-                    color: "#1E3A5F",
-                    padding: 0,
-                  }}
+                  className="flex-1 text-[15px] text-primary p-0"
                 />
               </View>
             </View>
 
             {/* Email Input */}
-            <View style={{ marginBottom: 14 }}>
+            <View className="mb-[14px]">
               <View
+                className="flex-row items-center bg-white rounded-[14px] py-4 px-4"
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: "#FFFFFF",
-                  borderRadius: 14,
                   borderWidth: 1.5,
-                  borderColor: emailFocused ? "#F5A623" : "#E8E8E0",
-                  paddingVertical: 16,
-                  paddingHorizontal: 16,
+                  borderColor: emailFocused ? Colors.accent : Colors.gray200,
                 }}
               >
-                <Text
-                  style={{
-                    fontSize: 16,
-                    marginRight: 10,
-                    opacity: emailFocused ? 1 : 0.4,
-                  }}
-                >
+                <Text className="text-base mr-[10px]" style={{ opacity: emailFocused ? 1 : 0.4 }}>
                   ✉️
                 </Text>
                 <TextInput
                   placeholder="Adresse e-mail"
-                  placeholderTextColor="#AAAAAA"
+                  placeholderTextColor={Colors.textTertiary}
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   onFocus={() => setEmailFocused(true)}
                   onBlur={() => setEmailFocused(false)}
-                  style={{
-                    flex: 1,
-                    fontSize: 15,
-                    color: "#1E3A5F",
-                    padding: 0,
-                  }}
+                  className="flex-1 text-[15px] text-primary p-0"
                 />
               </View>
             </View>
 
             {/* Password Input */}
-            <View style={{ marginBottom: 26 }}>
+            <View className="mb-[26px]">
               <View
+                className="flex-row items-center bg-white rounded-[14px] py-4 px-4"
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: "#FFFFFF",
-                  borderRadius: 14,
                   borderWidth: 1.5,
-                  borderColor: passwordFocused ? "#F5A623" : "#E8E8E0",
-                  paddingVertical: 16,
-                  paddingHorizontal: 16,
+                  borderColor: passwordFocused ? Colors.accent : Colors.gray200,
                 }}
               >
                 <Text
-                  style={{
-                    fontSize: 16,
-                    marginRight: 10,
-                    opacity: passwordFocused ? 1 : 0.4,
-                  }}
+                  className="text-base mr-[10px]"
+                  style={{ opacity: passwordFocused ? 1 : 0.4 }}
                 >
                   🔒
                 </Text>
                 <TextInput
                   placeholder="Mot de passe (min. 6 caractères)"
-                  placeholderTextColor="#AAAAAA"
+                  placeholderTextColor={Colors.textTertiary}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
-                  style={{
-                    flex: 1,
-                    fontSize: 15,
-                    color: "#1E3A5F",
-                    padding: 0,
-                  }}
+                  className="flex-1 text-[15px] text-primary p-0"
                 />
               </View>
             </View>
@@ -346,25 +256,13 @@ export default function SignUpScreen() {
                 onPressIn={handleButtonPressIn}
                 onPressOut={handleButtonPressOut}
                 disabled={loading}
-                style={{
-                  backgroundColor: "#1E3A5F",
-                  borderRadius: 16,
-                  paddingVertical: 17,
-                  alignItems: "center",
-                  opacity: loading ? 0.7 : 1,
-                }}
+                className="bg-primary rounded-xl py-[17px] items-center"
+                style={{ opacity: loading ? 0.7 : 1 }}
               >
                 {loading ? (
-                  <ActivityIndicator color="#F5A623" />
+                  <ActivityIndicator color={Colors.accent} />
                 ) : (
-                  <Text
-                    style={{
-                      color: "#F5A623",
-                      fontSize: 16,
-                      fontWeight: "700",
-                      letterSpacing: 0.3,
-                    }}
-                  >
+                  <Text className="text-accent text-base font-bold tracking-wide">
                     Créer mon compte
                   </Text>
                 )}
@@ -372,26 +270,17 @@ export default function SignUpScreen() {
             </Reanimated.View>
 
             {/* Legal Notice */}
-            <Text
-              style={{
-                fontSize: 11,
-                color: "#999999",
-                textAlign: "center",
-                marginTop: 18,
-                lineHeight: 17,
-                paddingHorizontal: 8,
-              }}
-            >
+            <Text className="text-[11px] text-[#94A3B8] text-center mt-[18px] leading-[17px] px-2">
               En créant un compte, vous acceptez nos{" "}
               <Text
-                style={{ color: "#1E3A5F", fontWeight: "600" }}
+                className="text-primary font-semibold"
                 onPress={() => router.push("/(auth)/terms")}
               >
                 Conditions d&apos;utilisation
               </Text>{" "}
               et notre{" "}
               <Text
-                style={{ color: "#1E3A5F", fontWeight: "600" }}
+                className="text-primary font-semibold"
                 onPress={() => router.push("/(auth)/privacy-policy")}
               >
                 Politique de confidentialité
@@ -400,27 +289,14 @@ export default function SignUpScreen() {
             </Text>
 
             {/* Sign In Row */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                alignItems: "center",
-                marginTop: 20,
-                gap: 4,
-              }}
-            >
-              <Text style={{ color: "#666666", fontSize: 14 }}>Déjà un compte ? </Text>
+            <View className="flex-row justify-center items-center mt-5 gap-1">
+              <Text className="text-[#6B7C93] text-sm">Déjà un compte ? </Text>
               <Link href="/(auth)/login" asChild>
-                <TouchableOpacity>
-                  <Text
-                    style={{
-                      color: "#F5A623",
-                      fontSize: 14,
-                      fontWeight: "700",
-                    }}
-                  >
-                    Se connecter
-                  </Text>
+                <TouchableOpacity
+                  accessibilityRole="link"
+                  accessibilityLabel="Already have an account? Sign in"
+                >
+                  <Text className="text-accent text-sm font-bold">Se connecter</Text>
                 </TouchableOpacity>
               </Link>
             </View>

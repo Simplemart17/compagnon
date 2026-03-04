@@ -56,20 +56,16 @@ export default function AuthPrivacyPolicyScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F5F0" }}>
+    <SafeAreaView className="flex-1 bg-surface">
       {/* Header with back button */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: "#E0E0CE",
-        }}
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={{ fontSize: 16, color: "#1E3A5F", fontWeight: "600" }}>{"\u2190"} Back</Text>
+      <View className="flex-row items-center px-4 py-3 border-b border-surface-300">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          className="min-h-[44px] min-w-[44px] justify-center"
+        >
+          <Text className="text-base text-primary font-semibold">{"\u2190"} Back</Text>
         </TouchableOpacity>
       </View>
 
@@ -77,41 +73,13 @@ export default function AuthPrivacyPolicyScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "800",
-            color: "#1E3A5F",
-            marginBottom: 4,
-          }}
-        >
-          Privacy Policy
-        </Text>
-        <Text style={{ fontSize: 13, color: "#999", marginBottom: 28 }}>
-          Last updated: {LAST_UPDATED}
-        </Text>
+        <Text className="text-[22px] font-extrabold text-primary mb-1">Privacy Policy</Text>
+        <Text className="text-[13px] text-[#999] mb-7">Last updated: {LAST_UPDATED}</Text>
 
         {sections.map((section) => (
-          <View key={section.heading} style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "700",
-                color: "#1E3A5F",
-                marginBottom: 8,
-              }}
-            >
-              {section.heading}
-            </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                color: "#444",
-                lineHeight: 22,
-              }}
-            >
-              {section.body}
-            </Text>
+          <View key={section.heading} className="mb-6">
+            <Text className="text-[15px] font-bold text-primary mb-2">{section.heading}</Text>
+            <Text className="text-sm text-[#444] leading-[22px]">{section.body}</Text>
           </View>
         ))}
       </ScrollView>

@@ -5,7 +5,11 @@
  * and a visual score indicator.
  */
 
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+
+import { hapticSuccess } from "@/src/lib/haptics";
+import { Colors } from "@/src/lib/design";
 
 interface ScoreCardProps {
   score: number;
@@ -16,9 +20,9 @@ interface ScoreCardProps {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return "#34C759";
-  if (score >= 60) return "#F5A623";
-  return "#FF3B30";
+  if (score >= 80) return Colors.success;
+  if (score >= 60) return Colors.accent;
+  return Colors.error;
 }
 
 function getScoreLabel(score: number): string {
@@ -30,7 +34,7 @@ function getScoreLabel(score: number): string {
   return "Keep practicing!";
 }
 
-export function ScoreCard({
+export const ScoreCard = React.memo(function ScoreCard({
   score,
   totalQuestions,
   correctCount,
@@ -39,87 +43,73 @@ export function ScoreCard({
 }: ScoreCardProps) {
   const color = getScoreColor(score);
 
+  // Fire haptic when score is displayed
+  useEffect(() => {
+    hapticSuccess();
+  }, []);
+
   return (
-    <View style={{ alignItems: "center", padding: 24, gap: 24 }}>
+    <View
+      className="items-center gap-6 p-6"
+      accessibilityLabel={`Score: ${score} percent. ${correctCount} correct out of ${totalQuestions}. ${getScoreLabel(score)}`}
+    >
       {/* Score circle */}
       <View
+        className="h-[140px] w-[140px] items-center justify-center rounded-full"
         style={{
-          width: 140,
-          height: 140,
-          borderRadius: 70,
           borderWidth: 6,
           borderColor: color,
-          justifyContent: "center",
-          alignItems: "center",
           backgroundColor: `${color}10`,
         }}
+        accessibilityLabel={`${score} percent`}
       >
         <Text style={{ fontSize: 40, fontWeight: "800", color }}>{score}%</Text>
       </View>
 
-      <Text style={{ fontSize: 22, fontWeight: "700", color: "#1E3A5F" }}>
-        {getScoreLabel(score)}
-      </Text>
+      <Text className="text-[22px] font-bold text-primary">{getScoreLabel(score)}</Text>
 
       {/* Stats */}
-      <View style={{ flexDirection: "row", gap: 24 }}>
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 28, fontWeight: "800", color: "#34C759" }}>{correctCount}</Text>
-          <Text style={{ fontSize: 12, color: "#666" }}>Correct</Text>
+      <View
+        className="flex-row gap-6"
+        accessibilityLabel={`${correctCount} correct, ${totalQuestions - correctCount} incorrect, ${totalQuestions} total`}
+      >
+        <View className="items-center">
+          <Text className="text-[28px] font-extrabold text-success">{correctCount}</Text>
+          <Text className="text-xs text-[#4A5568]">Correct</Text>
         </View>
-        <View
-          style={{
-            width: 1,
-            backgroundColor: "#E0E0CE",
-          }}
-        />
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 28, fontWeight: "800", color: "#FF3B30" }}>
+        <View className="w-px bg-surface-300" />
+        <View className="items-center">
+          <Text className="text-[28px] font-extrabold text-error">
             {totalQuestions - correctCount}
           </Text>
-          <Text style={{ fontSize: 12, color: "#666" }}>Incorrect</Text>
+          <Text className="text-xs text-[#4A5568]">Incorrect</Text>
         </View>
-        <View
-          style={{
-            width: 1,
-            backgroundColor: "#E0E0CE",
-          }}
-        />
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 28, fontWeight: "800", color: "#1E3A5F" }}>
-            {totalQuestions}
-          </Text>
-          <Text style={{ fontSize: 12, color: "#666" }}>Total</Text>
+        <View className="w-px bg-surface-300" />
+        <View className="items-center">
+          <Text className="text-[28px] font-extrabold text-primary">{totalQuestions}</Text>
+          <Text className="text-xs text-[#4A5568]">Total</Text>
         </View>
       </View>
 
       {/* Actions */}
-      <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>
+      <View className="w-full flex-row gap-3">
         <TouchableOpacity
           onPress={onBack}
-          style={{
-            flex: 1,
-            backgroundColor: "#F0F0E8",
-            borderRadius: 12,
-            paddingVertical: 14,
-            alignItems: "center",
-          }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          className="flex-1 items-center rounded-xl bg-surface-200 py-3.5"
         >
-          <Text style={{ fontSize: 15, fontWeight: "600", color: "#1E3A5F" }}>Back</Text>
+          <Text className="text-[15px] font-semibold text-primary">Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onRetry}
-          style={{
-            flex: 1,
-            backgroundColor: "#1E3A5F",
-            borderRadius: 12,
-            paddingVertical: 14,
-            alignItems: "center",
-          }}
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          className="flex-1 items-center rounded-xl bg-primary py-3.5"
         >
-          <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Try Again</Text>
+          <Text className="text-[15px] font-semibold text-white">Try Again</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
-}
+});
