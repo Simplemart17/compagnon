@@ -16,6 +16,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
+import { Colors } from "@/src/lib/design";
 
 export default function ListeningScreen() {
   const router = useRouter();
@@ -62,48 +63,18 @@ export default function ListeningScreen() {
   // Pre-exercise: Generate button
   if (!exercise.exercise && !exercise.isGenerating) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 24,
-        }}
-      >
-        <Text style={{ fontSize: 64, marginBottom: 16 }}>&#x1F3A7;</Text>
-        <Text style={{ fontSize: 22, fontWeight: "700", color: "#1E3A5F", marginBottom: 8 }}>
-          Listening Practice
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: "#666",
-            textAlign: "center",
-            marginBottom: 32,
-            lineHeight: 20,
-          }}
-        >
+      <View className="flex-1 bg-surface justify-center items-center p-6">
+        <Text className="text-[64px] mb-4">&#x1F3A7;</Text>
+        <Text className="text-[22px] font-bold text-primary mb-2">Listening Practice</Text>
+        <Text className="text-sm text-[#4A5568] text-center mb-8 leading-5">
           Listen to a French passage and answer comprehension questions.
           {"\n"}Exercises adapt to your {cefrLevel} level.
         </Text>
-        <TouchableOpacity
-          onPress={handleGenerate}
-          style={{
-            backgroundColor: "#1E3A5F",
-            borderRadius: 12,
-            paddingHorizontal: 32,
-            paddingVertical: 16,
-          }}
-        >
-          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>
-            Generate Exercise
-          </Text>
+        <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
+          <Text className="text-white text-base font-bold">Generate Exercise</Text>
         </TouchableOpacity>
         {exercise.error && (
-          <Text style={{ color: "#FF3B30", fontSize: 13, marginTop: 16, textAlign: "center" }}>
-            {exercise.error}
-          </Text>
+          <Text className="text-error text-[13px] mt-4 text-center">{exercise.error}</Text>
         )}
       </View>
     );
@@ -112,16 +83,9 @@ export default function ListeningScreen() {
   // Loading state
   if (exercise.isGenerating) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F5F5F0",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <ActivityIndicator size="large" color="#1E3A5F" />
-        <Text style={{ color: "#666", marginTop: 16, fontSize: 14 }}>Generating exercise...</Text>
+      <View className="flex-1 bg-surface justify-center items-center">
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text className="text-[#4A5568] mt-4 text-sm">Generating exercise...</Text>
       </View>
     );
   }
@@ -137,10 +101,7 @@ export default function ListeningScreen() {
     }
 
     return (
-      <ScrollView
-        style={{ flex: 1, backgroundColor: "#F5F5F0" }}
-        contentContainerStyle={{ padding: 20 }}
-      >
+      <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ padding: 20 }}>
         <ScoreCard
           score={exercise.score}
           totalQuestions={totalQuestions}
@@ -163,99 +124,59 @@ export default function ListeningScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#F5F5F0" }}
+      className="flex-1 bg-surface"
       contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
     >
       {/* Audio player controls */}
-      <View
-        style={{
-          backgroundColor: "#1E3A5F",
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 20,
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <View style={{ flexDirection: "row", gap: 12 }}>
+      <View className="bg-primary rounded-2xl p-5 mb-5 items-center gap-3">
+        <View className="flex-row gap-3">
           <TouchableOpacity
             onPress={handlePlayAudio}
+            className="w-14 h-14 rounded-full justify-center items-center"
             style={{
               backgroundColor: audioPlayer.isPlaying ? "rgba(255,255,255,0.3)" : "#F5A623",
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              justifyContent: "center",
-              alignItems: "center",
             }}
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 24 }}>
+            <Text className="text-white text-2xl">
               {audioPlayer.isPlaying ? "\u23F8" : "\u25B6"}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={handleSpeedChange}
-            style={{
-              backgroundColor: "rgba(255,255,255,0.15)",
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 8,
-              justifyContent: "center",
-            }}
+            className="bg-white/15 px-3.5 py-2 rounded-lg justify-center"
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>
-              {playbackSpeed}x
-            </Text>
+            <Text className="text-white text-[13px] font-semibold">{playbackSpeed}x</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={{ color: "#FFFFFF88", fontSize: 12 }}>
+        <Text className="text-white/70 text-xs">
           Tap to {audioPlayer.isPlaying ? "pause" : "listen"} | Speed: {playbackSpeed}x
         </Text>
 
         {/* Transcript toggle */}
         <TouchableOpacity
           onPress={() => setShowTranscript(!showTranscript)}
-          style={{
-            backgroundColor: "rgba(255,255,255,0.1)",
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderRadius: 8,
-          }}
+          className="bg-white/10 px-4 py-2 rounded-lg"
         >
-          <Text style={{ color: "#FFFFFF99", fontSize: 12, fontWeight: "600" }}>
+          <Text className="text-white/50 text-xs font-semibold">
             {showTranscript ? "Hide Transcript" : "Show Transcript"}
           </Text>
         </TouchableOpacity>
 
         {showTranscript && exercise.exercise?.passage && (
-          <Text
-            style={{
-              color: "#FFFFFFCC",
-              fontSize: 14,
-              lineHeight: 22,
-              marginTop: 8,
-            }}
-          >
+          <Text className="text-white text-sm leading-[22px] mt-2">
             {exercise.exercise.passage}
           </Text>
         )}
       </View>
 
       {/* Question counter */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <Text style={{ fontSize: 13, color: "#666" }}>
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-[13px] text-[#4A5568]">
           Question {exercise.currentQuestionIndex + 1} of {totalQuestions}
         </Text>
-        <Text style={{ fontSize: 13, color: "#666" }}>
+        <Text className="text-[13px] text-[#4A5568]">
           {answeredQuestions.size}/{totalQuestions} answered
         </Text>
       </View>
@@ -271,29 +192,18 @@ export default function ListeningScreen() {
       )}
 
       {/* Navigation */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          marginTop: 24,
-          gap: 12,
-        }}
-      >
+      <View className="flex-row justify-between mt-6 gap-3">
         <TouchableOpacity
           onPress={exercise.previousQuestion}
           disabled={exercise.currentQuestionIndex === 0}
+          className="flex-1 rounded-xl py-3.5 items-center"
           style={{
-            flex: 1,
             backgroundColor: exercise.currentQuestionIndex === 0 ? "#E0E0CE" : "#F0F0E8",
-            borderRadius: 12,
-            paddingVertical: 14,
-            alignItems: "center",
           }}
         >
           <Text
+            className="text-[15px] font-semibold"
             style={{
-              fontSize: 15,
-              fontWeight: "600",
               color: exercise.currentQuestionIndex === 0 ? "#999" : "#1E3A5F",
             }}
           >
@@ -304,32 +214,22 @@ export default function ListeningScreen() {
         {exercise.currentQuestionIndex < totalQuestions - 1 ? (
           <TouchableOpacity
             onPress={exercise.nextQuestion}
-            style={{
-              flex: 1,
-              backgroundColor: "#1E3A5F",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
-            }}
+            className="flex-1 bg-primary rounded-xl py-3.5 items-center"
           >
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>Next</Text>
+            <Text className="text-[15px] font-semibold text-white">Next</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             onPress={handleFinish}
             disabled={answeredQuestions.size < totalQuestions}
+            className="flex-1 rounded-xl py-3.5 items-center"
             style={{
-              flex: 1,
               backgroundColor: answeredQuestions.size < totalQuestions ? "#E0E0CE" : "#F5A623",
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: "center",
             }}
           >
             <Text
+              className="text-[15px] font-bold"
               style={{
-                fontSize: 15,
-                fontWeight: "700",
                 color: answeredQuestions.size < totalQuestions ? "#999" : "#FFFFFF",
               }}
             >
