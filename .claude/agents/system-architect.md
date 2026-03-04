@@ -35,7 +35,7 @@ app/ (Expo Router screens)
 src/hooks/ (feature hooks — primary business logic interface)
   └── calls src/lib/ utilities and Supabase directly
 src/lib/ (pure utilities: openai.ts, realtime.ts, pronunciation.ts, memory.ts, srs.ts, scoring.ts, error-tracker.ts)
-src/store/ (Zustand: auth-store.ts, progress-store.ts)
+src/store/ (Zustand: auth-store.ts)
 supabase/ (DB schema, RLS, Edge Functions, pgvector)
 ```
 
