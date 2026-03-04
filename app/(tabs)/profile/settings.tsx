@@ -20,6 +20,7 @@ import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
+import { Colors } from "@/src/lib/design";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -39,16 +40,8 @@ interface SectionLabelProps {
 function SectionLabel({ children, topMargin = 0 }: SectionLabelProps) {
   return (
     <Text
-      style={{
-        fontSize: 11,
-        fontWeight: "700",
-        color: "#F5A623",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-        marginBottom: 8,
-        marginTop: topMargin,
-        paddingHorizontal: 4,
-      }}
+      className="mb-2 px-1 text-[11px] font-bold uppercase tracking-widest text-accent"
+      style={{ marginTop: topMargin }}
     >
       {children}
     </Text>
@@ -63,10 +56,8 @@ interface SettingsCardProps {
 function SettingsCard({ children, marginBottom = 12 }: SettingsCardProps) {
   return (
     <View
+      className="rounded-2xl bg-white p-4"
       style={{
-        backgroundColor: "#FFFFFF",
-        borderRadius: 16,
-        padding: 16,
         marginBottom,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
@@ -86,16 +77,7 @@ interface CardLabelProps {
 
 function CardLabel({ children }: CardLabelProps) {
   return (
-    <Text
-      style={{
-        fontSize: 13,
-        fontWeight: "600",
-        color: "#999",
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-        marginBottom: 12,
-      }}
-    >
+    <Text className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-[#94A3B8]">
       {children}
     </Text>
   );
@@ -106,15 +88,7 @@ interface RowDividerProps {
 }
 
 function RowDivider({ verticalSpacing = 14 }: RowDividerProps) {
-  return (
-    <View
-      style={{
-        height: 1,
-        backgroundColor: "#F0F0E8",
-        marginVertical: verticalSpacing,
-      }}
-    />
-  );
+  return <View className="h-px bg-surface-200" style={{ marginVertical: verticalSpacing }} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,32 +227,14 @@ export default function SettingsScreen() {
             setDeletingAccount(true);
 
             try {
-              const userId = session.user.id;
-              // Delete user data from all tables (RLS ensures user can only delete their own)
-              await Promise.all([
-                supabase.from("companion_memory").delete().eq("user_id", userId),
-                supabase.from("error_patterns").delete().eq("user_id", userId),
-                supabase.from("daily_activity").delete().eq("user_id", userId),
-                supabase.from("mock_tests").delete().eq("user_id", userId),
-                supabase.from("vocabulary").delete().eq("user_id", userId),
-                supabase.from("exercises").delete().eq("user_id", userId),
-                supabase.from("skill_progress").delete().eq("user_id", userId),
-                supabase
-                  .from("conversation_messages")
-                  .delete()
-                  .in(
-                    "conversation_id",
-                    (
-                      await supabase.from("conversations").select("id").eq("user_id", userId)
-                    ).data?.map((c) => c.id) ?? []
-                  ),
-                supabase.from("conversations").delete().eq("user_id", userId),
-              ]);
+              // Call account-delete Edge Function which uses admin API.
+              // FK ON DELETE CASCADE removes all user data automatically.
+              const { error } = await supabase.functions.invoke("account-delete");
+              if (error) {
+                throw error;
+              }
 
-              // Delete profile last
-              await supabase.from("profiles").delete().eq("id", userId);
-
-              // Sign out
+              // Sign out locally after server-side deletion
               await signOut();
             } catch (err) {
               captureError(err, "account-deletion");
@@ -308,27 +264,16 @@ export default function SettingsScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={{ flex: 1, backgroundColor: "#F5F5F0" }}>
+      <View className="flex-1 bg-surface">
         {/* ----------------------------------------------------------------
             Custom header
         ---------------------------------------------------------------- */}
         <View
-          style={{
-            backgroundColor: "#FFFFFF",
-            borderBottomWidth: 1,
-            borderBottomColor: "#F0F0E8",
-            paddingTop: insets.top + 16,
-            paddingBottom: 16,
-            paddingHorizontal: 24,
-          }}
+          className="border-b border-surface-200 bg-white px-6 pb-4"
+          style={{ paddingTop: insets.top + 16 }}
         >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ flexDirection: "row", alignItems: "center" }}
-          >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#1E3A5F" }}>
-              {"\u2190"} Param{"\u00E8"}tres
-            </Text>
+          <TouchableOpacity onPress={() => router.back()} className="flex-row items-center">
+            <Text className="text-base font-bold text-primary">← Paramètres</Text>
           </TouchableOpacity>
         </View>
 
@@ -336,7 +281,7 @@ export default function SettingsScreen() {
             Scrollable content
         ---------------------------------------------------------------- */}
         <ScrollView
-          style={{ flex: 1 }}
+          className="flex-1"
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingTop: 24,
@@ -350,28 +295,22 @@ export default function SettingsScreen() {
           {/* Current CEFR level */}
           <SettingsCard>
             <CardLabel>Niveau actuel</CardLabel>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <View className="flex-row flex-wrap gap-2">
               {CEFR_ORDER.map((level) => {
                 const selected = currentLevel === level;
                 return (
                   <TouchableOpacity
                     key={level}
                     onPress={() => handleUpdateLevel(level)}
+                    className="rounded-xl border px-3.5 py-2"
                     style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 12,
                       backgroundColor: selected ? "#1E3A5F" : "#F5F5F0",
-                      borderWidth: 1,
                       borderColor: selected ? "#F5A623" : "#E0E0CE",
                     }}
                   >
                     <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "600",
-                        color: selected ? "#FFFFFF" : "#1E3A5F",
-                      }}
+                      className="text-sm font-semibold"
+                      style={{ color: selected ? "#FFFFFF" : "#1E3A5F" }}
                     >
                       {level}
                     </Text>
@@ -384,28 +323,22 @@ export default function SettingsScreen() {
           {/* Target CEFR level */}
           <SettingsCard>
             <CardLabel>Niveau cible</CardLabel>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <View className="flex-row flex-wrap gap-2">
               {CEFR_ORDER.map((level) => {
                 const selected = targetLevel === level;
                 return (
                   <TouchableOpacity
                     key={level}
                     onPress={() => handleUpdateTarget(level)}
+                    className="rounded-xl border px-3.5 py-2"
                     style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 12,
                       backgroundColor: selected ? "#1E3A5F" : "#F5F5F0",
-                      borderWidth: 1,
                       borderColor: selected ? "#F5A623" : "#E0E0CE",
                     }}
                   >
                     <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "600",
-                        color: selected ? "#FFFFFF" : "#1E3A5F",
-                      }}
+                      className="text-sm font-semibold"
+                      style={{ color: selected ? "#FFFFFF" : "#1E3A5F" }}
                     >
                       {level}
                     </Text>
@@ -418,28 +351,22 @@ export default function SettingsScreen() {
           {/* Daily goal */}
           <SettingsCard>
             <CardLabel>Objectif quotidien</CardLabel>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <View className="flex-row flex-wrap gap-2">
               {DAILY_GOAL_OPTIONS.map((minutes) => {
                 const selected = dailyGoal === minutes;
                 return (
                   <TouchableOpacity
                     key={minutes}
                     onPress={() => handleUpdateDailyGoal(minutes)}
+                    className="rounded-xl border px-[18px] py-2"
                     style={{
-                      paddingHorizontal: 18,
-                      paddingVertical: 8,
-                      borderRadius: 12,
                       backgroundColor: selected ? "#F5A623" : "#F5F5F0",
-                      borderWidth: 1,
                       borderColor: selected ? "#F5A623" : "#E0E0CE",
                     }}
                   >
                     <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "600",
-                        color: selected ? "#FFFFFF" : "#1E3A5F",
-                      }}
+                      className="text-sm font-semibold"
+                      style={{ color: selected ? "#FFFFFF" : "#1E3A5F" }}
                     >
                       {minutes} min
                     </Text>
@@ -458,15 +385,9 @@ export default function SettingsScreen() {
             {editingName ? (
               <View>
                 <TextInput
+                  className="rounded-[10px] border border-surface-300 bg-surface px-3.5 text-base text-primary"
                   style={{
-                    fontSize: 16,
-                    color: "#333",
-                    backgroundColor: "#F5F5F0",
-                    borderRadius: 10,
-                    paddingHorizontal: 14,
                     paddingVertical: Platform.OS === "ios" ? 12 : 10,
-                    borderWidth: 1,
-                    borderColor: "#E0E0CE",
                   }}
                   value={nameValue}
                   onChangeText={setNameValue}
@@ -475,47 +396,27 @@ export default function SettingsScreen() {
                   onSubmitEditing={handleSaveName}
                   maxLength={50}
                   placeholder="Votre prénom"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={Colors.textTertiary}
                 />
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+                <View className="mt-3 flex-row gap-2.5">
                   <TouchableOpacity
                     onPress={handleSaveName}
-                    style={{
-                      paddingHorizontal: 20,
-                      paddingVertical: 10,
-                      borderRadius: 10,
-                      backgroundColor: "#F5A623",
-                      alignItems: "center",
-                    }}
+                    className="items-center rounded-[10px] bg-accent px-5 py-2.5"
                   >
-                    <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 14 }}>
-                      Enregistrer
-                    </Text>
+                    <Text className="text-sm font-semibold text-white">Enregistrer</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleCancelNameEdit}
-                    style={{
-                      paddingHorizontal: 20,
-                      paddingVertical: 10,
-                      borderRadius: 10,
-                      backgroundColor: "#F0F0E8",
-                      alignItems: "center",
-                    }}
+                    className="items-center rounded-[10px] bg-surface-200 px-5 py-2.5"
                   >
-                    <Text style={{ color: "#666", fontWeight: "600", fontSize: 14 }}>Annuler</Text>
+                    <Text className="text-sm font-semibold text-[#4A5568]">Annuler</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : (
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontSize: 16, color: "#333" }}>
-                  {profile?.full_name ?? "Non défini"}
+              <View className="flex-row items-center justify-between">
+                <Text className="text-base text-primary">
+                  {profile?.full_name ?? "Non d\u00E9fini"}
                 </Text>
                 <TouchableOpacity
                   onPress={() => {
@@ -523,9 +424,7 @@ export default function SettingsScreen() {
                     setEditingName(true);
                   }}
                 >
-                  <Text style={{ fontSize: 14, color: "#F5A623", fontWeight: "600" }}>
-                    Modifier
-                  </Text>
+                  <Text className="text-sm font-semibold text-accent">Modifier</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -534,54 +433,37 @@ export default function SettingsScreen() {
           {/* Email */}
           <SettingsCard>
             <CardLabel>Adresse e-mail</CardLabel>
-            <Text style={{ fontSize: 16, color: "#666" }}>{email}</Text>
+            <Text className="text-base text-[#4A5568]">{email}</Text>
           </SettingsCard>
 
           {/* Sign out */}
           <TouchableOpacity
             onPress={handleSignOut}
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 14,
-              padding: 16,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: "#FF3B30",
-              marginTop: 4,
-              marginBottom: 24,
-            }}
+            className="mb-6 mt-1 items-center rounded-2xl border border-error bg-white p-4"
           >
-            <Text style={{ color: "#FF3B30", fontWeight: "600", fontSize: 16 }}>
-              Se d{"\u00E9"}connecter
-            </Text>
+            <Text className="text-base font-semibold text-error">Se déconnecter</Text>
           </TouchableOpacity>
 
-          {/* ---- Section: Données ---- */}
-          <SectionLabel topMargin={0}>Donn{"\u00E9"}es</SectionLabel>
+          {/* ---- Section: Donnees ---- */}
+          <SectionLabel topMargin={0}>Données</SectionLabel>
 
           <SettingsCard>
             <TouchableOpacity
               onPress={handleExportData}
               disabled={exportingData}
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                opacity: exportingData ? 0.5 : 1,
-              }}
+              className="flex-row items-center justify-between"
+              style={{ opacity: exportingData ? 0.5 : 1 }}
             >
               <View>
-                <Text style={{ fontSize: 15, color: "#333" }}>Exporter mes donn{"\u00E9"}es</Text>
-                <Text style={{ fontSize: 12, color: "#999", marginTop: 2 }}>
+                <Text className="text-[15px] text-primary">Exporter mes données</Text>
+                <Text className="mt-0.5 text-xs text-[#94A3B8]">
                   Download all your data as JSON
                 </Text>
               </View>
               {exportingData ? (
-                <ActivityIndicator size="small" color="#1E3A5F" />
+                <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
-                <Text style={{ fontSize: 14, color: "#1E3A5F", fontWeight: "600" }}>
-                  Export {"\u2192"}
-                </Text>
+                <Text className="text-sm font-semibold text-primary">Export {"\u2192"}</Text>
               )}
             </TouchableOpacity>
 
@@ -590,41 +472,31 @@ export default function SettingsScreen() {
             <TouchableOpacity
               onPress={handleDeleteAccount}
               disabled={deletingAccount}
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                opacity: deletingAccount ? 0.5 : 1,
-              }}
+              className="flex-row items-center justify-between"
+              style={{ opacity: deletingAccount ? 0.5 : 1 }}
             >
               <View>
-                <Text style={{ fontSize: 15, color: "#FF3B30" }}>Supprimer mon compte</Text>
-                <Text style={{ fontSize: 12, color: "#999", marginTop: 2 }}>
+                <Text className="text-[15px] text-error">Supprimer mon compte</Text>
+                <Text className="mt-0.5 text-xs text-[#94A3B8]">
                   Permanently delete all your data
                 </Text>
               </View>
               {deletingAccount ? (
-                <ActivityIndicator size="small" color="#FF3B30" />
+                <ActivityIndicator size="small" color={Colors.error} />
               ) : (
-                <Text style={{ fontSize: 14, color: "#FF3B30", fontWeight: "600" }}>Delete</Text>
+                <Text className="text-sm font-semibold text-error">Delete</Text>
               )}
             </TouchableOpacity>
           </SettingsCard>
 
-          {/* ---- Section: À propos ---- */}
-          <SectionLabel topMargin={0}>{"\u00C0"} propos</SectionLabel>
+          {/* ---- Section: A propos ---- */}
+          <SectionLabel topMargin={0}>À propos</SectionLabel>
 
           <SettingsCard marginBottom={0}>
             {/* App version */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ fontSize: 15, color: "#333" }}>Version de l&apos;app</Text>
-              <Text style={{ fontSize: 15, color: "#999" }}>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-[15px] text-primary">Version de l&apos;app</Text>
+              <Text className="text-[15px] text-[#94A3B8]">
                 {Constants.expoConfig?.version ?? "1.0.0"}
               </Text>
             </View>
@@ -634,18 +506,10 @@ export default function SettingsScreen() {
             {/* Privacy Policy */}
             <TouchableOpacity
               onPress={() => router.push("/(tabs)/profile/privacy-policy")}
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
+              className="flex-row items-center justify-between"
             >
-              <Text style={{ fontSize: 15, color: "#333" }}>
-                Politique de confidentialit{"\u00E9"}
-              </Text>
-              <Text style={{ fontSize: 14, color: "#F5A623", fontWeight: "600" }}>
-                Voir {"\u2192"}
-              </Text>
+              <Text className="text-[15px] text-primary">Politique de confidentialité</Text>
+              <Text className="text-sm font-semibold text-accent">Voir {"\u2192"}</Text>
             </TouchableOpacity>
 
             <RowDivider />
@@ -653,16 +517,10 @@ export default function SettingsScreen() {
             {/* Terms of Service */}
             <TouchableOpacity
               onPress={() => router.push("/(tabs)/profile/terms")}
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
+              className="flex-row items-center justify-between"
             >
-              <Text style={{ fontSize: 15, color: "#333" }}>Conditions d&apos;utilisation</Text>
-              <Text style={{ fontSize: 14, color: "#F5A623", fontWeight: "600" }}>
-                Voir {"\u2192"}
-              </Text>
+              <Text className="text-[15px] text-primary">Conditions d&apos;utilisation</Text>
+              <Text className="text-sm font-semibold text-accent">Voir {"\u2192"}</Text>
             </TouchableOpacity>
           </SettingsCard>
         </ScrollView>
