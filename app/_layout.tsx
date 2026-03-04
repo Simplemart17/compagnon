@@ -1,57 +1,86 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { useEffect } from "react";
+import { View } from "react-native";
+import { Stack, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import * as Sentry from "@sentry/react-native";
 
-import { useColorScheme } from '@/components/useColorScheme';
+import "react-native-reanimated";
+import { useAuth } from "@/src/hooks/use-auth";
+import { NetworkBanner } from "@/src/components/common/NetworkBanner";
+import { ErrorBoundary as AppErrorBoundary } from "@/src/components/common/ErrorBoundary";
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+export { ErrorBoundary } from "expo-router";
 
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
+void SplashScreen.preventAutoHideAsync();
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+// Initialize Sentry as early as possible — before any component renders.
+// DSN is read from EXPO_PUBLIC_SENTRY_DSN; if absent, Sentry is a no-op.
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
+  // Capture 100% of transactions in dev, 10% in production to control volume
+  tracesSampleRate: __DEV__ ? 1.0 : 0.1,
+  // Enable all auto-instrumentation
+  enableAutoSessionTracking: true,
+  attachScreenshot: true,
+  enableCaptureFailedRequests: true,
+});
 
-export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+function RootLayoutNav() {
+  const { session, user, isLoading, isOnboarded } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+    if (!isLoading) {
+      void SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [isLoading]);
 
-  if (!loaded) {
+  // Identify user in Sentry for error attribution
+  useEffect(() => {
+    if (user) {
+      Sentry.setUser({ id: user.id, email: user.email });
+    } else {
+      Sentry.setUser(null);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === "(auth)";
+    const inOnboarding = segments[0] === "onboarding";
+
+    if (!session && !inAuthGroup) {
+      router.replace("/(auth)/login");
+    } else if (session && !isOnboarded && !inOnboarding) {
+      router.replace("/onboarding");
+    } else if (session && isOnboarded && (inAuthGroup || inOnboarding)) {
+      router.replace("/(tabs)/home");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, isLoading, isOnboarded, segments]);
+
+  if (isLoading) {
     return null;
   }
 
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <AppErrorBoundary>
+      <View style={{ flex: 1 }}>
+        <NetworkBanner />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </View>
+    </AppErrorBoundary>
   );
 }
+
+// Sentry.wrap() is required for React Native to capture unhandled JS errors,
+// native crashes, and enable performance monitoring.
+export default Sentry.wrap(RootLayoutNav);
