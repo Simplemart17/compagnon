@@ -4,32 +4,64 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --max-warnings 0",
+      "prettier --write"
+    ],
+    "*.{js,json,md}": "prettier --write"
   },
   "dependencies": {
+    "@react-native-community/netinfo": "11.5.2",
     "@react-navigation/native": "^7.1.28",
+    "@sentry/react-native": "~7.11.0",
+    "@supabase/supabase-js": "^2.98.0",
     "expo": "~55.0.4",
-    "expo-symbols": "~55.0.4",
+    "expo-audio": "~55.0.8",
     "expo-constants": "~55.0.7",
+    "expo-file-system": "~55.0.10",
     "expo-font": "~55.0.4",
+    "expo-haptics": "~55.0.8",
     "expo-linking": "~55.0.7",
     "expo-router": "~55.0.3",
+    "expo-secure-store": "~55.0.8",
     "expo-splash-screen": "~55.0.10",
     "expo-status-bar": "~55.0.4",
+    "expo-symbols": "~55.0.4",
     "expo-web-browser": "~55.0.9",
+    "nativewind": "^4.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.2",
-    "react-native-worklets": "0.7.2",
     "react-native-reanimated": "4.2.1",
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.23.0",
-    "react-native-web": "~0.21.0"
+    "react-native-url-polyfill": "^3.0.0",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.7.2",
+    "tailwindcss": "^3.3.2",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^9.39.3",
+    "eslint-config-expo": "^55.0.0",
+    "eslint-plugin-import": "^2.32.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.1",
+    "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   },
   "private": true
