@@ -7,6 +7,7 @@
 
 import { useCallback, useRef, useState } from "react";
 
+import { invalidateCache, CACHE_KEYS } from "@/src/lib/cache";
 import { captureError } from "@/src/lib/sentry";
 import {
   updateStreak,
@@ -57,32 +58,73 @@ export interface UseExerciseReturn extends ExerciseState {
   reset: () => void;
 }
 
+interface MCQQuestion {
+  question: string;
+  options: { id: string; text: string; isCorrect: boolean }[];
+  explanation: string;
+}
+
 interface ListeningResponse {
   passage: string;
-  questions: {
-    question: string;
-    options: { id: string; text: string; isCorrect: boolean }[];
-    explanation: string;
-  }[];
+  questions: MCQQuestion[];
   vocabularyHighlights?: string[];
 }
 
 interface ReadingResponse {
   passage: string;
-  questions: {
-    question: string;
-    options: { id: string; text: string; isCorrect: boolean }[];
-    explanation: string;
-  }[];
+  questions: MCQQuestion[];
   wordExplanations?: Record<string, string>;
 }
 
 interface GrammarResponse {
-  questions: {
-    question: string;
-    options: { id: string; text: string; isCorrect: boolean }[];
-    explanation: string;
-  }[];
+  questions: MCQQuestion[];
+}
+
+/**
+ * Validate that an MCQ exercise response from the AI is well-formed.
+ *
+ * Checks:
+ * - `questions` is a non-empty array
+ * - Each question has an `options` array with exactly 4 items
+ * - Exactly one option per question has `isCorrect: true`
+ * - Each question has a non-empty `explanation`
+ *
+ * Throws a descriptive error if validation fails.
+ */
+function validateMCQExercise(
+  questions: unknown,
+  skill: string
+): asserts questions is MCQQuestion[] {
+  if (!Array.isArray(questions) || questions.length === 0) {
+    throw new Error(
+      `Invalid ${skill} exercise: "questions" must be a non-empty array, got ${typeof questions}`
+    );
+  }
+
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i] as Record<string, unknown>;
+    const label = `${skill} question ${i + 1}`;
+
+    if (!Array.isArray(q.options)) {
+      throw new Error(`Invalid ${label}: "options" must be an array`);
+    }
+
+    if (q.options.length !== 4) {
+      throw new Error(`Invalid ${label}: expected exactly 4 options, got ${q.options.length}`);
+    }
+
+    const correctCount = (q.options as { isCorrect?: boolean }[]).filter(
+      (o) => o.isCorrect === true
+    ).length;
+
+    if (correctCount !== 1) {
+      throw new Error(`Invalid ${label}: expected exactly 1 correct option, found ${correctCount}`);
+    }
+
+    if (typeof q.explanation !== "string" || q.explanation.trim().length === 0) {
+      throw new Error(`Invalid ${label}: "explanation" must be a non-empty string`);
+    }
+  }
 }
 
 export function useExercise(): UseExerciseReturn {
@@ -123,8 +165,10 @@ export function useExercise(): UseExerciseReturn {
             const prompt = buildListeningExercisePrompt({ cefrLevel, dialect: "metropolitan" });
             const result = await chatCompletionJSON<ListeningResponse>(
               [{ role: "system", content: prompt }],
-              { temperature: 0.8 }
+              { temperature: 0.4 }
             );
+
+            validateMCQExercise(result.questions, "listening");
 
             // Generate TTS audio for the passage
             let audioBase64: string | undefined;
@@ -154,8 +198,10 @@ export function useExercise(): UseExerciseReturn {
             const prompt = buildReadingExercisePrompt({ cefrLevel });
             const result = await chatCompletionJSON<ReadingResponse>(
               [{ role: "system", content: prompt }],
-              { temperature: 0.8 }
+              { temperature: 0.4 }
             );
+
+            validateMCQExercise(result.questions, "reading");
 
             exercise = {
               skill: "reading",
@@ -173,8 +219,10 @@ export function useExercise(): UseExerciseReturn {
             const prompt = buildGrammarExercisePrompt({ cefrLevel });
             const result = await chatCompletionJSON<GrammarResponse>(
               [{ role: "system", content: prompt }],
-              { temperature: 0.8 }
+              { temperature: 0.4 }
             );
+
+            validateMCQExercise(result.questions, "grammar");
 
             exercise = {
               skill: "grammar",
@@ -208,7 +256,7 @@ Task type: ${taskNumber === 1 ? "Short message (50-80 words)" : taskNumber === 2
 Return JSON: { "prompt": "the writing task in French", "context": "brief context in English for the student" }`,
                 },
               ],
-              { temperature: 0.9 }
+              { temperature: 0.4 }
             );
 
             writingPrompt.prompt = result.prompt;
@@ -278,6 +326,15 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
 
         // 5. Check for CEFR level promotion
         await checkCefrPromotion(userId);
+
+        // 6. Invalidate progress caches so next load picks up fresh data
+        await Promise.all([
+          invalidateCache(userId, CACHE_KEYS.SKILLS),
+          invalidateCache(userId, CACHE_KEYS.DAILY_ACTIVITY_TODAY),
+          invalidateCache(userId, CACHE_KEYS.RECENT_ACTIVITY),
+          invalidateCache(userId, CACHE_KEYS.STREAK),
+          invalidateCache(userId, CACHE_KEYS.PROFILE),
+        ]);
       } catch (err) {
         captureError(err, "persist-exercise");
       }

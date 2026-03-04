@@ -37,7 +37,7 @@ const RECORDING_OPTIONS: RecordingOptions = {
   sampleRate: 16000,
   numberOfChannels: 1,
   bitRate: 256000,
-  isMeteringEnabled: true,
+  isMeteringEnabled: false,
   android: {
     outputFormat: "default",
     audioEncoder: "default",

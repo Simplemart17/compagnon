@@ -36,7 +36,7 @@ import {
   checkCefrPromotion,
 } from "@/src/lib/activity";
 import type { CEFRLevel } from "@/src/types/cefr";
-import type { ConversationMode, Correction } from "@/src/types/conversation";
+import type { ConversationFeedback, ConversationMode, Correction } from "@/src/types/conversation";
 
 import { useAudioPlayer } from "./use-audio-player";
 
@@ -46,15 +46,6 @@ export interface TranscriptEntry {
   text: string;
   corrections?: Correction[];
   timestamp: number;
-}
-
-export interface ConversationFeedback {
-  summary: string;
-  strengths: string[];
-  improvements: string[];
-  vocabularyUsed: number;
-  fluencyRating: number; // 1-5
-  grammarRating: number; // 1-5
 }
 
 export interface ConversationState {
@@ -159,23 +150,36 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
   const streamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastReadPositionRef = useRef(0);
 
-  /** Parse corrections from AI's text */
-  const parseCorrections = useCallback((text: string): Correction[] => {
-    const corrections: Correction[] = [];
-    const correctionPattern = /"([^"]+)"\s*→\s*"([^"]+)"\s*\(([^)]+)\)/g;
-    let match: RegExpExecArray | null;
-
-    while ((match = correctionPattern.exec(text)) !== null) {
-      corrections.push({
-        original: match[1],
-        corrected: match[2],
-        explanation: match[3],
-        category: "grammar",
-      });
-    }
-
-    return corrections;
+  /** Infer correction category from explanation text using keyword matching */
+  const inferCategory = useCallback((explanation: string): Correction["category"] => {
+    const lower = explanation.toLowerCase();
+    if (/pronunciation|accent|phonetic/.test(lower)) return "pronunciation";
+    if (/vocabulary|word choice|lexical/.test(lower)) return "vocabulary";
+    if (/register|formal|informal|tone/.test(lower)) return "register";
+    return "grammar";
   }, []);
+
+  /** Parse corrections from AI's text */
+  const parseCorrections = useCallback(
+    (text: string): Correction[] => {
+      const corrections: Correction[] = [];
+      const correctionPattern = /"([^"]+)"\s*→\s*"([^"]+)"\s*\(([^)]+)\)/g;
+      let match: RegExpExecArray | null;
+
+      while ((match = correctionPattern.exec(text)) !== null) {
+        const explanation = match[3];
+        corrections.push({
+          original: match[1],
+          corrected: match[2],
+          explanation,
+          category: inferCategory(explanation),
+        });
+      }
+
+      return corrections;
+    },
+    [inferCategory]
+  );
 
   /** Start microphone recording and stream audio to WebSocket */
   const startAudioStreaming = useCallback(async () => {
@@ -357,6 +361,40 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           break;
         }
 
+        // In voice mode, the AI responds with audio and the transcript arrives
+        // via response.audio_transcript events, not response.text events.
+        case "response.audio_transcript.delta":
+          currentAiTextRef.current += event.delta;
+          setState((s) => ({ ...s, pendingAiText: currentAiTextRef.current }));
+          break;
+
+        case "response.audio_transcript.done": {
+          const audioTranscriptText = event.transcript;
+          const audioCorrections = parseCorrections(audioTranscriptText);
+
+          const audioEntry: TranscriptEntry = {
+            id: `ai_${Date.now()}`,
+            role: "assistant",
+            text: audioTranscriptText,
+            corrections: audioCorrections.length > 0 ? audioCorrections : undefined,
+            timestamp: Date.now(),
+          };
+
+          transcriptRef.current = [...transcriptRef.current, audioEntry];
+          correctionsRef.current = [...correctionsRef.current, ...audioCorrections];
+          currentAiTextRef.current = "";
+
+          setState((s) => ({
+            ...s,
+            transcript: transcriptRef.current,
+            pendingAiText: "",
+            allCorrections: correctionsRef.current,
+          }));
+
+          onTranscriptUpdate?.(transcriptRef.current);
+          break;
+        }
+
         case "conversation.item.created": {
           const item = event.item as {
             role?: string;
@@ -474,11 +512,12 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
         }
 
         // 4. Update skill progress for speaking (with score based on corrections ratio)
+        // Caps penalty at 30% per correction-to-utterance ratio, with minimum score of 20
         const totalEntries = transcriptRef.current.filter((e) => e.role === "user").length;
         const correctedEntries = correctionsRef.current.length;
         const speakingScore =
           totalEntries > 0
-            ? Math.max(0, Math.round(100 - (correctedEntries / totalEntries) * 100))
+            ? Math.max(20, Math.round(100 - (correctedEntries / Math.max(totalEntries, 1)) * 30))
             : 70; // Default if no user entries
         await updateSkillProgress(user.id, "speaking", speakingScore, minutesPracticed);
 
