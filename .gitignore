@@ -42,3 +42,6 @@ yarn-error.*
 
 .history
 .playwright-mcp
+
+# Supabase CLI temp files
+supabase/.temp/
