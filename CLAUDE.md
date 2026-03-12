@@ -67,7 +67,6 @@ Auth guard in `app/_layout.tsx` redirects based on session state and onboarding 
 
 - **`src/store/`** — Zustand stores:
   - `auth-store.ts` — session, user, profile, isOnboarded
-  - `progress-store.ts` — per-skill progress, daily activity, streaks
 
 - **`src/types/`** — TypeScript types for CEFR/TCF domain, conversations, exercises, user profile
 

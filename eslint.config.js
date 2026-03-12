@@ -25,6 +25,6 @@ module.exports = defineConfig([
     },
   },
   {
-    ignores: ["node_modules/", ".expo/", "dist/", "supabase/functions/"],
+    ignores: ["node_modules/", ".expo/", ".history/", "dist/", "supabase/functions/"],
   },
 ]);

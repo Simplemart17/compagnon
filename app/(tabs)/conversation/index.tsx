@@ -10,20 +10,11 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import { useAuthStore } from "@/src/store/auth-store";
-import { CONVERSATION_TOPICS } from "@/src/lib/constants";
+import { CONVERSATION_TOPICS, LEVEL_COLORS } from "@/src/lib/constants";
 import type { ConversationTopic } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import { Colors } from "@/src/lib/design";
-
-const CEFR_STRIP_COLORS: Record<string, string> = {
-  A1: "#A8D5A2",
-  A2: "#7BC4A0",
-  B1: "#5BA4CF",
-  B2: "#1E3A5F",
-  C1: "#9B59B6",
-  C2: "#6C3483",
-};
 
 const TOPIC_EMOJIS: Record<string, string> = {
   "Se pr\u00e9senter": "\uD83D\uDC4B",
@@ -81,7 +72,7 @@ function CardItem({ item, index, onPress }: CardItemProps) {
     transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
-  const stripColor = CEFR_STRIP_COLORS[item.cefr_level] ?? "#1E3A5F";
+  const stripColor = LEVEL_COLORS[item.cefr_level] ?? "#1E3A5F";
   const emoji = TOPIC_EMOJIS[item.titleFr] ?? "\uD83D\uDCAC";
   const difficultyDots = getDifficultyDots(item.cefr_level);
 

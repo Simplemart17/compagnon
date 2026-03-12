@@ -25,7 +25,7 @@ import { useProgress } from "@/src/hooks/use-progress";
 import { CEFRProgressionChart } from "@/src/components/profile/cefr-progression-chart";
 import { CEFR_LEVELS } from "@/src/types/cefr";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
-import { Colors } from "@/src/lib/design";
+import { Colors, SKILL_COLORS } from "@/src/lib/design";
 import type { CEFRLevel, TCFSkill } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -33,14 +33,6 @@ import type { CEFRLevel, TCFSkill } from "@/src/types/cefr";
 // ---------------------------------------------------------------------------
 
 const SKILLS: TCFSkill[] = ["listening", "reading", "speaking", "writing", "grammar"];
-
-const SKILL_COLORS: Record<string, string> = {
-  listening: Colors.skillListening,
-  reading: Colors.skillReading,
-  speaking: Colors.skillPronunciation,
-  writing: Colors.skillWriting,
-  grammar: Colors.skillGrammar,
-};
 
 const SKILL_ROUTES: Record<string, string> = {
   listening: "/(tabs)/practice/listening",

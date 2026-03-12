@@ -72,12 +72,6 @@ export const CEFR_LEVELS: Record<CEFRLevel, CEFRLevelInfo> = {
 /** Ordered list of CEFR levels for progression */
 export const CEFR_ORDER: CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
-/** Get the next CEFR level, or null if already at C2 */
-export function getNextLevel(current: CEFRLevel): CEFRLevel | null {
-  const idx = CEFR_ORDER.indexOf(current);
-  return idx < CEFR_ORDER.length - 1 ? CEFR_ORDER[idx + 1] : null;
-}
-
 /** Determine CEFR level from a TCF score */
 export function levelFromScore(score: TCFScore): CEFRLevel | null {
   if (score < 100) return null;

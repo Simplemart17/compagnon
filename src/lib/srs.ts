@@ -24,40 +24,6 @@ export interface SRSUpdate {
 }
 
 /**
- * Map a simple correct/incorrect + confidence to SM-2 quality rating:
- * - 5: Perfect response with no hesitation
- * - 4: Correct response after brief hesitation
- * - 3: Correct response with serious difficulty
- * - 2: Incorrect, but close / remembered after seeing answer
- * - 1: Incorrect, vaguely remembered the answer
- * - 0: Complete blackout, no recollection
- */
-export function mapToQuality(
-  correct: boolean,
-  confidence: "high" | "medium" | "low"
-): ReviewQuality {
-  if (correct) {
-    switch (confidence) {
-      case "high":
-        return 5;
-      case "medium":
-        return 4;
-      case "low":
-        return 3;
-    }
-  } else {
-    switch (confidence) {
-      case "high":
-        return 2; // Almost had it
-      case "medium":
-        return 1;
-      case "low":
-        return 0;
-    }
-  }
-}
-
-/**
  * Calculate the next review interval using the SM-2 algorithm.
  *
  * @param current - Current SRS state of the item
@@ -99,17 +65,4 @@ export function calculateNextReview(current: SRSState, quality: ReviewQuality): 
     repetitions,
     nextReview,
   };
-}
-
-/** Default SRS state for a new vocabulary item */
-export const DEFAULT_SRS_STATE: SRSState = {
-  easeFactor: 2.5,
-  intervalDays: 1,
-  repetitions: 0,
-};
-
-/** Get items due for review from a list */
-export function getDueItems<T extends { nextReview: string | Date }>(items: T[]): T[] {
-  const now = new Date();
-  return items.filter((item) => new Date(item.nextReview) <= now);
 }
