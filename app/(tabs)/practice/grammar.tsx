@@ -7,8 +7,9 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useExercise } from "@/src/hooks/use-exercise";
 import { useAuthStore } from "@/src/store/auth-store";
@@ -22,7 +23,7 @@ import { captureError } from "@/src/lib/sentry";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
-import { Colors } from "@/src/lib/design";
+import { Colors, Shadows } from "@/src/lib/design";
 
 export default function GrammarScreen() {
   const router = useRouter();
@@ -90,9 +91,29 @@ export default function GrammarScreen() {
   // Micro-drill loading
   if (drillLoading) {
     return (
-      <View className="flex-1 bg-surface justify-center items-center">
-        <ActivityIndicator size="large" color={Colors.accent} />
-        <Text className="text-[#4A5568] mt-4 text-sm">Generating targeted drill...</Text>
+      <View className="flex-1 bg-surface p-5 pt-10">
+        {[0, 1, 2].map((i) => (
+          <Animated.View
+            key={i}
+            entering={FadeInDown.delay(i * 80).duration(300)}
+            className="bg-white rounded-2xl p-5 mb-3"
+            style={{ ...Shadows.card }}
+          >
+            <View className="h-4 bg-surface-200 rounded-md" style={{ width: `${75 - i * 10}%` }} />
+            <View
+              className="h-3 bg-surface-200 rounded-md mt-3"
+              style={{ width: `${55 + i * 5}%` }}
+            />
+            <View className="flex-row gap-2 mt-4">
+              {[1, 2, 3, 4].map((j) => (
+                <View key={j} className="h-10 flex-1 bg-surface-200 rounded-lg" />
+              ))}
+            </View>
+          </Animated.View>
+        ))}
+        <Text className="text-center mt-4" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+          Generating targeted drill...
+        </Text>
       </View>
     );
   }
@@ -120,7 +141,7 @@ export default function GrammarScreen() {
             <Text className="text-[22px] font-bold text-primary mb-2">
               {allCorrect ? "Parfait !" : "Bon travail !"}
             </Text>
-            <Text className="text-sm text-[#4A5568] text-center mb-2">
+            <Text className="text-sm text-center mb-2" style={{ color: Colors.gray700 }}>
               {drillCorrect}/{microDrill.questions.length} correct
             </Text>
             <View className="bg-accent/10 rounded-xl p-4 my-4 w-full">
@@ -159,13 +180,13 @@ export default function GrammarScreen() {
         {/* Drill header */}
         <View className="bg-accent/10 rounded-2xl p-4 mb-5 border border-accent/30">
           <Text className="text-base font-bold text-primary mb-1">{microDrill.title}</Text>
-          <Text className="text-[13px] text-[#4A5568] leading-[19px]">
+          <Text className="text-[13px] leading-[19px]" style={{ color: Colors.gray700 }}>
             {microDrill.explanation}
           </Text>
         </View>
 
         {/* Drill progress */}
-        <Text className="text-[13px] text-[#4A5568] mb-4">
+        <Text className="text-[13px] mb-4" style={{ color: Colors.gray700 }}>
           Question {drillIndex + 1} of {microDrill.questions.length}
         </Text>
 
@@ -179,17 +200,17 @@ export default function GrammarScreen() {
               const isSelected = drillAnswers[drillIndex] === optIdx;
               const isCorrect = optIdx === drillQuestion.correctIndex;
               const showColor = isDrillRevealed;
-              let bgColor = "#F5F5F0";
-              let borderColor = "#E0E0CE";
+              let bgColor: string = Colors.surface;
+              let borderColor: string = Colors.border;
               if (showColor && isCorrect) {
-                bgColor = "rgba(52,199,89,0.1)";
-                borderColor = "#34C759";
+                bgColor = Colors.success10;
+                borderColor = Colors.success;
               } else if (showColor && isSelected && !isCorrect) {
-                bgColor = "rgba(255,59,48,0.1)";
-                borderColor = "#FF3B30";
+                bgColor = Colors.error10;
+                borderColor = Colors.error;
               } else if (isSelected && !showColor) {
-                bgColor = "rgba(30,58,95,0.1)";
-                borderColor = "#1E3A5F";
+                bgColor = Colors.primary10;
+                borderColor = Colors.primary;
               }
 
               return (
@@ -213,7 +234,7 @@ export default function GrammarScreen() {
             })}
             {isDrillRevealed && (
               <View className="bg-primary/5 rounded-[10px] p-3 mt-2">
-                <Text className="text-[13px] text-[#4A5568] leading-[19px]">
+                <Text className="text-[13px] leading-[19px]" style={{ color: Colors.gray700 }}>
                   {drillQuestion.explanation}
                 </Text>
               </View>
@@ -240,14 +261,34 @@ export default function GrammarScreen() {
       <View className="flex-1 bg-surface justify-center items-center p-6">
         <Text className="text-[64px] mb-4">&#x1F9E0;</Text>
         <Text className="text-[22px] font-bold text-primary mb-2">Grammar & Vocabulary</Text>
-        <Text className="text-sm text-[#4A5568] text-center mb-8 leading-5">
+        <Text className="text-sm text-center mb-8 leading-5" style={{ color: Colors.gray700 }}>
           Practice verb conjugation, tenses, prepositions,{"\n"}and vocabulary in TCF format.
         </Text>
-        <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
-          <Text className="text-white text-base font-bold">Generate Exercise</Text>
-        </TouchableOpacity>
-        {exercise.error && (
-          <Text className="text-error text-[13px] mt-4 text-center">{exercise.error}</Text>
+        {exercise.error ? (
+          <>
+            <Text className="text-error text-[13px] mb-4 text-center">{exercise.error}</Text>
+            <View className="flex-row gap-3 w-full px-4">
+              <TouchableOpacity
+                onPress={() => router.back()}
+                className="flex-1 rounded-xl py-3.5 items-center"
+                style={{ backgroundColor: Colors.gray100 }}
+              >
+                <Text className="text-[15px] font-bold" style={{ color: Colors.primary }}>
+                  Back
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleGenerate}
+                className="flex-1 bg-primary rounded-xl py-3.5 items-center"
+              >
+                <Text className="text-white text-[15px] font-bold">Retry</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
+            <Text className="text-white text-base font-bold">Generate Exercise</Text>
+          </TouchableOpacity>
         )}
       </View>
     );
@@ -256,9 +297,29 @@ export default function GrammarScreen() {
   // Loading
   if (exercise.isGenerating) {
     return (
-      <View className="flex-1 bg-surface justify-center items-center">
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text className="text-[#4A5568] mt-4 text-sm">Generating questions...</Text>
+      <View className="flex-1 bg-surface p-5 pt-10">
+        {[0, 1, 2].map((i) => (
+          <Animated.View
+            key={i}
+            entering={FadeInDown.delay(i * 80).duration(300)}
+            className="bg-white rounded-2xl p-5 mb-3"
+            style={{ ...Shadows.card }}
+          >
+            <View className="h-4 bg-surface-200 rounded-md" style={{ width: `${75 - i * 10}%` }} />
+            <View
+              className="h-3 bg-surface-200 rounded-md mt-3"
+              style={{ width: `${55 + i * 5}%` }}
+            />
+            <View className="flex-row gap-2 mt-4">
+              {[1, 2, 3, 4].map((j) => (
+                <View key={j} className="h-10 flex-1 bg-surface-200 rounded-lg" />
+              ))}
+            </View>
+          </Animated.View>
+        ))}
+        <Text className="text-center mt-4" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+          Generating questions...
+        </Text>
       </View>
     );
   }
@@ -298,13 +359,14 @@ export default function GrammarScreen() {
   const dots = Array.from({ length: totalQuestions }, (_, i) => {
     const answered = answeredQuestions.has(i);
     const isCurrent = i === exercise.currentQuestionIndex;
-    let color = "#E0E0CE";
+    let color: string = Colors.border;
     if (answered) {
       const answer = exercise.answers[i];
       const correct = exercise.exercise?.questions[i]?.options.find((o) => o.isCorrect);
-      color = answer === correct?.id ? "#34C759" : "#FF3B30";
+      color = answer === correct?.id ? Colors.success : Colors.error;
+    } else if (isCurrent) {
+      color = Colors.primary;
     }
-    if (isCurrent) color = "#1E3A5F";
 
     return (
       <TouchableOpacity
@@ -338,10 +400,10 @@ export default function GrammarScreen() {
 
       {/* Question counter */}
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-[13px] text-[#4A5568]">
+        <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
           Question {exercise.currentQuestionIndex + 1} of {totalQuestions}
         </Text>
-        <Text className="text-[13px] text-[#4A5568]">
+        <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
           {answeredQuestions.size}/{totalQuestions} answered
         </Text>
       </View>
@@ -363,13 +425,13 @@ export default function GrammarScreen() {
           disabled={exercise.currentQuestionIndex === 0}
           className="flex-1 rounded-xl py-3.5 items-center"
           style={{
-            backgroundColor: exercise.currentQuestionIndex === 0 ? "#E0E0CE" : "#F0F0E8",
+            backgroundColor: exercise.currentQuestionIndex === 0 ? Colors.gray300 : Colors.gray100,
           }}
         >
           <Text
             className="text-[15px] font-semibold"
             style={{
-              color: exercise.currentQuestionIndex === 0 ? "#999" : "#1E3A5F",
+              color: exercise.currentQuestionIndex === 0 ? Colors.gray500 : Colors.primary,
             }}
           >
             Previous
@@ -389,13 +451,14 @@ export default function GrammarScreen() {
             disabled={answeredQuestions.size < totalQuestions}
             className="flex-1 rounded-xl py-3.5 items-center"
             style={{
-              backgroundColor: answeredQuestions.size < totalQuestions ? "#E0E0CE" : "#F5A623",
+              backgroundColor:
+                answeredQuestions.size < totalQuestions ? Colors.gray300 : Colors.accent,
             }}
           >
             <Text
               className="text-[15px] font-bold"
               style={{
-                color: answeredQuestions.size < totalQuestions ? "#999" : "#FFFFFF",
+                color: answeredQuestions.size < totalQuestions ? Colors.gray500 : Colors.textOnDark,
               }}
             >
               Finish

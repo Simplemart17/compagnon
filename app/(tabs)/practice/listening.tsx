@@ -7,8 +7,9 @@
  */
 
 import { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { useExercise } from "@/src/hooks/use-exercise";
 import { useAudioPlayer } from "@/src/hooks/use-audio-player";
@@ -16,7 +17,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
-import { Colors } from "@/src/lib/design";
+import { Colors, Shadows } from "@/src/lib/design";
 
 export default function ListeningScreen() {
   const router = useRouter();
@@ -60,32 +61,82 @@ export default function ListeningScreen() {
     exercise.calculateScore();
   }, [exercise]);
 
-  // Pre-exercise: Generate button
+  // Pre-exercise: Generate button or error state
   if (!exercise.exercise && !exercise.isGenerating) {
     return (
       <View className="flex-1 bg-surface justify-center items-center p-6">
         <Text className="text-[64px] mb-4">&#x1F3A7;</Text>
         <Text className="text-[22px] font-bold text-primary mb-2">Listening Practice</Text>
-        <Text className="text-sm text-[#4A5568] text-center mb-8 leading-5">
+        <Text className="text-sm text-center mb-8 leading-5" style={{ color: Colors.gray700 }}>
           Listen to a French passage and answer comprehension questions.
           {"\n"}Exercises adapt to your {cefrLevel} level.
         </Text>
-        <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
-          <Text className="text-white text-base font-bold">Generate Exercise</Text>
-        </TouchableOpacity>
-        {exercise.error && (
-          <Text className="text-error text-[13px] mt-4 text-center">{exercise.error}</Text>
+        {exercise.error ? (
+          <>
+            <Text className="text-error text-[13px] mb-4 text-center">{exercise.error}</Text>
+            <View className="flex-row gap-3 w-full px-4">
+              <TouchableOpacity
+                onPress={() => router.back()}
+                className="flex-1 rounded-xl py-3.5 items-center"
+                style={{ backgroundColor: Colors.gray100 }}
+              >
+                <Text className="text-[15px] font-bold" style={{ color: Colors.primary }}>
+                  Back
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleGenerate}
+                className="flex-1 bg-primary rounded-xl py-3.5 items-center"
+              >
+                <Text className="text-[15px] font-bold text-white">Retry</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
+            <Text className="text-white text-base font-bold">Generate Exercise</Text>
+          </TouchableOpacity>
         )}
       </View>
     );
   }
 
-  // Loading state
+  // Loading state — skeleton animation
   if (exercise.isGenerating) {
     return (
-      <View className="flex-1 bg-surface justify-center items-center">
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text className="text-[#4A5568] mt-4 text-sm">Generating exercise...</Text>
+      <View className="flex-1 bg-surface p-5 pt-10">
+        {/* Audio player skeleton */}
+        <Animated.View
+          entering={FadeInDown.duration(300)}
+          className="bg-primary rounded-2xl p-5 mb-5 items-center"
+          style={{ ...Shadows.card }}
+        >
+          <View className="w-14 h-14 rounded-full bg-white/20 mb-3" />
+          <View className="h-3 bg-white/15 rounded-md w-32" />
+        </Animated.View>
+        {/* Question skeletons */}
+        {[0, 1, 2].map((i) => (
+          <Animated.View
+            key={i}
+            entering={FadeInDown.delay(100 + i * 80).duration(300)}
+            className="bg-white rounded-2xl p-5 mb-3"
+            style={{ ...Shadows.card }}
+          >
+            <View className="h-4 bg-surface-200 rounded-md" style={{ width: `${75 - i * 10}%` }} />
+            <View
+              className="h-3 bg-surface-200 rounded-md mt-3"
+              style={{ width: `${55 + i * 5}%` }}
+            />
+            <View className="flex-row gap-2 mt-4">
+              {[1, 2, 3, 4].map((j) => (
+                <View key={j} className="h-10 flex-1 bg-surface-200 rounded-lg" />
+              ))}
+            </View>
+          </Animated.View>
+        ))}
+        <Text className="text-center mt-4" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+          Generating exercise...
+        </Text>
       </View>
     );
   }
@@ -134,7 +185,7 @@ export default function ListeningScreen() {
             onPress={handlePlayAudio}
             className="w-14 h-14 rounded-full justify-center items-center"
             style={{
-              backgroundColor: audioPlayer.isPlaying ? "rgba(255,255,255,0.3)" : "#F5A623",
+              backgroundColor: audioPlayer.isPlaying ? "rgba(255,255,255,0.3)" : Colors.accent,
             }}
           >
             <Text className="text-white text-2xl">
@@ -144,6 +195,7 @@ export default function ListeningScreen() {
 
           <TouchableOpacity
             onPress={handleSpeedChange}
+            accessibilityLabel={`Playback speed ${playbackSpeed}x. Double tap to change speed`}
             className="bg-white/15 px-3.5 py-2 rounded-lg justify-center"
           >
             <Text className="text-white text-[13px] font-semibold">{playbackSpeed}x</Text>
@@ -173,10 +225,10 @@ export default function ListeningScreen() {
 
       {/* Question counter */}
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-[13px] text-[#4A5568]">
+        <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
           Question {exercise.currentQuestionIndex + 1} of {totalQuestions}
         </Text>
-        <Text className="text-[13px] text-[#4A5568]">
+        <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
           {answeredQuestions.size}/{totalQuestions} answered
         </Text>
       </View>
@@ -198,13 +250,13 @@ export default function ListeningScreen() {
           disabled={exercise.currentQuestionIndex === 0}
           className="flex-1 rounded-xl py-3.5 items-center"
           style={{
-            backgroundColor: exercise.currentQuestionIndex === 0 ? "#E0E0CE" : "#F0F0E8",
+            backgroundColor: exercise.currentQuestionIndex === 0 ? Colors.border : Colors.gray100,
           }}
         >
           <Text
             className="text-[15px] font-semibold"
             style={{
-              color: exercise.currentQuestionIndex === 0 ? "#999" : "#1E3A5F",
+              color: exercise.currentQuestionIndex === 0 ? Colors.gray500 : Colors.primary,
             }}
           >
             Previous
@@ -224,13 +276,14 @@ export default function ListeningScreen() {
             disabled={answeredQuestions.size < totalQuestions}
             className="flex-1 rounded-xl py-3.5 items-center"
             style={{
-              backgroundColor: answeredQuestions.size < totalQuestions ? "#E0E0CE" : "#F5A623",
+              backgroundColor:
+                answeredQuestions.size < totalQuestions ? Colors.border : Colors.accent,
             }}
           >
             <Text
               className="text-[15px] font-bold"
               style={{
-                color: answeredQuestions.size < totalQuestions ? "#999" : "#FFFFFF",
+                color: answeredQuestions.size < totalQuestions ? Colors.gray500 : Colors.textOnDark,
               }}
             >
               Finish
