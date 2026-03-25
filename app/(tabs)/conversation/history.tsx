@@ -24,8 +24,14 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
@@ -75,6 +81,62 @@ interface TranscriptMatch {
   charStart: number;
   /** Character end index within that message's content */
   charEnd: number;
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton loading
+// ---------------------------------------------------------------------------
+
+function SkeletonCard() {
+  const opacity = useSharedValue(0.4);
+
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(1, { duration: 800 }), -1, true);
+  }, [opacity]);
+
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Reanimated.View
+      style={[
+        {
+          marginHorizontal: 16,
+          marginBottom: 10,
+          borderRadius: 16,
+          padding: 16,
+          backgroundColor: Colors.surfaceWhite,
+        },
+      ]}
+    >
+      <Reanimated.View style={animStyle}>
+        <View className="h-4 w-3/5 rounded-md mb-2" style={{ backgroundColor: Colors.gray200 }} />
+        <View className="h-3 w-2/5 rounded-md mb-3" style={{ backgroundColor: Colors.gray200 }} />
+        <View className="h-3 w-4/5 rounded-md" style={{ backgroundColor: Colors.gray200 }} />
+      </Reanimated.View>
+    </Reanimated.View>
+  );
+}
+
+function ModalSafeArea({ children }: { children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      className="flex-1 bg-surface"
+      style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+    >
+      {children}
+    </View>
+  );
+}
+
+function HistoryLoadingSkeleton() {
+  return (
+    <View className="flex-1 bg-surface pt-4">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <SkeletonCard key={i} />
+      ))}
+    </View>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -203,7 +265,7 @@ function HighlightedText({
         key={`match-${localIdx}`}
         style={{
           backgroundColor: isActive ? Colors.accent : Colors.accent20,
-          color: isActive ? "#FFFFFF" : textColor,
+          color: isActive ? Colors.textOnDark : textColor,
           borderRadius: 2,
           fontWeight: isActive ? "700" : "400",
         }}
@@ -427,11 +489,7 @@ export default function ConversationHistoryScreen() {
   // ---------------------------------------------------------------------------
 
   if (isLoading) {
-    return (
-      <View className="flex-1 bg-surface justify-center items-center">
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
+    return <HistoryLoadingSkeleton />;
   }
 
   // ---------------------------------------------------------------------------
@@ -597,7 +655,7 @@ export default function ConversationHistoryScreen() {
         presentationStyle="pageSheet"
         onRequestClose={closeTranscript}
       >
-        <SafeAreaView className="flex-1 bg-surface">
+        <ModalSafeArea>
           {/* Modal header */}
           <View
             className="flex-row items-center justify-between px-4 py-3"
@@ -773,7 +831,7 @@ export default function ConversationHistoryScreen() {
                     <View
                       className="rounded-2xl p-3"
                       style={{
-                        backgroundColor: isUser ? "#1E3A5F" : "#FFFFFF",
+                        backgroundColor: isUser ? Colors.primary : Colors.surfaceWhite,
                         borderTopRightRadius: isUser ? 4 : 16,
                         borderTopLeftRadius: isUser ? 16 : 4,
                         borderWidth: isUser ? 0 : 1,
@@ -786,12 +844,12 @@ export default function ConversationHistoryScreen() {
                           matches={msgMatches.matches}
                           activeMatchIndex={activeMatchIdx}
                           globalOffset={msgMatches.globalOffset}
-                          textColor={isUser ? "#FFFFFF" : "#333"}
+                          textColor={isUser ? Colors.textOnDark : Colors.textPrimary}
                         />
                       ) : (
                         <Text
                           className="text-sm leading-5"
-                          style={{ color: isUser ? "#FFFFFF" : "#333" }}
+                          style={{ color: isUser ? Colors.textOnDark : Colors.textPrimary }}
                         >
                           {msg.content}
                         </Text>
@@ -825,7 +883,7 @@ export default function ConversationHistoryScreen() {
               )}
             </ScrollView>
           )}
-        </SafeAreaView>
+        </ModalSafeArea>
       </Modal>
     </View>
   );

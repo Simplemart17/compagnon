@@ -23,7 +23,7 @@ import {
   StatusBar,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -45,8 +45,6 @@ import type { ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors } from "@/src/lib/design";
 
-type ViewMode = "waveform" | "transcript";
-
 /** Sanitize technical error messages into user-friendly strings. */
 function sanitizeErrorMessage(error: string | null): string {
   if (!error) return "Something went wrong. Please try again.";
@@ -65,6 +63,9 @@ function sanitizeErrorMessage(error: string | null): string {
   if (lower.includes("timed out")) {
     return "Connection timed out. Please try again.";
   }
+  if (lower.includes("invalid_request_error") || lower.includes("session.audio")) {
+    return "Service configuration error. Please try again.";
+  }
   if (error.trimStart().startsWith("{")) {
     return "Something went wrong. Please try again.";
   }
@@ -72,43 +73,25 @@ function sanitizeErrorMessage(error: string | null): string {
   return error;
 }
 
-function PendingAiCard({ text }: { text: string }) {
-  const [cursorVisible, setCursorVisible] = useState(true);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCursorVisible((v) => !v);
-    }, 500);
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <View className="bg-white/[0.08] rounded-2xl px-5 py-3 mx-7 mt-4">
-      <Text
-        className="text-[15px] leading-[22px] italic"
-        style={{ color: "rgba(255,255,255,0.85)" }}
-        numberOfLines={3}
-      >
-        {text}
-        <Text style={{ color: cursorVisible ? "#F5A623" : "transparent" }}>|</Text>
-      </Text>
-    </View>
-  );
-}
-
 export default function ConversationSessionScreen() {
-  const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
+  const { sessionId, mode: modeParam } = useLocalSearchParams<{
+    sessionId: string;
+    mode: string;
+  }>();
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
 
-  const [viewMode, setViewMode] = useState<ViewMode>("waveform");
   const [textInput, setTextInput] = useState("");
   const [showTextInput, setShowTextInput] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
 
-  const topic = decodeURIComponent(sessionId ?? "Free conversation");
+  const insets = useSafeAreaInsets();
+  const rawSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
+  const rawMode = Array.isArray(modeParam) ? modeParam[0] : modeParam;
+  const topic = decodeURIComponent(rawSessionId ?? "Free conversation");
   const cefrLevel = (profile?.current_cefr_level ?? "A1") as CEFRLevel;
-  const mode: ConversationMode = "companion";
+  const mode: ConversationMode =
+    rawMode === "debate" || rawMode === "tcf_simulation" ? rawMode : "companion";
   const user = useAuthStore((s) => s.user);
 
   // Fetch companion memories and known error patterns for personalized conversation
@@ -146,24 +129,21 @@ export default function ConversationSessionScreen() {
 
   // Prevent accidental back navigation during active conversation
   useEffect(() => {
-    if (conversation.status !== "connected") return;
+    if (conversation.status !== "connected" && conversation.status !== "connecting") return;
 
     const onBackPress = () => {
-      Alert.alert(
-        "End Conversation?",
-        "Your conversation is still active. End it before leaving?",
-        [
-          { text: "Stay", style: "cancel" },
-          {
-            text: "End & Leave",
-            style: "destructive",
-            onPress: () => {
-              conversation.end();
-              router.back();
-            },
+      Alert.alert("Leave this conversation?", "Leave this conversation? It will be saved.", [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: () => {
+            hapticMedium();
+            conversation.end();
+            router.back();
           },
-        ]
-      );
+        },
+      ]);
       return true; // prevent default back behavior
     };
 
@@ -177,6 +157,24 @@ export default function ConversationSessionScreen() {
   }, [conversation]);
 
   const handleEnd = useCallback(() => {
+    if (conversation.durationSeconds < 60) {
+      Alert.alert(
+        "End conversation?",
+        "You\u2019ve been speaking for less than a minute. Are you sure you want to end?",
+        [
+          { text: "Continue", style: "cancel" },
+          {
+            text: "End",
+            style: "destructive",
+            onPress: () => {
+              hapticMedium();
+              conversation.end();
+            },
+          },
+        ]
+      );
+      return;
+    }
     hapticMedium();
     conversation.end();
   }, [conversation]);
@@ -215,37 +213,24 @@ export default function ConversationSessionScreen() {
   // Status dot color
   const statusDotColor =
     conversation.status === "connected"
-      ? "#34C759"
+      ? Colors.success
       : conversation.status === "connecting"
-        ? "#F5A623"
+        ? Colors.accent
         : conversation.status === "error"
-          ? "#FF3B30"
+          ? Colors.error
           : "rgba(255,255,255,0.3)";
 
-  // Status text / subtitle
-  function getStatusContent(): { main: string; sub: string; dimMain: boolean } {
-    if (conversation.status === "connecting") {
-      return { main: "Un moment...", sub: "Preparing your session", dimMain: false };
-    }
-    if (conversation.status === "connected") {
-      if (conversation.isSpeaking) {
-        return { main: "Je vous écoute...", sub: "Speak naturally", dimMain: false };
-      }
-      if (conversation.isAiSpeaking) {
-        return { main: "Compagnon répond...", sub: "", dimMain: false };
-      }
-      return { main: "À vous de parler", sub: "", dimMain: true };
-    }
-    if (conversation.status === "ended") {
-      return { main: "Conversation terminée", sub: "", dimMain: false };
-    }
-    return { main: "", sub: "", dimMain: false };
-  }
-
-  const statusContent = getStatusContent();
-
   return (
-    <SafeAreaView className="flex-1 bg-[#0D2240]">
+    <View
+      className="flex-1"
+      style={{
+        backgroundColor: Colors.bgDark,
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+      }}
+    >
       <StatusBar barStyle="light-content" />
       <Stack.Screen
         options={{
@@ -257,35 +242,22 @@ export default function ConversationSessionScreen() {
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {/* Radial glow behind waveform area */}
-        <View
-          className="absolute rounded-full"
-          style={{
-            top: "20%",
-            left: "50%",
-            marginLeft: -130,
-            width: 260,
-            height: 260,
-            backgroundColor: "rgba(30,58,95,0.5)",
-          }}
-          pointerEvents="none"
-        />
-
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3">
           {/* Back button */}
           <TouchableOpacity
             onPress={() => {
-              if (conversation.status === "connected") {
+              if (conversation.status === "connected" || conversation.status === "connecting") {
                 Alert.alert(
-                  "End Conversation?",
-                  "Your conversation is still active. End it before leaving?",
+                  "Leave this conversation?",
+                  "Leave this conversation? It will be saved.",
                   [
                     { text: "Stay", style: "cancel" },
                     {
-                      text: "End & Leave",
+                      text: "Leave",
                       style: "destructive",
                       onPress: () => {
+                        hapticMedium();
                         conversation.end();
                         router.back();
                       },
@@ -300,7 +272,7 @@ export default function ConversationSessionScreen() {
             accessibilityLabel="Go back"
             className="w-10 h-10 rounded-full bg-white/10 border border-white/15 justify-center items-center"
           >
-            <Text className="text-lg text-white">{"\u2190"}</Text>
+            <Text className="text-lg text-white">{"\u276E"}</Text>
           </TouchableOpacity>
 
           {/* Center: topic + status */}
@@ -327,93 +299,30 @@ export default function ConversationSessionScreen() {
             </View>
           </View>
 
-          {/* View toggle segmented pill */}
-          <View className="bg-white/[0.08] rounded-[20px] p-[3px] flex-row">
-            {(["waveform", "transcript"] as ViewMode[]).map((segMode) => {
-              const isActive = viewMode === segMode;
-              return (
-                <TouchableOpacity
-                  key={segMode}
-                  onPress={() => setViewMode(segMode)}
-                  className="px-2.5 py-[5px] rounded-[17px]"
-                  style={{
-                    backgroundColor: isActive ? "rgba(255,255,255,0.18)" : "transparent",
-                  }}
-                >
-                  <Text
-                    className="text-[11px]"
-                    style={{
-                      fontWeight: isActive ? "700" : "400",
-                      color: isActive ? "#FFFFFF" : "rgba(255,255,255,0.45)",
-                    }}
-                  >
-                    {segMode === "waveform" ? "Wave" : "Text"}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {/* Spacer to balance the back button */}
+          <View className="w-10 h-10" />
         </View>
 
-        {/* Topic banner */}
-        <View className="items-center mb-2">
-          <View className="bg-accent/[0.08] rounded-xl py-1.5 px-4 mx-8">
-            <Text className="text-[13px] font-semibold text-accent text-center">{topic}</Text>
-          </View>
-        </View>
-
-        {/* Main Content Area */}
+        {/* Main Content Area — transcript is always visible */}
         <View className="flex-1">
-          {viewMode === "waveform" ? (
-            <View className="flex-1 justify-center items-center">
-              <AudioWaveform
-                isActive={conversation.isSpeaking || conversation.isAiSpeaking}
-                speaker={
-                  conversation.isSpeaking ? "user" : conversation.isAiSpeaking ? "ai" : "idle"
-                }
-                isConnecting={conversation.status === "connecting"}
-                size={220}
-              />
-
-              {/* Status text block */}
-              {statusContent.main.length > 0 && (
-                <View className="items-center mt-6">
-                  <Text
-                    className="text-xl font-semibold italic text-center"
-                    style={{
-                      color: statusContent.dimMain ? "rgba(255,255,255,0.55)" : "#FFFFFF",
-                    }}
-                  >
-                    {statusContent.main}
-                  </Text>
-                  {statusContent.sub.length > 0 && (
-                    <Text className="text-[13px] text-white/[0.45] mt-1 text-center">
-                      {statusContent.sub}
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {/* Streaming AI text preview */}
-              {conversation.pendingAiText.length > 0 && (
-                <PendingAiCard text={conversation.pendingAiText} />
-              )}
-
-              {/* Recent corrections overlay -- absolute above controls */}
-              {conversation.allCorrections.length > 0 && (
-                <View className="absolute bottom-[100px] left-4 right-4">
-                  <CorrectionBubble corrections={conversation.allCorrections.slice(-2)} compact />
-                </View>
-              )}
-            </View>
-          ) : (
-            <TranscriptView
-              transcript={conversation.transcript}
-              pendingAiText={conversation.pendingAiText}
-              isAiSpeaking={conversation.isAiSpeaking}
-            />
-          )}
+          <TranscriptView
+            transcript={conversation.transcript}
+            pendingAiText={conversation.pendingAiText}
+            isAiSpeaking={conversation.isAiSpeaking}
+          />
         </View>
+
+        {/* Small waveform above controls when conversation is active */}
+        {(conversation.status === "connected" || conversation.status === "connecting") && (
+          <View className="items-center py-2">
+            <AudioWaveform
+              isActive={conversation.isSpeaking || conversation.isAiSpeaking}
+              speaker={conversation.isSpeaking ? "user" : conversation.isAiSpeaking ? "ai" : "idle"}
+              isConnecting={conversation.status === "connecting"}
+              size={60}
+            />
+          </View>
+        )}
 
         {/* Text Input */}
         {showTextInput && conversation.status === "connected" && (
@@ -501,25 +410,25 @@ export default function ConversationSessionScreen() {
                 accessibilityState={{ expanded: showTextInput }}
                 className="w-[52px] h-[52px] rounded-full justify-center items-center"
                 style={{
-                  backgroundColor: showTextInput ? "rgba(245,166,35,0.2)" : "rgba(255,255,255,0.1)",
+                  backgroundColor: showTextInput ? Colors.accent20 : "rgba(255,255,255,0.1)",
                   borderWidth: 1,
-                  borderColor: showTextInput ? "#F5A623" : "rgba(255,255,255,0.2)",
+                  borderColor: showTextInput ? Colors.accent : "rgba(255,255,255,0.2)",
                 }}
               >
                 <Text
                   className="text-[22px]"
-                  style={{ color: showTextInput ? "#F5A623" : "#FFFFFF" }}
+                  style={{ color: showTextInput ? Colors.accent : Colors.textOnDark }}
                 >
                   {"\u2328"}
                 </Text>
               </TouchableOpacity>
 
-              {/* End button */}
+              {/* End conversation pill button */}
               <TouchableOpacity
                 onPress={handleEnd}
                 accessibilityRole="button"
                 accessibilityLabel="End conversation"
-                className="bg-error w-[68px] h-[68px] rounded-full justify-center items-center"
+                className="bg-error rounded-full px-6 py-3"
                 style={{
                   shadowColor: Colors.error,
                   shadowOpacity: 0.45,
@@ -528,26 +437,7 @@ export default function ConversationSessionScreen() {
                   elevation: 8,
                 }}
               >
-                <Text className="text-white text-2xl font-bold">{"\u25A0"}</Text>
-              </TouchableOpacity>
-
-              {/* Transcript toggle */}
-              <TouchableOpacity
-                onPress={() => setViewMode((v) => (v === "transcript" ? "waveform" : "transcript"))}
-                className="w-[52px] h-[52px] rounded-full justify-center items-center"
-                style={{
-                  backgroundColor:
-                    viewMode === "transcript" ? "rgba(245,166,35,0.2)" : "rgba(255,255,255,0.1)",
-                  borderWidth: 1,
-                  borderColor: viewMode === "transcript" ? "#F5A623" : "rgba(255,255,255,0.2)",
-                }}
-              >
-                <Text
-                  className="text-[22px]"
-                  style={{ color: viewMode === "transcript" ? "#F5A623" : "#FFFFFF" }}
-                >
-                  {"\u2261"}
-                </Text>
+                <Text className="text-white text-[15px] font-bold">End Conversation</Text>
               </TouchableOpacity>
             </>
           )}
@@ -592,8 +482,9 @@ export default function ConversationSessionScreen() {
             style={{ backgroundColor: "rgba(8,18,35,0.92)" }}
           >
             <View
-              className="bg-[#152B48] pt-4 px-6 pb-10"
+              className="pt-4 px-6 pb-10"
               style={{
+                backgroundColor: Colors.bgDarkCard,
                 borderTopLeftRadius: 28,
                 borderTopRightRadius: 28,
                 maxHeight: "78%",
@@ -648,7 +539,10 @@ export default function ConversationSessionScreen() {
                         <Text className="text-[10px] text-white/[0.65] mt-0.5">Grammar</Text>
                       </View>
                       <View className="flex-1 items-center">
-                        <Text className="text-[22px] font-extrabold text-[#3B82F6]">
+                        <Text
+                          className="text-[22px] font-extrabold"
+                          style={{ color: Colors.skillListening }}
+                        >
                           {conversation.feedback.vocabularyUsed}
                         </Text>
                         <Text className="text-[10px] text-white/[0.65] mt-0.5">Words</Text>
@@ -708,6 +602,6 @@ export default function ConversationSessionScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }

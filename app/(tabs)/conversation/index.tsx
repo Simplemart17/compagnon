@@ -11,10 +11,16 @@ import Reanimated, {
 
 import { useAuthStore } from "@/src/store/auth-store";
 import { CONVERSATION_TOPICS, LEVEL_COLORS } from "@/src/lib/constants";
-import type { ConversationTopic } from "@/src/types/conversation";
+import type { ConversationTopic, ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import { Colors } from "@/src/lib/design";
+
+const CONVERSATION_MODES: { key: ConversationMode; label: string; icon: string }[] = [
+  { key: "companion", label: "Companion", icon: "\uD83D\uDCAC" },
+  { key: "debate", label: "Debate", icon: "\u2694\uFE0F" },
+  { key: "tcf_simulation", label: "TCF Sim", icon: "\uD83C\uDFAF" },
+];
 
 const TOPIC_EMOJIS: Record<string, string> = {
   "Se pr\u00e9senter": "\uD83D\uDC4B",
@@ -119,14 +125,22 @@ function CardItem({ item, index, onPress }: CardItemProps) {
             <Text className="text-base font-bold text-primary" numberOfLines={1}>
               {item.titleFr}
             </Text>
-            <Text className="text-[13px] text-[#6B7C93] mt-[1px]" numberOfLines={1}>
+            <Text
+              className="text-[13px] mt-[1px]"
+              style={{ color: Colors.textSecondary }}
+              numberOfLines={1}
+            >
               {item.title}
             </Text>
           </View>
         </View>
 
         {/* Description */}
-        <Text className="text-[13px] text-[#94A3B8] leading-[19px] mt-2" numberOfLines={2}>
+        <Text
+          className="text-[13px] leading-[19px] mt-2"
+          style={{ color: Colors.textTertiary }}
+          numberOfLines={2}
+        >
           {item.description}
         </Text>
 
@@ -146,7 +160,7 @@ function CardItem({ item, index, onPress }: CardItemProps) {
                 key={dot}
                 className="w-[7px] h-[7px] rounded-full"
                 style={{
-                  backgroundColor: dot <= difficultyDots ? stripColor : "#E0E0CE",
+                  backgroundColor: dot <= difficultyDots ? stripColor : Colors.gray300,
                 }}
               />
             ))}
@@ -165,6 +179,7 @@ export default function ConversationTopicsScreen() {
   const streak = profile?.streak_days ?? 0;
 
   const [selectedLevel, setSelectedLevel] = useState<LevelFilter>("All");
+  const [selectedMode, setSelectedMode] = useState<ConversationMode>("companion");
 
   // Show topics at or below user's level, plus one level above for challenge
   const userLevelIdx = CEFR_ORDER.indexOf(userLevel);
@@ -182,9 +197,9 @@ export default function ConversationTopicsScreen() {
 
   const handleTopicPress = useCallback(
     (topic: ConversationTopic) => {
-      router.push(`/(tabs)/conversation/${encodeURIComponent(topic.titleFr)}`);
+      router.push(`/(tabs)/conversation/${encodeURIComponent(topic.titleFr)}?mode=${selectedMode}`);
     },
-    [router]
+    [router, selectedMode]
   );
 
   const renderTopic = useCallback(
@@ -289,6 +304,35 @@ export default function ConversationTopicsScreen() {
         </View>
       </View>
 
+      {/* Mode selector */}
+      <View className="flex-row justify-center px-5 pt-3 pb-1 gap-2">
+        {CONVERSATION_MODES.map((m) => {
+          const isActive = selectedMode === m.key;
+          return (
+            <TouchableOpacity
+              key={m.key}
+              onPress={() => setSelectedMode(m.key)}
+              accessibilityRole="button"
+              accessibilityLabel={`Conversation mode: ${m.label}`}
+              accessibilityState={{ selected: isActive }}
+              className="flex-1 rounded-xl py-2.5 items-center"
+              style={{
+                backgroundColor: isActive ? Colors.primary : Colors.surfaceWhite,
+                borderColor: isActive ? Colors.primary : Colors.gray300,
+                borderWidth: 1,
+              }}
+            >
+              <Text
+                className="text-[13px]"
+                style={{ color: isActive ? "#FFFFFF" : Colors.textSecondary }}
+              >
+                {m.icon} {m.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       {/* Level filter bar -- only show levels that have topics */}
       <View className="flex-row justify-center px-5 py-3 gap-[10px]">
         {(["All", ...availableLevels] as const).map((level) => {
@@ -302,8 +346,8 @@ export default function ConversationTopicsScreen() {
               accessibilityState={{ selected: isActive }}
               className="flex-1 max-w-[80px] rounded-[20px] py-2 items-center"
               style={{
-                backgroundColor: isActive ? "#1E3A5F" : "#FFFFFF",
-                borderColor: isActive ? "#1E3A5F" : "#E0E0CE",
+                backgroundColor: isActive ? Colors.primary : Colors.surfaceWhite,
+                borderColor: isActive ? Colors.primary : Colors.gray300,
                 borderWidth: 1,
               }}
             >
@@ -311,7 +355,7 @@ export default function ConversationTopicsScreen() {
                 className="text-[13px]"
                 style={{
                   fontWeight: isActive ? "700" : "600",
-                  color: isActive ? "#FFFFFF" : "#8A8A7A",
+                  color: isActive ? Colors.textOnDark : Colors.textSecondary,
                 }}
               >
                 {level}

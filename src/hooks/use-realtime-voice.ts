@@ -163,13 +163,15 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
 
       // Configure for conversation mode (full-duplex recording + playback)
       // 24kHz required by OpenAI Realtime GA API for both input and output
+      // 24kHz required by OpenAI Realtime API; native audio supports it
+      // even though the library's TS types only enumerate 16000|44100|48000
       await ExpoPlayAudioStream.setSoundConfig({
-        sampleRate: 24000 as unknown as 16000,
+        sampleRate: 24000 as Parameters<typeof ExpoPlayAudioStream.setSoundConfig>[0]["sampleRate"],
         playbackMode: "conversation",
       });
 
       const { subscription } = await ExpoPlayAudioStream.startRecording({
-        sampleRate: 24000 as unknown as 16000, // cast: library types only list 16000|44100|48000
+        sampleRate: 24000 as Parameters<typeof ExpoPlayAudioStream.startRecording>[0]["sampleRate"],
         channels: 1,
         encoding: "pcm_16bit",
         interval: 250,
@@ -396,7 +398,10 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
       .select("id")
       .single();
 
-    if (error || !data) return null;
+    if (error || !data) {
+      if (error) captureError(error, "create-conversation-record");
+      return null;
+    }
     return data.id;
   }, [user, topic, topicDescription, cefrLevel, mode]);
 

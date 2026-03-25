@@ -92,6 +92,10 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
               key={`${correction.original}-${index}`}
               onPress={() => setExpandedIndex(isExpanded ? null : index)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Correction: "${correction.original}" should be "${correction.corrected}"`}
+              accessibilityHint={isExpanded ? "Tap to collapse explanation" : "Tap for explanation"}
+              accessibilityState={{ expanded: isExpanded }}
               style={{
                 marginBottom: index < visibleCorrections.length - 1 ? 10 : 0,
               }}
