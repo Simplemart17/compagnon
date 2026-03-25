@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Reanimated, {
@@ -198,6 +198,7 @@ export default function ConversationTopicsScreen() {
 
   return (
     <View className="flex-1 bg-surface">
+      <StatusBar barStyle="light-content" />
       {/* Hero section */}
       <View
         className="bg-primary rounded-b-[28px] pb-6 px-6"

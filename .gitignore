@@ -45,3 +45,8 @@ yarn-error.*
 
 # Supabase CLI temp files
 supabase/.temp/
+
+_bmad*
+.claude/skills
+
+docs

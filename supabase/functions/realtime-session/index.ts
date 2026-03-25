@@ -1,20 +1,21 @@
 /**
  * Realtime Session Edge Function
  *
- * Issues ephemeral tokens for OpenAI Realtime API WebSocket connections.
- * The client uses this token to connect directly to the Realtime API
+ * Issues ephemeral client secrets for OpenAI Realtime API WebSocket connections.
+ * Uses the GA endpoint: POST /v1/realtime/client_secrets
+ * The client uses the returned token to connect directly to the Realtime API
  * without exposing the actual API key.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
-import { errorResponse } from "../_shared/errors.ts";
+import { errorResponse, parseUpstreamError } from "../_shared/errors.ts";
 
-const ALLOWED_REALTIME_MODELS = ["gpt-4o-realtime-preview", "gpt-4o-mini-realtime-preview"];
+const ALLOWED_REALTIME_MODELS = ["gpt-realtime", "gpt-realtime-mini", "gpt-4o-realtime-preview", "gpt-4o-mini-realtime-preview"];
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
 /**
  * Rate limit: 10 sessions per minute per user.
@@ -33,6 +34,14 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Verify required environment variables
+    if (!OPENAI_API_KEY) {
+      return errorResponse({ code: "INTERNAL_ERROR", message: "Server misconfiguration: OPENAI_API_KEY not set", status: 500, corsHeaders });
+    }
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return errorResponse({ code: "INTERNAL_ERROR", message: "Server misconfiguration: Supabase env vars not set", status: 500, corsHeaders });
+    }
+
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -58,29 +67,41 @@ Deno.serve(async (req: Request) => {
       return rateLimitResponse(corsHeaders, resetIn);
     }
 
-    // Request ephemeral token from OpenAI
-    const body = await req.json();
-    // Validate model against allowlist — default to gpt-4o-realtime-preview if not allowed
-    const model = ALLOWED_REALTIME_MODELS.includes(body.model)
-      ? body.model
-      : "gpt-4o-realtime-preview";
-    const voice = body.voice ?? "nova";
+    // Parse request body
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse({ code: "INVALID_PARAMS", message: "Request body must be valid JSON", status: 400, corsHeaders });
+    }
 
-    const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+    // Request ephemeral token from OpenAI GA endpoint
+    // Validate model against allowlist — default to gpt-realtime if not allowed
+    const model = ALLOWED_REALTIME_MODELS.includes(body.model as string)
+      ? body.model
+      : "gpt-realtime";
+    const voice = (body.voice as string) ?? "coral";
+
+    const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model,
-        voice,
+        session: {
+          type: "realtime",
+          model,
+          audio: {
+            output: { voice },
+          },
+        },
       }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      return errorResponse({ code: "UPSTREAM_ERROR", message: errorText, status: response.status, corsHeaders });
+      const upstreamMessage = await parseUpstreamError(response);
+      return errorResponse({ code: "UPSTREAM_ERROR", message: `OpenAI Realtime error: ${upstreamMessage}`, status: response.status, corsHeaders });
     }
 
     const sessionData = await response.json();

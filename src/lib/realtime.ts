@@ -3,6 +3,9 @@
  *
  * Manages the WebSocket connection for real-time voice conversations.
  * Uses ephemeral tokens from the Edge Function for security.
+ *
+ * Targets the GA Realtime API (not the beta interface).
+ * See: https://platform.openai.com/docs/guides/realtime-websocket
  */
 
 import { captureError } from "./sentry";
@@ -10,20 +13,28 @@ import { requireNetwork } from "./network";
 import { supabase } from "./supabase";
 
 const REALTIME_URL = "wss://api.openai.com/v1/realtime";
-const MODEL = "gpt-4o-realtime-preview";
+const MODEL = "gpt-realtime";
 
 /** Connection timeout in milliseconds */
 const CONNECT_TIMEOUT_MS = 15_000;
 
+/**
+ * GA Realtime API event types.
+ *
+ * Audio-related events use the `output_` prefix in the GA API:
+ *   response.output_audio.delta, response.output_audio.done,
+ *   response.output_audio_transcript.delta, response.output_audio_transcript.done,
+ *   response.output_text.delta, response.output_text.done
+ */
 export type RealtimeEvent =
   | { type: "session.created"; session: Record<string, unknown> }
   | { type: "session.updated"; session: Record<string, unknown> }
-  | { type: "response.audio.delta"; delta: string }
-  | { type: "response.audio.done" }
-  | { type: "response.text.delta"; delta: string }
-  | { type: "response.text.done"; text: string }
-  | { type: "response.audio_transcript.delta"; delta: string }
-  | { type: "response.audio_transcript.done"; transcript: string }
+  | { type: "response.output_audio.delta"; delta: string }
+  | { type: "response.output_audio.done" }
+  | { type: "response.output_text.delta"; delta: string }
+  | { type: "response.output_text.done"; text: string }
+  | { type: "response.output_audio_transcript.delta"; delta: string }
+  | { type: "response.output_audio_transcript.done"; transcript: string }
   | { type: "response.done"; response: Record<string, unknown> }
   | { type: "input_audio_buffer.speech_started" }
   | { type: "input_audio_buffer.speech_stopped" }
@@ -39,11 +50,19 @@ export type RealtimeEvent =
 
 export interface RealtimeConfig {
   systemPrompt: string;
-  voice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
-  inputAudioFormat?: "pcm16" | "g711_ulaw" | "g711_alaw";
-  outputAudioFormat?: "pcm16" | "g711_ulaw" | "g711_alaw";
+  voice?:
+    | "alloy"
+    | "ash"
+    | "ballad"
+    | "coral"
+    | "echo"
+    | "sage"
+    | "shimmer"
+    | "verse"
+    | "marin"
+    | "cedar";
   turnDetection?: {
-    type: "server_vad";
+    type: "server_vad" | "semantic_vad";
     threshold?: number;
     prefix_padding_ms?: number;
     silence_duration_ms?: number;
@@ -83,19 +102,43 @@ export class RealtimeSession {
     // Check network before attempting connection
     await requireNetwork();
 
-    // Get ephemeral token from Edge Function
+    // Refresh the session to ensure a valid access token before calling the Edge Function.
+    // supabase.functions.invoke uses the cached token which may be expired.
+    const { error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) {
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    // Get ephemeral token from Edge Function (uses GA /v1/realtime/client_secrets endpoint)
     const { data: sessionData, error } = await supabase.functions.invoke("realtime-session", {
       body: {
         model: MODEL,
-        voice: this.config.voice ?? "nova",
+        voice: this.config.voice ?? "coral",
       },
     });
 
-    if (error || !sessionData?.client_secret?.value) {
-      throw new Error(error?.message ?? "Failed to get realtime session token");
+    if (error) {
+      // Extract the actual error body from the Edge Function response
+      let detail = error.message;
+      try {
+        if (error.context instanceof Response) {
+          const body = await error.context.json();
+          detail = body?.message || body?.error || detail;
+        }
+      } catch {
+        // Fall back to generic message
+      }
+      throw new Error(detail);
     }
 
-    const ephemeralToken = sessionData.client_secret.value;
+    // Extract ephemeral token — GA client_secrets endpoint returns token at top level:
+    // { value: "ek_...", expires_at: ..., session: { ... } }
+    const ephemeralToken = sessionData?.value ?? sessionData?.client_secret?.value;
+
+    if (!ephemeralToken) {
+      console.error("[Realtime] Unexpected session response:", JSON.stringify(sessionData));
+      throw new Error("Failed to get realtime session token — no client secret returned.");
+    }
 
     return new Promise((resolve, reject) => {
       let settled = false;
@@ -121,7 +164,6 @@ export class RealtimeSession {
       this.ws = new RNWebSocket(url, [], {
         headers: {
           Authorization: `Bearer ${ephemeralToken}`,
-          "OpenAI-Beta": "realtime=v1",
         },
       });
 
@@ -171,26 +213,46 @@ export class RealtimeSession {
     });
   }
 
-  /** Configure the session with system prompt, voice, and tools */
+  /**
+   * Configure the session with system prompt, voice, and tools.
+   *
+   * Uses the GA Realtime API format with nested audio configuration
+   * and `type: "realtime"` session type.
+   */
   private configureSession(): void {
+    const turnDetection = this.config.turnDetection ?? {
+      type: "server_vad" as const,
+      threshold: 0.5,
+      prefix_padding_ms: 300,
+      silence_duration_ms: 500,
+    };
+
     this.send({
       type: "session.update",
       session: {
-        modalities: ["text", "audio"],
+        type: "realtime",
+        output_modalities: ["text", "audio"],
         instructions: this.config.systemPrompt,
-        voice: this.config.voice ?? "nova",
-        input_audio_format: this.config.inputAudioFormat ?? "pcm16",
-        output_audio_format: this.config.outputAudioFormat ?? "pcm16",
-        input_audio_transcription: {
-          model: "whisper-1",
-        },
-        turn_detection: this.config.turnDetection ?? {
-          type: "server_vad",
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 500,
+        audio: {
+          input: {
+            format: {
+              type: "audio/pcm",
+              rate: 24000,
+            },
+            transcription: {
+              model: "gpt-4o-transcribe",
+            },
+            turn_detection: turnDetection,
+          },
+          output: {
+            format: {
+              type: "audio/pcm",
+            },
+            voice: this.config.voice ?? "coral",
+          },
         },
         tools: this.config.tools ?? [],
+        tool_choice: "auto",
       },
     });
   }
@@ -208,7 +270,7 @@ export class RealtimeSession {
     this.send({ type: "response.create" });
   }
 
-  /** Append audio data to the input buffer (Base64-encoded PCM) */
+  /** Append audio data to the input buffer (Base64-encoded 16kHz PCM16 mono) */
   appendAudio(base64Audio: string): void {
     this.send({
       type: "input_audio_buffer.append",

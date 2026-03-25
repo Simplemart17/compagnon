@@ -12,9 +12,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { errorResponse } from "../_shared/errors.ts";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 /** Rate limit: 1 request per minute per user (destructive operation). */
 const RATE_LIMIT = { requests: 1, windowSeconds: 60 };
@@ -31,6 +31,14 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Verify required environment variables
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return errorResponse({ code: "INTERNAL_ERROR", message: "Server misconfiguration: Supabase env vars not set", status: 500, corsHeaders });
+    }
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      return errorResponse({ code: "INTERNAL_ERROR", message: "Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY not set", status: 500, corsHeaders });
+    }
+
     // 1. Authenticate user via their JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -80,7 +88,7 @@ Deno.serve(async (req: Request) => {
     if (deleteError) {
       return errorResponse({
         code: "INTERNAL_ERROR",
-        message: "Failed to delete account. Please try again or contact support.",
+        message: `Failed to delete account: ${deleteError.message}`,
         status: 500,
         corsHeaders,
       });

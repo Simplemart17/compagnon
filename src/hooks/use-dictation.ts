@@ -316,7 +316,7 @@ export function useDictation(): UseDictationReturn {
 
         if (!base64) {
           base64 = await generateSpeech(currentSentence.sentence, {
-            voice: "nova",
+            voice: "coral",
             speed,
           });
           if (speed === 1.0) {

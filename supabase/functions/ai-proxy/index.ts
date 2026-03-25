@@ -8,13 +8,13 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
-import { errorResponse } from "../_shared/errors.ts";
+import { errorResponse, parseUpstreamError } from "../_shared/errors.ts";
 
 const ALLOWED_MODELS = ["gpt-4o", "gpt-4o-mini"];
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")!;
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
 /** Max request body size: 50 KB (prevents prompt injection via massive payloads) */
 const MAX_BODY_BYTES = 50 * 1024;
@@ -33,6 +33,14 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Verify required environment variables
+    if (!OPENAI_API_KEY) {
+      return errorResponse({ code: "INTERNAL_ERROR", message: "Server misconfiguration: OPENAI_API_KEY not set", status: 500, corsHeaders });
+    }
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return errorResponse({ code: "INTERNAL_ERROR", message: "Server misconfiguration: Supabase env vars not set", status: 500, corsHeaders });
+    }
+
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -64,7 +72,12 @@ Deno.serve(async (req: Request) => {
       return errorResponse({ code: "BODY_TOO_LARGE", message: "Request body too large (max 50 KB)", status: 413, corsHeaders });
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse({ code: "INVALID_PARAMS", message: "Request body must be valid JSON", status: 400, corsHeaders });
+    }
     const { action, ...params } = body;
 
     let openaiResponse: Response;
@@ -86,7 +99,7 @@ Deno.serve(async (req: Request) => {
             model: chatModel,
             messages: params.messages,
             temperature: params.temperature ?? 0.7,
-            max_tokens: params.maxTokens ?? 2048,
+            max_completion_tokens: params.maxTokens ?? 2048,
             response_format: params.responseFormat
               ? { type: params.responseFormat }
               : undefined,
@@ -108,15 +121,15 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             model: "gpt-4o-mini-tts",
             input: params.input,
-            voice: params.voice ?? "nova",
+            voice: params.voice ?? "coral",
             speed: params.speed ?? 1.0,
             response_format: "mp3",
           }),
         });
 
         if (!openaiResponse.ok) {
-          const errorText = await openaiResponse.text();
-          return errorResponse({ code: "UPSTREAM_ERROR", message: errorText, status: openaiResponse.status, corsHeaders });
+          const upstreamMessage = await parseUpstreamError(openaiResponse);
+          return errorResponse({ code: "UPSTREAM_ERROR", message: `OpenAI TTS error: ${upstreamMessage}`, status: openaiResponse.status, corsHeaders });
         }
 
         // Return audio as binary
@@ -154,8 +167,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      return errorResponse({ code: "UPSTREAM_ERROR", message: errorText, status: openaiResponse.status, corsHeaders });
+      const upstreamMessage = await parseUpstreamError(openaiResponse);
+      return errorResponse({ code: "UPSTREAM_ERROR", message: `OpenAI error: ${upstreamMessage}`, status: openaiResponse.status, corsHeaders });
     }
 
     const data = await openaiResponse.json();

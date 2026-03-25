@@ -20,8 +20,9 @@ import {
   ScrollView,
   Alert,
   BackHandler,
+  StatusBar,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Reanimated, {
   useSharedValue,
@@ -45,6 +46,31 @@ import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors } from "@/src/lib/design";
 
 type ViewMode = "waveform" | "transcript";
+
+/** Sanitize technical error messages into user-friendly strings. */
+function sanitizeErrorMessage(error: string | null): string {
+  if (!error) return "Something went wrong. Please try again.";
+
+  const lower = error.toLowerCase();
+
+  if (lower.includes("openai_api_key") || lower.includes("misconfiguration")) {
+    return "Service temporarily unavailable. Please try again later.";
+  }
+  if (lower.includes("network") || lower.includes("offline")) {
+    return "No internet connection. Please check your network.";
+  }
+  if (lower.includes("session expired") || lower.includes("sign in")) {
+    return error;
+  }
+  if (lower.includes("timed out")) {
+    return "Connection timed out. Please try again.";
+  }
+  if (error.trimStart().startsWith("{")) {
+    return "Something went wrong. Please try again.";
+  }
+
+  return error;
+}
 
 function PendingAiCard({ text }: { text: string }) {
   const [cursorVisible, setCursorVisible] = useState(true);
@@ -112,7 +138,7 @@ export default function ConversationSessionScreen() {
     topic,
     memories,
     errorPatterns,
-    voice: "nova",
+    voice: "coral",
     onConversationEnd: () => {
       setFeedbackVisible(true);
     },
@@ -220,6 +246,13 @@ export default function ConversationSessionScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-[#0D2240]">
+      <StatusBar barStyle="light-content" />
+      <Stack.Screen
+        options={{
+          headerShown: false,
+          gestureEnabled: conversation.status !== "connected",
+        }}
+      />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -244,7 +277,22 @@ export default function ConversationSessionScreen() {
           <TouchableOpacity
             onPress={() => {
               if (conversation.status === "connected") {
-                handleEnd();
+                Alert.alert(
+                  "End Conversation?",
+                  "Your conversation is still active. End it before leaving?",
+                  [
+                    { text: "Stay", style: "cancel" },
+                    {
+                      text: "End & Leave",
+                      style: "destructive",
+                      onPress: () => {
+                        conversation.end();
+                        router.back();
+                      },
+                    },
+                  ]
+                );
+                return;
               }
               router.back();
             }}
@@ -477,6 +525,7 @@ export default function ConversationSessionScreen() {
                   shadowOpacity: 0.45,
                   shadowRadius: 14,
                   shadowOffset: { width: 0, height: 4 },
+                  elevation: 8,
                 }}
               >
                 <Text className="text-white text-2xl font-bold">{"\u25A0"}</Text>
@@ -514,7 +563,9 @@ export default function ConversationSessionScreen() {
 
           {conversation.status === "error" && (
             <View className="items-center">
-              <Text className="text-error text-sm text-center mb-3 mx-8">{conversation.error}</Text>
+              <Text className="text-error text-sm text-center mb-3 mx-8">
+                {sanitizeErrorMessage(conversation.error)}
+              </Text>
               <View className="flex-row gap-3">
                 <TouchableOpacity
                   onPress={() => router.back()}

@@ -1,14 +1,17 @@
 import { useEffect } from "react";
-import { View } from "react-native";
+import { LogBox, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as Sentry from "@sentry/react-native";
-
 import "react-native-reanimated";
+
 import "@/src/styles/global.css";
 import { useAuth } from "@/src/hooks/use-auth";
 import { NetworkBanner } from "@/src/components/common/NetworkBanner";
 import { ErrorBoundary as AppErrorBoundary } from "@/src/components/common/ErrorBoundary";
+
+// Suppress deprecation warning from third-party dependencies using RN's built-in SafeAreaView
+LogBox.ignoreLogs(["SafeAreaView has been deprecated"]);
 
 export { ErrorBoundary } from "expo-router";
 

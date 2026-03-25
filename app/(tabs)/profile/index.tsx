@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -246,6 +247,7 @@ export default function ProfileScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
+      <StatusBar barStyle="light-content" />
       <View className="flex-1 bg-surface">
         {/* ----------------------------------------------------------------
             Hero header -- not scrollable
