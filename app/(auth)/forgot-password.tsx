@@ -22,6 +22,7 @@ import Reanimated, {
 
 import { supabase } from "@/src/lib/supabase";
 import { Colors } from "@/src/lib/design";
+import { captureError } from "@/src/lib/sentry";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.38;
@@ -85,6 +86,7 @@ export default function ForgotPasswordScreen() {
         );
       }
     } catch (err) {
+      captureError(err, "forgot-password");
       const message = err instanceof Error ? err.message : "An unexpected error occurred.";
       Alert.alert("Error", message);
     } finally {
@@ -182,6 +184,8 @@ export default function ForgotPasswordScreen() {
                 keyboardType="email-address"
                 onFocus={() => setEmailFocused(true)}
                 onBlur={() => setEmailFocused(false)}
+                accessibilityLabel="Email address"
+                accessibilityHint="Enter your email to receive a password reset link"
                 className="flex-1 text-[15px] text-primary p-0"
               />
             </View>
@@ -194,6 +198,9 @@ export default function ForgotPasswordScreen() {
               onPressIn={handleButtonPressIn}
               onPressOut={handleButtonPressOut}
               disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Send reset link"
+              accessibilityState={{ disabled: loading, busy: loading }}
               className="bg-primary rounded-xl py-[17px] items-center"
               style={{ opacity: loading ? 0.7 : 1 }}
             >

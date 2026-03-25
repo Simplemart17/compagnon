@@ -20,8 +20,11 @@ import Animated, {
 
 import { useAuth } from "@/src/hooks/use-auth";
 import { CEFR_ORDER, CEFR_LEVELS } from "@/src/types/cefr";
-import type { CEFRLevel } from "@/src/types/cefr";
+import { Colors } from "@/src/lib/design";
+import { captureError } from "@/src/lib/sentry";
 import { LEVEL_COLORS } from "@/src/lib/constants";
+import type { CEFRLevel } from "@/src/types/cefr";
+import type { UserProfile } from "@/src/types/user";
 
 type Step = "level" | "goal" | "daily";
 
@@ -132,33 +135,58 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { updateProfile } = useAuth();
   const [step, setStep] = useState<Step>("level");
-  const [selectedLevel, setSelectedLevel] = useState<CEFRLevel>("A1");
+  const [selectedLevel, setSelectedLevel] = useState<CEFRLevel | null | undefined>(undefined);
   const [selectedGoal, setSelectedGoal] = useState("tcf_c1");
   const [selectedMinutes, setSelectedMinutes] = useState(15);
   const [loading, setLoading] = useState(false);
 
   async function handleComplete() {
     setLoading(true);
-    const targetLevel = selectedGoal === "tcf_c2" ? "C2" : "C1";
-    const { error } = await updateProfile({
-      current_cefr_level: selectedLevel,
-      target_cefr_level: targetLevel as CEFRLevel,
-      daily_goal_minutes: selectedMinutes,
-    });
-    setLoading(false);
+    try {
+      const targetLevel = selectedGoal === "tcf_c2" ? "C2" : "C1";
+      const needsPlacementTest = selectedLevel === null || selectedLevel === undefined;
 
-    if (error) {
-      Alert.alert("Error", "Failed to save your preferences. Please try again.");
-      return;
+      const profileUpdates: Partial<UserProfile> = {
+        target_cefr_level: targetLevel as CEFRLevel,
+        daily_goal_minutes: selectedMinutes,
+      };
+
+      if (!needsPlacementTest) {
+        profileUpdates.current_cefr_level = selectedLevel as CEFRLevel;
+        profileUpdates.onboarding_completed = true;
+      }
+
+      const { error } = await updateProfile(profileUpdates);
+
+      if (error) {
+        Alert.alert("Error", "Failed to save your preferences. Please try again.");
+        return;
+      }
+
+      if (needsPlacementTest) {
+        router.push("/onboarding/placement-test");
+      } else {
+        router.replace("/(tabs)/home");
+      }
+    } catch (err) {
+      captureError(err, "onboarding-complete");
+      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
-
-    router.push("/onboarding/placement-test");
   }
 
   const isFinalStep = step === "daily";
 
   function handleContinue() {
     if (step === "level") {
+      if (selectedLevel === undefined) {
+        Alert.alert(
+          "Select a level",
+          "Please select your current French level or choose 'I don\u2019t know'."
+        );
+        return;
+      }
       setStep("goal");
     } else if (step === "goal") {
       setStep("daily");
@@ -227,11 +255,11 @@ export default function OnboardingScreen() {
                     activeOpacity={0.75}
                     className="flex-row items-center overflow-hidden"
                     style={{
-                      backgroundColor: isSelected ? "#1E3A5F" : "#FFFFFF",
+                      backgroundColor: isSelected ? Colors.primary : Colors.surfaceWhite,
                       borderRadius: 14,
                       borderWidth: 1,
-                      borderColor: isSelected ? "#1E3A5F" : "#E0E0CE",
-                      shadowColor: "#1E3A5F",
+                      borderColor: isSelected ? Colors.primary : Colors.border,
+                      shadowColor: Colors.primary,
                       shadowOpacity: isSelected ? 0.18 : 0.05,
                       shadowRadius: 8,
                       shadowOffset: { width: 0, height: 3 },
@@ -259,7 +287,7 @@ export default function OnboardingScreen() {
                       <View className="flex-1">
                         <Text
                           className="font-bold text-[15px] mb-[2px]"
-                          style={{ color: isSelected ? "#FFFFFF" : "#1E3A5F" }}
+                          style={{ color: isSelected ? Colors.textOnDark : Colors.primary }}
                         >
                           {CEFR_LEVELS[level].name}
                         </Text>
@@ -267,7 +295,7 @@ export default function OnboardingScreen() {
                           className="text-xs leading-4"
                           numberOfLines={1}
                           style={{
-                            color: isSelected ? "rgba(255,255,255,0.65)" : "#999999",
+                            color: isSelected ? "rgba(255,255,255,0.65)" : Colors.textTertiary,
                           }}
                         >
                           {CEFR_LEVELS[level].description}
@@ -278,6 +306,61 @@ export default function OnboardingScreen() {
                 </StaggeredItem>
               );
             })}
+
+            {/* "I don't know" option → triggers placement test */}
+            <StaggeredItem key="unknown" index={CEFR_ORDER.length} stepKey={step}>
+              <TouchableOpacity
+                onPress={() => setSelectedLevel(null)}
+                activeOpacity={0.75}
+                className="flex-row items-center overflow-hidden"
+                style={{
+                  backgroundColor: selectedLevel === null ? Colors.primary : Colors.surfaceWhite,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: selectedLevel === null ? Colors.primary : Colors.border,
+                  shadowColor: Colors.primary,
+                  shadowOpacity: selectedLevel === null ? 0.18 : 0.05,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 3 },
+                  elevation: selectedLevel === null ? 4 : 1,
+                }}
+              >
+                {selectedLevel === null && (
+                  <View className="absolute left-0 top-0 bottom-0 w-1 bg-accent" />
+                )}
+                <View
+                  className="flex-row items-center gap-3 flex-1 py-4 pr-4"
+                  style={{ paddingLeft: selectedLevel === null ? 20 : 16 }}
+                >
+                  <View
+                    className="px-[10px] py-[5px] rounded-lg min-w-[42px] items-center"
+                    style={{ backgroundColor: Colors.textTertiary }}
+                  >
+                    <Text className="text-white font-bold text-[13px]">?</Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text
+                      className="font-bold text-[15px] mb-[2px]"
+                      style={{
+                        color: selectedLevel === null ? Colors.textOnDark : Colors.primary,
+                      }}
+                    >
+                      I don&apos;t know
+                    </Text>
+                    <Text
+                      className="text-xs leading-4"
+                      numberOfLines={1}
+                      style={{
+                        color:
+                          selectedLevel === null ? "rgba(255,255,255,0.65)" : Colors.textTertiary,
+                      }}
+                    >
+                      Take a placement test to find out
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </StaggeredItem>
           </View>
         )}
 
@@ -412,7 +495,11 @@ export default function OnboardingScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text className="text-white text-[17px] font-bold tracking-wide">
-              {isFinalStep ? "Passer le test de placement" : "Continuer \u2192"}
+              {isFinalStep
+                ? selectedLevel === null
+                  ? "Passer le test de placement"
+                  : "Commencer l\u2019apprentissage"
+                : "Continuer \u2192"}
             </Text>
           )}
         </TouchableOpacity>

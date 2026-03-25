@@ -439,8 +439,7 @@ export default function HomeScreen() {
                   <Text className="text-[13px] font-bold text-accent">À corriger</Text>
                 </View>
                 <Text className="text-sm text-[#4A5568] leading-5">
-                  {"Terminez plus d'exercices pour voir vos corrections personnalisées"}
-                  ici.
+                  {"Terminez plus d'exercices pour voir vos corrections personnalisées ici."}
                 </Text>
               </View>
             )}

@@ -177,6 +177,8 @@ export default function SettingsScreen() {
 
   const [exportingData, setExportingData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   async function handleExportData() {
     if (!session?.user?.id) return;
@@ -213,39 +215,57 @@ export default function SettingsScreen() {
     }
   }
 
-  async function handleDeleteAccount() {
+  function handleDeleteAccount() {
+    // Step 1: Initial warning dialog
     Alert.alert(
       "Delete Account",
       "This will permanently delete ALL your data including vocabulary, conversations, exercises, and progress. This action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete Everything",
-          style: "destructive",
-          onPress: async () => {
-            if (!session?.user?.id) return;
-            setDeletingAccount(true);
-
-            try {
-              // Call account-delete Edge Function which uses admin API.
-              // FK ON DELETE CASCADE removes all user data automatically.
-              const { error } = await supabase.functions.invoke("account-delete");
-              if (error) {
-                throw error;
-              }
-
-              // Sign out locally after server-side deletion
-              await signOut();
-            } catch (err) {
-              captureError(err, "account-deletion");
-              Alert.alert("Error", "Failed to delete account. Please contact support.");
-            } finally {
-              setDeletingAccount(false);
-            }
+          text: "Continue",
+          onPress: () => {
+            // Step 2: Show inline confirmation where user types "DELETE"
+            setDeleteConfirmText("");
+            setShowDeleteConfirm(true);
           },
         },
       ]
     );
+  }
+
+  async function confirmDeleteAccount() {
+    if (deleteConfirmText.toUpperCase() !== "DELETE") {
+      Alert.alert("Error", 'Please type "DELETE" (all caps) to confirm account deletion.');
+      return;
+    }
+    if (!session?.user?.id) {
+      Alert.alert("Error", "Session expired. Please sign in again.");
+      setShowDeleteConfirm(false);
+      return;
+    }
+    setDeletingAccount(true);
+
+    try {
+      const { error } = await supabase.functions.invoke("account-delete");
+      if (error) throw error;
+    } catch (err) {
+      captureError(err, "account-deletion");
+      Alert.alert("Error", "Failed to delete account. Please contact support.");
+      setDeletingAccount(false);
+      setShowDeleteConfirm(false);
+      return;
+    }
+
+    try {
+      await signOut();
+    } catch {
+      // Account is already deleted server-side; sign-out failure is non-critical.
+      // Auth listener will clean up the session on next startup.
+    } finally {
+      setDeletingAccount(false);
+      setShowDeleteConfirm(false);
+    }
   }
 
   async function handleSignOut() {
@@ -469,24 +489,77 @@ export default function SettingsScreen() {
 
             <RowDivider />
 
-            <TouchableOpacity
-              onPress={handleDeleteAccount}
-              disabled={deletingAccount}
-              className="flex-row items-center justify-between"
-              style={{ opacity: deletingAccount ? 0.5 : 1 }}
-            >
+            {showDeleteConfirm ? (
               <View>
-                <Text className="text-[15px] text-error">Supprimer mon compte</Text>
-                <Text className="mt-0.5 text-xs text-[#94A3B8]">
-                  Permanently delete all your data
+                <Text className="mb-2 text-sm font-semibold text-error">
+                  Type &quot;DELETE&quot; to confirm account deletion
                 </Text>
+                <TextInput
+                  className="rounded-[10px] border border-error bg-surface px-3.5 text-base text-primary"
+                  style={{
+                    paddingVertical: Platform.OS === "ios" ? 12 : 10,
+                  }}
+                  value={deleteConfirmText}
+                  onChangeText={setDeleteConfirmText}
+                  autoFocus
+                  autoCapitalize="characters"
+                  placeholder='Type "DELETE"'
+                  placeholderTextColor={Colors.textTertiary}
+                  accessibilityLabel="Type DELETE to confirm"
+                  accessibilityHint="Type the word DELETE in capitals to confirm account deletion"
+                />
+                <View className="mt-3 flex-row gap-2.5">
+                  <TouchableOpacity
+                    onPress={confirmDeleteAccount}
+                    disabled={deletingAccount}
+                    accessibilityRole="button"
+                    accessibilityLabel="Permanently delete account"
+                    accessibilityState={{ disabled: deletingAccount, busy: deletingAccount }}
+                    className="items-center rounded-[10px] bg-error px-5 py-2.5"
+                    style={{ opacity: deletingAccount ? 0.5 : 1 }}
+                  >
+                    {deletingAccount ? (
+                      <ActivityIndicator size="small" color={Colors.surfaceWhite} />
+                    ) : (
+                      <Text className="text-sm font-semibold text-white">
+                        Supprimer définitivement
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setShowDeleteConfirm(false)}
+                    disabled={deletingAccount}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel account deletion"
+                    className="items-center rounded-[10px] bg-surface-200 px-5 py-2.5"
+                    style={{ opacity: deletingAccount ? 0.5 : 1 }}
+                  >
+                    <Text className="text-sm font-semibold" style={{ color: Colors.gray700 }}>
+                      Annuler
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              {deletingAccount ? (
-                <ActivityIndicator size="small" color={Colors.error} />
-              ) : (
-                <Text className="text-sm font-semibold text-error">Delete</Text>
-              )}
-            </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={handleDeleteAccount}
+                disabled={deletingAccount}
+                className="flex-row items-center justify-between"
+                style={{ opacity: deletingAccount ? 0.5 : 1 }}
+              >
+                <View>
+                  <Text className="text-[15px] text-error">Supprimer mon compte</Text>
+                  <Text className="mt-0.5 text-xs" style={{ color: Colors.textTertiary }}>
+                    Permanently delete all your data
+                  </Text>
+                </View>
+                {deletingAccount ? (
+                  <ActivityIndicator size="small" color={Colors.error} />
+                ) : (
+                  <Text className="text-sm font-semibold text-error">Delete</Text>
+                )}
+              </TouchableOpacity>
+            )}
           </SettingsCard>
 
           {/* ---- Section: A propos ---- */}
