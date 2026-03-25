@@ -146,6 +146,8 @@ export function useExercise(): UseExerciseReturn {
 
   const generateExercise = useCallback(
     async (skill: TCFSkill, cefrLevel: CEFRLevel): Promise<void> => {
+      if (stateRef.current.isGenerating) return;
+
       setState((s) => ({
         ...s,
         isGenerating: true,
