@@ -22,6 +22,7 @@ import Reanimated, {
 
 import { useAuth } from "@/src/hooks/use-auth";
 import { Colors } from "@/src/lib/design";
+import { captureError } from "@/src/lib/sentry";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.38;
@@ -80,6 +81,7 @@ export default function LoginScreen() {
         Alert.alert("Login Failed", error.message);
       }
     } catch (err) {
+      captureError(err, "login");
       const message = err instanceof Error ? err.message : "An unexpected error occurred.";
       Alert.alert("Login Failed", message);
     } finally {

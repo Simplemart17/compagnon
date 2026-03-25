@@ -23,6 +23,7 @@ import Reanimated, {
 
 import { useAuth } from "@/src/hooks/use-auth";
 import { Colors } from "@/src/lib/design";
+import { captureError } from "@/src/lib/sentry";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.32;
@@ -93,6 +94,7 @@ export default function SignUpScreen() {
         );
       }
     } catch (err) {
+      captureError(err, "signup");
       const message = err instanceof Error ? err.message : "An unexpected error occurred.";
       Alert.alert("Sign Up Failed", message);
     } finally {
@@ -190,6 +192,8 @@ export default function SignUpScreen() {
                   autoCapitalize="words"
                   onFocus={() => setNameFocused(true)}
                   onBlur={() => setNameFocused(false)}
+                  accessibilityLabel="Full name"
+                  accessibilityHint="Enter your full name"
                   className="flex-1 text-[15px] text-primary p-0"
                 />
               </View>
@@ -216,6 +220,8 @@ export default function SignUpScreen() {
                   keyboardType="email-address"
                   onFocus={() => setEmailFocused(true)}
                   onBlur={() => setEmailFocused(false)}
+                  accessibilityLabel="Email address"
+                  accessibilityHint="Enter your email address to create an account"
                   className="flex-1 text-[15px] text-primary p-0"
                 />
               </View>
@@ -244,6 +250,8 @@ export default function SignUpScreen() {
                   secureTextEntry
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
+                  accessibilityLabel="Password"
+                  accessibilityHint="Enter a password with at least 6 characters"
                   className="flex-1 text-[15px] text-primary p-0"
                 />
               </View>
@@ -256,6 +264,9 @@ export default function SignUpScreen() {
                 onPressIn={handleButtonPressIn}
                 onPressOut={handleButtonPressOut}
                 disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel="Create account"
+                accessibilityState={{ disabled: loading, busy: loading }}
                 className="bg-primary rounded-xl py-[17px] items-center"
                 style={{ opacity: loading ? 0.7 : 1 }}
               >
