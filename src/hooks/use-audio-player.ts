@@ -3,6 +3,10 @@
  *
  * Wraps expo-audio's useAudioPlayer for playing AI voice responses.
  * Supports playing from URI or Base64 data.
+ *
+ * When `skipAudioModeConfig` is true, the hook will not call setAudioModeAsync
+ * before playback. This prevents killing an active recording during voice
+ * conversations (the audio mode is already configured by the recorder).
  */
 
 import { useCallback, useRef, useState } from "react";
@@ -13,11 +17,23 @@ import {
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 
+import { prependWavHeader } from "@/src/lib/wav";
+
 export interface AudioPlayerState {
   isPlaying: boolean;
   durationMs: number;
   positionMs: number;
   error: string | null;
+}
+
+export interface UseAudioPlayerOptions {
+  /**
+   * When true, skip calling setAudioModeAsync before playback.
+   * Use this during active voice conversations where the recorder
+   * has already configured the audio session and calling
+   * setAudioModeAsync({ allowsRecording: false }) would kill the recording.
+   */
+  skipAudioModeConfig?: boolean;
 }
 
 export interface UseAudioPlayerReturn extends AudioPlayerState {
@@ -29,7 +45,9 @@ export interface UseAudioPlayerReturn extends AudioPlayerState {
   setPlaybackSpeed: (rate: number) => Promise<void>;
 }
 
-export function useAudioPlayer(): UseAudioPlayerReturn {
+export function useAudioPlayer(options?: UseAudioPlayerOptions): UseAudioPlayerReturn {
+  const skipAudioModeConfig = options?.skipAudioModeConfig ?? false;
+
   const [error, setError] = useState<string | null>(null);
   const tempUriRef = useRef<string | null>(null);
 
@@ -44,13 +62,20 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     }
   }, []);
 
+  /**
+   * Configure audio mode for playback.
+   * Skipped when skipAudioModeConfig is true (during active voice conversations)
+   * to avoid killing the active recording by setting allowsRecording to false.
+   */
   const configurePlayback = useCallback(async () => {
+    if (skipAudioModeConfig) return;
+
     await setAudioModeAsync({
       allowsRecording: false,
       playsInSilentMode: true,
       interruptionMode: "doNotMix",
     });
-  }, []);
+  }, [skipAudioModeConfig]);
 
   const playFromUri = useCallback(
     async (uri: string): Promise<void> => {
@@ -67,14 +92,31 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     [player, configurePlayback]
   );
 
+  /**
+   * Play audio from base64-encoded data.
+   *
+   * When format is "wav" or "pcm", the data is treated as raw PCM16 audio
+   * and a proper 44-byte RIFF/WAV header is prepended before writing to disk.
+   * This is required on Android where MediaPlayer cannot play headerless PCM.
+   * The header specifies 24kHz mono 16-bit PCM (matching OpenAI Realtime API output).
+   */
   const playFromBase64 = useCallback(
     async (base64: string, format = "mp3"): Promise<void> => {
       try {
         await configurePlayback();
         await cleanupTempFile();
 
-        const tempUri = `${FileSystem.cacheDirectory}playback_${Date.now()}.${format}`;
-        await FileSystem.writeAsStringAsync(tempUri, base64, {
+        let audioData = base64;
+        let fileExtension = format;
+
+        // Raw PCM from OpenAI Realtime API needs a WAV header for Android playback
+        if (format === "wav" || format === "pcm") {
+          audioData = prependWavHeader(base64, 24000, 1, 16);
+          fileExtension = "wav";
+        }
+
+        const tempUri = `${FileSystem.cacheDirectory}playback_${Date.now()}.${fileExtension}`;
+        await FileSystem.writeAsStringAsync(tempUri, audioData, {
           encoding: FileSystem.EncodingType.Base64,
         });
         tempUriRef.current = tempUri;

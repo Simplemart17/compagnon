@@ -31,7 +31,16 @@ export interface UseAudioRecorderReturn extends AudioRecorderState {
   getBase64Audio: () => Promise<string | null>;
 }
 
-/** Recording options optimized for speech (16kHz, mono, PCM) */
+/**
+ * Recording options optimized for speech (16kHz, mono).
+ *
+ * iOS: Records raw PCM16 (LinearPCM) in a .wav container — ideal for
+ * pronunciation assessment and AI processing.
+ *
+ * Android: MediaRecorder does not support raw PCM output. We use AAC in
+ * an MPEG-4 container (.m4a), which the pronunciation-assess Edge Function
+ * can handle. The explicit format avoids the unpredictable "default" encoder.
+ */
 const RECORDING_OPTIONS: RecordingOptions = {
   extension: ".wav",
   sampleRate: 16000,
@@ -39,8 +48,10 @@ const RECORDING_OPTIONS: RecordingOptions = {
   bitRate: 256000,
   isMeteringEnabled: false,
   android: {
-    outputFormat: "default",
-    audioEncoder: "default",
+    extension: ".m4a",
+    outputFormat: "mpeg4",
+    audioEncoder: "aac",
+    sampleRate: 16000,
   },
   ios: {
     outputFormat: IOSOutputFormat.LINEARPCM,

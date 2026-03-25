@@ -7,12 +7,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
-import { errorResponse } from "../_shared/errors.ts";
+import { errorResponse, parseUpstreamError } from "../_shared/errors.ts";
 
-const AZURE_SPEECH_KEY = Deno.env.get("AZURE_SPEECH_KEY")!;
+const AZURE_SPEECH_KEY = Deno.env.get("AZURE_SPEECH_KEY");
 const AZURE_SPEECH_REGION = Deno.env.get("AZURE_SPEECH_REGION") ?? "westeurope";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
 /** Max audio size: 5 MB base64 (~3.75 MB raw audio, ~3 minutes at 16kHz PCM16) */
 const MAX_AUDIO_BASE64_BYTES = 5 * 1024 * 1024;
@@ -31,6 +31,14 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Verify required environment variables
+    if (!AZURE_SPEECH_KEY) {
+      return errorResponse({ code: "INTERNAL_ERROR", message: "Server misconfiguration: AZURE_SPEECH_KEY not set", status: 500, corsHeaders });
+    }
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return errorResponse({ code: "INTERNAL_ERROR", message: "Server misconfiguration: Supabase env vars not set", status: 500, corsHeaders });
+    }
+
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -56,8 +64,15 @@ Deno.serve(async (req: Request) => {
       return rateLimitResponse(corsHeaders, resetIn);
     }
 
-    const body = await req.json();
-    const { referenceText, audioBase64 } = body;
+    // Parse request body
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse({ code: "INVALID_PARAMS", message: "Request body must be valid JSON", status: 400, corsHeaders });
+    }
+
+    const { referenceText, audioBase64 } = body as { referenceText?: string; audioBase64?: string };
 
     if (!referenceText || !audioBase64) {
       return errorResponse({ code: "INVALID_PARAMS", message: "Missing referenceText or audioBase64", status: 400, corsHeaders });
@@ -69,10 +84,15 @@ Deno.serve(async (req: Request) => {
     }
 
     // Decode base64 audio to binary
-    const binaryString = atob(audioBase64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+    let bytes: Uint8Array;
+    try {
+      const binaryString = atob(audioBase64);
+      bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+    } catch {
+      return errorResponse({ code: "INVALID_PARAMS", message: "Invalid base64 audio data", status: 400, corsHeaders });
     }
 
     const pronunciationConfig = {
@@ -102,8 +122,8 @@ Deno.serve(async (req: Request) => {
     );
 
     if (!azureResponse.ok) {
-      const errorText = await azureResponse.text();
-      return errorResponse({ code: "UPSTREAM_ERROR", message: errorText, status: azureResponse.status, corsHeaders });
+      const upstreamMessage = await parseUpstreamError(azureResponse);
+      return errorResponse({ code: "UPSTREAM_ERROR", message: `Azure Speech error: ${upstreamMessage}`, status: azureResponse.status, corsHeaders });
     }
 
     const result = await azureResponse.json();

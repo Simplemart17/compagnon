@@ -28,7 +28,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "package": "com.companion.app",
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": [
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -37,7 +43,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-web-browser",
       "expo-secure-store",
       [
         "expo-audio",
@@ -45,10 +50,11 @@
           "microphonePermission": "Companion needs microphone access to practice French speaking and pronunciation."
         }
       ],
+      "@mykin-ai/expo-audio-stream",
       [
         "@sentry/react-native/expo",
         {
-          "organization": "YOUR_SENTRY_ORG",
+          "organization": "https://af6766cf50c90c8d54732c65fd5a5a51@o4510981632360448.ingest.us.sentry.io/4510981633998848",
           "project": "companion"
         }
       ]
@@ -58,8 +64,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
-      }
-    }
+        "projectId": "ce8862a4-5a0a-4276-8cb6-24faeaee424a"
+      },
+      "router": {}
+    },
+    "owner": "simplemart17"
   }
 }

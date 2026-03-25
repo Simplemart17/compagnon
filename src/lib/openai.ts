@@ -129,7 +129,17 @@ export async function chatCompletionJSON<T>(
 export async function generateSpeech(
   text: string,
   options?: {
-    voice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
+    voice?:
+      | "alloy"
+      | "ash"
+      | "ballad"
+      | "coral"
+      | "echo"
+      | "sage"
+      | "shimmer"
+      | "verse"
+      | "marin"
+      | "cedar";
     speed?: number;
   }
 ): Promise<string> {
@@ -144,7 +154,7 @@ export async function generateSpeech(
         body: {
           action: "tts",
           input: text,
-          voice: options?.voice ?? "nova",
+          voice: options?.voice ?? "coral",
           speed: options?.speed ?? 1.0,
         },
       });

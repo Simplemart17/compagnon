@@ -11,15 +11,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  useAudioRecorder as useExpoAudioRecorder,
-  AudioModule,
-  setAudioModeAsync,
-  IOSOutputFormat,
-  AudioQuality,
-  type RecordingOptions,
-} from "expo-audio";
-import * as FileSystem from "expo-file-system/legacy";
+import { ExpoPlayAudioStream } from "@mykin-ai/expo-audio-stream";
+import type { EventSubscription } from "expo-modules-core";
 
 import { RealtimeSession, type RealtimeConfig, type RealtimeEvent } from "@/src/lib/realtime";
 import { buildConversationPrompt } from "@/src/lib/prompts/conversation";
@@ -37,8 +30,6 @@ import {
 } from "@/src/lib/activity";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { ConversationFeedback, ConversationMode, Correction } from "@/src/types/conversation";
-
-import { useAudioPlayer } from "./use-audio-player";
 
 export interface TranscriptEntry {
   id: string;
@@ -67,7 +58,17 @@ export interface UseRealtimeVoiceOptions {
   topicDescription?: string;
   memories?: string[];
   errorPatterns?: string[];
-  voice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
+  voice?:
+    | "alloy"
+    | "ash"
+    | "ballad"
+    | "coral"
+    | "echo"
+    | "sage"
+    | "shimmer"
+    | "verse"
+    | "marin"
+    | "cedar";
   onTranscriptUpdate?: (transcript: TranscriptEntry[]) => void;
   onConversationEnd?: (transcript: TranscriptEntry[], corrections: Correction[]) => void;
 }
@@ -78,33 +79,6 @@ export interface UseRealtimeVoiceReturn extends ConversationState {
   end: () => void;
 }
 
-/** Recording config for streaming to Realtime API (16kHz PCM16 mono) */
-const RECORDING_OPTIONS: RecordingOptions = {
-  extension: ".wav",
-  sampleRate: 16000,
-  numberOfChannels: 1,
-  bitRate: 256000,
-  isMeteringEnabled: false,
-  android: {
-    outputFormat: "default",
-    audioEncoder: "default",
-  },
-  ios: {
-    outputFormat: IOSOutputFormat.LINEARPCM,
-    audioQuality: AudioQuality.HIGH,
-    linearPCMBitDepth: 16,
-    linearPCMIsBigEndian: false,
-    linearPCMIsFloat: false,
-  },
-  web: {
-    mimeType: "audio/wav",
-    bitsPerSecond: 256000,
-  },
-};
-
-/** Interval for reading audio chunks from recording file (ms) */
-const AUDIO_STREAM_INTERVAL_MS = 250;
-
 export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeVoiceReturn {
   const {
     cefrLevel,
@@ -113,7 +87,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
     topicDescription,
     memories,
     errorPatterns,
-    voice = "nova",
+    voice = "coral",
     onTranscriptUpdate,
     onConversationEnd,
   } = options;
@@ -133,22 +107,19 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
   });
 
   const sessionRef = useRef<RealtimeSession | null>(null);
-  const audioPlayer = useAudioPlayer();
   const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioChunksRef = useRef<string[]>([]);
   const currentAiTextRef = useRef("");
   const transcriptRef = useRef<TranscriptEntry[]>([]);
   const correctionsRef = useRef<Correction[]>([]);
   const conversationIdRef = useRef<string | null>(null);
   const durationSecondsRef = useRef(0);
+  const startTimeRef = useRef<number>(0);
   const statusRef = useRef(state.status);
   statusRef.current = state.status;
 
-  // Audio recording
-  const recorder = useExpoAudioRecorder(RECORDING_OPTIONS);
-  const isStreamingRef = useRef(false);
-  const streamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastReadPositionRef = useRef(0);
+  // Audio recording via expo-audio-stream (full-duplex PCM streaming)
+  const subscriptionRef = useRef<EventSubscription | null>(null);
+  const turnIdRef = useRef(0);
 
   /** Infer correction category from explanation text using keyword matching */
   const inferCategory = useCallback((explanation: string): Correction["category"] => {
@@ -181,78 +152,53 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
     [inferCategory]
   );
 
-  /** Start microphone recording and stream audio to WebSocket */
+  /** Start microphone recording and stream PCM audio to WebSocket */
   const startAudioStreaming = useCallback(async () => {
     try {
-      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+      const { granted } = await ExpoPlayAudioStream.requestPermissionsAsync();
       if (!granted) {
         setState((s) => ({ ...s, error: "Microphone permission denied" }));
         return;
       }
 
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-        interruptionMode: "doNotMix",
+      // Configure for conversation mode (full-duplex recording + playback)
+      // 24kHz required by OpenAI Realtime GA API for both input and output
+      await ExpoPlayAudioStream.setSoundConfig({
+        sampleRate: 24000 as unknown as 16000,
+        playbackMode: "conversation",
       });
 
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-      isStreamingRef.current = true;
-      lastReadPositionRef.current = 0;
-
-      // Periodically read recorded audio and send to WebSocket
-      streamIntervalRef.current = setInterval(async () => {
-        if (!isStreamingRef.current || !sessionRef.current?.isConnected) return;
-
-        try {
-          const uri = recorder.uri;
-          if (!uri) return;
-
-          const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-
-          if (base64 && base64.length > lastReadPositionRef.current) {
-            const newAudio = base64.substring(lastReadPositionRef.current);
-            if (newAudio.length > 0) {
-              sessionRef.current.appendAudio(newAudio);
-              lastReadPositionRef.current = base64.length;
-            }
+      const { subscription } = await ExpoPlayAudioStream.startRecording({
+        sampleRate: 24000 as unknown as 16000, // cast: library types only list 16000|44100|48000
+        channels: 1,
+        encoding: "pcm_16bit",
+        interval: 250,
+        onAudioStream: async (event) => {
+          if (sessionRef.current?.isConnected && event.data) {
+            sessionRef.current.appendAudio(event.data as string);
           }
-        } catch {
-          // Ignore read errors during streaming
-        }
-      }, AUDIO_STREAM_INTERVAL_MS);
+        },
+      });
+
+      subscriptionRef.current = subscription ?? null;
     } catch (err) {
       captureError(err, "realtime-voice-audio");
       const message = err instanceof Error ? err.message : "Microphone error";
       console.error("[RealtimeVoice] Audio streaming error:", err);
       setState((s) => ({ ...s, error: message }));
     }
-  }, [recorder]);
+  }, []);
 
   /** Stop microphone recording */
   const stopAudioStreaming = useCallback(async () => {
-    if (streamIntervalRef.current) {
-      clearInterval(streamIntervalRef.current);
-      streamIntervalRef.current = null;
-    }
-
-    isStreamingRef.current = false;
-
+    subscriptionRef.current?.remove();
+    subscriptionRef.current = null;
     try {
-      await recorder.stop();
+      await ExpoPlayAudioStream.stopRecording();
     } catch {
       // Ignore cleanup errors
     }
-
-    await setAudioModeAsync({
-      allowsRecording: false,
-      playsInSilentMode: true,
-      interruptionMode: "doNotMix",
-    });
-  }, [recorder]);
+  }, []);
 
   /** Handle AI function calls (vocabulary saving, error tracking) */
   const handleFunctionCall = useCallback(
@@ -315,26 +261,26 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           setState((s) => ({ ...s, isSpeaking: false }));
           break;
 
-        case "response.audio.delta":
-          audioChunksRef.current.push(event.delta);
+        // GA API event names use `output_` prefix for response audio/text events
+        case "response.output_audio.delta": {
+          // Stream each audio chunk immediately for low-latency playback
+          const turnId = `turn_${turnIdRef.current}`;
+          void ExpoPlayAudioStream.playSound(event.delta, turnId, "pcm_s16le");
           setState((s) => ({ ...s, isAiSpeaking: true }));
           break;
+        }
 
-        case "response.audio.done":
-          if (audioChunksRef.current.length > 0) {
-            const fullAudio = audioChunksRef.current.join("");
-            void audioPlayer.playFromBase64(fullAudio, "wav");
-            audioChunksRef.current = [];
-          }
+        case "response.output_audio.done":
+          turnIdRef.current++;
           setState((s) => ({ ...s, isAiSpeaking: false }));
           break;
 
-        case "response.text.delta":
+        case "response.output_text.delta":
           currentAiTextRef.current += event.delta;
           setState((s) => ({ ...s, pendingAiText: currentAiTextRef.current }));
           break;
 
-        case "response.text.done": {
+        case "response.output_text.done": {
           const fullText = event.text;
           const corrections = parseCorrections(fullText);
 
@@ -362,13 +308,13 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
         }
 
         // In voice mode, the AI responds with audio and the transcript arrives
-        // via response.audio_transcript events, not response.text events.
-        case "response.audio_transcript.delta":
+        // via response.output_audio_transcript events (GA API naming).
+        case "response.output_audio_transcript.delta":
           currentAiTextRef.current += event.delta;
           setState((s) => ({ ...s, pendingAiText: currentAiTextRef.current }));
           break;
 
-        case "response.audio_transcript.done": {
+        case "response.output_audio_transcript.done": {
           const audioTranscriptText = event.transcript;
           const audioCorrections = parseCorrections(audioTranscriptText);
 
@@ -430,7 +376,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           break;
       }
     },
-    [audioPlayer, parseCorrections, onTranscriptUpdate, handleFunctionCall]
+    [parseCorrections, onTranscriptUpdate, handleFunctionCall]
   );
 
   /** Create a conversation record in Supabase */
@@ -577,7 +523,25 @@ Return JSON: {
     // Guard against concurrent invocations
     if (statusRef.current === "connecting" || statusRef.current === "connected") return;
 
-    setState((s) => ({ ...s, status: "connecting", error: null }));
+    // Reset ALL refs and state so retries start clean
+    transcriptRef.current = [];
+    correctionsRef.current = [];
+    currentAiTextRef.current = "";
+    durationSecondsRef.current = 0;
+    startTimeRef.current = 0;
+    conversationIdRef.current = null;
+
+    setState({
+      status: "connecting",
+      isSpeaking: false,
+      isAiSpeaking: false,
+      transcript: [],
+      pendingAiText: "",
+      allCorrections: [],
+      durationSeconds: 0,
+      error: null,
+      feedback: null,
+    });
 
     try {
       const convoId = await createConversationRecord();
@@ -598,8 +562,6 @@ Return JSON: {
       const config: RealtimeConfig = {
         systemPrompt,
         voice,
-        inputAudioFormat: "pcm16",
-        outputAudioFormat: "pcm16",
         turnDetection: {
           type: "server_vad",
           threshold: 0.5,
@@ -648,9 +610,10 @@ Return JSON: {
       // Start mic audio streaming to WebSocket
       await startAudioStreaming();
 
-      // Start duration timer
+      // Start duration timer using Date.now() to prevent drift
+      startTimeRef.current = Date.now();
       durationRef.current = setInterval(() => {
-        durationSecondsRef.current += 1;
+        durationSecondsRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000);
         setState((s) => ({ ...s, durationSeconds: durationSecondsRef.current }));
       }, 1000);
 
@@ -707,26 +670,27 @@ Return JSON: {
     void stopAudioStreaming();
     sessionRef.current?.disconnect();
     sessionRef.current = null;
-    void audioPlayer.stop();
+    void ExpoPlayAudioStream.stopSound();
 
     const duration = durationSecondsRef.current;
     setState((s) => ({ ...s, status: "ended", isSpeaking: false, isAiSpeaking: false }));
 
     persistConversation(duration).catch((err) => captureError(err, "persist-conversation-end"));
     onConversationEnd?.(transcriptRef.current, correctionsRef.current);
-  }, [audioPlayer, onConversationEnd, stopAudioStreaming, persistConversation]);
+  }, [onConversationEnd, stopAudioStreaming, persistConversation]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (durationRef.current) clearInterval(durationRef.current);
-      if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
+      subscriptionRef.current?.remove();
+      subscriptionRef.current = null;
       sessionRef.current?.disconnect();
-      isStreamingRef.current = false;
-      void recorder.stop().catch(() => {});
-      void audioPlayer.stop();
+      void ExpoPlayAudioStream.stopRecording().catch(() => {});
+      void ExpoPlayAudioStream.stopSound().catch(() => {});
+      ExpoPlayAudioStream.destroy();
     };
-  }, [audioPlayer, recorder]);
+  }, []);
 
   return {
     ...state,

@@ -41,3 +41,40 @@ export function errorResponse({
 
   return new Response(JSON.stringify(body), { status, headers });
 }
+
+/**
+ * Parse an upstream API error response into a human-readable message.
+ *
+ * OpenAI returns: { "error": { "message": "...", "type": "...", "code": "..." } }
+ * Azure returns:  { "error": { "message": "...", "code": "..." } } or plain text/XML
+ *
+ * This function tries to extract the nested message. If the body is not JSON
+ * or does not match the expected shape, it falls back to the raw text.
+ */
+export async function parseUpstreamError(response: Response): Promise<string> {
+  const rawText = await response.text();
+
+  try {
+    const parsed = JSON.parse(rawText);
+
+    // OpenAI / Azure standard shape: { error: { message: "..." } }
+    if (parsed?.error?.message) {
+      const errObj = parsed.error;
+      const parts = [errObj.message];
+      if (errObj.type) parts.push(`type=${errObj.type}`);
+      if (errObj.code) parts.push(`code=${errObj.code}`);
+      return parts.join(" | ");
+    }
+
+    // Some APIs return { message: "..." } directly
+    if (parsed?.message) {
+      return parsed.message;
+    }
+
+    // Fallback: return the raw JSON as a string
+    return rawText;
+  } catch {
+    // Not JSON — return raw text (could be XML, HTML error page, etc.)
+    return rawText || `Upstream returned ${response.status} with empty body`;
+  }
+}

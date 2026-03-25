@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Pressable,
+  StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -241,6 +242,7 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-surface">
+      <StatusBar barStyle="light-content" />
       {/* ------------------------------------------------------------------ */}
       {/* Hero header -- fixed, not scrollable                                */}
       {/* ------------------------------------------------------------------ */}
