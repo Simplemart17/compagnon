@@ -8,6 +8,7 @@ import {
   CACHE_KEYS,
   CACHE_TTL,
 } from "@/src/lib/cache";
+import { captureError } from "@/src/lib/sentry";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { UserProfile } from "@/src/types/user";
@@ -68,10 +69,17 @@ export function useAuth() {
 
       // Flush any queued writes now that we have connectivity
       void flushWriteQueue(supabase);
-    } catch {
-      // Both network and cache failed -- profile stays null
+    } catch (err) {
+      // Expected degradation: both network and cache failed (e.g. offline cold start).
+      // Only send to Sentry for unexpected errors, not routine network failures.
+      const isNetworkError =
+        err instanceof Error && /network|fetch|failed to fetch|offline/i.test(err.message);
+      if (!isNetworkError) {
+        captureError(err, "auth-load-profile");
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function signInWithEmail(email: string, password: string) {
