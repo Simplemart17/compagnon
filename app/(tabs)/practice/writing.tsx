@@ -15,12 +15,13 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
 import { useExercise } from "@/src/hooks/use-exercise";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
-import { Colors } from "@/src/lib/design";
+import { Colors, Shadows } from "@/src/lib/design";
 
 export default function WritingScreen() {
   const router = useRouter();
@@ -48,13 +49,36 @@ export default function WritingScreen() {
       <View className="flex-1 bg-surface justify-center items-center p-6">
         <Text className="text-[64px] mb-4">&#x270D;&#xFE0F;</Text>
         <Text className="text-[22px] font-bold text-primary mb-2">Writing Practice</Text>
-        <Text className="text-sm text-[#4A5568] text-center mb-8 leading-5">
+        <Text className="text-sm text-center mb-8 leading-5" style={{ color: Colors.gray700 }}>
           Write in French and get AI-powered evaluation{"\n"}on grammar, cohesion, vocabulary, and
           register.
         </Text>
-        <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
-          <Text className="text-white text-base font-bold">Generate Task</Text>
-        </TouchableOpacity>
+        {exercise.error ? (
+          <>
+            <Text className="text-error text-[13px] mb-4 text-center">{exercise.error}</Text>
+            <View className="flex-row gap-3 w-full px-4">
+              <TouchableOpacity
+                onPress={() => router.back()}
+                className="flex-1 rounded-xl py-3.5 items-center"
+                style={{ backgroundColor: Colors.gray100 }}
+              >
+                <Text className="text-[15px] font-bold" style={{ color: Colors.primary }}>
+                  Back
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleGenerate}
+                className="flex-1 bg-primary rounded-xl py-3.5 items-center"
+              >
+                <Text className="text-[15px] font-bold text-white">Retry</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
+            <Text className="text-white text-base font-bold">Generate Task</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
@@ -62,9 +86,34 @@ export default function WritingScreen() {
   // Loading
   if (exercise.isGenerating) {
     return (
-      <View className="flex-1 bg-surface justify-center items-center">
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text className="text-[#4A5568] mt-4 text-sm">Generating writing task...</Text>
+      <View className="flex-1 bg-surface p-5 pt-10">
+        {/* Task prompt skeleton */}
+        <Animated.View
+          entering={FadeInDown.duration(300)}
+          className="bg-primary rounded-2xl p-5 mb-5"
+          style={{ ...Shadows.card }}
+        >
+          <View className="h-3 bg-white/15 rounded-md w-32 mb-3" />
+          <View className="h-4 bg-white/20 rounded-md mb-2" style={{ width: "90%" }} />
+          <View className="h-4 bg-white/20 rounded-md" style={{ width: "70%" }} />
+        </Animated.View>
+        {/* Writing area skeleton */}
+        <Animated.View
+          entering={FadeInDown.delay(100).duration(300)}
+          className="bg-white rounded-2xl p-4 mb-4"
+          style={{ ...Shadows.card, minHeight: 200 }}
+        >
+          {[0, 1, 2, 3].map((i) => (
+            <View
+              key={i}
+              className="h-3 bg-surface-200 rounded-md mb-3"
+              style={{ width: `${90 - i * 12}%` }}
+            />
+          ))}
+        </Animated.View>
+        <Text className="text-center mt-2" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+          Generating writing task...
+        </Text>
       </View>
     );
   }
@@ -92,14 +141,16 @@ export default function WritingScreen() {
               borderWidth: 5,
               borderColor:
                 eval_.overallScore >= 70
-                  ? "#34C759"
+                  ? Colors.success
                   : eval_.overallScore >= 50
-                    ? "#F5A623"
-                    : "#FF3B30",
+                    ? Colors.accent
+                    : Colors.error,
             }}
           >
             <Text className="text-[36px] font-extrabold text-primary">{eval_.overallScore}</Text>
-            <Text className="text-xs text-[#4A5568]">/ 100</Text>
+            <Text className="text-xs" style={{ color: Colors.gray700 }}>
+              / 100
+            </Text>
           </View>
         </View>
 
@@ -140,10 +191,14 @@ export default function WritingScreen() {
               >
                 <View className="flex-row flex-wrap mb-1">
                   <Text className="text-sm text-error line-through">{err.original}</Text>
-                  <Text className="text-[#94A3B8] mx-1.5">{"\u2192"}</Text>
+                  <Text style={{ color: Colors.textTertiary }} className="mx-1.5">
+                    {"\u2192"}
+                  </Text>
                   <Text className="text-sm text-success font-semibold">{err.correction}</Text>
                 </View>
-                <Text className="text-xs text-[#4A5568] italic">{err.explanation}</Text>
+                <Text className="text-xs italic" style={{ color: Colors.gray700 }}>
+                  {err.explanation}
+                </Text>
               </View>
             ))}
           </View>
@@ -270,12 +325,12 @@ export default function WritingScreen() {
         <Text
           className="text-[13px] font-semibold"
           style={{
-            color: wordCount >= (writingPrompt?.minWords ?? 0) ? "#34C759" : "#999",
+            color: wordCount >= (writingPrompt?.minWords ?? 0) ? Colors.success : Colors.gray500,
           }}
         >
           {wordCount} words
         </Text>
-        <Text className="text-[13px] text-[#94A3B8]">
+        <Text className="text-[13px]" style={{ color: Colors.textTertiary }}>
           Target: {writingPrompt?.minWords}-{writingPrompt?.maxWords}
         </Text>
       </View>
@@ -290,19 +345,21 @@ export default function WritingScreen() {
         className="rounded-xl py-4 items-center"
         style={{
           backgroundColor:
-            exercise.isEvaluating || userText.trim().length < 20 ? "#E0E0CE" : "#F5A623",
+            exercise.isEvaluating || userText.trim().length < 20 ? Colors.border : Colors.accent,
         }}
       >
         {exercise.isEvaluating ? (
           <View className="flex-row items-center gap-2">
-            <ActivityIndicator color="#999" size="small" />
-            <Text className="text-[#94A3B8] text-[15px] font-semibold">Evaluating...</Text>
+            <ActivityIndicator color={Colors.gray500} size="small" />
+            <Text style={{ color: Colors.textTertiary }} className="text-[15px] font-semibold">
+              Evaluating...
+            </Text>
           </View>
         ) : (
           <Text
             className="text-base font-bold"
             style={{
-              color: userText.trim().length < 20 ? "#999" : "#FFFFFF",
+              color: userText.trim().length < 20 ? Colors.gray500 : Colors.textOnDark,
             }}
           >
             Submit for Evaluation
