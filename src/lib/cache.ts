@@ -342,6 +342,12 @@ export const CACHE_KEYS = {
   RECENT_ACTIVITY: "recent_activity",
   TOP_ERRORS: "top_errors",
   STREAK: "streak",
+  DAILY_BRIEFING: "daily_briefing",
+  SRS_DUE_COUNT: "srs_due_count",
+  WEAKEST_SKILL: "weakest_skill",
+  BRIEFING_ERRORS: "briefing_errors",
+  BRIEFING_ACTIVITY_TODAY: "briefing_activity_today",
+  BRIEFING_ERROR_COUNTS: "briefing_error_counts",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -361,4 +367,10 @@ export const CACHE_TTL = {
   ERRORS: 60 * 60 * 1000, // 1 hour
   /** Streak days -- changes once per day */
   STREAK: 60 * 60 * 1000, // 1 hour
+  /** Composite daily briefing data -- short TTL, aggregates multiple sources */
+  DAILY_BRIEFING: 10 * 60 * 1000, // 10 minutes
+  /** SRS vocabulary due count -- matches daily activity frequency */
+  SRS_DUE: 15 * 60 * 1000, // 15 minutes
+  /** Error counts (total/resolved) -- changes after exercises */
+  ERROR_COUNTS: 30 * 60 * 1000, // 30 minutes
 } as const;
