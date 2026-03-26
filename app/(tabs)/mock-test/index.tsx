@@ -38,7 +38,7 @@ function FullSimCard({ onPress }: FullSimCardProps) {
       className="mx-5 mt-[15px] rounded-3xl"
       style={[
         {
-          shadowColor: "#000",
+          shadowColor: Colors.textPrimary,
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.25,
           shadowRadius: 16,
@@ -65,7 +65,7 @@ function FullSimCard({ onPress }: FullSimCardProps) {
           style={{
             top: 0,
             right: 0,
-            backgroundColor: "rgba(245,166,35,0.06)",
+            backgroundColor: skillTint(Colors.accent, 0.06),
             transform: [{ translateX: 40 }, { translateY: -40 }],
           }}
         />
@@ -79,7 +79,7 @@ function FullSimCard({ onPress }: FullSimCardProps) {
         <Text className="text-white text-[22px] font-extrabold mb-2">TCF Complet</Text>
 
         {/* Description */}
-        <Text className="text-[13px] leading-5 mb-4" style={{ color: "rgba(255,255,255,0.7)" }}>
+        <Text className="text-[13px] leading-5 mb-4" style={{ color: Colors.textOnDarkSecondary }}>
           3 sections obligatoires : {"\xC9"}coute ({TCF.LISTENING_MINUTES} min) + Lecture (
           {TCF.READING_MINUTES} min) + Grammaire
         </Text>
@@ -90,9 +90,9 @@ function FullSimCard({ onPress }: FullSimCardProps) {
           <View
             className="rounded-2xl px-[14px] py-[6px]"
             style={{
-              backgroundColor: "rgba(245,166,35,0.2)",
+              backgroundColor: skillTint(Colors.accent, 0.2),
               borderWidth: 1,
-              borderColor: "rgba(245,166,35,0.4)",
+              borderColor: skillTint(Colors.accent, 0.4),
             }}
           >
             <Text className="text-accent text-xs font-bold">~95 min</Text>
@@ -191,7 +191,7 @@ function SectionCard({
         {/* Labels */}
         <View className="flex-1">
           <Text className="text-base font-bold text-primary">{nameFr}</Text>
-          <Text className="text-xs text-[#94A3B8] mt-[3px]">
+          <Text className="text-xs mt-[3px]" style={{ color: Colors.textTertiary }}>
             {nameSub}
             {metaText ? `  |  ${metaText}` : ""}
           </Text>
@@ -228,7 +228,7 @@ const SECTIONS: {
     id: "listening",
     nameFr: "Compr\xE9hension Orale",
     nameSub: "Listening",
-    questions: 10,
+    questions: TCF.LISTENING_QUESTIONS,
     minutes: TCF.LISTENING_MINUTES,
     emoji: "\uD83C\uDFA7",
     color: Colors.skillListening,
@@ -237,7 +237,7 @@ const SECTIONS: {
     id: "reading",
     nameFr: "Compr\xE9hension \xC9crite",
     nameSub: "Reading",
-    questions: 10,
+    questions: TCF.READING_QUESTIONS,
     minutes: TCF.READING_MINUTES,
     emoji: "\uD83D\uDCD6",
     color: Colors.skillReading,
@@ -246,8 +246,8 @@ const SECTIONS: {
     id: "grammar",
     nameFr: "Structures de la Langue",
     nameSub: "Grammar & Vocabulary",
-    questions: 10,
-    minutes: null,
+    questions: TCF.GRAMMAR_QUESTIONS,
+    minutes: TCF.GRAMMAR_MINUTES,
     emoji: "\uD83E\uDDE0",
     color: Colors.skillGrammar,
   },
@@ -285,7 +285,7 @@ export default function MockTestScreen() {
         {/* Subtitle */}
         <Text
           className="text-xs tracking-[0.5px] text-center mt-1"
-          style={{ color: "rgba(255,255,255,0.65)" }}
+          style={{ color: Colors.textOnDarkSecondary }}
         >
           Test de Connaissance du Fran{"\xE7"}ais
         </Text>

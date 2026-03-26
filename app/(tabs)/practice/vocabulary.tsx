@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   ScrollView,
   FlatList,
-  ActivityIndicator,
   TextInput,
   RefreshControl,
 } from "react-native";
@@ -31,6 +30,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/lib/supabase";
 import { LEVEL_COLORS } from "@/src/lib/constants";
 import { Colors } from "@/src/lib/design";
+import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { calculateNextReview } from "@/src/lib/srs";
 import type { ReviewQuality, SRSState } from "@/src/lib/srs";
 import type { CEFRLevel } from "@/src/types/cefr";
@@ -59,6 +59,50 @@ const RATING_OPTIONS: { label: string; quality: ReviewQuality; color: string }[]
   { label: "Good", quality: 4, color: Colors.skillListening },
   { label: "Easy", quality: 5, color: Colors.success },
 ];
+
+/** Skeleton loading screen for vocabulary */
+function VocabSkeleton() {
+  return (
+    <View className="flex-1 bg-surface p-5">
+      {/* Tab bar skeleton */}
+      <View className="flex-row mb-4 bg-surface-300 rounded-xl p-1">
+        <View className="flex-1 py-2.5 rounded-[10px] items-center bg-white">
+          <SkeletonBar width={80} height={14} />
+        </View>
+        <View className="flex-1 py-2.5 rounded-[10px] items-center">
+          <SkeletonBar width={90} height={14} />
+        </View>
+      </View>
+
+      {/* Progress skeleton */}
+      <SkeletonBar width={100} height={14} style={{ marginBottom: 12 }} />
+      <SkeletonBar width="100%" height={4} style={{ marginBottom: 24 }} />
+
+      {/* Flashcard skeleton */}
+      <View
+        className="bg-white rounded-[20px] border border-surface-300 p-8 justify-center items-center"
+        style={{ minHeight: 280 }}
+      >
+        <SkeletonBar width={160} height={32} style={{ marginBottom: 8 }} />
+        <SkeletonBar width={100} height={16} style={{ marginBottom: 24 }} />
+        <SkeletonBar width={140} height={14} />
+      </View>
+
+      {/* Rating buttons skeleton */}
+      <View className="flex-row gap-2 mt-6">
+        {[0, 1, 2, 3].map((i) => (
+          <View
+            key={i}
+            className="flex-1 rounded-xl py-3.5 items-center"
+            style={{ backgroundColor: Colors.gray200 }}
+          >
+            <SkeletonBar width={40} height={14} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function VocabularyScreen() {
   const user = useAuthStore((s) => s.user);
@@ -210,13 +254,17 @@ export default function VocabularyScreen() {
   }, []);
 
   /** Filter words for the "All Words" search */
-  const filteredWords = searchQuery.trim()
-    ? words.filter(
-        (w) =>
-          w.french_word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          w.english_translation.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : words;
+  const filteredWords = useMemo(
+    () =>
+      searchQuery.trim()
+        ? words.filter(
+            (w) =>
+              w.french_word.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              w.english_translation.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        : words,
+    [words, searchQuery]
+  );
 
   // ---------- FlatList helpers (must be declared before any early returns) ----------
   const vocabKeyExtractor = useCallback((item: VocabWord) => item.id, []);
@@ -316,16 +364,9 @@ export default function VocabularyScreen() {
     []
   );
 
-  // ---------- Loading State ----------
+  // ---------- Loading State (skeleton) ----------
   if (isLoading) {
-    return (
-      <View className="flex-1 bg-surface justify-center items-center">
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text className="mt-4 text-sm" style={{ color: Colors.gray700 }}>
-          Loading vocabulary...
-        </Text>
-      </View>
-    );
+    return <VocabSkeleton />;
   }
 
   // ---------- Empty State ----------
@@ -448,6 +489,12 @@ export default function VocabularyScreen() {
         <TouchableOpacity
           onPress={() => setIsRevealed(true)}
           activeOpacity={isRevealed ? 1 : 0.7}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isRevealed
+              ? `${word.french_word} — ${word.english_translation}`
+              : `${word.french_word}. Tap to reveal translation`
+          }
           className="bg-white rounded-[20px] border border-surface-300 p-8 justify-center items-center"
           style={{
             minHeight: 280,
