@@ -17,7 +17,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import type { TranscriptEntry } from "@/src/hooks/use-realtime-voice";
-import { Colors } from "@/src/lib/design";
+import { Colors, skillTint } from "@/src/lib/design";
 
 import { CorrectionBubble } from "./CorrectionBubble";
 
@@ -69,7 +69,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
       <Text
         className="mb-0.5 text-[10px] font-bold"
         style={{
-          color: isUser ? "rgba(245,166,35,0.6)" : "rgba(255,255,255,0.4)",
+          color: isUser ? skillTint(Colors.accent, 0.6) : skillTint(Colors.surfaceWhite, 0.4),
           textAlign: isUser ? "right" : "left",
         }}
       >
@@ -90,7 +90,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
         <Text
           className="text-[15px] leading-[22px]"
           style={{
-            color: isUser ? "#FFFFFF" : "rgba(255,255,255,0.92)",
+            color: isUser ? Colors.surfaceWhite : skillTint(Colors.surfaceWhite, 0.92),
             fontStyle: isUser ? "italic" : "normal",
           }}
         >
@@ -120,15 +120,18 @@ function TypingIndicator() {
 
   return (
     <View className="self-start">
-      <Text className="mb-0.5 text-[10px] font-bold" style={{ color: "rgba(255,255,255,0.4)" }}>
+      <Text
+        className="mb-0.5 text-[10px] font-bold"
+        style={{ color: skillTint(Colors.surfaceWhite, 0.4) }}
+      >
         Compagnon
       </Text>
       <View
         className="flex-row items-center gap-1.5 rounded-[20px] border px-4 py-3.5"
         style={{
-          backgroundColor: "rgba(255,255,255,0.1)",
+          backgroundColor: Colors.bubbleAi,
           borderTopLeftRadius: 6,
-          borderColor: "rgba(255,255,255,0.12)",
+          borderColor: Colors.bubbleAiBorder,
         }}
       >
         {[0, 1, 2].map((i) => (
@@ -136,7 +139,7 @@ function TypingIndicator() {
             key={i}
             className="h-2 w-2 rounded-full"
             style={{
-              backgroundColor: "rgba(255,255,255,0.7)",
+              backgroundColor: Colors.textOnDarkSecondary,
               opacity: activeIndex === i ? 1 : 0.25,
             }}
           />
@@ -158,18 +161,24 @@ function PendingAiBubble({ text }: { text: string }) {
 
   return (
     <View style={{ alignSelf: "flex-start", maxWidth: "82%" }}>
-      <Text className="mb-0.5 text-[10px] font-bold" style={{ color: "rgba(255,255,255,0.4)" }}>
+      <Text
+        className="mb-0.5 text-[10px] font-bold"
+        style={{ color: skillTint(Colors.surfaceWhite, 0.4) }}
+      >
         Compagnon
       </Text>
       <View
         className="rounded-[20px] border px-3.5 py-[11px]"
         style={{
-          backgroundColor: "rgba(255,255,255,0.1)",
+          backgroundColor: Colors.bubbleAi,
           borderTopLeftRadius: 6,
-          borderColor: "rgba(255,255,255,0.12)",
+          borderColor: Colors.bubbleAiBorder,
         }}
       >
-        <Text className="text-[15px] leading-[22px]" style={{ color: "rgba(255,255,255,0.92)" }}>
+        <Text
+          className="text-[15px] leading-[22px]"
+          style={{ color: skillTint(Colors.surfaceWhite, 0.92) }}
+        >
           {text}
           <Text style={{ color: cursorVisible ? Colors.accent : "transparent" }}>|</Text>
         </Text>
