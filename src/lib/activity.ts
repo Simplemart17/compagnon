@@ -17,7 +17,7 @@ import { captureError } from "./sentry";
  * Uses the device's local timezone instead of UTC to avoid
  * streak resets near midnight in non-UTC timezones.
  */
-function getLocalDateString(date?: Date): string {
+export function getLocalDateString(date?: Date): string {
   const d = date ?? new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }

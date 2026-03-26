@@ -11,7 +11,7 @@ import { cacheWithFallback, invalidateCache, CACHE_KEYS, CACHE_TTL } from "@/src
 import { captureError } from "@/src/lib/sentry";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
-import { incrementDailyActivity, updateStreak } from "@/src/lib/activity";
+import { getLocalDateString, incrementDailyActivity, updateStreak } from "@/src/lib/activity";
 import type { TCFSkill } from "@/src/types/cefr";
 
 export interface SkillProgressData {
@@ -99,7 +99,7 @@ export function useProgress(): UseProgressReturn {
                 .from("daily_activity")
                 .select("*")
                 .eq("user_id", user.id)
-                .eq("date", new Date().toISOString().split("T")[0])
+                .eq("date", getLocalDateString())
                 .maybeSingle();
               if (error) throw error;
               return (data as DailyActivityData) ?? null;

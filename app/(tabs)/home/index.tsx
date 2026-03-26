@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
   Pressable,
   StatusBar,
@@ -22,6 +21,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { useProgress } from "@/src/hooks/use-progress";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, Shadows, skillTint } from "@/src/lib/design";
+import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -230,9 +230,34 @@ export default function HomeScreen() {
 
   if (progress.isLoading && !refreshing) {
     return (
-      <View className="flex-1 bg-surface justify-center items-center">
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text className="text-[#4A5568] mt-4 text-sm">Chargement...</Text>
+      <View className="flex-1 bg-surface">
+        <StatusBar barStyle="light-content" />
+        {/* Hero skeleton */}
+        <View
+          className="bg-primary pb-6 px-6 rounded-b-[28px]"
+          style={{ paddingTop: insets.top + 16 }}
+        >
+          <SkeletonBar width={80} height={10} style={{ marginBottom: 14 }} />
+          <SkeletonBar width={200} height={28} style={{ marginBottom: 12 }} />
+          <View className="flex-row gap-2 mb-4">
+            <SkeletonBar width={40} height={24} style={{ borderRadius: 20 }} />
+            <SkeletonBar width={60} height={24} style={{ borderRadius: 20 }} />
+          </View>
+          <SkeletonBar width="100%" height={4} />
+        </View>
+        {/* Content skeleton */}
+        <View style={{ padding: 20 }}>
+          <SkeletonBar width={100} height={18} style={{ marginBottom: 12 }} />
+          <SkeletonBar width="100%" height={80} style={{ borderRadius: 16, marginBottom: 12 }} />
+          <View className="flex-row gap-3">
+            <View style={{ flex: 1 }}>
+              <SkeletonBar width="100%" height={100} style={{ borderRadius: 16 }} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <SkeletonBar width="100%" height={100} style={{ borderRadius: 16 }} />
+            </View>
+          </View>
+        </View>
       </View>
     );
   }
