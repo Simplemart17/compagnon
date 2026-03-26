@@ -6,27 +6,22 @@
  */
 
 import { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
+import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { useExercise } from "@/src/hooks/use-exercise";
+import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
-import { Colors, Shadows } from "@/src/lib/design";
+import { Colors, Shadows, Typography } from "@/src/lib/design";
 
 export default function WritingScreen() {
   const router = useRouter();
   const exercise = useExercise();
   const profile = useAuthStore((s) => s.profile);
+  const isSlow = useSlowLoading(exercise.isGenerating);
 
   const [userText, setUserText] = useState("");
 
@@ -48,7 +43,9 @@ export default function WritingScreen() {
     return (
       <View className="flex-1 bg-surface justify-center items-center p-6">
         <Text className="text-[64px] mb-4">&#x270D;&#xFE0F;</Text>
-        <Text className="text-[22px] font-bold text-primary mb-2">Writing Practice</Text>
+        <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
+          Writing Practice
+        </Text>
         <Text className="text-sm text-center mb-8 leading-5" style={{ color: Colors.gray700 }}>
           Write in French and get AI-powered evaluation{"\n"}on grammar, cohesion, vocabulary, and
           register.
@@ -59,6 +56,8 @@ export default function WritingScreen() {
             <View className="flex-row gap-3 w-full px-4">
               <TouchableOpacity
                 onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
                 className="flex-1 rounded-xl py-3.5 items-center"
                 style={{ backgroundColor: Colors.gray100 }}
               >
@@ -68,6 +67,8 @@ export default function WritingScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleGenerate}
+                accessibilityRole="button"
+                accessibilityLabel="Retry generating task"
                 className="flex-1 bg-primary rounded-xl py-3.5 items-center"
               >
                 <Text className="text-[15px] font-bold text-white">Retry</Text>
@@ -75,7 +76,12 @@ export default function WritingScreen() {
             </View>
           </>
         ) : (
-          <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
+          <TouchableOpacity
+            onPress={handleGenerate}
+            accessibilityRole="button"
+            accessibilityLabel="Generate writing task"
+            className="bg-primary rounded-xl px-8 py-4"
+          >
             <Text className="text-white text-base font-bold">Generate Task</Text>
           </TouchableOpacity>
         )}
@@ -93,9 +99,9 @@ export default function WritingScreen() {
           className="bg-primary rounded-2xl p-5 mb-5"
           style={{ ...Shadows.card }}
         >
-          <View className="h-3 bg-white/15 rounded-md w-32 mb-3" />
-          <View className="h-4 bg-white/20 rounded-md mb-2" style={{ width: "90%" }} />
-          <View className="h-4 bg-white/20 rounded-md" style={{ width: "70%" }} />
+          <SkeletonBar width={120} height={12} style={{ borderRadius: 6, marginBottom: 12 }} />
+          <SkeletonBar width="90%" height={16} style={{ borderRadius: 6, marginBottom: 8 }} />
+          <SkeletonBar width="70%" height={16} style={{ borderRadius: 6 }} />
         </Animated.View>
         {/* Writing area skeleton */}
         <Animated.View
@@ -103,17 +109,19 @@ export default function WritingScreen() {
           className="bg-white rounded-2xl p-4 mb-4"
           style={{ ...Shadows.card, minHeight: 200 }}
         >
-          {[0, 1, 2, 3].map((i) => (
-            <View
-              key={i}
-              className="h-3 bg-surface-200 rounded-md mb-3"
-              style={{ width: `${90 - i * 12}%` }}
-            />
-          ))}
+          <SkeletonBar width="90%" height={12} style={{ borderRadius: 6, marginBottom: 12 }} />
+          <SkeletonBar width="78%" height={12} style={{ borderRadius: 6, marginBottom: 12 }} />
+          <SkeletonBar width="66%" height={12} style={{ borderRadius: 6, marginBottom: 12 }} />
+          <SkeletonBar width="54%" height={12} style={{ borderRadius: 6 }} />
         </Animated.View>
-        <Text className="text-center mt-2" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+        <Text className="text-center mt-2" style={Typography.caption}>
           Generating writing task...
         </Text>
+        {isSlow && (
+          <Text style={[Typography.caption, { textAlign: "center", marginTop: 8 }]}>
+            Taking longer than usual...
+          </Text>
+        )}
       </View>
     );
   }
@@ -160,7 +168,13 @@ export default function WritingScreen() {
             <View key={dim.label} className="bg-white rounded-xl p-3.5 border border-surface-300">
               <View className="flex-row justify-between mb-2">
                 <Text className="text-sm font-semibold text-primary">{dim.label}</Text>
-                <Text style={{ fontSize: 14, fontWeight: "700", color: dim.color }}>
+                <Text
+                  style={{
+                    fontSize: Typography.bodySecondary.fontSize,
+                    fontWeight: "700",
+                    color: dim.color,
+                  }}
+                >
                   {dim.score}/25
                 </Text>
               </View>
@@ -182,7 +196,9 @@ export default function WritingScreen() {
         {/* Errors */}
         {eval_.errors.length > 0 && (
           <View className="mb-6">
-            <Text className="text-lg font-bold text-primary mb-3">Corrections</Text>
+            <Text accessibilityRole="header" className="text-lg font-bold text-primary mb-3">
+              Corrections
+            </Text>
             {eval_.errors.map((err, i) => (
               <View
                 key={i}
@@ -207,7 +223,9 @@ export default function WritingScreen() {
         {/* Suggestions */}
         {eval_.suggestions.length > 0 && (
           <View className="mb-6">
-            <Text className="text-lg font-bold text-primary mb-3">Suggestions</Text>
+            <Text accessibilityRole="header" className="text-lg font-bold text-primary mb-3">
+              Suggestions
+            </Text>
             {eval_.suggestions.map((suggestion, i) => (
               <View key={i} className="bg-primary/5 rounded-[10px] p-3 mb-1.5">
                 <Text className="text-sm text-primary leading-5">{suggestion}</Text>
@@ -219,7 +237,9 @@ export default function WritingScreen() {
         {/* Rewrite suggestion */}
         {eval_.rewriteSuggestion && (
           <View className="mb-6">
-            <Text className="text-lg font-bold text-primary mb-3">Suggested Rewrite</Text>
+            <Text accessibilityRole="header" className="text-lg font-bold text-primary mb-3">
+              Suggested Rewrite
+            </Text>
             <View
               className="bg-success/10 rounded-xl p-4"
               style={{ borderLeftWidth: 3, borderLeftColor: Colors.success }}
@@ -234,7 +254,9 @@ export default function WritingScreen() {
         {/* Your original text */}
         {userText.trim().length > 0 && (
           <View className="mb-6">
-            <Text className="text-lg font-bold text-primary mb-3">Your Text</Text>
+            <Text accessibilityRole="header" className="text-lg font-bold text-primary mb-3">
+              Your Text
+            </Text>
             <View
               className="bg-white rounded-xl p-4"
               style={{ borderLeftWidth: 3, borderLeftColor: Colors.primary }}
@@ -248,6 +270,8 @@ export default function WritingScreen() {
         <View className="flex-row gap-3">
           <TouchableOpacity
             onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
             className="flex-1 bg-surface-200 rounded-xl py-3.5 items-center"
           >
             <Text className="text-[15px] font-semibold text-primary">Back</Text>
@@ -269,6 +293,8 @@ export default function WritingScreen() {
                 ]
               );
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Start new writing task"
             className="flex-1 bg-primary rounded-xl py-3.5 items-center"
           >
             <Text className="text-[15px] font-semibold text-white">New Task</Text>
@@ -311,8 +337,10 @@ export default function WritingScreen() {
           placeholderTextColor={Colors.textTertiary}
           multiline
           textAlignVertical="top"
+          accessibilityLabel="Write your response in French"
+          accessibilityHint={`Target ${writingPrompt?.minWords} to ${writingPrompt?.maxWords} words`}
           style={{
-            fontSize: 15,
+            fontSize: Typography.body.fontSize,
             color: Colors.textPrimary,
             lineHeight: 24,
             minHeight: 180,
@@ -349,12 +377,12 @@ export default function WritingScreen() {
         }}
       >
         {exercise.isEvaluating ? (
-          <View className="flex-row items-center gap-2">
-            <ActivityIndicator color={Colors.gray500} size="small" />
-            <Text style={{ color: Colors.textTertiary }} className="text-[15px] font-semibold">
-              Evaluating...
-            </Text>
-          </View>
+          <Text
+            style={{ color: Colors.textTertiary, opacity: 0.6 }}
+            className="text-[15px] font-semibold"
+          >
+            Evaluating...
+          </Text>
         ) : (
           <Text
             className="text-base font-bold"
@@ -368,13 +396,26 @@ export default function WritingScreen() {
       </TouchableOpacity>
 
       {userText.trim().length > 0 && userText.trim().length < 20 && (
-        <Text className="text-accent text-xs mt-2 text-center">
+        <Text style={{ color: Colors.accentText }} className="text-xs mt-2 text-center">
           Minimum 20 characters required ({20 - userText.trim().length} more needed)
         </Text>
       )}
 
       {exercise.error && (
-        <Text className="text-error text-[13px] mt-3 text-center">{exercise.error}</Text>
+        <View className="mt-3 items-center">
+          <Text className="text-error text-[13px] mb-3 text-center">
+            Something went wrong while evaluating your writing. Please try submitting again.
+          </Text>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={exercise.isEvaluating || userText.trim().length < 20}
+            accessibilityRole="button"
+            accessibilityLabel="Retry submission"
+            className="bg-primary rounded-xl px-6 py-3 items-center"
+          >
+            <Text className="text-white text-[13px] font-bold">Retry</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </ScrollView>
   );

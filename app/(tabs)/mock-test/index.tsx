@@ -303,7 +303,7 @@ export default function MockTestScreen() {
         <FullSimCard onPress={() => startTest("full")} />
 
         {/* Section label */}
-        <Text className="text-lg font-bold text-primary mx-5 mt-7 mb-3">
+        <Text className="text-lg font-bold text-primary mx-5 mt-7 mb-3" accessibilityRole="header">
           Sections individuelles
         </Text>
 

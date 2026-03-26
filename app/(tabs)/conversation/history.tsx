@@ -18,7 +18,6 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
   Modal,
   ScrollView,
@@ -37,8 +36,10 @@ import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
 import { captureError } from "@/src/lib/sentry";
 import { LEVEL_COLORS } from "@/src/lib/constants";
-import { Colors } from "@/src/lib/design";
+import { Colors, Typography } from "@/src/lib/design";
 import { useDebounce } from "@/src/hooks/use-debounce";
+import { useSlowLoading } from "@/src/hooks/use-slow-loading";
+import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -129,12 +130,17 @@ function ModalSafeArea({ children }: { children: React.ReactNode }) {
   );
 }
 
-function HistoryLoadingSkeleton() {
+function HistoryLoadingSkeleton({ isSlow }: { isSlow: boolean }) {
   return (
     <View className="flex-1 bg-surface pt-4">
       {[1, 2, 3, 4, 5].map((i) => (
         <SkeletonCard key={i} />
       ))}
+      {isSlow && (
+        <Text style={[Typography.caption, { textAlign: "center", marginTop: 8 }]}>
+          Taking longer than usual...
+        </Text>
+      )}
     </View>
   );
 }
@@ -246,7 +252,13 @@ function HighlightedText({
   textColor: string;
 }) {
   if (matches.length === 0) {
-    return <Text style={{ fontSize: 14, color: textColor, lineHeight: 20 }}>{content}</Text>;
+    return (
+      <Text
+        style={{ fontSize: Typography.bodySecondary.fontSize, color: textColor, lineHeight: 20 }}
+      >
+        {content}
+      </Text>
+    );
   }
 
   const segments: React.ReactNode[] = [];
@@ -282,7 +294,11 @@ function HighlightedText({
     segments.push(<Text key="post">{content.slice(cursor)}</Text>);
   }
 
-  return <Text style={{ fontSize: 14, color: textColor, lineHeight: 20 }}>{segments}</Text>;
+  return (
+    <Text style={{ fontSize: Typography.bodySecondary.fontSize, color: textColor, lineHeight: 20 }}>
+      {segments}
+    </Text>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -300,6 +316,7 @@ export default function ConversationHistoryScreen() {
   // History list search
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
+  const isSlow = useSlowLoading(isLoading);
 
   // Transcript modal
   const [selectedConvo, setSelectedConvo] = useState<ConversationRecord | null>(null);
@@ -489,7 +506,7 @@ export default function ConversationHistoryScreen() {
   // ---------------------------------------------------------------------------
 
   if (isLoading) {
-    return <HistoryLoadingSkeleton />;
+    return <HistoryLoadingSkeleton isSlow={isSlow} />;
   }
 
   // ---------------------------------------------------------------------------
@@ -500,12 +517,15 @@ export default function ConversationHistoryScreen() {
     return (
       <View className="flex-1 bg-surface justify-center items-center p-6">
         <Text className="text-[64px] mb-4">{"\uD83D\uDCAC"}</Text>
-        <Text className="text-[22px] font-bold text-primary mb-2">No Conversations Yet</Text>
-        <Text className="text-sm text-[#4A5568] text-center leading-5 mb-6">
-          Start a conversation with Compagnon{"\n"}and your history will appear here.
+        <Text className="text-[22px] font-bold text-primary mb-2">Your conversations await!</Text>
+        <Text className="text-sm text-center leading-5 mb-6" style={{ color: Colors.gray700 }}>
+          Have your first chat with Compagnon{"\n"}and it will show up here for review.
         </Text>
         <TouchableOpacity
           onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Start a conversation"
+          accessibilityHint="Double tap to go back and start a new conversation"
           className="bg-primary rounded-xl px-6 py-3.5"
         >
           <Text className="text-white text-[15px] font-bold">Start a Conversation</Text>
@@ -519,13 +539,14 @@ export default function ConversationHistoryScreen() {
   // ---------------------------------------------------------------------------
 
   const renderConversation = ({ item }: { item: ConversationRecord }) => {
-    const levelColor = LEVEL_COLORS[item.cefr_level as CEFRLevel] ?? "#999";
+    const levelColor = LEVEL_COLORS[item.cefr_level as CEFRLevel] ?? Colors.gray500;
 
     return (
       <TouchableOpacity
         onPress={() => openTranscript(item)}
         accessibilityRole="button"
-        accessibilityLabel={`Conversation: ${item.topic || "Free conversation"}`}
+        accessibilityLabel={`Conversation: ${item.topic || "Free conversation"}, ${formatDate(item.completed_at ?? item.created_at)}, duration ${formatDuration(item.duration_seconds)}`}
+        accessibilityHint="Double tap to view conversation transcript"
         className="bg-white rounded-2xl p-4 mx-4 mb-2.5 border border-surface-300"
       >
         <View className="flex-row justify-between items-start">
@@ -533,7 +554,7 @@ export default function ConversationHistoryScreen() {
             <Text className="text-base font-bold text-primary" numberOfLines={1}>
               {item.topic}
             </Text>
-            <Text className="text-xs text-[#94A3B8] mt-1">
+            <Text className="text-xs mt-1" style={{ color: Colors.textTertiary }}>
               {formatDate(item.completed_at ?? item.created_at)} {"\u00B7"}{" "}
               {formatDuration(item.duration_seconds)}
             </Text>
@@ -545,7 +566,11 @@ export default function ConversationHistoryScreen() {
 
         {/* Feedback summary if available */}
         {item.ai_feedback?.summary && (
-          <Text className="text-[13px] text-[#4A5568] mt-2 leading-[18px]" numberOfLines={2}>
+          <Text
+            className="text-[13px] mt-2 leading-[18px]"
+            style={{ color: Colors.gray700 }}
+            numberOfLines={2}
+          >
             {item.ai_feedback.summary}
           </Text>
         )}
@@ -556,7 +581,7 @@ export default function ConversationHistoryScreen() {
             <Text className="text-[11px] text-success">
               Fluency {item.ai_feedback.fluencyRating}/5
             </Text>
-            <Text className="text-[11px] text-accent">
+            <Text className="text-[11px]" style={{ color: Colors.accentText }}>
               Grammar {item.ai_feedback.grammarRating}/5
             </Text>
           </View>
@@ -575,13 +600,15 @@ export default function ConversationHistoryScreen() {
       <View className="px-4 pt-3 pb-2">
         <View
           className="flex-row items-center bg-white rounded-xl border border-surface-300 px-3"
-          style={{ height: 44 }}
+          style={{ minHeight: 44 }}
         >
-          <Text className="text-base text-[#94A3B8] mr-2">{"\uD83D\uDD0D"}</Text>
+          <Text className="text-base mr-2" style={{ color: Colors.textTertiary }}>
+            {"\uD83D\uDD0D"}
+          </Text>
           <TextInput
             style={{
               flex: 1,
-              fontSize: 15,
+              fontSize: Typography.body.fontSize,
               color: Colors.textPrimary,
               paddingVertical: Platform.OS === "ios" ? 10 : 6,
             }}
@@ -599,7 +626,14 @@ export default function ConversationHistoryScreen() {
               onPress={() => setSearchQuery("")}
               accessibilityRole="button"
               accessibilityLabel="Clear search"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityHint="Double tap to clear the search field"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{
+                minWidth: 44,
+                minHeight: 44,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
             >
               <View
                 className="w-5 h-5 rounded-full justify-center items-center"
@@ -607,7 +641,7 @@ export default function ConversationHistoryScreen() {
               >
                 <Text
                   style={{
-                    fontSize: 11,
+                    fontSize: Typography.label.fontSize,
                     color: Colors.surfaceWhite,
                     fontWeight: "700",
                     lineHeight: 13,
@@ -624,9 +658,13 @@ export default function ConversationHistoryScreen() {
       {/* Conversation list or "No results" */}
       {filteredConversations.length === 0 ? (
         <View className="flex-1 justify-center items-center p-6">
-          <Text className="text-base text-[#94A3B8] mb-1">{"\uD83D\uDD0D"}</Text>
-          <Text className="text-base font-semibold text-[#6B7C93] mb-1">No results</Text>
-          <Text className="text-[13px] text-[#94A3B8] text-center">
+          <Text className="text-base mb-1" style={{ color: Colors.textTertiary }}>
+            {"\uD83D\uDD0D"}
+          </Text>
+          <Text className="text-base font-semibold mb-1" style={{ color: Colors.textSecondary }}>
+            No results
+          </Text>
+          <Text className="text-[13px] text-center" style={{ color: Colors.textTertiary }}>
             No conversations match &quot;{debouncedSearch}&quot;
           </Text>
         </View>
@@ -665,7 +703,7 @@ export default function ConversationHistoryScreen() {
               <Text className="text-[17px] font-bold text-primary" numberOfLines={1}>
                 {selectedConvo?.topic}
               </Text>
-              <Text className="text-xs text-[#94A3B8] mt-0.5">
+              <Text className="text-xs mt-0.5" style={{ color: Colors.textTertiary }}>
                 {selectedConvo?.completed_at ? formatDate(selectedConvo.completed_at) : ""}{" "}
                 {"\u00B7"} {formatDuration(selectedConvo?.duration_seconds ?? null)}
               </Text>
@@ -674,9 +712,12 @@ export default function ConversationHistoryScreen() {
               onPress={closeTranscript}
               accessibilityRole="button"
               accessibilityLabel="Close transcript"
+              accessibilityHint="Double tap to close the transcript and return to history"
               className="bg-surface-300 w-11 h-11 rounded-full justify-center items-center"
             >
-              <Text className="text-base text-[#4A5568] font-bold">{"\u2715"}</Text>
+              <Text className="text-base font-bold" style={{ color: Colors.gray700 }}>
+                {"\u2715"}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -687,13 +728,15 @@ export default function ConversationHistoryScreen() {
           >
             <View
               className="flex-row items-center bg-white rounded-[10px] border border-surface-300 px-2.5"
-              style={{ height: 40 }}
+              style={{ minHeight: 40 }}
             >
-              <Text className="text-sm text-[#94A3B8] mr-1.5">{"\uD83D\uDD0D"}</Text>
+              <Text className="text-sm mr-1.5" style={{ color: Colors.textTertiary }}>
+                {"\uD83D\uDD0D"}
+              </Text>
               <TextInput
                 style={{
                   flex: 1,
-                  fontSize: 14,
+                  fontSize: Typography.bodySecondary.fontSize,
                   color: Colors.textPrimary,
                   paddingVertical: Platform.OS === "ios" ? 8 : 4,
                 }}
@@ -727,16 +770,20 @@ export default function ConversationHistoryScreen() {
                     disabled={transcriptMatches.length === 0}
                     accessibilityRole="button"
                     accessibilityLabel="Previous match"
-                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    accessibilityHint="Double tap to go to the previous search match"
+                    accessibilityState={{ disabled: transcriptMatches.length === 0 }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     className="w-7 h-7 rounded-md justify-center items-center"
                     style={{
+                      minWidth: 44,
+                      minHeight: 44,
                       backgroundColor:
                         transcriptMatches.length > 0 ? Colors.primary8 : Colors.gray200,
                     }}
                   >
                     <Text
                       style={{
-                        fontSize: 14,
+                        fontSize: Typography.bodySecondary.fontSize,
                         fontWeight: "700",
                         color: transcriptMatches.length > 0 ? Colors.primary : Colors.gray400,
                       }}
@@ -750,16 +797,20 @@ export default function ConversationHistoryScreen() {
                     disabled={transcriptMatches.length === 0}
                     accessibilityRole="button"
                     accessibilityLabel="Next match"
-                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    accessibilityHint="Double tap to go to the next search match"
+                    accessibilityState={{ disabled: transcriptMatches.length === 0 }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     className="w-7 h-7 rounded-md justify-center items-center"
                     style={{
+                      minWidth: 44,
+                      minHeight: 44,
                       backgroundColor:
                         transcriptMatches.length > 0 ? Colors.primary8 : Colors.gray200,
                     }}
                   >
                     <Text
                       style={{
-                        fontSize: 14,
+                        fontSize: Typography.bodySecondary.fontSize,
                         fontWeight: "700",
                         color: transcriptMatches.length > 0 ? Colors.primary : Colors.gray400,
                         transform: [{ rotate: "180deg" }],
@@ -777,8 +828,15 @@ export default function ConversationHistoryScreen() {
                   onPress={() => setTranscriptSearch("")}
                   accessibilityRole="button"
                   accessibilityLabel="Clear transcript search"
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={{ marginLeft: 6 }}
+                  accessibilityHint="Double tap to clear the transcript search field"
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={{
+                    marginLeft: 6,
+                    minWidth: 44,
+                    minHeight: 44,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
                 >
                   <View
                     className="w-[18px] h-[18px] rounded-full justify-center items-center"
@@ -786,7 +844,7 @@ export default function ConversationHistoryScreen() {
                   >
                     <Text
                       style={{
-                        fontSize: 10,
+                        fontSize: Typography.tiny.fontSize,
                         color: Colors.surfaceWhite,
                         fontWeight: "700",
                         lineHeight: 12,
@@ -802,8 +860,26 @@ export default function ConversationHistoryScreen() {
 
           {/* Messages */}
           {loadingMessages ? (
-            <View className="flex-1 justify-center items-center">
-              <ActivityIndicator size="large" color={Colors.primary} />
+            <View className="flex-1 px-4 pt-5">
+              {[1, 2, 3, 4].map((i) => {
+                const isRight = i % 2 === 1;
+                return (
+                  <View
+                    key={i}
+                    className="mb-3"
+                    style={{
+                      alignSelf: isRight ? "flex-end" : "flex-start",
+                      maxWidth: "82%",
+                    }}
+                  >
+                    <SkeletonBar
+                      width={isRight ? 200 : 240}
+                      height={i === 2 ? 56 : 44}
+                      style={{ borderRadius: 16 }}
+                    />
+                  </View>
+                );
+              })}
             </View>
           ) : (
             <ScrollView
@@ -860,12 +936,16 @@ export default function ConversationHistoryScreen() {
                       <View
                         className="rounded-[10px] p-2.5 mt-1 border"
                         style={{
-                          backgroundColor: "rgba(245,166,35,0.1)",
-                          borderColor: "rgba(245,166,35,0.3)",
+                          backgroundColor: Colors.accent10,
+                          borderColor: Colors.accent30,
                         }}
                       >
                         {msg.corrections.map((c, i) => (
-                          <Text key={i} className="text-xs text-[#4A5568] leading-[17px]">
+                          <Text
+                            key={i}
+                            className="text-xs leading-[17px]"
+                            style={{ color: Colors.gray700 }}
+                          >
                             &quot;{c.original}&quot; {"\u2192"} &quot;
                             {c.corrected}&quot;
                             {c.explanation ? ` (${c.explanation})` : ""}
@@ -877,8 +957,9 @@ export default function ConversationHistoryScreen() {
                 );
               })}
               {messages.length === 0 && (
-                <Text className="text-sm text-[#94A3B8] text-center mt-10">
-                  No transcript available for this conversation.
+                <Text className="text-sm text-center mt-10" style={{ color: Colors.textTertiary }}>
+                  This conversation{"'"}s transcript is not available yet.{"\n"}It may still be
+                  processing.
                 </Text>
               )}
             </ScrollView>

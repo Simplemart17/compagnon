@@ -9,7 +9,7 @@ import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { LEVEL_COLORS } from "@/src/lib/constants";
-import { Colors } from "@/src/lib/design";
+import { Colors, Typography } from "@/src/lib/design";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 interface SectionResult {
@@ -65,7 +65,10 @@ export default function MockTestResultsScreen() {
       contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
     >
       {/* Overall Score */}
-      <View className="items-center mb-8">
+      <View
+        className="items-center mb-8"
+        accessibilityLabel={`Your TCF score: ${results.overallTcfScore} out of 699, CEFR level ${results.overallCefrLevel}`}
+      >
         <Text className="text-sm mb-2" style={{ color: Colors.gray700 }}>
           Your TCF Score
         </Text>
@@ -94,13 +97,23 @@ export default function MockTestResultsScreen() {
 
         {/* Distance to C1 */}
         {distanceToC1 > 0 && (
-          <View className="bg-accent/10 rounded-xl p-4 mt-4 w-full items-center">
+          <View
+            className="bg-accent/10 rounded-xl p-4 mt-4 w-full items-center"
+            accessibilityLabel={`${distanceToC1} points away from C1 level`}
+            accessibilityRole="text"
+          >
             <Text className="text-[13px] mb-1" style={{ color: Colors.gray700 }}>
               Distance to C1 (500+)
             </Text>
-            <Text className="text-[28px] font-extrabold text-accent">{distanceToC1} points</Text>
+            <Text style={{ color: Colors.accentText }} className="text-[28px] font-extrabold">
+              {distanceToC1} points
+            </Text>
             {/* Progress bar to C1 */}
-            <View className="w-full h-2 bg-surface-300 rounded-sm mt-2">
+            <View
+              className="w-full h-2 bg-surface-300 rounded-sm mt-2"
+              accessibilityRole="progressbar"
+              accessibilityValue={{ min: 0, max: 500, now: results.overallTcfScore }}
+            >
               <View
                 style={{
                   width: `${Math.min(100, (results.overallTcfScore / 500) * 100)}%`,
@@ -124,7 +137,9 @@ export default function MockTestResultsScreen() {
       </View>
 
       {/* Section Breakdown */}
-      <Text className="text-lg font-bold text-primary mb-3">Section Breakdown</Text>
+      <Text className="text-lg font-bold text-primary mb-3" accessibilityRole="header">
+        Section Breakdown
+      </Text>
 
       <View className="gap-3 mb-6">
         {Object.entries(results.sections).map(([sectionKey, sectionResult]) => {
@@ -132,7 +147,11 @@ export default function MockTestResultsScreen() {
           const sectionColor = getScoreColor(sectionResult.tcfScore);
 
           return (
-            <View key={sectionKey} className="bg-white rounded-2xl p-4 border border-surface-300">
+            <View
+              key={sectionKey}
+              className="bg-white rounded-2xl p-4 border border-surface-300"
+              accessibilityLabel={`${meta?.name}: TCF score ${sectionResult.tcfScore}, ${sectionResult.cefrLevel} level, ${sectionResult.correct} of ${sectionResult.total} correct`}
+            >
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center gap-2">
                   <Text className="text-xl">{meta?.emoji}</Text>
@@ -145,7 +164,13 @@ export default function MockTestResultsScreen() {
                 </View>
 
                 <View className="items-end">
-                  <Text style={{ fontSize: 22, fontWeight: "800", color: sectionColor }}>
+                  <Text
+                    style={{
+                      fontSize: Typography.subsectionHeader.fontSize,
+                      fontWeight: "800",
+                      color: sectionColor,
+                    }}
+                  >
                     {sectionResult.tcfScore}
                   </Text>
                   <View

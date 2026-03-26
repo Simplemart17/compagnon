@@ -7,14 +7,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Pressable,
-} from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Pressable } from "react-native";
 import Animated, {
   FadeInDown,
   useSharedValue,
@@ -26,13 +19,16 @@ import Animated, {
 } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
+import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { usePronunciation } from "@/src/hooks/use-pronunciation";
+import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useAuthStore } from "@/src/store/auth-store";
 import { chatCompletionJSON } from "@/src/lib/openai";
 import { captureError } from "@/src/lib/sentry";
+import { classifyError } from "@/src/lib/error-messages";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { WordScore } from "@/src/lib/pronunciation";
-import { Colors, Shadows, skillTint } from "@/src/lib/design";
+import { Colors, Shadows, Typography, skillTint } from "@/src/lib/design";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,7 +67,13 @@ function WordChip({ wordScore }: { wordScore: WordScore }) {
   const color = getScoreColor(wordScore.accuracyScore);
 
   return (
-    <Pressable onPress={() => setExpanded((v) => !v)}>
+    <Pressable
+      onPress={() => setExpanded((v) => !v)}
+      accessibilityRole="button"
+      accessibilityLabel={`${wordScore.word}, accuracy ${Math.round(wordScore.accuracyScore)} percent`}
+      accessibilityHint="Double tap to see phoneme details"
+      accessibilityState={{ expanded }}
+    >
       <View
         className="rounded-lg px-2.5 py-1.5 border"
         style={{
@@ -152,9 +154,9 @@ export default function PronunciationScreen() {
   const cefrLevel = (profile?.current_cefr_level ?? "A1") as CEFRLevel;
 
   const pronunciation = usePronunciation();
-
   const [sentence, setSentence] = useState<GeneratedSentence | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const isSlow = useSlowLoading(isGenerating);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
   // Pulsing animation for the microphone button while recording
@@ -215,7 +217,8 @@ export default function PronunciationScreen() {
       setSentence(result);
     } catch (err) {
       captureError(err, "pronunciation-sentence-generation");
-      setGenerateError(err instanceof Error ? err.message : "Failed to generate sentence");
+      const { message } = classifyError(err, "Could not generate a sentence. Please try again.");
+      setGenerateError(message);
     } finally {
       setIsGenerating(false);
       isGeneratingRef.current = false;
@@ -256,7 +259,9 @@ export default function PronunciationScreen() {
       <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ flexGrow: 1 }}>
         <View className="flex-1 justify-center items-center p-6">
           <Text className="text-[64px] mb-4">{"\uD83C\uDF99"}</Text>
-          <Text className="text-[22px] font-bold text-primary mb-2">Pronunciation Practice</Text>
+          <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
+            Pronunciation Practice
+          </Text>
           <Text className="text-sm text-center mb-2 leading-5" style={{ color: Colors.gray700 }}>
             Read French sentences aloud and get{"\n"}phoneme-level pronunciation feedback.
           </Text>
@@ -270,6 +275,8 @@ export default function PronunciationScreen() {
               <View className="flex-row gap-3 w-full px-4">
                 <TouchableOpacity
                   onPress={() => router.back()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
                   className="flex-1 rounded-xl py-3.5 items-center"
                   style={{ backgroundColor: Colors.gray100 }}
                 >
@@ -279,6 +286,8 @@ export default function PronunciationScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={generateSentence}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry generating sentence"
                   className="flex-1 bg-primary rounded-xl py-3.5 items-center"
                 >
                   <Text className="text-[15px] font-bold text-white">Retry</Text>
@@ -288,6 +297,8 @@ export default function PronunciationScreen() {
           ) : (
             <TouchableOpacity
               onPress={generateSentence}
+              accessibilityRole="button"
+              accessibilityLabel="Start pronunciation practice"
               className="bg-primary rounded-xl px-8 py-4"
             >
               <Text className="text-white text-base font-bold">Start Practice</Text>
@@ -297,7 +308,9 @@ export default function PronunciationScreen() {
           {/* Weak sounds summary from previous sessions */}
           {pronunciation.weakSounds.length > 0 && (
             <View className="bg-white rounded-2xl p-4 mt-8 w-full border border-surface-300">
-              <Text className="text-lg font-bold text-primary mb-2.5">Sounds to work on</Text>
+              <Text accessibilityRole="header" className="text-lg font-bold text-primary mb-2.5">
+                Sounds to work on
+              </Text>
               <View className="flex-row flex-wrap gap-2">
                 {pronunciation.weakSounds.map((ws) => (
                   <View
@@ -333,14 +346,19 @@ export default function PronunciationScreen() {
             className="bg-white rounded-2xl p-6 border border-surface-300 mb-4 items-center"
             style={{ ...Shadows.card }}
           >
-            <View className="h-3 bg-surface-200 rounded-md w-24 mb-4" />
-            <View className="h-5 bg-surface-200 rounded-md mb-2" style={{ width: "80%" }} />
-            <View className="h-3 bg-surface-200 rounded-md w-32 mt-2" />
+            <SkeletonBar width={96} height={12} style={{ borderRadius: 6, marginBottom: 16 }} />
+            <SkeletonBar width="80%" height={20} style={{ borderRadius: 8, marginBottom: 8 }} />
+            <SkeletonBar width={128} height={12} style={{ borderRadius: 6, marginTop: 8 }} />
           </View>
         </Animated.View>
-        <Text className="text-center mt-4" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+        <Text className="text-center mt-4" style={Typography.caption}>
           Generating sentence...
         </Text>
+        {isSlow && (
+          <Text style={[Typography.caption, { textAlign: "center", marginTop: 8 }]}>
+            Taking longer than usual...
+          </Text>
+        )}
       </View>
     );
   }
@@ -385,7 +403,9 @@ export default function PronunciationScreen() {
         </View>
 
         {/* Word-by-word breakdown */}
-        <Text className="text-lg font-bold text-primary mb-2.5">Word-by-word breakdown</Text>
+        <Text accessibilityRole="header" className="text-lg font-bold text-primary mb-2.5">
+          Word-by-word breakdown
+        </Text>
         <Text className="text-[11px] mb-3" style={{ color: Colors.textTertiary }}>
           Tap a word to see phoneme details
         </Text>
@@ -397,7 +417,9 @@ export default function PronunciationScreen() {
 
         {/* Score breakdown */}
         <View className="bg-white rounded-2xl p-4 border border-surface-300 mb-6">
-          <Text className="text-lg font-bold text-primary mb-2">Score breakdown</Text>
+          <Text accessibilityRole="header" className="text-lg font-bold text-primary mb-2">
+            Score breakdown
+          </Text>
           <ScoreRow label="Accuracy" score={result.accuracyScore} />
           <ScoreRow label="Fluency" score={result.fluencyScore} />
           <ScoreRow label="Prosody" score={result.prosodyScore} />
@@ -413,7 +435,9 @@ export default function PronunciationScreen() {
               borderColor: Colors.error15,
             }}
           >
-            <Text className="text-lg font-bold text-error mb-2.5">Weak phonemes</Text>
+            <Text accessibilityRole="header" className="text-lg font-bold text-error mb-2.5">
+              Weak phonemes
+            </Text>
             <View className="flex-row flex-wrap gap-2">
               {result.weakPhonemes.map((p, i) => (
                 <View
@@ -435,12 +459,16 @@ export default function PronunciationScreen() {
         <View className="flex-row gap-3">
           <TouchableOpacity
             onPress={handleTryAgain}
+            accessibilityRole="button"
+            accessibilityLabel="Try again with same sentence"
             className="flex-1 bg-surface-200 rounded-xl py-3.5 items-center"
           >
             <Text className="text-[15px] font-semibold text-primary">Try Again</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleNewSentence}
+            accessibilityRole="button"
+            accessibilityLabel="Generate new sentence"
             className="flex-1 bg-primary rounded-xl py-3.5 items-center"
           >
             <Text className="text-[15px] font-semibold text-white">New Sentence</Text>
@@ -475,7 +503,10 @@ export default function PronunciationScreen() {
               elevation: 3,
             }}
           >
-            <Text className="text-[11px] font-semibold text-accent tracking-wider uppercase mb-3">
+            <Text
+              className="text-[11px] font-semibold tracking-wider uppercase mb-3"
+              style={{ color: Colors.accentText }}
+            >
               Read aloud
             </Text>
             <Text className="text-[22px] font-semibold text-primary leading-8 text-center">
@@ -498,8 +529,13 @@ export default function PronunciationScreen() {
 
           {pronunciation.isAssessing && (
             <View className="items-center mb-4">
-              <ActivityIndicator size="small" color={Colors.primary} />
-              <Text className="text-[13px] mt-2" style={{ color: Colors.gray700 }}>
+              <SkeletonBar
+                width={160}
+                height={14}
+                style={{ borderRadius: 7, marginBottom: 8 }}
+                accessibilityLabel="Assessing pronunciation"
+              />
+              <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
                 Assessing pronunciation...
               </Text>
             </View>
@@ -511,6 +547,12 @@ export default function PronunciationScreen() {
               disabled={pronunciation.isAssessing}
               accessibilityRole="button"
               accessibilityLabel={pronunciation.isRecording ? "Stop recording" : "Start recording"}
+              accessibilityState={{ disabled: pronunciation.isAssessing }}
+              accessibilityHint={
+                pronunciation.isRecording
+                  ? "Double tap to stop and assess"
+                  : "Double tap to start recording"
+              }
               className="w-[88px] h-[88px] rounded-full justify-center items-center"
               style={{
                 backgroundColor: pronunciation.isRecording ? Colors.error : Colors.primary,
@@ -537,7 +579,19 @@ export default function PronunciationScreen() {
 
         {/* Error display */}
         {pronunciation.error && (
-          <Text className="text-error text-[13px] mt-5 text-center">{pronunciation.error}</Text>
+          <View className="mt-5 items-center">
+            <Text className="text-error text-[13px] mb-3 text-center">
+              Pronunciation assessment failed. Please try recording again.
+            </Text>
+            <TouchableOpacity
+              onPress={handleTryAgain}
+              accessibilityRole="button"
+              accessibilityLabel="Try recording again"
+              className="bg-primary/10 rounded-xl px-5 py-2.5"
+            >
+              <Text className="text-primary text-[13px] font-semibold">Try Again</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
 
@@ -546,6 +600,9 @@ export default function PronunciationScreen() {
         <TouchableOpacity
           onPress={handleNewSentence}
           disabled={pronunciation.isRecording || pronunciation.isAssessing}
+          accessibilityRole="button"
+          accessibilityLabel="Skip to new sentence"
+          accessibilityState={{ disabled: pronunciation.isRecording || pronunciation.isAssessing }}
           className="rounded-xl py-3.5 items-center"
           style={{
             backgroundColor:

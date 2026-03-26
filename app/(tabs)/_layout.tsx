@@ -2,7 +2,7 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
-import { Colors } from "@/src/lib/design";
+import { Colors, Typography } from "@/src/lib/design";
 
 const TAB_ACTIVE_COLOR = Colors.primary;
 const TAB_INACTIVE_COLOR = Colors.textTertiary;
@@ -20,7 +20,7 @@ export default function TabLayout() {
           height: 88,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: Typography.label.fontSize,
           fontWeight: "600",
         },
         headerStyle: {

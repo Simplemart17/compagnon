@@ -16,6 +16,7 @@ import {
   TextInput,
   RefreshControl,
 } from "react-native";
+import { useRouter } from "expo-router";
 
 import {
   cacheWithFallback,
@@ -29,7 +30,7 @@ import { captureError } from "@/src/lib/sentry";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/lib/supabase";
 import { LEVEL_COLORS } from "@/src/lib/constants";
-import { Colors } from "@/src/lib/design";
+import { Colors, Typography } from "@/src/lib/design";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { calculateNextReview } from "@/src/lib/srs";
 import type { ReviewQuality, SRSState } from "@/src/lib/srs";
@@ -105,6 +106,7 @@ function VocabSkeleton() {
 }
 
 export default function VocabularyScreen() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
   const [activeTab, setActiveTab] = useState<TabView>("review");
@@ -303,7 +305,7 @@ export default function VocabularyScreen() {
           <View className="items-end">
             <Text
               style={{
-                fontSize: 11,
+                fontSize: Typography.label.fontSize,
                 color: isDue ? Colors.accent : Colors.gray500,
                 fontWeight: isDue ? "600" : "400",
               }}
@@ -330,12 +332,17 @@ export default function VocabularyScreen() {
             onChangeText={setSearchQuery}
             placeholder="Search words..."
             placeholderTextColor={Colors.textTertiary}
+            accessibilityLabel="Search vocabulary words"
             className="flex-1 text-[15px] text-primary"
             autoCapitalize="none"
             autoCorrect={false}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery("")}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
               <Text className="text-base" style={{ color: Colors.textTertiary }}>
                 {"✕"}
               </Text>
@@ -374,11 +381,21 @@ export default function VocabularyScreen() {
     return (
       <View className="flex-1 bg-surface justify-center items-center p-6">
         <Text className="text-[64px] mb-4">{"📚"}</Text>
-        <Text className="text-[22px] font-bold text-primary mb-2">No Vocabulary Yet</Text>
-        <Text className="text-sm text-center leading-5" style={{ color: Colors.gray700 }}>
+        <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
+          Build your word bank!
+        </Text>
+        <Text className="text-sm text-center leading-5 mb-6" style={{ color: Colors.gray700 }}>
           Words from your conversations and exercises{"\n"}will appear here for spaced repetition
           review.
         </Text>
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/conversation")}
+          accessibilityRole="button"
+          accessibilityLabel="Start a conversation to learn new words"
+          className="bg-primary rounded-xl px-6 py-3.5"
+        >
+          <Text className="text-white text-[15px] font-bold">Start a Conversation</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -398,6 +415,9 @@ export default function VocabularyScreen() {
           <TouchableOpacity
             key={tab}
             onPress={() => setActiveTab(tab)}
+            accessibilityRole="tab"
+            accessibilityLabel={label}
+            accessibilityState={{ selected: isActive }}
             className="flex-1 py-2.5 rounded-[10px] items-center"
             style={{
               backgroundColor: isActive ? Colors.surfaceWhite : "transparent",
@@ -424,13 +444,17 @@ export default function VocabularyScreen() {
       return (
         <View className="flex-1 justify-center items-center p-6">
           <Text className="text-[64px] mb-4">{"🎉"}</Text>
-          <Text className="text-[22px] font-bold text-primary mb-2">All Caught Up!</Text>
+          <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
+            All Caught Up!
+          </Text>
           <Text className="text-sm text-center leading-5 mb-6" style={{ color: Colors.gray700 }}>
             You reviewed {reviewedCount} word{reviewedCount !== 1 ? "s" : ""}.{"\n"}Come back later
             for more reviews.
           </Text>
           <TouchableOpacity
             onPress={() => setActiveTab("all")}
+            accessibilityRole="button"
+            accessibilityLabel="View all words"
             className="bg-primary rounded-xl px-6 py-3.5"
           >
             <Text className="text-white text-[15px] font-bold">View All Words</Text>
@@ -443,12 +467,16 @@ export default function VocabularyScreen() {
       return (
         <View className="flex-1 justify-center items-center p-6">
           <Text className="text-[64px] mb-4">{"✅"}</Text>
-          <Text className="text-[22px] font-bold text-primary mb-2">No Reviews Due</Text>
+          <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
+            You{"'"}re all caught up!
+          </Text>
           <Text className="text-sm text-center leading-5 mb-6" style={{ color: Colors.gray700 }}>
             All your words are up to date.{"\n"}Check back later or browse your full word list.
           </Text>
           <TouchableOpacity
             onPress={() => setActiveTab("all")}
+            accessibilityRole="button"
+            accessibilityLabel="View all words"
             className="bg-primary rounded-xl px-6 py-3.5"
           >
             <Text className="text-white text-[15px] font-bold">View All Words</Text>
@@ -527,7 +555,10 @@ export default function VocabularyScreen() {
               <View className="w-[60px] h-0.5 bg-surface-300 mb-4" />
 
               {/* English translation */}
-              <Text className="text-[22px] font-semibold text-accent text-center mb-3">
+              <Text
+                style={{ color: Colors.accentText }}
+                className="text-[22px] font-semibold text-center mb-3"
+              >
                 {word.english_translation}
               </Text>
 
@@ -558,6 +589,9 @@ export default function VocabularyScreen() {
                   key={label}
                   onPress={() => handleRate(quality)}
                   disabled={isUpdating}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Rate: ${label}`}
+                  accessibilityState={{ disabled: isUpdating }}
                   className="flex-1 rounded-xl py-3.5 items-center"
                   style={{
                     backgroundColor: color,
@@ -594,7 +628,7 @@ export default function VocabularyScreen() {
     if (!isOfflineData) return null;
     return (
       <View className="bg-accent/10 rounded-[10px] px-3.5 py-2.5 mb-3 flex-row items-center gap-2">
-        <Text className="text-xs text-accent flex-1">
+        <Text className="text-xs flex-1" style={{ color: Colors.accentText }}>
           Showing cached data. Changes will sync when you are back online.
         </Text>
       </View>

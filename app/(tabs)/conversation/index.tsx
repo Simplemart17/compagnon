@@ -14,7 +14,7 @@ import { CONVERSATION_TOPICS, LEVEL_COLORS } from "@/src/lib/constants";
 import type { ConversationTopic, ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { CEFR_ORDER } from "@/src/types/cefr";
-import { Colors } from "@/src/lib/design";
+import { Colors, skillTint } from "@/src/lib/design";
 
 const CONVERSATION_MODES: { key: ConversationMode; label: string; icon: string }[] = [
   { key: "companion", label: "Companion", icon: "\uD83D\uDCAC" },
@@ -78,7 +78,7 @@ function CardItem({ item, index, onPress }: CardItemProps) {
     transform: [{ translateY: translateY.value }, { scale: scale.value }],
   }));
 
-  const stripColor = LEVEL_COLORS[item.cefr_level] ?? "#1E3A5F";
+  const stripColor = LEVEL_COLORS[item.cefr_level] ?? Colors.primary;
   const emoji = TOPIC_EMOJIS[item.titleFr] ?? "\uD83D\uDCAC";
   const difficultyDots = getDifficultyDots(item.cefr_level);
 
@@ -94,7 +94,8 @@ function CardItem({ item, index, onPress }: CardItemProps) {
         }}
         activeOpacity={1}
         accessibilityRole="button"
-        accessibilityLabel={`${item.titleFr} - ${item.title}. ${item.description}`}
+        accessibilityLabel={`Topic: ${item.titleFr} - ${item.title}. ${item.description}`}
+        accessibilityHint="Double tap to start a conversation on this topic"
         className="bg-white rounded-2xl mb-3 mx-5 p-4 pl-[22px]"
         style={{
           shadowColor: Colors.primary,
@@ -224,7 +225,7 @@ export default function ConversationTopicsScreen() {
           className="absolute bottom-0 left-0 right-0 rounded-b-[32px]"
           style={{
             height: "50%",
-            backgroundColor: "rgba(10,25,55,0.4)",
+            backgroundColor: skillTint(Colors.primaryDark, 0.4),
           }}
           pointerEvents="none"
         />
@@ -234,8 +235,8 @@ export default function ConversationTopicsScreen() {
           <View
             className="rounded-[20px] px-[10px] py-1"
             style={{
-              backgroundColor: "rgba(245,166,35,0.2)",
-              borderColor: "#F5A623",
+              backgroundColor: Colors.accent20,
+              borderColor: Colors.accent,
               borderWidth: 1,
             }}
           >
@@ -247,22 +248,27 @@ export default function ConversationTopicsScreen() {
               onPress={() => router.push("/(tabs)/conversation/history")}
               accessibilityRole="button"
               accessibilityLabel="Conversation history"
-              className="rounded-[20px] px-3 py-[6px]"
+              accessibilityHint="Double tap to view past conversations"
+              className="rounded-[20px] px-3 justify-center"
               style={{
-                backgroundColor: "rgba(255,255,255,0.1)",
-                borderColor: "rgba(255,255,255,0.2)",
+                minHeight: 44,
+                backgroundColor: skillTint(Colors.surfaceWhite, 0.1),
+                borderColor: skillTint(Colors.surfaceWhite, 0.2),
                 borderWidth: 1,
               }}
             >
-              <Text className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.8)" }}>
+              <Text
+                className="text-xs font-semibold"
+                style={{ color: skillTint(Colors.surfaceWhite, 0.8) }}
+              >
                 History
               </Text>
             </TouchableOpacity>
             <View
               className="w-9 h-9 rounded-[18px] justify-center items-center"
               style={{
-                backgroundColor: "rgba(255,255,255,0.15)",
-                borderColor: "rgba(255,255,255,0.25)",
+                backgroundColor: skillTint(Colors.surfaceWhite, 0.15),
+                borderColor: skillTint(Colors.surfaceWhite, 0.25),
                 borderWidth: 1,
               }}
             >
@@ -277,7 +283,7 @@ export default function ConversationTopicsScreen() {
         </Text>
 
         {/* Row 3: Subheading */}
-        <Text className="text-sm mt-[6px]" style={{ color: "rgba(255,255,255,0.6)" }}>
+        <Text className="text-sm mt-[6px]" style={{ color: skillTint(Colors.surfaceWhite, 0.6) }}>
           Choose a topic and start speaking.
         </Text>
 
@@ -291,11 +297,11 @@ export default function ConversationTopicsScreen() {
             <View
               key={label}
               className="rounded-[10px] px-[10px] py-[6px]"
-              style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+              style={{ backgroundColor: skillTint(Colors.surfaceWhite, 0.1) }}
             >
               <Text
                 className="text-[11px] font-semibold"
-                style={{ color: "rgba(255,255,255,0.85)" }}
+                style={{ color: skillTint(Colors.surfaceWhite, 0.85) }}
               >
                 {label}
               </Text>
@@ -314,9 +320,12 @@ export default function ConversationTopicsScreen() {
               onPress={() => setSelectedMode(m.key)}
               accessibilityRole="button"
               accessibilityLabel={`Conversation mode: ${m.label}`}
+              accessibilityHint="Double tap to select this conversation mode"
               accessibilityState={{ selected: isActive }}
               className="flex-1 rounded-xl py-2.5 items-center"
               style={{
+                minHeight: 44,
+                justifyContent: "center",
                 backgroundColor: isActive ? Colors.primary : Colors.surfaceWhite,
                 borderColor: isActive ? Colors.primary : Colors.gray300,
                 borderWidth: 1,
@@ -324,7 +333,7 @@ export default function ConversationTopicsScreen() {
             >
               <Text
                 className="text-[13px]"
-                style={{ color: isActive ? "#FFFFFF" : Colors.textSecondary }}
+                style={{ color: isActive ? Colors.surfaceWhite : Colors.textSecondary }}
               >
                 {m.icon} {m.label}
               </Text>
@@ -343,9 +352,12 @@ export default function ConversationTopicsScreen() {
               onPress={() => setSelectedLevel(level as LevelFilter)}
               accessibilityRole="button"
               accessibilityLabel={`Filter by level: ${level}`}
+              accessibilityHint="Double tap to filter topics by this level"
               accessibilityState={{ selected: isActive }}
               className="flex-1 max-w-[80px] rounded-[20px] py-2 items-center"
               style={{
+                minHeight: 44,
+                justifyContent: "center",
                 backgroundColor: isActive ? Colors.primary : Colors.surfaceWhite,
                 borderColor: isActive ? Colors.primary : Colors.gray300,
                 borderWidth: 1,

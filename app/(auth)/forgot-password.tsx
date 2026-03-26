@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
   Dimensions,
   Pressable,
@@ -105,17 +104,18 @@ export default function ForgotPasswordScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#0D2240]" edges={["top"]}>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: Colors.bgDark }} edges={["top"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
         {/* Hero Section */}
         <View
-          className="bg-[#0D2240] items-center justify-center"
+          className="items-center justify-center"
           style={{
             height: HERO_HEIGHT,
             paddingTop: insets.top > 0 ? 0 : 16,
+            backgroundColor: Colors.bgDark,
           }}
         >
           {/* App name -- smaller at top */}
@@ -137,13 +137,13 @@ export default function ForgotPasswordScreen() {
           style={[
             {
               flex: 1,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: Colors.surfaceWhite,
               borderTopLeftRadius: 32,
               borderTopRightRadius: 32,
               paddingHorizontal: 24,
               paddingTop: 32,
               paddingBottom: insets.bottom + 16,
-              shadowColor: "#000",
+              shadowColor: Colors.shadow,
               shadowOffset: { width: 0, height: -4 },
               shadowOpacity: 0.06,
               shadowRadius: 12,
@@ -158,7 +158,7 @@ export default function ForgotPasswordScreen() {
           </Text>
 
           {/* Description */}
-          <Text className="text-sm text-[#6B7C93] leading-[21px] mb-7">
+          <Text className="text-sm leading-[21px] mb-7" style={{ color: Colors.textSecondary }}>
             Saisissez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre
             mot de passe.
           </Text>
@@ -202,15 +202,9 @@ export default function ForgotPasswordScreen() {
               accessibilityLabel="Send reset link"
               accessibilityState={{ disabled: loading, busy: loading }}
               className="bg-primary rounded-xl py-[17px] items-center"
-              style={{ opacity: loading ? 0.7 : 1 }}
+              style={{ opacity: loading ? 0.6 : 1 }}
             >
-              {loading ? (
-                <ActivityIndicator color={Colors.accent} />
-              ) : (
-                <Text className="text-accent text-base font-bold tracking-wide">
-                  Envoyer le lien
-                </Text>
-              )}
+              <Text className="text-accent text-base font-bold tracking-wide">Envoyer le lien</Text>
             </Pressable>
           </Reanimated.View>
 
@@ -225,7 +219,9 @@ export default function ForgotPasswordScreen() {
               borderColor: Colors.gray200,
             }}
           >
-            <Text className="text-[#6B7C93] text-sm font-medium">← Retour</Text>
+            <Text className="text-sm font-medium" style={{ color: Colors.textSecondary }}>
+              ← Retour
+            </Text>
           </TouchableOpacity>
         </Reanimated.View>
       </KeyboardAvoidingView>

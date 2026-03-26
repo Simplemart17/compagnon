@@ -21,7 +21,8 @@ import { updateStreak, incrementDailyActivity, checkCefrPromotion } from "@/src/
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { hapticLight } from "@/src/lib/haptics";
-import { Colors, Shadows } from "@/src/lib/design";
+import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import type { MCQContent } from "@/src/types/exercise";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -56,7 +57,7 @@ const SECTION_META: Record<
 };
 
 /** Skeleton loading screen shown while generating TCF test */
-function MockTestSkeleton() {
+function MockTestSkeleton({ isSlow }: { isSlow: boolean }) {
   return (
     <SafeAreaView className="flex-1 bg-surface">
       {/* Header skeleton */}
@@ -108,6 +109,11 @@ function MockTestSkeleton() {
           <Text className="text-xs mt-1" style={{ color: Colors.textTertiary }}>
             This may take a moment
           </Text>
+          {isSlow && (
+            <Text style={[Typography.caption, { textAlign: "center", marginTop: 8 }]}>
+              Taking longer than usual...
+            </Text>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -132,6 +138,8 @@ export default function MockTestSessionScreen() {
     timeRemaining: 0,
     status: "loading",
   });
+
+  const isSlow = useSlowLoading(state.status === "loading");
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<string>>(new Set());
@@ -327,9 +335,15 @@ export default function MockTestSessionScreen() {
       const emptySections = sections.filter((s) => allQuestions[s].length === 0);
       if (generationFailed && emptySections.length === sections.length) {
         Alert.alert(
-          "Generation Error",
-          "Failed to generate test questions. Please check your connection and try again.",
-          [{ text: "Go Back", onPress: () => router.back() }]
+          "Could not load test",
+          "We were unable to generate test questions. Please check your internet connection and try again.",
+          [
+            { text: "Go Back", onPress: () => router.back() },
+            {
+              text: "Retry",
+              onPress: () => void initTest(),
+            },
+          ]
         );
         return;
       }
@@ -602,7 +616,7 @@ export default function MockTestSessionScreen() {
 
   // Loading screen — skeleton loader
   if (state.status === "loading") {
-    return <MockTestSkeleton />;
+    return <MockTestSkeleton isSlow={isSlow} />;
   }
 
   const isLastQuestion = currentQuestionIndex >= currentQuestions.length - 1;
@@ -644,6 +658,7 @@ export default function MockTestSessionScreen() {
           accessibilityRole="button"
           accessibilityLabel="End test"
           accessibilityHint="Double tap to submit the test"
+          style={{ minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" }}
         >
           <Text className="text-error text-[13px] font-semibold">End Test</Text>
         </TouchableOpacity>
@@ -658,8 +673,14 @@ export default function MockTestSessionScreen() {
             <TouchableOpacity
               key={i}
               onPress={() => setCurrentQuestionIndex(i)}
-              className="flex-1 h-1 rounded-sm"
+              accessibilityRole="button"
+              accessibilityLabel={`Question ${i + 1}${answered ? ", answered" : ", unanswered"}${i === currentQuestionIndex ? ", current" : ""}`}
+              accessibilityState={{ selected: i === currentQuestionIndex }}
+              className="flex-1 rounded-sm justify-center"
+              hitSlop={{ top: 20, bottom: 20, left: 4, right: 4 }}
               style={{
+                height: 4,
+                minHeight: 4,
                 backgroundColor:
                   i === currentQuestionIndex
                     ? Colors.primary

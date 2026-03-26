@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
   Dimensions,
   Pressable,
@@ -100,17 +99,18 @@ export default function LoginScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#0D2240]" edges={["top"]}>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: Colors.bgDark }} edges={["top"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
         {/* Hero Section */}
         <View
-          className="bg-[#0D2240] items-center justify-center"
+          className="items-center justify-center"
           style={{
             height: HERO_HEIGHT,
             paddingTop: insets.top > 0 ? 0 : 16,
+            backgroundColor: Colors.bgDark,
           }}
         >
           {/* Decorative top dots */}
@@ -137,13 +137,13 @@ export default function LoginScreen() {
           style={[
             {
               flex: 1,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: Colors.surfaceWhite,
               borderTopLeftRadius: 32,
               borderTopRightRadius: 32,
               paddingHorizontal: 24,
               paddingTop: 32,
               paddingBottom: insets.bottom + 16,
-              shadowColor: "#000",
+              shadowColor: Colors.shadow,
               shadowOffset: { width: 0, height: -4 },
               shadowOpacity: 0.06,
               shadowRadius: 12,
@@ -221,13 +221,9 @@ export default function LoginScreen() {
               accessibilityLabel="Sign in"
               accessibilityState={{ disabled: loading, busy: loading }}
               className="bg-primary rounded-xl py-[17px] items-center"
-              style={{ opacity: loading ? 0.7 : 1 }}
+              style={{ opacity: loading ? 0.6 : 1 }}
             >
-              {loading ? (
-                <ActivityIndicator color={Colors.accent} />
-              ) : (
-                <Text className="text-accent text-base font-bold tracking-wide">Se connecter</Text>
-              )}
+              <Text className="text-accent text-base font-bold tracking-wide">Se connecter</Text>
             </Pressable>
           </Reanimated.View>
 
@@ -238,26 +234,34 @@ export default function LoginScreen() {
               accessibilityLabel="Forgot password"
               accessibilityHint="Navigate to password reset"
               className="items-center mt-[18px] mb-5"
+              style={{ minHeight: 44, justifyContent: "center" }}
             >
-              <Text className="text-[#6B7C93] text-[13px]">Mot de passe oublié ?</Text>
+              <Text className="text-[13px]" style={{ color: Colors.textSecondary }}>
+                Mot de passe oublié ?
+              </Text>
             </TouchableOpacity>
           </Link>
 
           {/* OR Divider */}
           <View className="flex-row items-center mb-5">
             <View className="flex-1 h-px bg-surface-200" />
-            <Text className="mx-3 text-[#94A3B8] text-xs font-medium">OU</Text>
+            <Text className="mx-3 text-xs font-medium" style={{ color: Colors.textTertiary }}>
+              OU
+            </Text>
             <View className="flex-1 h-px bg-surface-200" />
           </View>
 
           {/* Sign Up Row */}
           <View className="flex-row justify-center items-center gap-1">
-            <Text className="text-[#6B7C93] text-sm">Pas encore de compte ? </Text>
+            <Text className="text-sm" style={{ color: Colors.textSecondary }}>
+              Pas encore de compte ?{" "}
+            </Text>
             <Link href="/(auth)/signup" asChild>
               <TouchableOpacity
                 accessibilityRole="link"
                 accessibilityLabel="Sign up"
                 accessibilityHint="Navigate to create a new account"
+                style={{ minHeight: 44, justifyContent: "center" }}
               >
                 <Text className="text-accent text-sm font-bold">S&apos;inscrire</Text>
               </TouchableOpacity>

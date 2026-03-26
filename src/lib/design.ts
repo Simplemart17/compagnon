@@ -37,6 +37,8 @@ export const Colors = {
   accent15: "rgba(245,166,35,0.15)",
   accent20: "rgba(245,166,35,0.2)",
   accent30: "rgba(245,166,35,0.3)",
+  accentLight: "#FFD180",
+  warning: "#9A6400", // darkened from #FF9500 — 4.6:1 on surface (WCAG AA)
 
   // Success tints
   success10: "rgba(52,199,89,0.1)",
@@ -52,8 +54,10 @@ export const Colors = {
 
   // Text colors
   textPrimary: "#1E3A5F",
-  textSecondary: "#6B7C93",
-  textTertiary: "#94A3B8",
+  textSecondary: "#5A6B82", // darkened from #6B7C93 — 5.0:1 on surface (WCAG AA)
+  textTertiary: "#637085", // darkened from #94A3B8 — 4.6:1 on surface (WCAG AA)
+  /** Accent color darkened for use as text on light backgrounds (4.7:1 on surface) */
+  accentText: "#8B6914",
   textOnDark: "#FFFFFF",
   textOnDarkSecondary: "rgba(255,255,255,0.7)",
   textOnDarkTertiary: "rgba(255,255,255,0.5)",
@@ -63,9 +67,12 @@ export const Colors = {
   gray200: "#EBEBDF",
   gray300: "#E0E0CE",
   gray400: "#C4C4B8",
-  gray500: "#94A3B8",
-  gray600: "#6B7C93",
+  gray500: "#637085", // darkened from #94A3B8 — matches textTertiary (4.6:1 on surface)
+  gray600: "#5A6B82", // darkened from #6B7C93 — matches textSecondary (5.0:1 on surface)
   gray700: "#4A5568",
+
+  // Shadows
+  shadow: "#000000",
 
   // Borders
   border: "#E0E0CE",
@@ -83,6 +90,11 @@ export const Colors = {
   skillMockTest: "#8B5CF6",
   skillConversation: "#3B82F6",
 
+  // Correction colors
+  correctionOriginal: "rgba(255,107,107,0.85)",
+  correctionPronunciation: "#5AA4CF",
+  correctionPronunciationText: "#7DBFE8",
+
   // Conversation UI (dark theme)
   bubbleUser: "rgba(245,166,35,0.22)",
   bubbleUserBorder: "rgba(245,166,35,0.35)",
@@ -99,12 +111,17 @@ export const SKILL_COLORS: Record<TCFSkill, string> = {
   grammar: Colors.skillGrammar,
 };
 
-/** Generate a tinted background from a skill color */
+/** Generate a tinted background from a hex color (e.g. "#1E3A5F") */
 export function skillTint(color: string, opacity: number = 0.1): string {
-  // Parse hex color and return rgba
+  if (!color || color[0] !== "#" || color.length < 7) {
+    return `rgba(0,0,0,${opacity})`;
+  }
   const r = parseInt(color.slice(1, 3), 16);
   const g = parseInt(color.slice(3, 5), 16);
   const b = parseInt(color.slice(5, 7), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) {
+    return `rgba(0,0,0,${opacity})`;
+  }
   return `rgba(${r},${g},${b},${opacity})`;
 }
 
@@ -158,6 +175,35 @@ export const Typography = {
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.5,
+  } as TextStyle,
+
+  /** Tiny meta text (timestamps, bubble metadata) */
+  tiny: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+  } as TextStyle,
+
+  /** Small UI text (badges, minor labels) */
+  small: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  } as TextStyle,
+
+  /** Subsection headers (e.g., score breakdowns) */
+  subsectionHeader: {
+    fontSize: 22,
+    fontWeight: "800",
+  } as TextStyle,
+
+  /** Large score/accuracy display */
+  scoreDisplay: {
+    fontSize: 40,
+    fontWeight: "800",
+  } as TextStyle,
+
+  /** Decorative display text (e.g., placeholder icons) */
+  display: {
+    fontSize: 36,
   } as TextStyle,
 
   /** Big numbers (scores, stats) */
@@ -227,7 +273,7 @@ export const Shadows = {
 
   /** Hero/header shadow */
   hero: {
-    shadowColor: "#000",
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,

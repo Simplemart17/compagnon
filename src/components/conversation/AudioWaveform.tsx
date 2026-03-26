@@ -19,6 +19,8 @@ import Reanimated, {
   type SharedValue,
 } from "react-native-reanimated";
 
+import { Colors, skillTint } from "@/src/lib/design";
+
 interface AudioWaveformProps {
   isActive: boolean;
   speaker?: "user" | "ai" | "idle";
@@ -33,10 +35,10 @@ const BAR_PERIODS_MS = [1100, 900, 750, 620, 750, 900, 1100];
 const BAR_PEAK_FRACTIONS = [0.45, 0.65, 0.85, 1.0, 0.85, 0.65, 0.45];
 
 function getBarColor(speaker: "user" | "ai" | "idle", isConnecting: boolean): string {
-  if (isConnecting) return "rgba(245,166,35,0.6)";
-  if (speaker === "user") return "#F5A623";
-  if (speaker === "ai") return "#FFFFFF";
-  return "rgba(255,255,255,0.22)";
+  if (isConnecting) return skillTint(Colors.accent, 0.6);
+  if (speaker === "user") return Colors.accent;
+  if (speaker === "ai") return Colors.surfaceWhite;
+  return skillTint(Colors.surfaceWhite, 0.22);
 }
 
 interface BarProps {
@@ -175,19 +177,19 @@ export function AudioWaveform({
   // Derive ring border colors from bar color with reduced opacity
   const innerBorderColor = isActive
     ? speaker === "user"
-      ? "rgba(245,166,35,0.25)"
+      ? skillTint(Colors.accent, 0.25)
       : speaker === "ai"
-        ? "rgba(255,255,255,0.25)"
-        : "rgba(255,255,255,0.06)"
-    : "rgba(255,255,255,0.06)";
+        ? skillTint(Colors.surfaceWhite, 0.25)
+        : skillTint(Colors.surfaceWhite, 0.06)
+    : skillTint(Colors.surfaceWhite, 0.06);
 
   const outerBorderColor = isActive
     ? speaker === "user"
-      ? "rgba(245,166,35,0.12)"
+      ? skillTint(Colors.accent, 0.12)
       : speaker === "ai"
-        ? "rgba(255,255,255,0.12)"
-        : "rgba(255,255,255,0.03)"
-    : "rgba(255,255,255,0.03)";
+        ? Colors.borderOnDark
+        : skillTint(Colors.surfaceWhite, 0.03)
+    : skillTint(Colors.surfaceWhite, 0.03);
 
   return (
     <View className="items-center justify-center" style={{ width: size, height: size }}>

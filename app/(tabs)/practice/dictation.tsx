@@ -9,21 +9,15 @@
  */
 
 import React from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  ActivityIndicator,
-  Pressable,
-} from "react-native";
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Pressable } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeInUp, SlideInRight } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 
+import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { useDictation } from "@/src/hooks/use-dictation";
+import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import type { DifficultyTag, WordResult } from "@/src/hooks/use-dictation";
-import { Colors, Shadows } from "@/src/lib/design";
+import { Colors, Shadows, Typography } from "@/src/lib/design";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -39,7 +33,7 @@ const ERROR_COLOR = Colors.error;
 // ---------------------------------------------------------------------------
 
 /** Loading skeleton shown while generating sentences */
-function GeneratingSkeleton({ sentenceCount }: { sentenceCount: number }) {
+function GeneratingSkeleton({ sentenceCount, isSlow }: { sentenceCount: number; isSlow: boolean }) {
   return (
     <View className="flex-1 bg-surface p-5 pt-10">
       {/* Audio player skeleton */}
@@ -48,8 +42,8 @@ function GeneratingSkeleton({ sentenceCount }: { sentenceCount: number }) {
         className="bg-primary rounded-2xl p-5 mb-5 items-center"
         style={{ ...Shadows.card }}
       >
-        <View className="w-14 h-14 rounded-full bg-white/20 mb-3" />
-        <View className="h-3 bg-white/15 rounded-md w-32" />
+        <SkeletonBar width={56} height={56} style={{ borderRadius: 28, marginBottom: 12 }} />
+        <SkeletonBar width={128} height={12} style={{ borderRadius: 6 }} />
       </Animated.View>
       {/* Sentence input skeleton */}
       {[0, 1, 2].map((i) => (
@@ -59,16 +53,22 @@ function GeneratingSkeleton({ sentenceCount }: { sentenceCount: number }) {
           className="bg-white rounded-2xl p-5 mb-3"
           style={{ ...Shadows.card }}
         >
-          <View
-            className="h-3 bg-surface-200 rounded-md mb-2"
-            style={{ width: `${85 - i * 10}%` }}
+          <SkeletonBar
+            width={`${85 - i * 10}%`}
+            height={12}
+            style={{ borderRadius: 6, marginBottom: 8 }}
           />
-          <View className="h-10 bg-surface-200 rounded-lg mt-2" />
+          <SkeletonBar width="100%" height={40} style={{ borderRadius: 8, marginTop: 8 }} />
         </Animated.View>
       ))}
-      <Text className="text-center mt-4" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+      <Text className="text-center mt-4" style={Typography.caption}>
         Generating {sentenceCount} sentences...
       </Text>
+      {isSlow && (
+        <Text style={[Typography.caption, { textAlign: "center", marginTop: 8 }]}>
+          Taking longer than usual...
+        </Text>
+      )}
       <View className="mt-8 w-full gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <Animated.View
@@ -76,11 +76,8 @@ function GeneratingSkeleton({ sentenceCount }: { sentenceCount: number }) {
             entering={FadeInDown.delay(i * 100).duration(300)}
             className="bg-white rounded-xl p-4 border border-surface-300"
           >
-            <View
-              className="h-3.5 bg-surface-200 rounded-[7px]"
-              style={{ width: `${60 + i * 10}%` }}
-            />
-            <View className="h-2.5 bg-surface-200 rounded-[5px] mt-2.5" style={{ width: "40%" }} />
+            <SkeletonBar width={`${60 + i * 10}%`} height={14} style={{ borderRadius: 7 }} />
+            <SkeletonBar width="40%" height={10} style={{ borderRadius: 5, marginTop: 10 }} />
           </Animated.View>
         ))}
       </View>
@@ -111,7 +108,14 @@ function DifficultyBadge({ difficulty }: { difficulty: DifficultyTag }) {
   const c = colors[difficulty];
   return (
     <View className="rounded-md px-2 py-0.5" style={{ backgroundColor: c.bg }}>
-      <Text style={{ fontSize: 11, fontWeight: "600", color: c.text, textTransform: "capitalize" }}>
+      <Text
+        style={{
+          fontSize: Typography.label.fontSize,
+          fontWeight: "600",
+          color: c.text,
+          textTransform: "capitalize",
+        }}
+      >
         {difficulty}
       </Text>
     </View>
@@ -137,15 +141,31 @@ const ComparisonWord = React.memo(function ComparisonWord({ result }: { result: 
           borderColor: `${color}40`,
         }}
       >
-        <Text style={{ fontSize: 15, fontWeight: "600", color }}>{result.word}</Text>
+        <Text style={{ fontSize: Typography.body.fontSize, fontWeight: "600", color }}>
+          {result.word}
+        </Text>
       </View>
       {result.status === "wrong" && result.typed && (
-        <Text style={{ fontSize: 11, color: ACCENT, marginTop: 2, fontStyle: "italic" }}>
+        <Text
+          style={{
+            fontSize: Typography.label.fontSize,
+            color: ACCENT,
+            marginTop: 2,
+            fontStyle: "italic",
+          }}
+        >
           you typed: {result.typed}
         </Text>
       )}
       {result.status === "missing" && (
-        <Text style={{ fontSize: 11, color: ERROR_COLOR, marginTop: 2, fontStyle: "italic" }}>
+        <Text
+          style={{
+            fontSize: Typography.label.fontSize,
+            color: ERROR_COLOR,
+            marginTop: 2,
+            fontStyle: "italic",
+          }}
+        >
           missing
         </Text>
       )}
@@ -160,6 +180,7 @@ const ComparisonWord = React.memo(function ComparisonWord({ result }: { result: 
 export default function DictationScreen() {
   const router = useRouter();
   const d = useDictation();
+  const isSlow = useSlowLoading(d.screenState === "generating");
 
   // -------------------------------------------------------------------------
   // Idle state (pre-exercise)
@@ -172,7 +193,9 @@ export default function DictationScreen() {
           className="flex-1 justify-center items-center p-6"
         >
           <Text className="text-[64px] mb-4">{"\uD83D\uDCDD"}</Text>
-          <Text className="text-[22px] font-bold text-primary mb-2">Dictation Practice</Text>
+          <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
+            Dictation Practice
+          </Text>
           <Text className="text-sm text-center mb-2 leading-5" style={{ color: Colors.gray700 }}>
             Listen to French sentences and type{"\n"}what you hear. Test your ear!
           </Text>
@@ -187,6 +210,8 @@ export default function DictationScreen() {
               <View className="flex-row gap-3 w-full px-4">
                 <TouchableOpacity
                   onPress={() => router.back()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
                   className="flex-1 rounded-xl py-3.5 items-center"
                   style={{ backgroundColor: Colors.gray100 }}
                 >
@@ -229,7 +254,13 @@ export default function DictationScreen() {
                   className="w-6 h-6 rounded-full justify-center items-center"
                   style={{ backgroundColor: `${ACCENT}20` }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: ACCENT }}>
+                  <Text
+                    style={{
+                      fontSize: Typography.small.fontSize,
+                      fontWeight: "700",
+                      color: ACCENT,
+                    }}
+                  >
                     {item.step}
                   </Text>
                 </View>
@@ -248,7 +279,7 @@ export default function DictationScreen() {
   // Generating state
   // -------------------------------------------------------------------------
   if (d.screenState === "generating") {
-    return <GeneratingSkeleton sentenceCount={d.sentenceCount} />;
+    return <GeneratingSkeleton sentenceCount={d.sentenceCount} isSlow={isSlow} />;
   }
 
   // -------------------------------------------------------------------------
@@ -274,7 +305,13 @@ export default function DictationScreen() {
               className="rounded-lg px-2.5 py-1"
               style={{ backgroundColor: `${accuracyColor}18` }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: accuracyColor }}>
+              <Text
+                style={{
+                  fontSize: Typography.bodySecondary.fontSize,
+                  fontWeight: "700",
+                  color: accuracyColor,
+                }}
+              >
                 {latestResult.accuracy}%
               </Text>
             </View>
@@ -312,7 +349,10 @@ export default function DictationScreen() {
             entering={FadeInDown.delay(100).duration(300)}
             className="bg-white rounded-2xl p-4 mb-4 border border-surface-300"
           >
-            <Text className="text-[11px] font-semibold text-accent tracking-wider uppercase mb-2">
+            <Text
+              style={{ color: Colors.accentText }}
+              className="text-[11px] font-semibold tracking-wider uppercase mb-2"
+            >
               Original
             </Text>
             <Text className="text-[17px] font-semibold text-primary leading-6">
@@ -382,7 +422,14 @@ export default function DictationScreen() {
             >
               Translation
             </Text>
-            <Text style={{ fontSize: 14, color: PRIMARY, fontStyle: "italic", lineHeight: 20 }}>
+            <Text
+              style={{
+                fontSize: Typography.bodySecondary.fontSize,
+                color: PRIMARY,
+                fontStyle: "italic",
+                lineHeight: 20,
+              }}
+            >
               {latestResult.translation}
             </Text>
           </Animated.View>
@@ -427,7 +474,13 @@ export default function DictationScreen() {
               backgroundColor: `${accuracyColor}10`,
             }}
           >
-            <Text style={{ fontSize: 40, fontWeight: "800", color: accuracyColor }}>
+            <Text
+              style={{
+                fontSize: Typography.scoreDisplay.fontSize,
+                fontWeight: "800",
+                color: accuracyColor,
+              }}
+            >
               {d.overallAccuracy}%
             </Text>
           </View>
@@ -443,7 +496,12 @@ export default function DictationScreen() {
 
           {d.isSavingResults && (
             <View className="flex-row items-center gap-1.5 mt-2">
-              <ActivityIndicator size="small" color={Colors.gray500} />
+              <SkeletonBar
+                width={12}
+                height={12}
+                style={{ borderRadius: 6 }}
+                accessibilityLabel="Saving results"
+              />
               <Text className="text-xs" style={{ color: Colors.textTertiary }}>
                 Saving results...
               </Text>
@@ -456,7 +514,9 @@ export default function DictationScreen() {
           entering={FadeInDown.delay(100).duration(300)}
           className="bg-white rounded-2xl p-4 mb-4 border border-surface-300"
         >
-          <Text className="text-sm font-bold text-primary mb-3.5">Summary</Text>
+          <Text accessibilityRole="header" className="text-sm font-bold text-primary mb-3.5">
+            Summary
+          </Text>
           <View className="flex-row justify-around">
             <View className="items-center">
               <Text className="text-[28px] font-extrabold text-primary">{d.overallAccuracy}%</Text>
@@ -475,7 +535,7 @@ export default function DictationScreen() {
             </View>
             <View className="w-px bg-surface-200" />
             <View className="items-center">
-              <Text className="text-[28px] font-extrabold text-accent">
+              <Text style={{ color: Colors.accentText }} className="text-[28px] font-extrabold">
                 {d.getElapsedMinutes()}m
               </Text>
               <Text className="text-xs mt-0.5" style={{ color: Colors.textSecondary }}>
@@ -490,7 +550,9 @@ export default function DictationScreen() {
           entering={FadeInDown.delay(200).duration(300)}
           className="bg-white rounded-2xl p-4 mb-4 border border-surface-300"
         >
-          <Text className="text-sm font-bold text-primary mb-3">Sentence breakdown</Text>
+          <Text accessibilityRole="header" className="text-sm font-bold text-primary mb-3">
+            Sentence breakdown
+          </Text>
           {d.sentenceResults.map((r, i) => {
             const color = r.accuracy >= 80 ? SUCCESS : r.accuracy >= 50 ? ACCENT : ERROR_COLOR;
             return (
@@ -521,7 +583,7 @@ export default function DictationScreen() {
                   </View>
                   <Text
                     style={{
-                      fontSize: 13,
+                      fontSize: Typography.caption.fontSize,
                       fontWeight: "700",
                       color,
                       width: 36,
@@ -546,7 +608,14 @@ export default function DictationScreen() {
               borderColor: `${ACCENT}25`,
             }}
           >
-            <Text style={{ fontSize: 14, fontWeight: "700", color: ACCENT }} className="mb-2.5">
+            <Text
+              style={{
+                fontSize: Typography.bodySecondary.fontSize,
+                fontWeight: "700",
+                color: ACCENT,
+              }}
+              className="mb-2.5"
+            >
               Tips for improvement
             </Text>
             {d.errorPatterns.map((pattern, i) => (
@@ -555,7 +624,9 @@ export default function DictationScreen() {
                 className="flex-row gap-2"
                 style={{ marginBottom: i < d.errorPatterns.length - 1 ? 8 : 0 }}
               >
-                <Text style={{ fontSize: 13, color: ACCENT }}>{"\u2022"}</Text>
+                <Text style={{ fontSize: Typography.caption.fontSize, color: ACCENT }}>
+                  {"\u2022"}
+                </Text>
                 <Text
                   className="text-[13px] flex-1 leading-[18px]"
                   style={{ color: Colors.gray700 }}
@@ -624,7 +695,10 @@ export default function DictationScreen() {
             elevation: 3,
           }}
         >
-          <Text className="text-[11px] font-semibold text-accent tracking-wider uppercase mb-4">
+          <Text
+            style={{ color: Colors.accentText }}
+            className="text-[11px] font-semibold tracking-wider uppercase mb-4"
+          >
             Listen and type
           </Text>
 
@@ -635,13 +709,20 @@ export default function DictationScreen() {
               disabled={d.isPlayingAudio}
               accessibilityLabel="Play sentence at normal speed"
               accessibilityRole="button"
+              accessibilityState={{ disabled: d.isPlayingAudio }}
+              accessibilityHint="Double tap to play the audio clip"
               className="rounded-[14px] px-6 py-3.5 flex-row items-center gap-2"
               style={{
                 backgroundColor: d.isPlayingAudio ? Colors.border : PRIMARY,
               }}
             >
               {d.isPlayingAudio ? (
-                <ActivityIndicator size="small" color={Colors.gray500} />
+                <SkeletonBar
+                  width={20}
+                  height={20}
+                  style={{ borderRadius: 10 }}
+                  accessibilityLabel="Playing audio"
+                />
               ) : (
                 <Text className="text-xl">{"\u25B6\uFE0F"}</Text>
               )}
@@ -658,6 +739,8 @@ export default function DictationScreen() {
               disabled={d.isPlayingAudio}
               accessibilityLabel="Play sentence at slow speed"
               accessibilityRole="button"
+              accessibilityState={{ disabled: d.isPlayingAudio }}
+              accessibilityHint="Double tap to play the audio clip at slower speed"
               className="rounded-[14px] px-5 py-3.5 flex-row items-center gap-2"
               style={{
                 backgroundColor: d.isPlayingAudio ? Colors.border : `${PRIMARY}15`,
@@ -682,7 +765,12 @@ export default function DictationScreen() {
           )}
 
           {d.audioPlayer.isPlaying && (
-            <Pressable onPress={() => void d.audioPlayer.stop()} style={{ marginTop: 8 }}>
+            <Pressable
+              onPress={() => void d.audioPlayer.stop()}
+              accessibilityRole="button"
+              accessibilityLabel="Stop playback"
+              style={{ marginTop: 8 }}
+            >
               <Text className="text-[13px] text-primary font-semibold">Stop playback</Text>
             </Pressable>
           )}
@@ -711,7 +799,7 @@ export default function DictationScreen() {
             spellCheck={false}
             accessibilityLabel="Type the French sentence you heard"
             style={{
-              fontSize: 16,
+              fontSize: Typography.cardTitle.fontSize,
               color: PRIMARY,
               minHeight: 60,
               textAlignVertical: "top",
@@ -726,7 +814,7 @@ export default function DictationScreen() {
         )}
         {d.audioPlayer.error && (
           <Text className="text-error text-[13px] mb-3 text-center">
-            Playback error: {d.audioPlayer.error}
+            Audio playback failed. Try tapping Play again.
           </Text>
         )}
 
@@ -736,6 +824,7 @@ export default function DictationScreen() {
           disabled={d.userInput.trim().length === 0}
           accessibilityLabel="Check your answer"
           accessibilityRole="button"
+          accessibilityState={{ disabled: d.userInput.trim().length === 0 }}
           className="rounded-xl py-4 items-center mb-3"
           style={{
             backgroundColor: d.userInput.trim().length === 0 ? Colors.border : PRIMARY,

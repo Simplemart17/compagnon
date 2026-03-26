@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
   Dimensions,
   Pressable,
@@ -113,17 +112,18 @@ export default function SignUpScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#0D2240]" edges={["top"]}>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: Colors.bgDark }} edges={["top"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
         {/* Hero Section */}
         <View
-          className="bg-[#0D2240] items-center justify-center"
+          className="items-center justify-center"
           style={{
             height: HERO_HEIGHT,
             paddingTop: insets.top > 0 ? 0 : 16,
+            backgroundColor: Colors.bgDark,
           }}
         >
           {/* Decorative top dots */}
@@ -148,10 +148,10 @@ export default function SignUpScreen() {
           style={[
             {
               flex: 1,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: Colors.surfaceWhite,
               borderTopLeftRadius: 32,
               borderTopRightRadius: 32,
-              shadowColor: "#000",
+              shadowColor: Colors.shadow,
               shadowOffset: { width: 0, height: -4 },
               shadowOpacity: 0.06,
               shadowRadius: 12,
@@ -268,20 +268,19 @@ export default function SignUpScreen() {
                 accessibilityLabel="Create account"
                 accessibilityState={{ disabled: loading, busy: loading }}
                 className="bg-primary rounded-xl py-[17px] items-center"
-                style={{ opacity: loading ? 0.7 : 1 }}
+                style={{ opacity: loading ? 0.6 : 1 }}
               >
-                {loading ? (
-                  <ActivityIndicator color={Colors.accent} />
-                ) : (
-                  <Text className="text-accent text-base font-bold tracking-wide">
-                    Créer mon compte
-                  </Text>
-                )}
+                <Text className="text-accent text-base font-bold tracking-wide">
+                  Créer mon compte
+                </Text>
               </Pressable>
             </Reanimated.View>
 
             {/* Legal Notice */}
-            <Text className="text-[11px] text-[#94A3B8] text-center mt-[18px] leading-[17px] px-2">
+            <Text
+              className="text-[11px] text-center mt-[18px] leading-[17px] px-2"
+              style={{ color: Colors.textTertiary }}
+            >
               En créant un compte, vous acceptez nos{" "}
               <Text
                 className="text-primary font-semibold"
@@ -301,11 +300,14 @@ export default function SignUpScreen() {
 
             {/* Sign In Row */}
             <View className="flex-row justify-center items-center mt-5 gap-1">
-              <Text className="text-[#6B7C93] text-sm">Déjà un compte ? </Text>
+              <Text className="text-sm" style={{ color: Colors.textSecondary }}>
+                Déjà un compte ?{" "}
+              </Text>
               <Link href="/(auth)/login" asChild>
                 <TouchableOpacity
                   accessibilityRole="link"
                   accessibilityLabel="Already have an account? Sign in"
+                  style={{ minHeight: 44, justifyContent: "center" }}
                 >
                   <Text className="text-accent text-sm font-bold">Se connecter</Text>
                 </TouchableOpacity>

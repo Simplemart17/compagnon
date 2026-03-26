@@ -14,7 +14,7 @@ import React, { useMemo } from "react";
 import { View, Text } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
-import { Colors } from "@/src/lib/design";
+import { Colors, Typography } from "@/src/lib/design";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { CEFRDataPoint } from "@/src/hooks/use-cefr-history";
@@ -130,7 +130,7 @@ function CEFRProgressionChartInner({
         borderRadius: 16,
         padding: 16,
         // Shadow iOS
-        shadowColor: "#000",
+        shadowColor: Colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 6,
@@ -141,9 +141,7 @@ function CEFRProgressionChartInner({
       {/* Section title */}
       <Text
         style={{
-          fontSize: 18,
-          fontWeight: "700",
-          color: Colors.textPrimary,
+          ...Typography.sectionHeader,
           marginBottom: 16,
         }}
       >
@@ -396,7 +394,7 @@ function CEFRProgressionEmpty() {
         borderRadius: 16,
         padding: 20,
         // Shadow iOS
-        shadowColor: "#000",
+        shadowColor: Colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 6,
@@ -406,9 +404,7 @@ function CEFRProgressionEmpty() {
     >
       <Text
         style={{
-          fontSize: 18,
-          fontWeight: "700",
-          color: Colors.textPrimary,
+          ...Typography.sectionHeader,
           marginBottom: 12,
         }}
       >
@@ -416,8 +412,7 @@ function CEFRProgressionEmpty() {
       </Text>
       <Text
         style={{
-          fontSize: 13,
-          color: Colors.textTertiary,
+          ...Typography.caption,
           textAlign: "center",
           lineHeight: 19,
           paddingVertical: 16,

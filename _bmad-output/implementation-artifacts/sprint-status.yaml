@@ -1,0 +1,103 @@
+# generated: 2026-03-25
+# last_updated: 2026-03-26
+# project: companion
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-25
+last_updated: 2026-03-26
+project: companion
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+development_status:
+  # Epic 1: MVP Stabilization — End-to-End Testing, Bug Fixing & UX Polish
+  epic-1: in-progress
+  1-1-auth-onboarding-profile-flow-verification: done
+  1-2-voice-conversation-history-end-to-end-verification: done
+  1-3-practice-exercises-verification: done
+  1-4-mock-tests-vocabulary-srs-verification: done
+  1-5-progress-tracking-offline-resilience-verification: done
+  1-6-edge-function-deployment-security-verification: done
+  1-7-cross-platform-ux-polish-accessibility-audit: done
+  epic-1-retrospective: optional
+
+  # Epic 2: Companion Daily Briefing (Home Screen Evolution)
+  epic-2: backlog
+  2-1-companionmessage-component-memory-driven-briefing: backlog
+  2-2-todays-plan-curated-activity-recommendations: backlog
+  2-3-error-journey-progress-bar-home-screen-integration: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: Enhanced Voice Conversation Experience
+  epic-3: backlog
+  3-1-audiowaveform-processing-state-processingindicator: backlog
+  3-2-transcriptview-condensed-mode-correctionbubble-side-note-variant: backlog
+  3-3-waveform-centered-layout-latency-masking: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Narrative Post-Conversation Feedback
+  epic-4: backlog
+  4-1-sessioncomparison-component-previous-session-data: backlog
+  4-2-milestonebanner-component-personal-best-detection: backlog
+  4-3-narrative-feedback-screen-integration: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: UX System Patterns & Polish
+  epic-5: backlog
+  5-1-toast-notification-system: backlog
+  5-2-exercise-score-framing-tab-badge-indicators: backlog
+  5-3-offline-transition-handling-component-promotion: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: Echo Practice
+  epic-6: backlog
+  6-1-echo-practice-prompt-builder-exercise-generation: backlog
+  6-2-echo-practice-hook-multi-step-exercise-flow: backlog
+  6-3-echo-practice-screen-practice-hub-integration: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: Speech-to-Speech Translation
+  epic-7: backlog
+  7-1-translation-prompt-builder-evaluation-logic: backlog
+  7-2-translation-exercise-hook: backlog
+  7-3-translation-screen-practice-hub-integration: backlog
+  epic-7-retrospective: optional
+
+  # Epic 8: Push Notification Engine
+  epic-8: backlog
+  8-1-device-token-registration-edge-function: backlog
+  8-2-streak-srs-notification-delivery: backlog
+  8-3-notification-preferences-ui-client-integration: backlog
+  epic-8-retrospective: optional

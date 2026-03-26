@@ -9,6 +9,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { invalidateCache, CACHE_KEYS } from "@/src/lib/cache";
 import { captureError } from "@/src/lib/sentry";
+import { classifyError } from "@/src/lib/error-messages";
 import {
   updateStreak,
   updateSkillProgress,
@@ -279,7 +280,10 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
         setState((s) => ({ ...s, isGenerating: false, exercise, cefrLevel }));
       } catch (err) {
         captureError(err, "exercise-generation");
-        const message = err instanceof Error ? err.message : "Failed to generate exercise";
+        const { message } = classifyError(
+          err,
+          "Something went wrong generating your exercise. Please try again."
+        );
         setState((s) => ({ ...s, isGenerating: false, error: message }));
       }
     },
@@ -380,7 +384,10 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
         );
       } catch (err) {
         captureError(err, "writing-evaluation");
-        const message = err instanceof Error ? err.message : "Evaluation failed";
+        const { message } = classifyError(
+          err,
+          "Something went wrong evaluating your writing. Please try submitting again."
+        );
         setState((s) => ({ ...s, isEvaluating: false, error: message }));
       }
     },

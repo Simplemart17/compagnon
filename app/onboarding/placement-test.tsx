@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Animated, {
@@ -17,6 +17,8 @@ import { captureError } from "@/src/lib/sentry";
 import { chatCompletionJSON } from "@/src/lib/openai";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { LEVEL_COLORS } from "@/src/lib/constants";
+import { Colors, Typography } from "@/src/lib/design";
+import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { CEFR_LEVELS } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { MCQContent } from "@/src/types/exercise";
@@ -243,16 +245,16 @@ function getLevelStatusLabel(
   const determinedIdx = order.indexOf(determined);
 
   if (correct === total && total > 0) {
-    return { text: "Mastered", color: "#34C759" };
+    return { text: "Mastered", color: Colors.success };
   }
   if (level === struggleLevel) {
-    return { text: "Needs work", color: "#FF9500" };
+    return { text: "Needs work", color: Colors.warning };
   }
   if (levelIdx > determinedIdx) {
     return null; // Not reached
   }
   if (correct > 0 && correct < total) {
-    return { text: "Partial", color: "#F5A623" };
+    return { text: "Partial", color: Colors.accentText };
   }
   return null;
 }
@@ -356,8 +358,8 @@ function LoadingPulse() {
           height: 120,
           borderRadius: 60,
           borderWidth: 3,
-          borderColor: "#F5A623",
-          backgroundColor: "rgba(245,166,35,0.1)",
+          borderColor: Colors.accent,
+          backgroundColor: Colors.accent10,
           justifyContent: "center",
           alignItems: "center",
         },
@@ -367,9 +369,9 @@ function LoadingPulse() {
       {/* Inner ring */}
       <View
         className="w-[86px] h-[86px] rounded-[43px] justify-center items-center"
-        style={{ backgroundColor: "rgba(245,166,35,0.15)" }}
+        style={{ backgroundColor: Colors.accent15 }}
       >
-        <ActivityIndicator size="large" color="#F5A623" />
+        <Text style={{ fontSize: Typography.display.fontSize, color: Colors.accent }}>?</Text>
       </View>
     </Animated.View>
   );
@@ -401,7 +403,7 @@ function AnimatedProgressBar({ progress }: ProgressBarProps) {
         style={[
           {
             height: 4,
-            backgroundColor: "#F5A623",
+            backgroundColor: Colors.accent,
             borderRadius: 2,
           },
           animatedStyle,
@@ -418,12 +420,12 @@ export default function PlacementTestScreen() {
   const insets = useSafeAreaInsets();
   const { updateProfile } = useAuth();
   const user = useAuthStore((s) => s.user);
-
   const [questions, setQuestions] = useState<PlacementQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const isSlow = useSlowLoading(isLoading);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testFinished, setTestFinished] = useState(false);
@@ -701,7 +703,10 @@ export default function PlacementTestScreen() {
 
           <LoadingPulse />
 
-          <Text className="text-white text-xl font-bold mt-6 text-center">
+          <Text
+            className="text-white text-xl font-bold mt-6 text-center"
+            accessibilityRole="header"
+          >
             Preparing your test...
           </Text>
           <Text className="text-white/55 text-sm mt-2 text-center leading-[21px]">
@@ -711,6 +716,16 @@ export default function PlacementTestScreen() {
 
         {/* Skeleton preview of question card */}
         <LoadingSkeleton />
+        {isSlow && (
+          <Text
+            style={[
+              Typography.caption,
+              { textAlign: "center", marginTop: 8, color: "rgba(255,255,255,0.55)" },
+            ]}
+          >
+            Taking longer than usual...
+          </Text>
+        )}
       </View>
     );
   }
@@ -723,7 +738,7 @@ export default function PlacementTestScreen() {
         <View
           className="w-[90px] h-[90px] rounded-[45px] bg-error justify-center items-center mb-6"
           style={{
-            shadowColor: "#FF3B30",
+            shadowColor: Colors.error,
             shadowOpacity: 0.35,
             shadowRadius: 16,
             shadowOffset: { width: 0, height: 6 },
@@ -733,25 +748,49 @@ export default function PlacementTestScreen() {
           <Text className="text-4xl text-white font-extrabold">!</Text>
         </View>
 
-        <Text className="text-xl font-bold text-primary mb-[10px] text-center">
+        <Text
+          className="text-xl font-bold text-primary mb-[10px] text-center"
+          accessibilityRole="header"
+        >
           Une erreur est survenue
         </Text>
-        <Text className="text-sm text-[#666666] mb-8 text-center leading-[21px]">{error}</Text>
-
-        <TouchableOpacity
-          onPress={() => generateQuestions(0)}
-          activeOpacity={0.85}
-          className="bg-primary rounded-[14px] py-4 px-10"
-          style={{
-            shadowColor: "#1E3A5F",
-            shadowOpacity: 0.25,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 5 },
-            elevation: 6,
-          }}
+        <Text
+          className="text-sm mb-8 text-center leading-[21px]"
+          style={{ color: Colors.textSecondary }}
         >
-          <Text className="text-white text-base font-bold">Réessayer</Text>
-        </TouchableOpacity>
+          We could not load the placement test. Please check your internet connection and try again.
+        </Text>
+
+        <View className="flex-row gap-3">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            className="rounded-[14px] py-4 px-8"
+            style={{ backgroundColor: Colors.gray100 }}
+          >
+            <Text className="text-base font-bold" style={{ color: Colors.primary }}>
+              Retour
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => generateQuestions(0)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Retry generating placement test"
+            className="bg-primary rounded-[14px] py-4 px-8"
+            style={{
+              shadowColor: Colors.primary,
+              shadowOpacity: 0.25,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 5 },
+              elevation: 6,
+            }}
+          >
+            <Text className="text-white text-base font-bold">Réessayer</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -777,7 +816,7 @@ export default function PlacementTestScreen() {
             paddingBottom: 70,
             borderBottomLeftRadius: 40,
             borderBottomRightRadius: 40,
-            shadowColor: "#0D2240",
+            shadowColor: Colors.bgDark,
             shadowOpacity: 0.3,
             shadowRadius: 20,
             shadowOffset: { width: 0, height: 8 },
@@ -792,6 +831,7 @@ export default function PlacementTestScreen() {
           {/* Large CEFR badge circle */}
           <View
             className="w-[100px] h-[100px] rounded-full justify-center items-center mb-[18px]"
+            accessibilityLabel={`Your level is ${determinedLevel}`}
             style={{
               backgroundColor: levelColor,
               shadowColor: levelColor,
@@ -805,7 +845,10 @@ export default function PlacementTestScreen() {
           </View>
 
           {/* Congratulation phrase */}
-          <Text className="text-white text-[26px] font-extrabold mb-2 text-center">
+          <Text
+            className="text-white text-[26px] font-extrabold mb-2 text-center"
+            accessibilityRole="header"
+          >
             {congrats.phrase}
           </Text>
           <Text className="text-white/65 text-sm text-center leading-5">{congrats.sub}</Text>
@@ -826,33 +869,47 @@ export default function PlacementTestScreen() {
             className="bg-white rounded-[20px] p-5 mb-4"
             style={{
               borderWidth: 1,
-              borderColor: "#E0E0CE",
-              shadowColor: "#1E3A5F",
+              borderColor: Colors.border,
+              shadowColor: Colors.primary,
               shadowOpacity: 0.07,
               shadowRadius: 10,
               shadowOffset: { width: 0, height: 3 },
               elevation: 3,
             }}
           >
-            <Text className="text-[13px] font-extrabold text-primary tracking-[1px] mb-3">
+            <Text
+              className="text-[13px] font-extrabold text-primary tracking-[1px] mb-3"
+              accessibilityRole="header"
+            >
               ANALYSIS
             </Text>
-            <Text className="text-[15px] text-[#333333] leading-[22px] mb-[14px]">{summary}</Text>
+            <Text
+              className="text-[15px] leading-[22px] mb-[14px]"
+              style={{ color: Colors.textPrimary }}
+            >
+              {summary}
+            </Text>
 
             {/* Mastery / Struggle indicators */}
             <View className="flex-row gap-[10px] flex-wrap">
               {masteryLevel && (
-                <View className="flex-row items-center bg-[#E8F5E9] rounded-[10px] px-3 py-[7px] gap-[6px]">
+                <View
+                  className="flex-row items-center rounded-[10px] px-3 py-[7px] gap-[6px]"
+                  style={{ backgroundColor: Colors.success10 }}
+                >
                   <Text className="text-sm">&#10003;</Text>
-                  <Text className="text-[13px] font-semibold text-[#2E7D32]">
+                  <Text className="text-[13px] font-semibold" style={{ color: Colors.success }}>
                     {masteryLevel} mastered
                   </Text>
                 </View>
               )}
               {struggleLevel && (
-                <View className="flex-row items-center bg-[#FFF3E0] rounded-[10px] px-3 py-[7px] gap-[6px]">
+                <View
+                  className="flex-row items-center rounded-[10px] px-3 py-[7px] gap-[6px]"
+                  style={{ backgroundColor: Colors.accent10 }}
+                >
                   <Text className="text-sm">&#9888;</Text>
-                  <Text className="text-[13px] font-semibold text-[#E65100]">
+                  <Text className="text-[13px] font-semibold" style={{ color: Colors.accentDark }}>
                     {struggleLevel} needs practice
                   </Text>
                 </View>
@@ -865,15 +922,18 @@ export default function PlacementTestScreen() {
             className="bg-white rounded-[20px] p-5 mb-5"
             style={{
               borderWidth: 1,
-              borderColor: "#E0E0CE",
-              shadowColor: "#1E3A5F",
+              borderColor: Colors.border,
+              shadowColor: Colors.primary,
               shadowOpacity: 0.07,
               shadowRadius: 10,
               shadowOffset: { width: 0, height: 3 },
               elevation: 3,
             }}
           >
-            <Text className="text-[13px] font-extrabold text-primary tracking-[1px] mb-4">
+            <Text
+              className="text-[13px] font-extrabold text-primary tracking-[1px] mb-4"
+              accessibilityRole="header"
+            >
               PERFORMANCE PAR NIVEAU
             </Text>
 
@@ -901,7 +961,8 @@ export default function PlacementTestScreen() {
                 <View
                   key={level}
                   className="flex-row items-center justify-between py-[10px]"
-                  style={{ borderBottomWidth: 1, borderBottomColor: "#F0F0EA" }}
+                  accessibilityLabel={`${level}: ${correct} of ${questionsAnswered} correct${statusLabel ? `, ${statusLabel.text}` : ""}`}
+                  style={{ borderBottomWidth: 1, borderBottomColor: Colors.gray200 }}
                 >
                   <View className="flex-row items-center gap-[10px]">
                     <View
@@ -911,7 +972,10 @@ export default function PlacementTestScreen() {
                       <Text className="text-white font-bold text-xs">{level}</Text>
                     </View>
                     {/* Mini progress bar */}
-                    <View className="w-20 h-[6px] bg-[#F0F0EA] rounded-full overflow-hidden">
+                    <View
+                      className="w-20 h-[6px] rounded-full overflow-hidden"
+                      style={{ backgroundColor: Colors.gray200 }}
+                    >
                       <View
                         className="h-[6px] rounded-full"
                         style={{
@@ -933,7 +997,7 @@ export default function PlacementTestScreen() {
                     <Text
                       className="text-sm font-semibold min-w-[30px] text-right"
                       style={{
-                        color: correct === questionsAnswered ? "#34C759" : "#333333",
+                        color: correct === questionsAnswered ? Colors.success : Colors.textPrimary,
                       }}
                     >
                       {correct}/{questionsAnswered}
@@ -945,7 +1009,11 @@ export default function PlacementTestScreen() {
           </View>
 
           {/* Error message if saving failed */}
-          {error && <Text className="text-error text-sm mb-3 text-center">{error}</Text>}
+          {error && (
+            <Text className="text-error text-sm mb-3 text-center">
+              Could not save your results. Tap &quot;Commencer&quot; to try again.
+            </Text>
+          )}
         </ScrollView>
 
         {/* CTA button */}
@@ -957,23 +1025,22 @@ export default function PlacementTestScreen() {
             onPress={handleFinish}
             disabled={isSubmitting}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={isSubmitting ? "Saving results" : "Start learning"}
+            accessibilityState={{ disabled: isSubmitting }}
             className="bg-accent rounded-2xl py-[18px] items-center"
             style={{
               opacity: isSubmitting ? 0.7 : 1,
-              shadowColor: "#F5A623",
+              shadowColor: Colors.accent,
               shadowOpacity: 0.35,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 6 },
               elevation: 6,
             }}
           >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text className="text-white text-[17px] font-bold tracking-wide">
-                Commencer l&apos;apprentissage !
-              </Text>
-            )}
+            <Text className="text-white text-[17px] font-bold tracking-wide">
+              {isSubmitting ? "Saving..." : "Commencer l'apprentissage !"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -990,7 +1057,7 @@ export default function PlacementTestScreen() {
           paddingTop: insets.top + 16,
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
-          shadowColor: "#0D2240",
+          shadowColor: Colors.bgDark,
           shadowOpacity: 0.3,
           shadowRadius: 16,
           shadowOffset: { width: 0, height: 6 },
@@ -999,19 +1066,37 @@ export default function PlacementTestScreen() {
       >
         {/* Row: label + counter */}
         <View className="flex-row justify-between items-center mb-[14px]">
-          <Text className="text-accent text-[11px] font-extrabold tracking-[2px]">
+          <Text
+            className="text-accent text-[11px] font-extrabold tracking-[2px]"
+            accessibilityRole="header"
+          >
             TEST DE PLACEMENT
           </Text>
-          <Text className="text-white/80 text-[13px] font-semibold">
+          <Text
+            className="text-white/80 text-[13px] font-semibold"
+            accessibilityLabel={`Question ${currentIndex + 1} of ${TOTAL_QUESTIONS}`}
+          >
             Question {currentIndex + 1} of {TOTAL_QUESTIONS}
           </Text>
         </View>
 
         {/* Animated progress bar */}
-        <AnimatedProgressBar progress={(currentIndex + 1) / TOTAL_QUESTIONS} />
+        <View
+          accessibilityRole="progressbar"
+          accessibilityValue={{
+            min: 0,
+            max: TOTAL_QUESTIONS,
+            now: currentIndex + 1,
+          }}
+        >
+          <AnimatedProgressBar progress={(currentIndex + 1) / TOTAL_QUESTIONS} />
+        </View>
 
         {/* CEFR level badge + name for current question */}
-        <View className="mt-[14px] flex-row items-center gap-2">
+        <View
+          className="mt-[14px] flex-row items-center gap-2"
+          accessibilityLabel={`Level ${currentQuestionLevel}, ${CEFR_LEVELS[currentQuestionLevel].name}`}
+        >
           <View
             className="px-3 py-[5px] rounded-[20px]"
             style={{ backgroundColor: LEVEL_COLORS[currentQuestionLevel] }}
@@ -1053,10 +1138,16 @@ export default function PlacementTestScreen() {
           <TouchableOpacity
             onPress={handleNext}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={
+              stoppedEarly || currentIndex >= questions.length - 1
+                ? "View results"
+                : "Next question"
+            }
             className="rounded-2xl py-[18px] items-center"
             style={{
-              backgroundColor: stoppedEarly ? "#F5A623" : "#1E3A5F",
-              shadowColor: stoppedEarly ? "#F5A623" : "#1E3A5F",
+              backgroundColor: stoppedEarly ? Colors.accent : Colors.primary,
+              shadowColor: stoppedEarly ? Colors.accent : Colors.primary,
               shadowOpacity: 0.25,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 6 },

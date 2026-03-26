@@ -16,7 +16,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
-import { Colors, Shadows } from "@/src/lib/design";
+import { Colors, Shadows, Typography } from "@/src/lib/design";
 
 export default function ReadingScreen() {
   const router = useRouter();
@@ -61,7 +61,9 @@ export default function ReadingScreen() {
     return (
       <View className="flex-1 bg-surface justify-center items-center p-6">
         <Text className="text-[64px] mb-4">&#x1F4D6;</Text>
-        <Text className="text-[22px] font-bold text-primary mb-2">Reading Practice</Text>
+        <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
+          Reading Practice
+        </Text>
         <Text className="text-sm text-center mb-8 leading-5" style={{ color: Colors.gray700 }}>
           Read a French passage and answer comprehension questions.
           {"\n"}Tap highlighted words for explanations in French!
@@ -72,6 +74,8 @@ export default function ReadingScreen() {
             <View className="flex-row gap-3 w-full px-4">
               <TouchableOpacity
                 onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
                 className="flex-1 rounded-xl py-3.5 items-center"
                 style={{ backgroundColor: Colors.gray100 }}
               >
@@ -81,6 +85,8 @@ export default function ReadingScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleGenerate}
+                accessibilityRole="button"
+                accessibilityLabel="Retry generating exercise"
                 className="flex-1 bg-primary rounded-xl py-3.5 items-center"
               >
                 <Text className="text-[15px] font-bold text-white">Retry</Text>
@@ -88,7 +94,12 @@ export default function ReadingScreen() {
             </View>
           </>
         ) : (
-          <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
+          <TouchableOpacity
+            onPress={handleGenerate}
+            accessibilityRole="button"
+            accessibilityLabel="Generate exercise"
+            className="bg-primary rounded-xl px-8 py-4"
+          >
             <Text className="text-white text-base font-bold">Generate Exercise</Text>
           </TouchableOpacity>
         )}
@@ -127,7 +138,7 @@ export default function ReadingScreen() {
             </View>
           </Animated.View>
         ))}
-        <Text className="text-center mt-4" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+        <Text className="text-center mt-4" style={Typography.caption}>
           Generating passage...
         </Text>
       </View>
@@ -206,6 +217,9 @@ export default function ReadingScreen() {
                   <Text
                     key={idx}
                     onPress={() => handleWordTap(word)}
+                    accessibilityRole="link"
+                    accessibilityLabel={`${cleanWord}, tap for explanation`}
+                    accessibilityHint="Double tap to see the explanation in French"
                     style={{
                       color: Colors.textPrimary,
                       fontWeight: "600",
@@ -255,6 +269,9 @@ export default function ReadingScreen() {
         <TouchableOpacity
           onPress={exercise.previousQuestion}
           disabled={exercise.currentQuestionIndex === 0}
+          accessibilityRole="button"
+          accessibilityLabel="Previous question"
+          accessibilityState={{ disabled: exercise.currentQuestionIndex === 0 }}
           className="flex-1 rounded-xl py-3.5 items-center"
           style={{
             backgroundColor: exercise.currentQuestionIndex === 0 ? Colors.border : Colors.gray100,
@@ -273,6 +290,8 @@ export default function ReadingScreen() {
         {exercise.currentQuestionIndex < totalQuestions - 1 ? (
           <TouchableOpacity
             onPress={exercise.nextQuestion}
+            accessibilityRole="button"
+            accessibilityLabel="Next question"
             className="flex-1 bg-primary rounded-xl py-3.5 items-center"
           >
             <Text className="text-[15px] font-semibold text-white">Next</Text>
@@ -281,6 +300,12 @@ export default function ReadingScreen() {
           <TouchableOpacity
             onPress={handleFinish}
             disabled={answeredQuestions.size < totalQuestions}
+            accessibilityRole="button"
+            accessibilityLabel="Finish exercise"
+            accessibilityState={{ disabled: answeredQuestions.size < totalQuestions }}
+            accessibilityHint={
+              answeredQuestions.size < totalQuestions ? "Answer all questions to finish" : undefined
+            }
             className="flex-1 rounded-xl py-3.5 items-center"
             style={{
               backgroundColor:
@@ -309,16 +334,19 @@ export default function ReadingScreen() {
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setSelectedWord(null)}
+          accessibilityLabel="Close word explanation"
           className="flex-1 justify-center p-8"
           style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
         >
-          <View className="bg-white rounded-2xl p-6">
+          <View className="bg-white rounded-2xl p-6" accessibilityRole="alert">
             <Text className="text-[22px] font-extrabold text-primary mb-2">{selectedWord}</Text>
             <Text className="text-[15px] text-primary leading-6 italic">
               {selectedWord && exercise.exercise?.wordExplanations?.[selectedWord]}
             </Text>
             <TouchableOpacity
               onPress={() => setSelectedWord(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
               className="mt-4 bg-surface-200 rounded-[10px] py-2.5 items-center"
             >
               <Text className="font-semibold text-primary">Close</Text>

@@ -270,7 +270,8 @@ export default function ConversationSessionScreen() {
             }}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            className="w-10 h-10 rounded-full bg-white/10 border border-white/15 justify-center items-center"
+            accessibilityHint="Double tap to leave this conversation"
+            className="w-11 h-11 rounded-full bg-white/10 border border-white/15 justify-center items-center"
           >
             <Text className="text-lg text-white">{"\u276E"}</Text>
           </TouchableOpacity>
@@ -300,7 +301,7 @@ export default function ConversationSessionScreen() {
           </View>
 
           {/* Spacer to balance the back button */}
-          <View className="w-10 h-10" />
+          <View className="w-11 h-11" />
         </View>
 
         {/* Main Content Area — transcript is always visible */}
@@ -347,7 +348,8 @@ export default function ConversationSessionScreen() {
               onPress={handleSendText}
               accessibilityRole="button"
               accessibilityLabel="Send message"
-              className="bg-accent w-10 h-10 rounded-full justify-center items-center"
+              accessibilityHint="Double tap to send your typed message"
+              className="bg-accent w-11 h-11 rounded-full justify-center items-center"
             >
               <Text className="text-white text-lg font-bold">{"\u2191"}</Text>
             </TouchableOpacity>
@@ -407,6 +409,7 @@ export default function ConversationSessionScreen() {
                 onPress={() => setShowTextInput((v) => !v)}
                 accessibilityRole="button"
                 accessibilityLabel={showTextInput ? "Hide text input" : "Show text input"}
+                accessibilityHint="Double tap to toggle the text input field"
                 accessibilityState={{ expanded: showTextInput }}
                 className="w-[52px] h-[52px] rounded-full justify-center items-center"
                 style={{
@@ -428,6 +431,7 @@ export default function ConversationSessionScreen() {
                 onPress={handleEnd}
                 accessibilityRole="button"
                 accessibilityLabel="End conversation"
+                accessibilityHint="Double tap to end the current conversation"
                 className="bg-error rounded-full px-6 py-3"
                 style={{
                   shadowColor: Colors.error,
@@ -445,6 +449,9 @@ export default function ConversationSessionScreen() {
           {conversation.status === "ended" && !feedbackVisible && (
             <TouchableOpacity
               onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+              accessibilityHint="Double tap to return to topics"
               className="bg-accent rounded-xl px-8 py-4"
             >
               <Text className="text-white text-base font-bold">Done</Text>
@@ -459,12 +466,18 @@ export default function ConversationSessionScreen() {
               <View className="flex-row gap-3">
                 <TouchableOpacity
                   onPress={() => router.back()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Go back"
+                  accessibilityHint="Double tap to return to topics"
                   className="bg-white/10 border-[1.5px] border-white/20 rounded-3xl px-6 py-3"
                 >
                   <Text className="text-white/80 text-[15px] font-semibold">Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleStart}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry connection"
+                  accessibilityHint="Double tap to try starting the conversation again"
                   className="border-[1.5px] border-accent rounded-3xl px-7 py-3"
                   style={{ backgroundColor: "rgba(245,166,35,0.15)" }}
                 >
@@ -593,6 +606,9 @@ export default function ConversationSessionScreen() {
                     setFeedbackVisible(false);
                     router.back();
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Finished"
+                  accessibilityHint="Double tap to close feedback and return to topics"
                   className="bg-primary rounded-xl h-[52px] justify-center items-center mt-5"
                 >
                   <Text className="text-base font-bold text-white">Terminé</Text>

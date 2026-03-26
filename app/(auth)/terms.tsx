@@ -2,6 +2,8 @@ import { ScrollView, View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
+import { Colors } from "@/src/lib/design";
+
 const LAST_UPDATED = "March 1, 2026";
 
 interface Section {
@@ -90,12 +92,16 @@ export default function AuthTermsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text className="text-[22px] font-extrabold text-primary mb-1">Terms of Service</Text>
-        <Text className="text-[13px] text-[#999] mb-7">Last updated: {LAST_UPDATED}</Text>
+        <Text style={{ color: Colors.gray500 }} className="text-[13px] mb-7">
+          Last updated: {LAST_UPDATED}
+        </Text>
 
         {sections.map((section) => (
           <View key={section.heading} className="mb-6">
             <Text className="text-[15px] font-bold text-primary mb-2">{section.heading}</Text>
-            <Text className="text-sm text-[#444] leading-[22px]">{section.body}</Text>
+            <Text style={{ color: Colors.gray700 }} className="text-sm leading-[22px]">
+              {section.body}
+            </Text>
           </View>
         ))}
       </ScrollView>
