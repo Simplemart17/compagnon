@@ -23,7 +23,7 @@ import { captureError } from "@/src/lib/sentry";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
-import { Colors, Shadows } from "@/src/lib/design";
+import { Colors, Shadows, Typography } from "@/src/lib/design";
 
 export default function GrammarScreen() {
   const router = useRouter();
@@ -111,7 +111,7 @@ export default function GrammarScreen() {
             </View>
           </Animated.View>
         ))}
-        <Text className="text-center mt-4" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+        <Text className="text-center mt-4" style={Typography.caption}>
           Generating targeted drill...
         </Text>
       </View>
@@ -145,7 +145,12 @@ export default function GrammarScreen() {
               {drillCorrect}/{microDrill.questions.length} correct
             </Text>
             <View className="bg-accent/10 rounded-xl p-4 my-4 w-full">
-              <Text className="text-[13px] font-semibold text-accent mb-1.5">Tip</Text>
+              <Text
+                style={{ color: Colors.accentText }}
+                className="text-[13px] font-semibold mb-1.5"
+              >
+                Tip
+              </Text>
               <Text className="text-sm text-primary leading-5">{microDrill.tip}</Text>
             </View>
             <View className="flex-row gap-3 mt-4 w-full">
@@ -156,12 +161,16 @@ export default function GrammarScreen() {
                   }
                   router.back();
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Done"
                 className="flex-1 bg-primary rounded-xl py-3.5 items-center"
               >
                 <Text className="text-white text-[15px] font-bold">Done</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleGenerate}
+                accessibilityRole="button"
+                accessibilityLabel="Start full exercise"
                 className="flex-1 bg-accent rounded-xl py-3.5 items-center"
               >
                 <Text className="text-white text-[15px] font-bold">Full Exercise</Text>
@@ -179,7 +188,9 @@ export default function GrammarScreen() {
       >
         {/* Drill header */}
         <View className="bg-accent/10 rounded-2xl p-4 mb-5 border border-accent/30">
-          <Text className="text-base font-bold text-primary mb-1">{microDrill.title}</Text>
+          <Text accessibilityRole="header" className="text-base font-bold text-primary mb-1">
+            {microDrill.title}
+          </Text>
           <Text className="text-[13px] leading-[19px]" style={{ color: Colors.gray700 }}>
             {microDrill.explanation}
           </Text>
@@ -221,6 +232,12 @@ export default function GrammarScreen() {
                     setDrillAnswers((prev) => ({ ...prev, [drillIndex]: optIdx }));
                     setDrillRevealed((prev) => new Set(prev).add(drillIndex));
                   }}
+                  accessibilityRole="radio"
+                  accessibilityLabel={option}
+                  accessibilityState={{ selected: isSelected, disabled: isDrillRevealed }}
+                  accessibilityHint={
+                    isDrillRevealed ? undefined : "Double tap to select this answer"
+                  }
                   className="rounded-xl p-3.5 mb-2"
                   style={{
                     backgroundColor: bgColor,
@@ -246,6 +263,8 @@ export default function GrammarScreen() {
         {isDrillRevealed && !isLastDrill && (
           <TouchableOpacity
             onPress={() => setDrillIndex((prev) => prev + 1)}
+            accessibilityRole="button"
+            accessibilityLabel="Next question"
             className="bg-primary rounded-xl py-3.5 items-center mt-5"
           >
             <Text className="text-white text-[15px] font-semibold">Next</Text>
@@ -260,7 +279,9 @@ export default function GrammarScreen() {
     return (
       <View className="flex-1 bg-surface justify-center items-center p-6">
         <Text className="text-[64px] mb-4">&#x1F9E0;</Text>
-        <Text className="text-[22px] font-bold text-primary mb-2">Grammar & Vocabulary</Text>
+        <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
+          Grammar & Vocabulary
+        </Text>
         <Text className="text-sm text-center mb-8 leading-5" style={{ color: Colors.gray700 }}>
           Practice verb conjugation, tenses, prepositions,{"\n"}and vocabulary in TCF format.
         </Text>
@@ -270,6 +291,8 @@ export default function GrammarScreen() {
             <View className="flex-row gap-3 w-full px-4">
               <TouchableOpacity
                 onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
                 className="flex-1 rounded-xl py-3.5 items-center"
                 style={{ backgroundColor: Colors.gray100 }}
               >
@@ -279,6 +302,8 @@ export default function GrammarScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleGenerate}
+                accessibilityRole="button"
+                accessibilityLabel="Retry generating exercise"
                 className="flex-1 bg-primary rounded-xl py-3.5 items-center"
               >
                 <Text className="text-white text-[15px] font-bold">Retry</Text>
@@ -286,7 +311,12 @@ export default function GrammarScreen() {
             </View>
           </>
         ) : (
-          <TouchableOpacity onPress={handleGenerate} className="bg-primary rounded-xl px-8 py-4">
+          <TouchableOpacity
+            onPress={handleGenerate}
+            accessibilityRole="button"
+            accessibilityLabel="Generate exercise"
+            className="bg-primary rounded-xl px-8 py-4"
+          >
             <Text className="text-white text-base font-bold">Generate Exercise</Text>
           </TouchableOpacity>
         )}
@@ -317,7 +347,7 @@ export default function GrammarScreen() {
             </View>
           </Animated.View>
         ))}
-        <Text className="text-center mt-4" style={{ color: Colors.textTertiary, fontSize: 13 }}>
+        <Text className="text-center mt-4" style={Typography.caption}>
           Generating questions...
         </Text>
       </View>
@@ -380,6 +410,10 @@ export default function GrammarScreen() {
               : exercise.previousQuestion()
           )
         }
+        accessibilityRole="button"
+        accessibilityLabel={`Question ${i + 1}${answered ? (color === Colors.success ? ", correct" : ", incorrect") : ""}${isCurrent ? ", current" : ""}`}
+        accessibilityState={{ selected: isCurrent }}
+        hitSlop={{ top: 16, bottom: 16, left: 6, right: 6 }}
         style={{
           width: isCurrent ? 24 : 10,
           height: 10,
@@ -423,6 +457,9 @@ export default function GrammarScreen() {
         <TouchableOpacity
           onPress={exercise.previousQuestion}
           disabled={exercise.currentQuestionIndex === 0}
+          accessibilityRole="button"
+          accessibilityLabel="Previous question"
+          accessibilityState={{ disabled: exercise.currentQuestionIndex === 0 }}
           className="flex-1 rounded-xl py-3.5 items-center"
           style={{
             backgroundColor: exercise.currentQuestionIndex === 0 ? Colors.gray300 : Colors.gray100,
@@ -441,6 +478,8 @@ export default function GrammarScreen() {
         {exercise.currentQuestionIndex < totalQuestions - 1 ? (
           <TouchableOpacity
             onPress={exercise.nextQuestion}
+            accessibilityRole="button"
+            accessibilityLabel="Next question"
             className="flex-1 bg-primary rounded-xl py-3.5 items-center"
           >
             <Text className="text-[15px] font-semibold text-white">Next</Text>
@@ -449,6 +488,12 @@ export default function GrammarScreen() {
           <TouchableOpacity
             onPress={handleFinish}
             disabled={answeredQuestions.size < totalQuestions}
+            accessibilityRole="button"
+            accessibilityLabel="Finish exercise"
+            accessibilityState={{ disabled: answeredQuestions.size < totalQuestions }}
+            accessibilityHint={
+              answeredQuestions.size < totalQuestions ? "Answer all questions to finish" : undefined
+            }
             className="flex-1 rounded-xl py-3.5 items-center"
             style={{
               backgroundColor:
