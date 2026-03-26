@@ -33,6 +33,9 @@ jobs:
       - name: Prettier format check
         run: npm run format:check
 
+      - name: Hex color check
+        run: npm run check:colors
+
       - name: Validate SQL migrations
         run: |
           # Ensure all migration files parse as valid SQL (basic syntax check)

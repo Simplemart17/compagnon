@@ -1,6 +1,7 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 
+import { Colors } from "@/src/lib/design";
 import { captureError } from "@/src/lib/sentry";
 
 interface Props {
@@ -42,12 +43,17 @@ export class ErrorBoundary extends Component<Props, State> {
           <Text className="mb-2 text-center text-xl font-bold text-primary">
             Something went wrong
           </Text>
-          <Text className="mb-6 text-center text-sm leading-5 text-[#666]">
+          <Text
+            className="mb-6 text-center text-sm leading-5"
+            style={{ color: Colors.textSecondary }}
+          >
             {this.state.error?.message ?? "An unexpected error occurred."}
           </Text>
           <TouchableOpacity
             onPress={this.handleRetry}
             className="rounded-xl bg-primary px-8 py-3.5"
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
           >
             <Text className="text-base font-semibold text-white">Try Again</Text>
           </TouchableOpacity>
