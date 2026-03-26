@@ -9,6 +9,7 @@ import { useCallback, useState } from "react";
 import * as FileSystem from "expo-file-system/legacy";
 
 import { captureError } from "@/src/lib/sentry";
+import { classifyError } from "@/src/lib/error-messages";
 import {
   assessPronunciation,
   identifyWeakSounds,
@@ -90,7 +91,10 @@ export function usePronunciation(): UsePronunciationReturn {
         return result;
       } catch (err) {
         captureError(err, "pronunciation-assessment");
-        const message = err instanceof Error ? err.message : "Assessment failed";
+        const { message } = classifyError(
+          err,
+          "Pronunciation assessment failed. Please try recording again."
+        );
         setState((prev) => ({ ...prev, isAssessing: false, error: message }));
         return null;
       }
@@ -125,7 +129,10 @@ export function usePronunciation(): UsePronunciationReturn {
         return result;
       } catch (err) {
         captureError(err, "pronunciation-assessment");
-        const message = err instanceof Error ? err.message : "Assessment failed";
+        const { message } = classifyError(
+          err,
+          "Pronunciation assessment failed. Please try recording again."
+        );
         setState((prev) => ({ ...prev, isAssessing: false, error: message }));
         return null;
       }

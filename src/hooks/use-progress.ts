@@ -171,8 +171,11 @@ export function useProgress(): UseProgressReturn {
       });
     } catch (err) {
       captureError(err, "progress-loading");
-      const message = err instanceof Error ? err.message : "Failed to load progress";
-      setState((s) => ({ ...s, isLoading: false, error: message }));
+      setState((s) => ({
+        ...s,
+        isLoading: false,
+        error: "Could not load your progress. Pull down to refresh.",
+      }));
     }
   }, [user]);
 

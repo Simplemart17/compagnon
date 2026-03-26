@@ -15,7 +15,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import type { Correction } from "@/src/types/conversation";
-import { Colors } from "@/src/lib/design";
+import { Colors, skillTint } from "@/src/lib/design";
 
 interface CorrectionBubbleProps {
   corrections: Correction[];
@@ -23,10 +23,14 @@ interface CorrectionBubbleProps {
 }
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  grammar: { bg: "rgba(255,59,48,0.2)", text: Colors.error, label: "Grammar" },
-  pronunciation: { bg: "rgba(90,164,207,0.2)", text: "#7DBFE8", label: "Pronunciation" },
-  vocabulary: { bg: "rgba(245,166,35,0.2)", text: Colors.accent, label: "Vocabulary" },
-  register: { bg: "rgba(52,199,89,0.2)", text: Colors.success, label: "Register" },
+  grammar: { bg: skillTint(Colors.error, 0.2), text: Colors.error, label: "Grammar" },
+  pronunciation: {
+    bg: skillTint(Colors.correctionPronunciation, 0.2),
+    text: Colors.correctionPronunciationText,
+    label: "Pronunciation",
+  },
+  vocabulary: { bg: Colors.accent20, text: Colors.accent, label: "Vocabulary" },
+  register: { bg: skillTint(Colors.success, 0.2), text: Colors.success, label: "Register" },
 };
 
 export const CorrectionBubble = React.memo(function CorrectionBubble({
@@ -65,20 +69,20 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
       <View
         className="rounded-[20px] border p-3.5"
         style={{
-          backgroundColor: "rgba(255,255,255,0.09)",
-          borderColor: "rgba(245,166,35,0.3)",
+          backgroundColor: skillTint(Colors.surfaceWhite, 0.09),
+          borderColor: Colors.accent30,
         }}
       >
         {/* Top accent marker */}
         <View
           className="mb-2.5 h-[3px] w-10 self-center rounded-sm"
-          style={{ backgroundColor: "rgba(245,166,35,0.7)" }}
+          style={{ backgroundColor: skillTint(Colors.accent, 0.7) }}
         />
 
         {/* Section label */}
         <Text
           className="mb-2 text-[10px] font-bold uppercase tracking-wider"
-          style={{ color: "rgba(245,166,35,0.75)" }}
+          style={{ color: skillTint(Colors.accent, 0.75) }}
         >
           Compagnon noticed
         </Text>
@@ -111,10 +115,13 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
 
               {/* Original -> Corrected */}
               <View className="flex-row flex-wrap items-center">
-                <Text className="text-sm italic" style={{ color: "rgba(255,107,107,0.85)" }}>
+                <Text className="text-sm italic" style={{ color: Colors.correctionOriginal }}>
                   {correction.original}
                 </Text>
-                <Text className="mx-2 text-[13px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                <Text
+                  className="mx-2 text-[13px]"
+                  style={{ color: skillTint(Colors.surfaceWhite, 0.3) }}
+                >
                   {"\u2192"}
                 </Text>
                 <Text className="text-sm font-bold text-success">{correction.corrected}</Text>
@@ -124,14 +131,17 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
               {isExpanded && (
                 <Text
                   className="mt-1.5 text-xs italic leading-[18px]"
-                  style={{ color: "rgba(255,255,255,0.55)" }}
+                  style={{ color: skillTint(Colors.surfaceWhite, 0.55) }}
                 >
                   {correction.explanation}
                 </Text>
               )}
 
               {!isExpanded && (
-                <Text className="mt-1 text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+                <Text
+                  className="mt-1 text-[10px]"
+                  style={{ color: skillTint(Colors.surfaceWhite, 0.25) }}
+                >
                   Tap for explanation
                 </Text>
               )}
