@@ -75,19 +75,25 @@ export const ScoreCard = React.memo(function ScoreCard({
       >
         <View className="items-center">
           <Text className="text-[28px] font-extrabold text-success">{correctCount}</Text>
-          <Text className="text-xs text-[#4A5568]">Correct</Text>
+          <Text className="text-xs" style={{ color: Colors.gray700 }}>
+            Correct
+          </Text>
         </View>
         <View className="w-px bg-surface-300" />
         <View className="items-center">
           <Text className="text-[28px] font-extrabold text-error">
             {totalQuestions - correctCount}
           </Text>
-          <Text className="text-xs text-[#4A5568]">Incorrect</Text>
+          <Text className="text-xs" style={{ color: Colors.gray700 }}>
+            Incorrect
+          </Text>
         </View>
         <View className="w-px bg-surface-300" />
         <View className="items-center">
           <Text className="text-[28px] font-extrabold text-primary">{totalQuestions}</Text>
-          <Text className="text-xs text-[#4A5568]">Total</Text>
+          <Text className="text-xs" style={{ color: Colors.gray700 }}>
+            Total
+          </Text>
         </View>
       </View>
 

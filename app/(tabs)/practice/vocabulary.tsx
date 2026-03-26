@@ -229,14 +229,14 @@ export default function VocabularyScreen() {
           className="bg-white rounded-[14px] p-4 flex-row items-center gap-3 mb-2.5"
           style={{
             borderWidth: 1,
-            borderColor: isDue ? "#F5A623" : "#E0E0CE",
+            borderColor: isDue ? Colors.accent : Colors.border,
           }}
         >
           {/* CEFR badge */}
           <View
             className="rounded-lg px-2 py-1 items-center"
             style={{
-              backgroundColor: LEVEL_COLORS[item.cefr_level] ?? "#999",
+              backgroundColor: LEVEL_COLORS[item.cefr_level] ?? Colors.gray500,
               minWidth: 36,
             }}
           >
@@ -246,7 +246,9 @@ export default function VocabularyScreen() {
           {/* Word details */}
           <View className="flex-1">
             <Text className="text-base font-bold text-primary">{item.french_word}</Text>
-            <Text className="text-[13px] text-[#4A5568] mt-0.5">{item.english_translation}</Text>
+            <Text className="text-[13px] mt-0.5" style={{ color: Colors.gray700 }}>
+              {item.english_translation}
+            </Text>
           </View>
 
           {/* Review status */}
@@ -254,7 +256,7 @@ export default function VocabularyScreen() {
             <Text
               style={{
                 fontSize: 11,
-                color: isDue ? "#F5A623" : "#999",
+                color: isDue ? Colors.accent : Colors.gray500,
                 fontWeight: isDue ? "600" : "400",
               }}
             >
@@ -272,7 +274,9 @@ export default function VocabularyScreen() {
       <View>
         {/* Search bar */}
         <View className="bg-white rounded-xl border border-surface-300 px-4 py-3 mb-4 flex-row items-center">
-          <Text className="text-base mr-2 text-[#94A3B8]">{"🔍"}</Text>
+          <Text className="text-base mr-2" style={{ color: Colors.textTertiary }}>
+            {"🔍"}
+          </Text>
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -284,13 +288,15 @@ export default function VocabularyScreen() {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Text className="text-base text-[#94A3B8]">{"✕"}</Text>
+              <Text className="text-base" style={{ color: Colors.textTertiary }}>
+                {"✕"}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Word count */}
-        <Text className="text-[13px] text-[#4A5568] mb-3">
+        <Text className="text-[13px] mb-3" style={{ color: Colors.gray700 }}>
           {filteredWords.length} word{filteredWords.length !== 1 ? "s" : ""}
           {searchQuery.trim() ? " found" : ""}
         </Text>
@@ -302,7 +308,9 @@ export default function VocabularyScreen() {
   const vocabListEmpty = useMemo(
     () => (
       <View className="items-center pt-10">
-        <Text className="text-sm text-[#94A3B8]">No words match your search.</Text>
+        <Text className="text-sm" style={{ color: Colors.textTertiary }}>
+          No words match your search.
+        </Text>
       </View>
     ),
     []
@@ -313,7 +321,9 @@ export default function VocabularyScreen() {
     return (
       <View className="flex-1 bg-surface justify-center items-center">
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text className="text-[#4A5568] mt-4 text-sm">Loading vocabulary...</Text>
+        <Text className="mt-4 text-sm" style={{ color: Colors.gray700 }}>
+          Loading vocabulary...
+        </Text>
       </View>
     );
   }
@@ -324,7 +334,7 @@ export default function VocabularyScreen() {
       <View className="flex-1 bg-surface justify-center items-center p-6">
         <Text className="text-[64px] mb-4">{"📚"}</Text>
         <Text className="text-[22px] font-bold text-primary mb-2">No Vocabulary Yet</Text>
-        <Text className="text-sm text-[#4A5568] text-center leading-5">
+        <Text className="text-sm text-center leading-5" style={{ color: Colors.gray700 }}>
           Words from your conversations and exercises{"\n"}will appear here for spaced repetition
           review.
         </Text>
@@ -349,14 +359,14 @@ export default function VocabularyScreen() {
             onPress={() => setActiveTab(tab)}
             className="flex-1 py-2.5 rounded-[10px] items-center"
             style={{
-              backgroundColor: isActive ? "#FFFFFF" : "transparent",
+              backgroundColor: isActive ? Colors.surfaceWhite : "transparent",
             }}
           >
             <Text
               className="text-sm"
               style={{
                 fontWeight: isActive ? "700" : "500",
-                color: isActive ? "#1E3A5F" : "#666",
+                color: isActive ? Colors.primary : Colors.gray600,
               }}
             >
               {label}
@@ -374,7 +384,7 @@ export default function VocabularyScreen() {
         <View className="flex-1 justify-center items-center p-6">
           <Text className="text-[64px] mb-4">{"🎉"}</Text>
           <Text className="text-[22px] font-bold text-primary mb-2">All Caught Up!</Text>
-          <Text className="text-sm text-[#4A5568] text-center leading-5 mb-6">
+          <Text className="text-sm text-center leading-5 mb-6" style={{ color: Colors.gray700 }}>
             You reviewed {reviewedCount} word{reviewedCount !== 1 ? "s" : ""}.{"\n"}Come back later
             for more reviews.
           </Text>
@@ -393,7 +403,7 @@ export default function VocabularyScreen() {
         <View className="flex-1 justify-center items-center p-6">
           <Text className="text-[64px] mb-4">{"✅"}</Text>
           <Text className="text-[22px] font-bold text-primary mb-2">No Reviews Due</Text>
-          <Text className="text-sm text-[#4A5568] text-center leading-5 mb-6">
+          <Text className="text-sm text-center leading-5 mb-6" style={{ color: Colors.gray700 }}>
             All your words are up to date.{"\n"}Check back later or browse your full word list.
           </Text>
           <TouchableOpacity
@@ -413,12 +423,12 @@ export default function VocabularyScreen() {
       <View className="flex-1">
         {/* Progress indicator */}
         <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-[13px] text-[#4A5568]">
+          <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
             Card {currentIndex + 1} of {dueWords.length}
           </Text>
           <View
             className="rounded-lg px-2.5 py-1"
-            style={{ backgroundColor: LEVEL_COLORS[word.cefr_level] ?? "#999" }}
+            style={{ backgroundColor: LEVEL_COLORS[word.cefr_level] ?? Colors.gray500 }}
           >
             <Text className="text-xs font-bold text-white">{word.cefr_level}</Text>
           </View>
@@ -441,7 +451,7 @@ export default function VocabularyScreen() {
           className="bg-white rounded-[20px] border border-surface-300 p-8 justify-center items-center"
           style={{
             minHeight: 280,
-            shadowColor: "#000",
+            shadowColor: Colors.textPrimary,
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.05,
             shadowRadius: 8,
@@ -455,11 +465,15 @@ export default function VocabularyScreen() {
 
           {/* Phonetic */}
           {word.phonetic && (
-            <Text className="text-base text-[#94A3B8] mb-4 italic">{word.phonetic}</Text>
+            <Text className="text-base mb-4 italic" style={{ color: Colors.textTertiary }}>
+              {word.phonetic}
+            </Text>
           )}
 
           {!isRevealed ? (
-            <Text className="text-sm text-[#94A3B8] mt-4">Tap to reveal translation</Text>
+            <Text className="text-sm mt-4" style={{ color: Colors.textTertiary }}>
+              Tap to reveal translation
+            </Text>
           ) : (
             <View className="items-center mt-4">
               {/* Divider */}
@@ -473,7 +487,10 @@ export default function VocabularyScreen() {
               {/* Context sentence */}
               {word.context_sentence && (
                 <View className="bg-surface rounded-xl p-4 mt-2 w-full">
-                  <Text className="text-[13px] text-[#4A5568] italic text-center leading-5">
+                  <Text
+                    className="text-[13px] italic text-center leading-5"
+                    style={{ color: Colors.gray700 }}
+                  >
                     {word.context_sentence}
                   </Text>
                 </View>
@@ -485,7 +502,7 @@ export default function VocabularyScreen() {
         {/* Rating buttons (visible after reveal) */}
         {isRevealed && (
           <View className="mt-6">
-            <Text className="text-[13px] text-[#4A5568] text-center mb-3">
+            <Text className="text-[13px] text-center mb-3" style={{ color: Colors.gray700 }}>
               How well did you know this?
             </Text>
             <View className="flex-row gap-2">

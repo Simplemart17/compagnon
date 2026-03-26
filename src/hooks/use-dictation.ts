@@ -249,6 +249,7 @@ export function useDictation(): UseDictationReturn {
 
   const startTimeRef = useRef<number>(Date.now());
   const speechCacheRef = useRef<Map<number, string>>(new Map());
+  const isGeneratingRef = useRef(false);
 
   const currentSentence = sentences[currentIndex] ?? null;
 
@@ -257,6 +258,9 @@ export function useDictation(): UseDictationReturn {
   // -------------------------------------------------------------------------
 
   const generateSentencesAction = useCallback(async () => {
+    if (isGeneratingRef.current) return;
+    isGeneratingRef.current = true;
+
     setScreenState("generating");
     setGenerateError(null);
     setSentences([]);
@@ -301,6 +305,8 @@ export function useDictation(): UseDictationReturn {
       setGenerateError(err instanceof Error ? err.message : "Failed to generate sentences");
       setScreenState("idle");
       hapticError();
+    } finally {
+      isGeneratingRef.current = false;
     }
   }, [cefrLevel]);
 

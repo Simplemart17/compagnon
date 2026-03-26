@@ -147,8 +147,12 @@ function SkillCard({
         {/* Labels */}
         <View className="flex-1">
           <Text className="text-base font-bold text-primary">{titleFr}</Text>
-          <Text className="text-xs text-[#6B7C93] mt-[2px]">{titleEn}</Text>
-          <Text className="text-xs text-[#94A3B8] mt-1">{description}</Text>
+          <Text className="text-xs mt-[2px]" style={{ color: Colors.textSecondary }}>
+            {titleEn}
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: Colors.textTertiary }}>
+            {description}
+          </Text>
         </View>
 
         {/* Arrow circle */}
@@ -228,8 +232,12 @@ function VocabularyCard({ onPress }: VocabularyCardProps) {
         {/* Labels */}
         <View className="flex-1">
           <Text className="text-base font-bold text-primary">Vocabulaire</Text>
-          <Text className="text-[13px] text-[#6B7C93] mt-[2px]">Vocabulary</Text>
-          <Text className="text-xs text-[#94A3B8] mt-1">Review with spaced repetition</Text>
+          <Text className="text-[13px] mt-[2px]" style={{ color: Colors.textSecondary }}>
+            Vocabulary
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: Colors.textTertiary }}>
+            Review with spaced repetition
+          </Text>
         </View>
       </Pressable>
     </Animated.View>
@@ -258,7 +266,7 @@ export default function PracticeScreen() {
         }}
       >
         <Text className="text-[26px] font-extrabold text-white mb-[6px]">Entraînement</Text>
-        <Text className="text-sm mb-5" style={{ color: "rgba(255,255,255,0.65)" }}>
+        <Text className="text-sm mb-5" style={{ color: Colors.textOnDarkSecondary }}>
           Choisissez une compétence à pratiquer.
         </Text>
 

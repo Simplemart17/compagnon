@@ -52,26 +52,26 @@ export const MCQCard = React.memo(function MCQCard({
           const isSelected = selectedAnswer === option.id;
           const isCorrect = option.isCorrect;
 
-          let bgColor = "#FFFFFF";
-          let borderColor = "#E0E0CE";
-          let textColor = "#1E3A5F";
+          let bgColor: string = Colors.surfaceWhite;
+          let borderColor: string = Colors.border;
+          let textColor: string = Colors.textPrimary;
 
           if (showResult && isSelected && isCorrect) {
             bgColor = Colors.success10;
-            borderColor = "#34C759";
+            borderColor = Colors.success;
             textColor = Colors.success;
           } else if (showResult && isSelected && !isCorrect) {
             bgColor = Colors.error10;
-            borderColor = "#FF3B30";
+            borderColor = Colors.error;
             textColor = Colors.error;
           } else if (showResult && isCorrect) {
             bgColor = Colors.success10;
-            borderColor = "#34C759";
+            borderColor = Colors.success;
             textColor = Colors.success;
           } else if (isSelected) {
             bgColor = Colors.primary5;
-            borderColor = "#1E3A5F";
-            textColor = "#1E3A5F";
+            borderColor = Colors.primary;
+            textColor = Colors.textPrimary;
           }
 
           const letter = String.fromCharCode(65 + index); // A, B, C, D
@@ -100,12 +100,12 @@ export const MCQCard = React.memo(function MCQCard({
               <View
                 className="h-8 w-8 items-center justify-center rounded-full"
                 style={{
-                  backgroundColor: isSelected ? borderColor : "#F0F0E8",
+                  backgroundColor: isSelected ? borderColor : Colors.gray100,
                 }}
               >
                 <Text
                   className="text-sm font-bold"
-                  style={{ color: isSelected ? "#FFFFFF" : "#666" }}
+                  style={{ color: isSelected ? Colors.surfaceWhite : Colors.gray600 }}
                 >
                   {letter}
                 </Text>
