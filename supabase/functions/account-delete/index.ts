@@ -30,6 +30,9 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // Generate a request ID for structured logging
+  const requestId = crypto.randomUUID();
+
   try {
     // Verify required environment variables
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -79,6 +82,8 @@ Deno.serve(async (req: Request) => {
 
     // 3. Delete the auth user using admin API (service role)
     //    FK ON DELETE CASCADE ensures all user data is removed automatically.
+    //    PostgreSQL cascades are transactional — if any cascade fails, the
+    //    entire deletion rolls back, so partial orphans cannot occur.
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
@@ -86,12 +91,23 @@ Deno.serve(async (req: Request) => {
     const { error: deleteError } =
       await supabaseAdmin.auth.admin.deleteUser(user.id);
     if (deleteError) {
+      console.error(`[${requestId}] account-delete failed for user ${user.id}: ${deleteError.message}`);
       return errorResponse({
         code: "INTERNAL_ERROR",
-        message: `Failed to delete account: ${deleteError.message}`,
+        message: "Failed to delete account",
         status: 500,
         corsHeaders,
       });
+    }
+
+    // 4. Verify cascade completed — profile should be gone
+    const { data: orphanCheck } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (orphanCheck) {
+      console.error(`[${requestId}] cascade incomplete: profile still exists for deleted user ${user.id}`);
     }
 
     return new Response(
@@ -101,10 +117,10 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Internal error";
+    console.error(`[${requestId}] account-delete unexpected error:`, err instanceof Error ? err.message : err);
     return errorResponse({
       code: "INTERNAL_ERROR",
-      message,
+      message: "Failed to delete account",
       status: 500,
       corsHeaders,
     });
