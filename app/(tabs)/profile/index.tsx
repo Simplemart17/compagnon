@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  ActivityIndicator,
   RefreshControl,
   StatusBar,
 } from "react-native";
@@ -27,6 +26,7 @@ import { CEFRProgressionChart } from "@/src/components/profile/cefr-progression-
 import { CEFR_LEVELS } from "@/src/types/cefr";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, SKILL_COLORS } from "@/src/lib/design";
+import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import type { CEFRLevel, TCFSkill } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -236,9 +236,42 @@ export default function ProfileScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <View className="flex-1 items-center justify-center bg-surface">
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text className="mt-4 text-sm text-[#4A5568]">Chargement du profil...</Text>
+        <StatusBar barStyle="light-content" />
+        <View className="flex-1 bg-surface">
+          {/* Hero skeleton */}
+          <View
+            className="rounded-b-[28px] bg-primary px-6 pb-8 items-center"
+            style={{ paddingTop: insets.top + 12 }}
+          >
+            <SkeletonBar width={100} height={20} style={{ marginBottom: 24 }} />
+            <SkeletonBar width={84} height={84} style={{ borderRadius: 42 }} />
+            <SkeletonBar width={140} height={22} style={{ marginTop: 12 }} />
+            <View className="flex-row gap-2.5 mt-3">
+              <SkeletonBar width={50} height={28} style={{ borderRadius: 16 }} />
+              <SkeletonBar width={50} height={28} style={{ borderRadius: 16 }} />
+            </View>
+          </View>
+          {/* Stat tiles skeleton */}
+          <View className="-mt-7 mb-1 flex-row gap-2.5 px-5">
+            {[0, 1, 2].map((i) => (
+              <View key={i} className="flex-1 items-center rounded-2xl bg-white px-2.5 py-3.5">
+                <SkeletonBar width={40} height={24} style={{ marginBottom: 4 }} />
+                <SkeletonBar width={50} height={12} />
+              </View>
+            ))}
+          </View>
+          {/* Content skeleton */}
+          <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
+            <SkeletonBar width={130} height={18} style={{ marginBottom: 12 }} />
+            {[0, 1, 2].map((i) => (
+              <SkeletonBar
+                key={i}
+                width="100%"
+                height={60}
+                style={{ borderRadius: 16, marginBottom: 10 }}
+              />
+            ))}
+          </View>
         </View>
       </>
     );
