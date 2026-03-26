@@ -66,7 +66,9 @@ export default function MockTestResultsScreen() {
     >
       {/* Overall Score */}
       <View className="items-center mb-8">
-        <Text className="text-sm text-[#4A5568] mb-2">Your TCF Score</Text>
+        <Text className="text-sm mb-2" style={{ color: Colors.gray700 }}>
+          Your TCF Score
+        </Text>
         <View
           className="w-40 h-40 rounded-full justify-center items-center bg-white"
           style={{
@@ -75,14 +77,16 @@ export default function MockTestResultsScreen() {
           }}
         >
           <Text className="text-[48px] font-extrabold text-primary">{results.overallTcfScore}</Text>
-          <Text className="text-xs text-[#94A3B8]">/ 699</Text>
+          <Text className="text-xs" style={{ color: Colors.gray500 }}>
+            / 699
+          </Text>
         </View>
 
         {/* CEFR Badge */}
         <View
           className="px-5 py-2 rounded-[20px] mt-4"
           style={{
-            backgroundColor: LEVEL_COLORS[results.overallCefrLevel as CEFRLevel] ?? "#999",
+            backgroundColor: LEVEL_COLORS[results.overallCefrLevel as CEFRLevel] ?? Colors.gray500,
           }}
         >
           <Text className="text-white text-lg font-extrabold">{results.overallCefrLevel}</Text>
@@ -91,7 +95,9 @@ export default function MockTestResultsScreen() {
         {/* Distance to C1 */}
         {distanceToC1 > 0 && (
           <View className="bg-accent/10 rounded-xl p-4 mt-4 w-full items-center">
-            <Text className="text-[13px] text-[#4A5568] mb-1">Distance to C1 (500+)</Text>
+            <Text className="text-[13px] mb-1" style={{ color: Colors.gray700 }}>
+              Distance to C1 (500+)
+            </Text>
             <Text className="text-[28px] font-extrabold text-accent">{distanceToC1} points</Text>
             {/* Progress bar to C1 */}
             <View className="w-full h-2 bg-surface-300 rounded-sm mt-2">
@@ -110,7 +116,7 @@ export default function MockTestResultsScreen() {
         {distanceToC1 === 0 && (
           <View className="bg-success/10 rounded-xl p-4 mt-4 w-full items-center">
             <Text className="text-xl font-extrabold text-success">C1 Achieved!</Text>
-            <Text className="text-[13px] text-[#4A5568] mt-1">
+            <Text className="text-[13px] mt-1" style={{ color: Colors.gray700 }}>
               You&apos;ve reached the C1 threshold on this mock test.
             </Text>
           </View>
@@ -132,7 +138,7 @@ export default function MockTestResultsScreen() {
                   <Text className="text-xl">{meta?.emoji}</Text>
                   <View>
                     <Text className="text-base font-bold text-primary">{meta?.name}</Text>
-                    <Text className="text-[11px] text-[#94A3B8]">
+                    <Text className="text-[11px]" style={{ color: Colors.gray500 }}>
                       {sectionResult.correct}/{sectionResult.total} correct
                     </Text>
                   </View>
@@ -145,7 +151,8 @@ export default function MockTestResultsScreen() {
                   <View
                     className="px-2 py-0.5 rounded-md mt-0.5"
                     style={{
-                      backgroundColor: LEVEL_COLORS[sectionResult.cefrLevel as CEFRLevel] ?? "#999",
+                      backgroundColor:
+                        LEVEL_COLORS[sectionResult.cefrLevel as CEFRLevel] ?? Colors.gray500,
                     }}
                   >
                     <Text className="text-white text-[11px] font-bold">
@@ -176,6 +183,8 @@ export default function MockTestResultsScreen() {
         <TouchableOpacity
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Expo Router typed routes limitation
           onPress={() => router.replace("/(tabs)/mock-test" as any)}
+          accessibilityRole="button"
+          accessibilityLabel="Take another test"
           className="bg-primary rounded-xl py-4 items-center"
         >
           <Text className="text-white text-base font-bold">Take Another Test</Text>
@@ -183,6 +192,8 @@ export default function MockTestResultsScreen() {
         <TouchableOpacity
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Expo Router typed routes limitation
           onPress={() => router.replace("/(tabs)/home" as any)}
+          accessibilityRole="button"
+          accessibilityLabel="Back to home"
           className="bg-surface-200 rounded-xl py-4 items-center"
         >
           <Text className="text-primary text-base font-semibold">Back to Home</Text>

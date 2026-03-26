@@ -11,12 +11,11 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
   BackHandler,
   Platform,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { chatCompletionJSON } from "@/src/lib/openai";
@@ -28,7 +27,9 @@ import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
 import { updateStreak, incrementDailyActivity, checkCefrPromotion } from "@/src/lib/activity";
 import { MCQCard } from "@/src/components/practice/MCQCard";
+import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { hapticLight } from "@/src/lib/haptics";
+import { Colors, Shadows } from "@/src/lib/design";
 import type { MCQContent } from "@/src/types/exercise";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -61,6 +62,65 @@ const SECTION_META: Record<
     questionCount: 18,
   },
 };
+
+/** Skeleton loading screen shown while generating TCF test */
+function MockTestSkeleton() {
+  return (
+    <SafeAreaView className="flex-1 bg-surface">
+      {/* Header skeleton */}
+      <View className="bg-primary px-4 py-3 flex-row items-center justify-between">
+        <SkeletonBar
+          width={120}
+          height={16}
+          style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+        />
+        <SkeletonBar width={60} height={24} style={{ backgroundColor: "rgba(255,255,255,0.15)" }} />
+        <SkeletonBar width={60} height={16} style={{ backgroundColor: "rgba(255,255,255,0.15)" }} />
+      </View>
+
+      {/* Progress bar skeleton */}
+      <View className="px-4 py-2">
+        <SkeletonBar width="100%" height={4} />
+      </View>
+
+      {/* Content skeleton */}
+      <View style={{ padding: 20 }}>
+        <SkeletonBar width={140} height={14} style={{ marginBottom: 16 }} />
+
+        {/* Question card skeleton */}
+        <View className="bg-white rounded-2xl p-5" style={{ ...Shadows.card }}>
+          <SkeletonBar width="90%" height={18} style={{ marginBottom: 12 }} />
+          <SkeletonBar width="70%" height={18} style={{ marginBottom: 24 }} />
+
+          {/* Options skeleton */}
+          {[0, 1, 2, 3].map((i) => (
+            <View
+              key={i}
+              className="rounded-xl p-4 mb-3"
+              style={{
+                backgroundColor: Colors.gray100,
+                borderWidth: 1,
+                borderColor: Colors.border,
+              }}
+            >
+              <SkeletonBar width={`${70 - i * 10}%`} height={14} />
+            </View>
+          ))}
+        </View>
+
+        {/* Status message */}
+        <View className="items-center mt-8">
+          <Text className="text-sm font-medium" style={{ color: Colors.textSecondary }}>
+            Generating TCF test...
+          </Text>
+          <Text className="text-xs mt-1" style={{ color: Colors.textTertiary }}>
+            This may take a moment
+          </Text>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
 
 export default function MockTestSessionScreen() {
   const { testId } = useLocalSearchParams<{ testId: string }>();
@@ -107,7 +167,7 @@ export default function MockTestSessionScreen() {
 
   // Save in-progress test state to DB (debounced)
   const saveTestProgress = useCallback(
-    async (testState: TestState, answeredSet: Set<string>) => {
+    async (testState: TestState, answeredSet: Set<string>, questionIndex: number) => {
       const userId = useAuthStore.getState().user?.id;
       if (!userId || !activeTestId) return;
 
@@ -119,7 +179,9 @@ export default function MockTestSessionScreen() {
             section_scores: {
               answers: testState.answers,
               currentSectionIndex: testState.currentSectionIndex,
+              currentQuestionIndex: questionIndex,
               timeRemaining: testState.timeRemaining,
+              savedAt: Date.now(),
               answeredQuestions: [...answeredSet],
             },
           })
@@ -149,19 +211,61 @@ export default function MockTestSessionScreen() {
           .single();
 
         if (existing?.questions && existing?.section_scores?.answers) {
-          // Resume from saved state
-          const saved = existing.section_scores;
-          setActiveTestId(existing.id);
-          setAnsweredQuestions(new Set(saved.answeredQuestions ?? []));
-          setState({
-            sections,
-            currentSectionIndex: saved.currentSectionIndex ?? 0,
-            questions: existing.questions as Record<Section, MCQContent[]>,
-            answers: saved.answers ?? {},
-            timeRemaining: saved.timeRemaining ?? 0,
-            status: "active",
-          });
-          return;
+          try {
+            // Resume from saved state
+            const saved = existing.section_scores;
+            const resumedQuestions = existing.questions as Record<Section, MCQContent[]>;
+
+            // Validate saved state is not corrupt
+            const hasValidQuestions = sections.some(
+              (s) => Array.isArray(resumedQuestions[s]) && resumedQuestions[s].length > 0
+            );
+            if (!hasValidQuestions) throw new Error("Corrupt saved state: no valid questions");
+
+            // Subtract elapsed time since last save to prevent gaining time
+            let adjustedTimeRemaining = saved.timeRemaining ?? 0;
+            if (saved.savedAt && adjustedTimeRemaining > 0) {
+              const elapsedMs = Date.now() - saved.savedAt;
+              const elapsedSeconds = Math.floor(elapsedMs / 1000);
+              adjustedTimeRemaining = Math.max(0, adjustedTimeRemaining - elapsedSeconds);
+            }
+
+            setActiveTestId(existing.id);
+            setAnsweredQuestions(new Set(saved.answeredQuestions ?? []));
+            setCurrentQuestionIndex(saved.currentQuestionIndex ?? 0);
+            setState({
+              sections,
+              currentSectionIndex: saved.currentSectionIndex ?? 0,
+              questions: resumedQuestions,
+              answers: saved.answers ?? {},
+              timeRemaining: adjustedTimeRemaining,
+              status: adjustedTimeRemaining <= 0 ? "finished" : "active",
+            });
+            return;
+          } catch (err) {
+            captureError(err, "mock-test-resume");
+            // Corrupt saved state — offer to start fresh
+            Alert.alert(
+              "Resume Failed",
+              "Your saved test data appears to be corrupted. Would you like to start a new test?",
+              [
+                { text: "Go Back", style: "cancel", onPress: () => router.back() },
+                {
+                  text: "Start New Test",
+                  onPress: async () => {
+                    try {
+                      await supabase.from("mock_tests").delete().eq("id", existing.id);
+                    } catch (deleteErr) {
+                      captureError(deleteErr, "mock-test-delete-corrupt");
+                    }
+                    // Re-run initTest to generate fresh questions
+                    void initTest();
+                  },
+                },
+              ]
+            );
+            return;
+          }
         }
       }
 
@@ -202,7 +306,24 @@ export default function MockTestSessionScreen() {
             }
           }
 
-          allQuestions[section] = result.questions;
+          // Validate: each question must have exactly 4 options with exactly 1 correct
+          const validated = result.questions.filter((q) => {
+            const opts = q.options ?? [];
+            const correctCount = opts.filter((o) => o.isCorrect).length;
+            return opts.length === 4 && correctCount === 1;
+          });
+
+          const expected = SECTION_META[section].questionCount;
+          if (validated.length < Math.ceil(expected * 0.5) && validated.length > 0) {
+            captureError(
+              new Error(
+                `Section ${section}: only ${validated.length}/${expected} questions passed validation`
+              ),
+              "mock-test-validation-truncated"
+            );
+          }
+
+          allQuestions[section] = validated;
         } catch (err) {
           captureError(err, `mock-test-generate-${section}`);
           allQuestions[section] = [];
@@ -254,9 +375,9 @@ export default function MockTestSessionScreen() {
   useEffect(() => {
     if (state.status !== "active") return;
 
-    // Compute the absolute end time once when the timer starts (or resumes).
-    // On subsequent ticks we derive remaining from Date.now().
-    if (endTimeRef.current === 0 && state.timeRemaining > 0) {
+    // Compute the absolute end time from the current timeRemaining.
+    // Always recompute when effect re-runs (e.g. after resume) to stay accurate.
+    if (state.timeRemaining > 0) {
       endTimeRef.current = Date.now() + state.timeRemaining * 1000;
     }
 
@@ -275,6 +396,8 @@ export default function MockTestSessionScreen() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status]);
+
+  const navigation = useNavigation();
 
   // BackHandler guard -- confirm before leaving during an active test (Android)
   useEffect(() => {
@@ -295,11 +418,34 @@ export default function MockTestSessionScreen() {
     return () => handler.remove();
   }, [state.status, router]);
 
+  // iOS navigation guard — intercept back swipe and header back button
+  useEffect(() => {
+    if (state.status !== "active") return;
+
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      // Only block user-initiated navigation, not programmatic (e.g. router.replace on finish)
+      if (e.data.action.type !== "GO_BACK") return;
+
+      e.preventDefault();
+      Alert.alert("Leave Test?", "Your progress has been saved. You can resume this test later.", [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: () => navigation.dispatch(e.data.action),
+        },
+      ]);
+    });
+
+    return unsubscribe;
+  }, [state.status, navigation]);
+
   // Navigate to results when finished -- persist to Supabase first
   useEffect(() => {
     if (state.status === "finished") {
       if (timerRef.current) clearInterval(timerRef.current);
-      const results = calculateResults();
+      // Use state directly from the effect closure — it re-runs when state.status changes
+      const results = calculateResultsFromState(state);
 
       // Save to Supabase (non-blocking)
       const userId = useAuthStore.getState().user?.id;
@@ -352,56 +498,69 @@ export default function MockTestSessionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status]);
 
-  const calculateResults = useCallback(() => {
-    const sectionResults: Record<
-      string,
-      { score: number; correct: number; total: number; tcfScore: number; cefrLevel: string }
-    > = {};
+  /** Calculate results from the given test state (pure function, no stale closures). */
+  const calculateResultsFromState = useCallback(
+    (testState: TestState) => {
+      const sectionResults: Record<
+        string,
+        {
+          score: number;
+          correct: number;
+          total: number;
+          tcfScore: number;
+          cefrLevel: string;
+          isPartial: boolean;
+        }
+      > = {};
 
-    for (const section of state.sections) {
-      const questions = state.questions[section];
-      let correct = 0;
-      for (let i = 0; i < questions.length; i++) {
-        const key = `${section}_${i}`;
-        const answer = state.answers[key];
-        const correctOption = questions[i]?.options.find((o) => o.isCorrect);
-        if (answer === correctOption?.id) correct++;
+      for (const section of testState.sections) {
+        const questions = testState.questions[section];
+        let correct = 0;
+        for (let i = 0; i < questions.length; i++) {
+          const key = `${section}_${i}`;
+          const answer = testState.answers[key];
+          const correctOption = questions[i]?.options.find((o) => o.isCorrect);
+          if (answer === correctOption?.id) correct++;
+        }
+        const rawPercent = questions.length > 0 ? (correct / questions.length) * 100 : 0;
+        const tcfScore = rawToTCFScore(rawPercent);
+
+        sectionResults[section] = {
+          score: Math.round(rawPercent),
+          correct,
+          total: questions.length,
+          tcfScore,
+          cefrLevel: levelFromScore(tcfScore) ?? "Below A1",
+          isPartial: testState.sections.length === 1,
+        };
       }
-      const rawPercent = questions.length > 0 ? (correct / questions.length) * 100 : 0;
-      const tcfScore = rawToTCFScore(rawPercent);
 
-      sectionResults[section] = {
-        score: Math.round(rawPercent),
-        correct,
-        total: questions.length,
-        tcfScore,
-        cefrLevel: levelFromScore(tcfScore) ?? "A1",
+      const allScores = Object.values(sectionResults).map((s) => s.tcfScore);
+      const overallTcfScore = Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length);
+
+      return {
+        sections: sectionResults,
+        overallTcfScore,
+        overallCefrLevel: levelFromScore(overallTcfScore) ?? "Below A1",
+        testType: testId,
+        isPartialTest: testState.sections.length < 3,
       };
-    }
-
-    const allScores = Object.values(sectionResults).map((s) => s.tcfScore);
-    const overallTcfScore = Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length);
-
-    return {
-      sections: sectionResults,
-      overallTcfScore,
-      overallCefrLevel: levelFromScore(overallTcfScore) ?? "A1",
-      testType: testId,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
+    },
+    [testId]
+  );
 
   const handleAnswer = useCallback(
     (answerId: string) => {
       hapticLight();
       const key = `${currentSection}_${currentQuestionIndex}`;
+      const qIdx = currentQuestionIndex;
       setState((s) => {
         const newState = { ...s, answers: { ...s.answers, [key]: answerId } };
         // Debounced save to DB
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => {
           const newSet = new Set(answeredQuestions).add(key);
-          void saveTestProgress(newState, newSet);
+          void saveTestProgress(newState, newSet, qIdx);
         }, 2000);
         return newState;
       });
@@ -461,15 +620,9 @@ export default function MockTestSessionScreen() {
 
   if (isInvalidTestId) return null;
 
-  // Loading screen
+  // Loading screen — skeleton loader
   if (state.status === "loading") {
-    return (
-      <SafeAreaView className="flex-1 bg-surface justify-center items-center">
-        <ActivityIndicator size="large" color="#1E3A5F" />
-        <Text className="text-[#666] mt-4 text-sm">Generating TCF test...</Text>
-        <Text className="text-[#999] mt-1 text-xs">This may take a moment</Text>
-      </SafeAreaView>
-    );
+    return <MockTestSkeleton />;
   }
 
   const isLastQuestion = currentQuestionIndex >= currentQuestions.length - 1;
@@ -497,7 +650,7 @@ export default function MockTestSessionScreen() {
           <Text
             className="text-xl font-extrabold"
             style={{
-              color: isTimeLow ? "#FF3B30" : "#FFFFFF",
+              color: isTimeLow ? Colors.error : Colors.textOnDark,
               fontVariant: ["tabular-nums"],
             }}
           >
@@ -528,7 +681,11 @@ export default function MockTestSessionScreen() {
               className="flex-1 h-1 rounded-sm"
               style={{
                 backgroundColor:
-                  i === currentQuestionIndex ? "#1E3A5F" : answered ? "#34C759" : "#E0E0CE",
+                  i === currentQuestionIndex
+                    ? Colors.primary
+                    : answered
+                      ? Colors.success
+                      : Colors.border,
               }}
             />
           );
@@ -537,7 +694,7 @@ export default function MockTestSessionScreen() {
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         {/* Question number */}
-        <Text className="text-[13px] text-[#999] mb-3">
+        <Text className="text-[13px] mb-3" style={{ color: Colors.textTertiary }}>
           Question {currentQuestionIndex + 1} of {currentQuestions.length}
         </Text>
 
@@ -555,7 +712,7 @@ export default function MockTestSessionScreen() {
       {/* Bottom navigation */}
       <View
         className="flex-row px-4 py-3 gap-3"
-        style={{ borderTopWidth: 1, borderTopColor: "#E0E0CE" }}
+        style={{ borderTopWidth: 1, borderTopColor: Colors.border }}
       >
         <TouchableOpacity
           onPress={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
@@ -565,13 +722,13 @@ export default function MockTestSessionScreen() {
           accessibilityState={{ disabled: currentQuestionIndex === 0 }}
           className="flex-1 rounded-xl py-3.5 items-center"
           style={{
-            backgroundColor: currentQuestionIndex === 0 ? "#E0E0CE" : "#F0F0E8",
+            backgroundColor: currentQuestionIndex === 0 ? Colors.border : Colors.gray100,
           }}
         >
           <Text
             className="text-[15px] font-semibold"
             style={{
-              color: currentQuestionIndex === 0 ? "#999" : "#1E3A5F",
+              color: currentQuestionIndex === 0 ? Colors.textTertiary : Colors.primary,
             }}
           >
             Previous
