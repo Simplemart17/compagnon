@@ -7,7 +7,6 @@ import {
   TextInput,
   Alert,
   Platform,
-  ActivityIndicator,
   Share,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
@@ -40,8 +39,9 @@ interface SectionLabelProps {
 function SectionLabel({ children, topMargin = 0 }: SectionLabelProps) {
   return (
     <Text
-      className="mb-2 px-1 text-[11px] font-bold uppercase tracking-widest text-accent"
-      style={{ marginTop: topMargin }}
+      className="mb-2 px-1 text-[11px] font-bold uppercase tracking-widest"
+      style={{ marginTop: topMargin, color: Colors.accentText }}
+      accessibilityRole="header"
     >
       {children}
     </Text>
@@ -59,7 +59,7 @@ function SettingsCard({ children, marginBottom = 12 }: SettingsCardProps) {
       className="rounded-2xl bg-white p-4"
       style={{
         marginBottom,
-        shadowColor: "#000",
+        shadowColor: Colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.07,
         shadowRadius: 8,
@@ -77,7 +77,10 @@ interface CardLabelProps {
 
 function CardLabel({ children }: CardLabelProps) {
   return (
-    <Text className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-[#94A3B8]">
+    <Text
+      className="mb-3 text-[13px] font-semibold uppercase tracking-wide"
+      style={{ color: Colors.textTertiary }}
+    >
       {children}
     </Text>
   );
@@ -292,7 +295,13 @@ export default function SettingsScreen() {
           className="border-b border-surface-200 bg-white px-6 pb-4"
           style={{ paddingTop: insets.top + 16 }}
         >
-          <TouchableOpacity onPress={() => router.back()} className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="flex-row items-center"
+            style={{ minHeight: 44, justifyContent: "center" }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to profile"
+          >
             <Text className="text-base font-bold text-primary">← Paramètres</Text>
           </TouchableOpacity>
         </View>
@@ -322,15 +331,21 @@ export default function SettingsScreen() {
                   <TouchableOpacity
                     key={level}
                     onPress={() => handleUpdateLevel(level)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`Level ${level}`}
+                    accessibilityState={{ selected }}
+                    accessibilityHint={selected ? undefined : "Double tap to set as current level"}
                     className="rounded-xl border px-3.5 py-2"
                     style={{
-                      backgroundColor: selected ? "#1E3A5F" : "#F5F5F0",
-                      borderColor: selected ? "#F5A623" : "#E0E0CE",
+                      minHeight: 44,
+                      justifyContent: "center",
+                      backgroundColor: selected ? Colors.primary : Colors.surface,
+                      borderColor: selected ? Colors.accent : Colors.border,
                     }}
                   >
                     <Text
                       className="text-sm font-semibold"
-                      style={{ color: selected ? "#FFFFFF" : "#1E3A5F" }}
+                      style={{ color: selected ? Colors.surfaceWhite : Colors.primary }}
                     >
                       {level}
                     </Text>
@@ -350,15 +365,21 @@ export default function SettingsScreen() {
                   <TouchableOpacity
                     key={level}
                     onPress={() => handleUpdateTarget(level)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`Target level ${level}`}
+                    accessibilityState={{ selected }}
+                    accessibilityHint={selected ? undefined : "Double tap to set as target level"}
                     className="rounded-xl border px-3.5 py-2"
                     style={{
-                      backgroundColor: selected ? "#1E3A5F" : "#F5F5F0",
-                      borderColor: selected ? "#F5A623" : "#E0E0CE",
+                      minHeight: 44,
+                      justifyContent: "center",
+                      backgroundColor: selected ? Colors.primary : Colors.surface,
+                      borderColor: selected ? Colors.accent : Colors.border,
                     }}
                   >
                     <Text
                       className="text-sm font-semibold"
-                      style={{ color: selected ? "#FFFFFF" : "#1E3A5F" }}
+                      style={{ color: selected ? Colors.surfaceWhite : Colors.primary }}
                     >
                       {level}
                     </Text>
@@ -378,15 +399,21 @@ export default function SettingsScreen() {
                   <TouchableOpacity
                     key={minutes}
                     onPress={() => handleUpdateDailyGoal(minutes)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${minutes} minutes per day`}
+                    accessibilityState={{ selected }}
+                    accessibilityHint={selected ? undefined : "Double tap to set as daily goal"}
                     className="rounded-xl border px-[18px] py-2"
                     style={{
-                      backgroundColor: selected ? "#F5A623" : "#F5F5F0",
-                      borderColor: selected ? "#F5A623" : "#E0E0CE",
+                      minHeight: 44,
+                      justifyContent: "center",
+                      backgroundColor: selected ? Colors.accent : Colors.surface,
+                      borderColor: selected ? Colors.accent : Colors.border,
                     }}
                   >
                     <Text
                       className="text-sm font-semibold"
-                      style={{ color: selected ? "#FFFFFF" : "#1E3A5F" }}
+                      style={{ color: selected ? Colors.surfaceWhite : Colors.primary }}
                     >
                       {minutes} min
                     </Text>
@@ -421,15 +448,23 @@ export default function SettingsScreen() {
                 <View className="mt-3 flex-row gap-2.5">
                   <TouchableOpacity
                     onPress={handleSaveName}
+                    accessibilityRole="button"
+                    accessibilityLabel="Save display name"
                     className="items-center rounded-[10px] bg-accent px-5 py-2.5"
+                    style={{ minHeight: 44, justifyContent: "center" }}
                   >
                     <Text className="text-sm font-semibold text-white">Enregistrer</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleCancelNameEdit}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel editing display name"
                     className="items-center rounded-[10px] bg-surface-200 px-5 py-2.5"
+                    style={{ minHeight: 44, justifyContent: "center" }}
                   >
-                    <Text className="text-sm font-semibold text-[#4A5568]">Annuler</Text>
+                    <Text className="text-sm font-semibold" style={{ color: Colors.gray700 }}>
+                      Annuler
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -443,8 +478,13 @@ export default function SettingsScreen() {
                     setNameValue(profile?.full_name ?? "");
                     setEditingName(true);
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit display name"
+                  style={{ minHeight: 44, justifyContent: "center" }}
                 >
-                  <Text className="text-sm font-semibold text-accent">Modifier</Text>
+                  <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
+                    Modifier
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -453,12 +493,16 @@ export default function SettingsScreen() {
           {/* Email */}
           <SettingsCard>
             <CardLabel>Adresse e-mail</CardLabel>
-            <Text className="text-base text-[#4A5568]">{email}</Text>
+            <Text className="text-base" style={{ color: Colors.gray700 }}>
+              {email}
+            </Text>
           </SettingsCard>
 
           {/* Sign out */}
           <TouchableOpacity
             onPress={handleSignOut}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
             className="mb-6 mt-1 items-center rounded-2xl border border-error bg-white p-4"
           >
             <Text className="text-base font-semibold text-error">Se déconnecter</Text>
@@ -471,20 +515,21 @@ export default function SettingsScreen() {
             <TouchableOpacity
               onPress={handleExportData}
               disabled={exportingData}
+              accessibilityRole="button"
+              accessibilityLabel="Export my data"
+              accessibilityState={{ disabled: exportingData, busy: exportingData }}
               className="flex-row items-center justify-between"
-              style={{ opacity: exportingData ? 0.5 : 1 }}
+              style={{ minHeight: 44, opacity: exportingData ? 0.5 : 1 }}
             >
               <View>
                 <Text className="text-[15px] text-primary">Exporter mes données</Text>
-                <Text className="mt-0.5 text-xs text-[#94A3B8]">
+                <Text className="mt-0.5 text-xs" style={{ color: Colors.textTertiary }}>
                   Download all your data as JSON
                 </Text>
               </View>
-              {exportingData ? (
-                <ActivityIndicator size="small" color={Colors.primary} />
-              ) : (
-                <Text className="text-sm font-semibold text-primary">Export {"\u2192"}</Text>
-              )}
+              <Text className="text-sm font-semibold text-primary">
+                {exportingData ? "Exporting..." : "Export \u2192"}
+              </Text>
             </TouchableOpacity>
 
             <RowDivider />
@@ -516,15 +561,15 @@ export default function SettingsScreen() {
                     accessibilityLabel="Permanently delete account"
                     accessibilityState={{ disabled: deletingAccount, busy: deletingAccount }}
                     className="items-center rounded-[10px] bg-error px-5 py-2.5"
-                    style={{ opacity: deletingAccount ? 0.5 : 1 }}
+                    style={{
+                      minHeight: 44,
+                      justifyContent: "center",
+                      opacity: deletingAccount ? 0.5 : 1,
+                    }}
                   >
-                    {deletingAccount ? (
-                      <ActivityIndicator size="small" color={Colors.surfaceWhite} />
-                    ) : (
-                      <Text className="text-sm font-semibold text-white">
-                        Supprimer définitivement
-                      </Text>
-                    )}
+                    <Text className="text-sm font-semibold text-white">
+                      {deletingAccount ? "Deleting..." : "Supprimer d\u00E9finitivement"}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setShowDeleteConfirm(false)}
@@ -532,7 +577,11 @@ export default function SettingsScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Cancel account deletion"
                     className="items-center rounded-[10px] bg-surface-200 px-5 py-2.5"
-                    style={{ opacity: deletingAccount ? 0.5 : 1 }}
+                    style={{
+                      minHeight: 44,
+                      justifyContent: "center",
+                      opacity: deletingAccount ? 0.5 : 1,
+                    }}
                   >
                     <Text className="text-sm font-semibold" style={{ color: Colors.gray700 }}>
                       Annuler
@@ -544,8 +593,12 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 onPress={handleDeleteAccount}
                 disabled={deletingAccount}
+                accessibilityRole="button"
+                accessibilityLabel="Delete my account"
+                accessibilityHint="This will permanently delete all your data"
+                accessibilityState={{ disabled: deletingAccount }}
                 className="flex-row items-center justify-between"
-                style={{ opacity: deletingAccount ? 0.5 : 1 }}
+                style={{ minHeight: 44, opacity: deletingAccount ? 0.5 : 1 }}
               >
                 <View>
                   <Text className="text-[15px] text-error">Supprimer mon compte</Text>
@@ -553,11 +606,9 @@ export default function SettingsScreen() {
                     Permanently delete all your data
                   </Text>
                 </View>
-                {deletingAccount ? (
-                  <ActivityIndicator size="small" color={Colors.error} />
-                ) : (
-                  <Text className="text-sm font-semibold text-error">Delete</Text>
-                )}
+                <Text className="text-sm font-semibold text-error">
+                  {deletingAccount ? "Deleting..." : "Delete"}
+                </Text>
               </TouchableOpacity>
             )}
           </SettingsCard>
@@ -569,7 +620,7 @@ export default function SettingsScreen() {
             {/* App version */}
             <View className="flex-row items-center justify-between">
               <Text className="text-[15px] text-primary">Version de l&apos;app</Text>
-              <Text className="text-[15px] text-[#94A3B8]">
+              <Text className="text-[15px]" style={{ color: Colors.textTertiary }}>
                 {Constants.expoConfig?.version ?? "1.0.0"}
               </Text>
             </View>
@@ -579,10 +630,15 @@ export default function SettingsScreen() {
             {/* Privacy Policy */}
             <TouchableOpacity
               onPress={() => router.push("/(tabs)/profile/privacy-policy")}
+              accessibilityRole="button"
+              accessibilityLabel="View privacy policy"
               className="flex-row items-center justify-between"
+              style={{ minHeight: 44, justifyContent: "center" }}
             >
               <Text className="text-[15px] text-primary">Politique de confidentialité</Text>
-              <Text className="text-sm font-semibold text-accent">Voir {"\u2192"}</Text>
+              <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
+                Voir {"\u2192"}
+              </Text>
             </TouchableOpacity>
 
             <RowDivider />
@@ -590,10 +646,15 @@ export default function SettingsScreen() {
             {/* Terms of Service */}
             <TouchableOpacity
               onPress={() => router.push("/(tabs)/profile/terms")}
+              accessibilityRole="button"
+              accessibilityLabel="View terms of service"
               className="flex-row items-center justify-between"
+              style={{ minHeight: 44, justifyContent: "center" }}
             >
               <Text className="text-[15px] text-primary">Conditions d&apos;utilisation</Text>
-              <Text className="text-sm font-semibold text-accent">Voir {"\u2192"}</Text>
+              <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
+                Voir {"\u2192"}
+              </Text>
             </TouchableOpacity>
           </SettingsCard>
         </ScrollView>

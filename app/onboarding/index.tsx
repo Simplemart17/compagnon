@@ -1,13 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
-  Dimensions,
-  Alert,
-} from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Dimensions, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Animated, {
@@ -87,7 +79,7 @@ function StepPill({ active }: StepPillProps) {
         {
           height: 6,
           borderRadius: 3,
-          backgroundColor: active ? "#F5A623" : "rgba(255,255,255,0.25)",
+          backgroundColor: active ? Colors.accent : "rgba(255,255,255,0.25)",
         },
         animatedStyle,
       ]}
@@ -205,7 +197,7 @@ export default function OnboardingScreen() {
         style={{
           paddingTop: insets.top + 20,
           // Shadow kept inline -- NativeWind shadow support is limited on native
-          shadowColor: "#0D2240",
+          shadowColor: Colors.bgDark,
           shadowOpacity: 0.35,
           shadowRadius: 20,
           shadowOffset: { width: 0, height: 8 },
@@ -215,19 +207,32 @@ export default function OnboardingScreen() {
         }}
       >
         {/* Brand */}
-        <Text className="text-[#FFD180] text-[11px] font-extrabold tracking-[3px] mb-5">
+        <Text
+          style={{ color: Colors.accentLight }}
+          className="text-[11px] font-extrabold tracking-[3px] mb-5"
+        >
           COMPAGNON
         </Text>
 
         {/* Step progress pills */}
-        <View className="flex-row gap-2 mb-6">
-          {STEPS.map((s) => (
-            <StepPill key={s} active={s === step} />
+        <View className="flex-row gap-2 mb-6" accessibilityRole="tablist">
+          {STEPS.map((s, i) => (
+            <View
+              key={s}
+              accessibilityRole="tab"
+              accessibilityLabel={`Step ${i + 1} of 3`}
+              accessibilityState={{ selected: s === step }}
+            >
+              <StepPill active={s === step} />
+            </View>
           ))}
         </View>
 
         {/* Step title */}
-        <Text className="text-[28px] font-extrabold text-white mb-[6px] leading-[34px]">
+        <Text
+          className="text-[28px] font-extrabold text-white mb-[6px] leading-[34px]"
+          accessibilityRole="header"
+        >
           {copy.title}
         </Text>
         <Text className="text-sm text-white/65 leading-5">{copy.subtitle}</Text>
@@ -253,6 +258,10 @@ export default function OnboardingScreen() {
                   <TouchableOpacity
                     onPress={() => setSelectedLevel(level)}
                     activeOpacity={0.75}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${level}, ${CEFR_LEVELS[level].name}`}
+                    accessibilityHint="Double tap to select this level"
+                    accessibilityState={{ selected: isSelected }}
                     className="flex-row items-center overflow-hidden"
                     style={{
                       backgroundColor: isSelected ? Colors.primary : Colors.surfaceWhite,
@@ -312,6 +321,10 @@ export default function OnboardingScreen() {
               <TouchableOpacity
                 onPress={() => setSelectedLevel(null)}
                 activeOpacity={0.75}
+                accessibilityRole="radio"
+                accessibilityLabel="I don't know, take a placement test"
+                accessibilityHint="Double tap to select this option"
+                accessibilityState={{ selected: selectedLevel === null }}
                 className="flex-row items-center overflow-hidden"
                 style={{
                   backgroundColor: selectedLevel === null ? Colors.primary : Colors.surfaceWhite,
@@ -374,13 +387,17 @@ export default function OnboardingScreen() {
                   <TouchableOpacity
                     onPress={() => setSelectedGoal(goal.id)}
                     activeOpacity={0.75}
+                    accessibilityRole="radio"
+                    accessibilityLabel={goal.label}
+                    accessibilityHint="Double tap to select this goal"
+                    accessibilityState={{ selected: isSelected }}
                     className="flex-row items-center overflow-hidden"
                     style={{
-                      backgroundColor: isSelected ? "#1E3A5F" : "#FFFFFF",
+                      backgroundColor: isSelected ? Colors.primary : Colors.surfaceWhite,
                       borderRadius: 14,
                       borderWidth: 1,
-                      borderColor: isSelected ? "#1E3A5F" : "#E0E0CE",
-                      shadowColor: "#1E3A5F",
+                      borderColor: isSelected ? Colors.primary : Colors.border,
+                      shadowColor: Colors.primary,
                       shadowOpacity: isSelected ? 0.18 : 0.05,
                       shadowRadius: 8,
                       shadowOffset: { width: 0, height: 3 },
@@ -400,7 +417,7 @@ export default function OnboardingScreen() {
                       <View
                         className="w-[44px] h-[44px] rounded-xl justify-center items-center"
                         style={{
-                          backgroundColor: isSelected ? "rgba(245,166,35,0.2)" : "rgba(0,0,0,0.05)",
+                          backgroundColor: isSelected ? Colors.accent20 : Colors.borderLight,
                         }}
                       >
                         <Text className="text-[22px]">{goal.emoji}</Text>
@@ -408,7 +425,7 @@ export default function OnboardingScreen() {
 
                       <Text
                         className="font-bold text-base flex-1"
-                        style={{ color: isSelected ? "#FFFFFF" : "#1E3A5F" }}
+                        style={{ color: isSelected ? Colors.textOnDark : Colors.primary }}
                       >
                         {goal.label}
                       </Text>
@@ -430,16 +447,20 @@ export default function OnboardingScreen() {
                   <TouchableOpacity
                     onPress={() => setSelectedMinutes(opt.minutes)}
                     activeOpacity={0.75}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${opt.label} per day, ${opt.subtitle}`}
+                    accessibilityHint="Double tap to select this daily goal"
+                    accessibilityState={{ selected: isSelected }}
                     className="items-center overflow-hidden"
                     style={{
                       width: (Dimensions.get("window").width - 48 - 12) / 2,
-                      backgroundColor: isSelected ? "#1E3A5F" : "#FFFFFF",
+                      backgroundColor: isSelected ? Colors.primary : Colors.surfaceWhite,
                       borderRadius: 16,
                       borderWidth: 1,
-                      borderColor: isSelected ? "#1E3A5F" : "#E0E0CE",
+                      borderColor: isSelected ? Colors.primary : Colors.border,
                       paddingVertical: 24,
                       paddingHorizontal: 16,
-                      shadowColor: "#1E3A5F",
+                      shadowColor: Colors.primary,
                       shadowOpacity: isSelected ? 0.2 : 0.05,
                       shadowRadius: 10,
                       shadowOffset: { width: 0, height: 4 },
@@ -451,14 +472,14 @@ export default function OnboardingScreen() {
 
                     <Text
                       className="text-[30px] font-extrabold mb-[6px]"
-                      style={{ color: isSelected ? "#F5A623" : "#1E3A5F" }}
+                      style={{ color: isSelected ? Colors.accent : Colors.primary }}
                     >
                       {opt.label}
                     </Text>
                     <Text
                       className="text-[13px] font-semibold"
                       style={{
-                        color: isSelected ? "rgba(255,255,255,0.75)" : "#999999",
+                        color: isSelected ? "rgba(255,255,255,0.75)" : Colors.gray500,
                       }}
                     >
                       {opt.subtitle}
@@ -480,28 +501,37 @@ export default function OnboardingScreen() {
           onPress={handleContinue}
           disabled={loading}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={
+            loading
+              ? "Saving"
+              : isFinalStep
+                ? selectedLevel === null
+                  ? "Take placement test"
+                  : "Start learning"
+                : "Continue to next step"
+          }
+          accessibilityState={{ disabled: loading }}
           className="rounded-xl py-[18px] items-center"
           style={{
-            backgroundColor: isFinalStep ? "#F5A623" : "#1E3A5F",
+            backgroundColor: isFinalStep ? Colors.accent : Colors.primary,
             opacity: loading ? 0.7 : 1,
-            shadowColor: "#1E3A5F",
+            shadowColor: Colors.primary,
             shadowOpacity: 0.2,
             shadowRadius: 12,
             shadowOffset: { width: 0, height: 6 },
             elevation: 6,
           }}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text className="text-white text-[17px] font-bold tracking-wide">
-              {isFinalStep
+          <Text className="text-white text-[17px] font-bold tracking-wide">
+            {loading
+              ? "Saving..."
+              : isFinalStep
                 ? selectedLevel === null
                   ? "Passer le test de placement"
                   : "Commencer l\u2019apprentissage"
                 : "Continuer \u2192"}
-            </Text>
-          )}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -1,6 +1,8 @@
 import { ScrollView, View, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Colors } from "@/src/lib/design";
+
 const LAST_UPDATED = "March 1, 2026";
 
 interface Section {
@@ -75,12 +77,16 @@ export default function TermsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text className="mb-1 text-[22px] font-extrabold text-primary">Terms of Service</Text>
-        <Text className="mb-7 text-[13px] text-[#999]">Last updated: {LAST_UPDATED}</Text>
+        <Text style={{ color: Colors.gray500 }} className="mb-7 text-[13px]">
+          Last updated: {LAST_UPDATED}
+        </Text>
 
         {sections.map((section) => (
           <View key={section.heading} className="mb-6">
             <Text className="mb-2 text-lg font-bold text-primary">{section.heading}</Text>
-            <Text className="text-sm leading-[22px] text-[#444]">{section.body}</Text>
+            <Text style={{ color: Colors.gray700 }} className="text-sm leading-[22px]">
+              {section.body}
+            </Text>
           </View>
         ))}
       </ScrollView>

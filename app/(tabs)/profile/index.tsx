@@ -25,7 +25,7 @@ import { useProgress } from "@/src/hooks/use-progress";
 import { CEFRProgressionChart } from "@/src/components/profile/cefr-progression-chart";
 import { CEFR_LEVELS } from "@/src/types/cefr";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
-import { Colors, SKILL_COLORS } from "@/src/lib/design";
+import { Colors, SKILL_COLORS, skillTint } from "@/src/lib/design";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import type { CEFRLevel, TCFSkill } from "@/src/types/cefr";
 
@@ -77,10 +77,11 @@ function StatTile({ value, unit, label, delay }: StatTileProps) {
   return (
     <Animated.View
       className="flex-1 items-center rounded-2xl bg-white px-2.5 py-3.5"
+      accessibilityLabel={`${label}: ${value}${unit.length > 0 ? ` ${unit}` : ""}`}
       style={[
         animStyle,
         {
-          shadowColor: "#000",
+          shadowColor: Colors.shadow,
           shadowOffset: { width: 0, height: 3 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
@@ -89,8 +90,14 @@ function StatTile({ value, unit, label, delay }: StatTileProps) {
       ]}
     >
       <Text className="text-2xl font-extrabold text-primary">{value}</Text>
-      {unit.length > 0 ? <Text className="mt-px text-[10px] text-[#94A3B8]">{unit}</Text> : null}
-      <Text className="mt-0.5 text-xs text-[#4A5568]">{label}</Text>
+      {unit.length > 0 ? (
+        <Text className="mt-px text-[10px]" style={{ color: Colors.textTertiary }}>
+          {unit}
+        </Text>
+      ) : null}
+      <Text className="mt-0.5 text-xs" style={{ color: Colors.gray700 }}>
+        {label}
+      </Text>
     </Animated.View>
   );
 }
@@ -137,7 +144,7 @@ function SkillCard({ skill, skillLevel, exercises, score, delay, onPress }: Skil
       style={[
         animStyle,
         {
-          shadowColor: "#000",
+          shadowColor: Colors.shadow,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.06,
           shadowRadius: 6,
@@ -151,7 +158,7 @@ function SkillCard({ skill, skillLevel, exercises, score, delay, onPress }: Skil
         <View className="mb-2.5 flex-row items-center justify-between">
           <View>
             <Text className="text-sm font-semibold text-primary">{SKILL_LABELS[skill]?.fr}</Text>
-            <Text className="mt-0.5 text-[11px] text-[#94A3B8]">
+            <Text className="mt-0.5 text-[11px]" style={{ color: Colors.textTertiary }}>
               {exercises} exercices complétés
             </Text>
           </View>
@@ -292,18 +299,20 @@ export default function ProfileScreen() {
           {/* Inner dark overlay layer for depth */}
           <View
             className="absolute bottom-0 left-0 right-0 top-0 rounded-b-[40px]"
-            style={{ backgroundColor: "rgba(13,34,64,0.35)" }}
+            style={{ backgroundColor: skillTint(Colors.bgDark, 0.35) }}
           />
 
           {/* Top row: title + settings button */}
           <View className="mb-6 flex-row items-center justify-between">
-            <Text className="text-xl font-bold text-white">Mon profil</Text>
+            <Text className="text-xl font-bold text-white" accessibilityRole="header">
+              Mon profil
+            </Text>
             <TouchableOpacity
               onPress={() => router.push("/(tabs)/profile/settings")}
               accessibilityRole="button"
               accessibilityLabel="Settings"
               className="h-11 w-11 items-center justify-center rounded-full"
-              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+              style={{ backgroundColor: skillTint(Colors.surfaceWhite, 0.15) }}
             >
               <Text className="text-lg">{"\u2699\uFE0F"}</Text>
             </TouchableOpacity>
@@ -313,7 +322,7 @@ export default function ProfileScreen() {
           <View className="items-center">
             <View
               className="h-[84px] w-[84px] items-center justify-center rounded-full border-[3px] border-accent"
-              style={{ backgroundColor: "rgba(245,166,35,0.2)" }}
+              style={{ backgroundColor: Colors.accent20 }}
             >
               <Text className="text-[34px] font-bold text-white">{initials}</Text>
             </View>
@@ -330,14 +339,17 @@ export default function ProfileScreen() {
               >
                 <Text className="text-sm font-bold text-white">{level}</Text>
               </View>
-              <Text className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
+              <Text className="text-sm" style={{ color: skillTint(Colors.surfaceWhite, 0.6) }}>
                 {"\u2192"}
               </Text>
               <View
                 className="rounded-2xl px-3 py-[5px]"
-                style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
+                style={{ backgroundColor: Colors.borderOnDark }}
               >
-                <Text className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>
+                <Text
+                  className="text-sm font-semibold"
+                  style={{ color: skillTint(Colors.surfaceWhite, 0.85) }}
+                >
                   {target}
                 </Text>
               </View>
@@ -348,12 +360,13 @@ export default function ProfileScreen() {
               <View
                 className="mt-3 flex-row items-center gap-[5px] rounded-[20px] border px-3.5 py-1.5"
                 style={{
-                  backgroundColor: "rgba(255,111,0,0.18)",
-                  borderColor: "rgba(255,140,0,0.35)",
+                  backgroundColor: skillTint(Colors.accent, 0.18),
+                  borderColor: skillTint(Colors.accent, 0.35),
                 }}
+                accessibilityLabel={`${progress.streakDays} day streak`}
               >
                 <Text className="text-[15px]">{"🔥"}</Text>
-                <Text className="text-[13px] font-bold text-accent">
+                <Text style={{ color: Colors.accentText }} className="text-[13px] font-bold">
                   {progress.streakDays} jour{progress.streakDays !== 1 ? "s" : ""}
                 </Text>
               </View>
@@ -386,7 +399,9 @@ export default function ProfileScreen() {
           }
         >
           {/* Skills section */}
-          <Text className="mb-3 text-lg font-bold text-primary">Mes compétences</Text>
+          <Text className="mb-3 text-lg font-bold text-primary" accessibilityRole="header">
+            Mes compétences
+          </Text>
           <View className="mb-7 gap-2.5">
             {SKILLS.map((skill, idx) => {
               const skillData = progress.skills.find((s) => s.skill === skill);
@@ -424,8 +439,8 @@ export default function ProfileScreen() {
             entering={FadeIn.delay(200).duration(400)}
             className="mb-7 rounded-2xl border p-4"
             style={{
-              backgroundColor: "rgba(245,166,35,0.08)",
-              borderColor: "rgba(245,166,35,0.35)",
+              backgroundColor: skillTint(Colors.accent, 0.08),
+              borderColor: skillTint(Colors.accent, 0.35),
             }}
           >
             <View className="mb-2 flex-row items-center gap-2.5">
@@ -436,16 +451,18 @@ export default function ProfileScreen() {
               >
                 <Text className="text-[13px] font-bold text-white">{level}</Text>
               </View>
-              <Text className="text-sm text-[#94A3B8]">{"\u2192"}</Text>
+              <Text className="text-sm" style={{ color: Colors.textTertiary }}>
+                {"\u2192"}
+              </Text>
               <Text className="text-[15px] font-bold text-primary">{CEFR_LEVELS[level].name}</Text>
-              <Text className="text-sm text-[#4A5568]">
+              <Text className="text-sm" style={{ color: Colors.gray700 }}>
                 {"\u2014"} {CEFR_LEVELS[level].nameFr}
               </Text>
             </View>
-            <Text className="text-[13px] leading-[19px] text-[#4A5568]">
+            <Text className="text-[13px] leading-[19px]" style={{ color: Colors.gray700 }}>
               {CEFR_LEVELS[level].description}
             </Text>
-            <Text className="mt-2 text-xs font-semibold text-accent">
+            <Text style={{ color: Colors.accentText }} className="mt-2 text-xs font-semibold">
               Score TCF : {CEFR_LEVELS[level].tcfScoreMin}
               {"\u2013"}
               {CEFR_LEVELS[level].tcfScoreMax}
@@ -455,7 +472,9 @@ export default function ProfileScreen() {
           {/* Error patterns section */}
           {progress.topErrors.length > 0 ? (
             <View className="mb-7">
-              <Text className="mb-3 text-lg font-bold text-primary">À améliorer</Text>
+              <Text className="mb-3 text-lg font-bold text-primary" accessibilityRole="header">
+                À améliorer
+              </Text>
               <View className="gap-2">
                 {progress.topErrors.map((error, idx) => (
                   <TouchableOpacity
@@ -463,6 +482,7 @@ export default function ProfileScreen() {
                     activeOpacity={0.7}
                     accessibilityRole="button"
                     accessibilityLabel={`Error pattern: ${error.error_description}. Tap for practice drill.`}
+                    accessibilityHint="Double tap to start a micro-drill on this error"
                     onPress={() =>
                       router.push({
                         pathname: "/(tabs)/practice/grammar",
@@ -479,7 +499,7 @@ export default function ProfileScreen() {
                       entering={FadeIn.delay(idx * 60 + 100).duration(350)}
                       className="overflow-hidden rounded-2xl bg-white"
                       style={{
-                        shadowColor: "#000",
+                        shadowColor: Colors.shadow,
                         shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.06,
                         shadowRadius: 6,
@@ -496,10 +516,13 @@ export default function ProfileScreen() {
                           className="ml-2.5 rounded-lg border px-2 py-[3px]"
                           style={{
                             backgroundColor: Colors.accent10,
-                            borderColor: "rgba(245,166,35,0.3)",
+                            borderColor: Colors.accent30,
                           }}
                         >
-                          <Text className="text-[11px] font-bold text-accent">
+                          <Text
+                            style={{ color: Colors.accentText }}
+                            className="text-[11px] font-bold"
+                          >
                             {error.occurrences}x
                           </Text>
                         </View>
@@ -511,12 +534,17 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View className="mb-7">
-              <Text className="mb-3 text-lg font-bold text-primary">À améliorer</Text>
+              <Text className="mb-3 text-lg font-bold text-primary" accessibilityRole="header">
+                À améliorer
+              </Text>
               <View
                 className="items-center rounded-2xl border bg-white p-5"
-                style={{ borderColor: "rgba(30,58,95,0.08)" }}
+                style={{ borderColor: Colors.primary8 }}
               >
-                <Text className="text-center text-[13px] leading-[19px] text-[#94A3B8]">
+                <Text
+                  className="text-center text-[13px] leading-[19px]"
+                  style={{ color: Colors.textTertiary }}
+                >
                   Aucune erreur détectée pour le moment.{"\n"}Continuez à pratiquer !
                 </Text>
               </View>
