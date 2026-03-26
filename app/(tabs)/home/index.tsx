@@ -98,7 +98,9 @@ function ConversationCard({ onPress }: ConversationCardProps) {
           borderColor: "rgba(245,166,35,0.5)",
         }}
       >
-        <Text className="text-accent text-base font-bold">{"\u2192"}</Text>
+        <Text style={{ color: Colors.accentText }} className="text-base font-bold">
+          {"\u2192"}
+        </Text>
       </View>
     </AnimatedPressable>
   );
@@ -149,7 +151,9 @@ function SmallActionCard({ emoji, title, subtitle, accentColor, onPress }: Small
       />
       <Text className="text-[24px] mb-2">{emoji}</Text>
       <Text className="font-bold text-primary text-sm">{title}</Text>
-      <Text className="text-xs text-[#94A3B8] mt-[2px]">{subtitle}</Text>
+      <Text className="text-xs mt-[2px]" style={{ color: Colors.textTertiary }}>
+        {subtitle}
+      </Text>
     </AnimatedPressable>
   );
 }
@@ -174,7 +178,10 @@ function ActivityBar({ heightPx, isGoalMet, delay, dayLabel }: ActivityBarProps)
   }));
 
   return (
-    <View className="flex-1 items-center">
+    <View
+      className="flex-1 items-center"
+      accessibilityLabel={`${dayLabel}: ${isGoalMet ? "daily goal met" : "daily goal not met"}`}
+    >
       <View className="w-3/4 h-12 justify-end">
         <Animated.View
           style={[
@@ -187,7 +194,9 @@ function ActivityBar({ heightPx, isGoalMet, delay, dayLabel }: ActivityBarProps)
           ]}
         />
       </View>
-      <Text className="text-[9px] text-[#94A3B8] mt-1">{dayLabel}</Text>
+      <Text className="text-[9px] mt-1" style={{ color: Colors.textTertiary }}>
+        {dayLabel}
+      </Text>
     </View>
   );
 }
@@ -325,6 +334,7 @@ export default function HomeScreen() {
           <View
             className="flex-row items-center px-[9px] py-1 rounded-[20px] gap-1"
             style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
+            accessibilityLabel={`Target level: ${targetLevel}`}
           >
             <Text className="text-[11px]" style={{ color: "rgba(255,255,255,0.7)" }}>
               Objectif
@@ -393,7 +403,9 @@ export default function HomeScreen() {
 
         {/* ---- Quick Start section ---- */}
         <Animated.View style={cardEntryStyle}>
-          <Text className="text-lg font-bold text-primary mt-5 mb-3">Quick Start</Text>
+          <Text className="text-lg font-bold text-primary mt-5 mb-3" accessibilityRole="header">
+            Quick Start
+          </Text>
 
           <View className="gap-3">
             {/* Big CTA: Conversation */}
@@ -443,12 +455,16 @@ export default function HomeScreen() {
               >
                 <View className="flex-row items-center mb-[6px] gap-[6px]">
                   <Text className="text-[15px]">{"\u26A0\uFE0F"}</Text>
-                  <Text className="text-[13px] font-bold text-accent">À corriger</Text>
+                  <Text style={{ color: Colors.accentText }} className="text-[13px] font-bold">
+                    À corriger
+                  </Text>
                 </View>
                 <Text className="text-sm text-primary leading-5">
                   {progress.topErrors[0].error_description}
                 </Text>
-                <Text className="text-xs text-accent mt-2 font-semibold">Pratiquer {"\u2192"}</Text>
+                <Text style={{ color: Colors.accentText }} className="text-xs mt-2 font-semibold">
+                  Pratiquer {"\u2192"}
+                </Text>
               </TouchableOpacity>
             ) : (
               <View
@@ -461,9 +477,11 @@ export default function HomeScreen() {
               >
                 <View className="flex-row items-center mb-[6px] gap-[6px]">
                   <Text className="text-[15px]">{"\u26A0\uFE0F"}</Text>
-                  <Text className="text-[13px] font-bold text-accent">À corriger</Text>
+                  <Text style={{ color: Colors.accentText }} className="text-[13px] font-bold">
+                    À corriger
+                  </Text>
                 </View>
-                <Text className="text-sm text-[#4A5568] leading-5">
+                <Text className="text-sm leading-5" style={{ color: Colors.gray700 }}>
                   {"Terminez plus d'exercices pour voir vos corrections personnalisées ici."}
                 </Text>
               </View>
@@ -473,7 +491,12 @@ export default function HomeScreen() {
 
         {/* ---- Skills overview section ---- */}
         <Animated.View style={cardEntryStyle}>
-          <Text className="text-lg font-bold text-primary mt-7 mb-[10px]">Mes compétences</Text>
+          <Text
+            className="text-lg font-bold text-primary mt-7 mb-[10px]"
+            accessibilityRole="header"
+          >
+            Mes compétences
+          </Text>
           {progress.skills.length > 0 ? (
             <ScrollView
               horizontal
@@ -491,11 +514,14 @@ export default function HomeScreen() {
                     ...Shadows.subtle,
                   }}
                 >
-                  <Text className="text-xs text-[#4A5568]">{SKILL_LABELS[skill.skill]?.fr}</Text>
+                  <Text className="text-xs" style={{ color: Colors.gray700 }}>
+                    {SKILL_LABELS[skill.skill]?.fr}
+                  </Text>
                   <View
                     className="px-[6px] py-[2px] rounded-md"
                     style={{
-                      backgroundColor: LEVEL_COLORS[skill.cefr_level as CEFRLevel] ?? "#999",
+                      backgroundColor:
+                        LEVEL_COLORS[skill.cefr_level as CEFRLevel] ?? Colors.gray500,
                     }}
                   >
                     <Text className="text-white text-[10px] font-bold">{skill.cefr_level}</Text>
@@ -511,7 +537,10 @@ export default function HomeScreen() {
                 borderColor: Colors.primary8,
               }}
             >
-              <Text className="text-[13px] text-[#94A3B8] text-center leading-[19px]">
+              <Text
+                className="text-[13px] text-center leading-[19px]"
+                style={{ color: Colors.textTertiary }}
+              >
                 Commencez un exercice ou une conversation pour{"\n"}voir vos compétences ici.
               </Text>
             </View>
@@ -520,7 +549,9 @@ export default function HomeScreen() {
 
         {/* ---- Weekly activity section ---- */}
         <Animated.View style={cardEntryStyle}>
-          <Text className="text-lg font-bold text-primary mt-7 mb-3">Cette semaine</Text>
+          <Text className="text-lg font-bold text-primary mt-7 mb-3" accessibilityRole="header">
+            Cette semaine
+          </Text>
           {progress.recentActivity.length > 1 ? (
             <View
               className="bg-white rounded-2xl p-4"
@@ -566,7 +597,10 @@ export default function HomeScreen() {
                 borderColor: Colors.primary8,
               }}
             >
-              <Text className="text-[13px] text-[#94A3B8] text-center leading-[19px]">
+              <Text
+                className="text-[13px] text-center leading-[19px]"
+                style={{ color: Colors.textTertiary }}
+              >
                 Pratiquez chaque jour pour voir{"\n"}votre activité hebdomadaire ici.
               </Text>
             </View>
