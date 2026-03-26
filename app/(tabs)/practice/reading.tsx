@@ -190,7 +190,7 @@ export default function ReadingScreen() {
           style={{ marginBottom: showPassage ? 12 : 0 }}
         >
           <Text className="text-[13px] font-bold text-primary">Reading Passage</Text>
-          <Text className="text-xs text-[#94A3B8]">
+          <Text className="text-xs" style={{ color: Colors.gray500 }}>
             {showPassage ? "Tap to hide" : "Tap to show"}
           </Text>
         </View>
@@ -225,17 +225,17 @@ export default function ReadingScreen() {
 
       {/* Info about tap-to-explain */}
       {explainableWords.length > 0 && showPassage && (
-        <Text className="text-[11px] text-[#94A3B8] text-center mb-4 italic">
+        <Text className="text-[11px] text-center mb-4 italic" style={{ color: Colors.gray500 }}>
           Tap underlined words for explanations in French
         </Text>
       )}
 
       {/* Question counter */}
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-[13px] text-[#4A5568]">
+        <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
           Question {exercise.currentQuestionIndex + 1} of {totalQuestions}
         </Text>
-        <Text className="text-[13px] text-[#4A5568]">
+        <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
           {answeredQuestions.size}/{totalQuestions} answered
         </Text>
       </View>
