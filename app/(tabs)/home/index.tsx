@@ -17,11 +17,13 @@ import Animated, {
   withDelay,
 } from "react-native-reanimated";
 
-import { useAuthStore } from "@/src/store/auth-store";
+import { CompanionMessage, CompanionMessageSkeleton } from "@/src/components/home/CompanionMessage";
+import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { useDailyBriefing } from "@/src/hooks/use-daily-briefing";
 import { useProgress } from "@/src/hooks/use-progress";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, Shadows, skillTint } from "@/src/lib/design";
-import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -210,6 +212,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
   const progress = useProgress();
+  const briefing = useDailyBriefing();
   const [refreshing, setRefreshing] = useState(false);
 
   const level = (profile?.current_cefr_level ?? "A1") as CEFRLevel;
@@ -217,11 +220,13 @@ export default function HomeScreen() {
   const minutesToday = progress.todayActivity?.minutes_practiced ?? 0;
   const goalPercent = Math.min(100, Math.round((minutesToday / dailyGoal) * 100));
 
+  const refreshProgress = progress.refresh;
+  const refreshBriefing = briefing.refresh;
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await progress.refresh();
+    await Promise.all([refreshProgress(), refreshBriefing()]);
     setRefreshing(false);
-  }, [progress]);
+  }, [refreshProgress, refreshBriefing]);
 
   // Card fade-in on mount
   const cardOpacity = useSharedValue(0);
@@ -400,6 +405,17 @@ export default function HomeScreen() {
             <Text className="text-xs text-error font-semibold">Dismiss</Text>
           </TouchableOpacity>
         )}
+
+        {/* ---- Companion Message ---- */}
+        {briefing.isLoading ? (
+          <View className="mb-4 mt-2">
+            <CompanionMessageSkeleton />
+          </View>
+        ) : briefing.companionMessage ? (
+          <View className="mb-4 mt-2">
+            <CompanionMessage message={briefing.companionMessage} />
+          </View>
+        ) : null}
 
         {/* ---- Quick Start section ---- */}
         <Animated.View style={cardEntryStyle}>
