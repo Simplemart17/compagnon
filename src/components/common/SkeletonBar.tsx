@@ -20,9 +20,11 @@ interface SkeletonBarProps {
   width: DimensionValue;
   height: number;
   style?: ViewStyle;
+  /** When provided, marks this skeleton as a loading indicator for screen readers */
+  accessibilityLabel?: string;
 }
 
-export function SkeletonBar({ width, height, style }: SkeletonBarProps) {
+export function SkeletonBar({ width, height, style, accessibilityLabel }: SkeletonBarProps) {
   const opacity = useSharedValue(0.3);
 
   React.useEffect(() => {
@@ -38,6 +40,9 @@ export function SkeletonBar({ width, height, style }: SkeletonBarProps) {
 
   return (
     <Animated.View
+      accessible={!!accessibilityLabel}
+      accessibilityRole={accessibilityLabel ? "progressbar" : undefined}
+      accessibilityLabel={accessibilityLabel}
       style={[
         {
           width,

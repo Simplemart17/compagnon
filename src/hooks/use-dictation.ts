@@ -13,6 +13,7 @@ import { useAudioPlayer } from "@/src/hooks/use-audio-player";
 import { updateStreak, updateSkillProgress, incrementDailyActivity } from "@/src/lib/activity";
 import { hapticLight, hapticMedium, hapticSuccess, hapticError } from "@/src/lib/haptics";
 import { captureError } from "@/src/lib/sentry";
+import { classifyError } from "@/src/lib/error-messages";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -302,7 +303,8 @@ export function useDictation(): UseDictationReturn {
       setScreenState("active");
     } catch (err) {
       captureError(err, "dictation-generation");
-      setGenerateError(err instanceof Error ? err.message : "Failed to generate sentences");
+      const { message } = classifyError(err, "Could not generate sentences. Please try again.");
+      setGenerateError(message);
       setScreenState("idle");
       hapticError();
     } finally {
@@ -335,7 +337,8 @@ export function useDictation(): UseDictationReturn {
         hapticLight();
       } catch (err) {
         captureError(err, "dictation-tts");
-        setAudioError(err instanceof Error ? err.message : "Failed to play audio");
+        const { message } = classifyError(err, "Could not generate audio. Please try again.");
+        setAudioError(message);
         hapticError();
       } finally {
         setIsPlayingAudio(false);
