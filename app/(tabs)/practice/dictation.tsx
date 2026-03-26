@@ -17,7 +17,7 @@ import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { useDictation } from "@/src/hooks/use-dictation";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import type { DifficultyTag, WordResult } from "@/src/hooks/use-dictation";
-import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { Colors, Shadows, Typography, skillTint } from "@/src/lib/design";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -101,9 +101,9 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 /** Difficulty badge */
 function DifficultyBadge({ difficulty }: { difficulty: DifficultyTag }) {
   const colors: Record<DifficultyTag, { bg: string; text: string }> = {
-    easy: { bg: "rgba(52,199,89,0.15)", text: SUCCESS },
-    medium: { bg: "rgba(245,166,35,0.15)", text: ACCENT },
-    hard: { bg: "rgba(255,59,48,0.15)", text: ERROR_COLOR },
+    easy: { bg: Colors.success15, text: SUCCESS },
+    medium: { bg: Colors.accent15, text: ACCENT },
+    hard: { bg: Colors.error15, text: ERROR_COLOR },
   };
   const c = colors[difficulty];
   return (
@@ -252,7 +252,7 @@ export default function DictationScreen() {
               <View key={item.step} className="flex-row items-center gap-2.5 mb-2">
                 <View
                   className="w-6 h-6 rounded-full justify-center items-center"
-                  style={{ backgroundColor: `${ACCENT}20` }}
+                  style={{ backgroundColor: skillTint(ACCENT, 0x20 / 255) }}
                 >
                   <Text
                     style={{
@@ -328,9 +328,12 @@ export default function DictationScreen() {
             entering={FadeInDown.duration(300)}
             className="rounded-2xl p-4 mb-5 items-center"
             style={{
-              backgroundColor: latestResult.isFullyCorrect ? `${SUCCESS}12` : `${ACCENT}12`,
+              backgroundColor: skillTint(
+                latestResult.isFullyCorrect ? SUCCESS : ACCENT,
+                0x12 / 255
+              ),
               borderWidth: 1,
-              borderColor: latestResult.isFullyCorrect ? `${SUCCESS}30` : `${ACCENT}30`,
+              borderColor: skillTint(latestResult.isFullyCorrect ? SUCCESS : ACCENT, 0x30 / 255),
             }}
           >
             <Text className="text-[28px] mb-1">
@@ -414,7 +417,7 @@ export default function DictationScreen() {
           <Animated.View
             entering={FadeInDown.delay(250).duration(300)}
             className="rounded-xl p-3.5 mb-5"
-            style={{ backgroundColor: `${PRIMARY}08` }}
+            style={{ backgroundColor: skillTint(PRIMARY, 0x08 / 255) }}
           >
             <Text
               className="text-[11px] font-semibold tracking-wider uppercase mb-1"
@@ -604,8 +607,8 @@ export default function DictationScreen() {
             entering={FadeInDown.delay(300).duration(300)}
             className="rounded-2xl p-4 mb-4 border"
             style={{
-              backgroundColor: `${ACCENT}08`,
-              borderColor: `${ACCENT}25`,
+              backgroundColor: skillTint(ACCENT, 0x08 / 255),
+              borderColor: skillTint(ACCENT, 0x25 / 255),
             }}
           >
             <Text
@@ -743,9 +746,9 @@ export default function DictationScreen() {
               accessibilityHint="Double tap to play the audio clip at slower speed"
               className="rounded-[14px] px-5 py-3.5 flex-row items-center gap-2"
               style={{
-                backgroundColor: d.isPlayingAudio ? Colors.border : `${PRIMARY}15`,
+                backgroundColor: d.isPlayingAudio ? Colors.border : skillTint(PRIMARY, 0x15 / 255),
                 borderWidth: 1,
-                borderColor: d.isPlayingAudio ? Colors.border : `${PRIMARY}30`,
+                borderColor: d.isPlayingAudio ? Colors.border : skillTint(PRIMARY, 0x30 / 255),
               }}
             >
               <Text className="text-base">{"\uD83D\uDC22"}</Text>

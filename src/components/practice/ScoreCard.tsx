@@ -9,7 +9,7 @@ import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 
 import { hapticSuccess } from "@/src/lib/haptics";
-import { Colors } from "@/src/lib/design";
+import { Colors, skillTint } from "@/src/lib/design";
 
 interface ScoreCardProps {
   score: number;
@@ -59,7 +59,7 @@ export const ScoreCard = React.memo(function ScoreCard({
         style={{
           borderWidth: 6,
           borderColor: color,
-          backgroundColor: `${color}10`,
+          backgroundColor: skillTint(color, 16 / 255),
         }}
         accessibilityLabel={`${score} percent`}
       >
