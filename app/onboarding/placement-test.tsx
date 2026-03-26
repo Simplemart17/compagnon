@@ -293,7 +293,7 @@ function SkeletonBar({ width, height, borderRadius = 6, style }: SkeletonBarProp
           width,
           height,
           borderRadius,
-          backgroundColor: "rgba(255,255,255,0.15)",
+          backgroundColor: Colors.whiteAlpha15,
         },
         animatedStyle,
         style,
@@ -317,9 +317,9 @@ function LoadingSkeleton() {
           key={i}
           className="flex-row items-center rounded-xl p-[14px] mb-[10px] gap-3"
           style={{
-            backgroundColor: "rgba(255,255,255,0.06)",
+            backgroundColor: Colors.whiteAlpha06,
             borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.08)",
+            borderColor: Colors.whiteAlpha08,
           }}
         >
           <SkeletonBar width={32} height={32} borderRadius={16} />
@@ -720,7 +720,7 @@ export default function PlacementTestScreen() {
           <Text
             style={[
               Typography.caption,
-              { textAlign: "center", marginTop: 8, color: "rgba(255,255,255,0.55)" },
+              { textAlign: "center", marginTop: 8, color: Colors.textOnDarkQuaternary },
             ]}
           >
             Taking longer than usual...

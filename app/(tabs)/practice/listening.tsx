@@ -199,7 +199,7 @@ export default function ListeningScreen() {
             accessibilityHint="Double tap to play the audio clip"
             className="w-14 h-14 rounded-full justify-center items-center"
             style={{
-              backgroundColor: audioPlayer.isPlaying ? "rgba(255,255,255,0.3)" : Colors.accent,
+              backgroundColor: audioPlayer.isPlaying ? Colors.whiteAlpha30 : Colors.accent,
             }}
           >
             <Text className="text-white text-2xl">

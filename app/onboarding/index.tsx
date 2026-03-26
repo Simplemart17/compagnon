@@ -79,7 +79,7 @@ function StepPill({ active }: StepPillProps) {
         {
           height: 6,
           borderRadius: 3,
-          backgroundColor: active ? Colors.accent : "rgba(255,255,255,0.25)",
+          backgroundColor: active ? Colors.accent : Colors.whiteAlpha25,
         },
         animatedStyle,
       ]}
@@ -304,7 +304,7 @@ export default function OnboardingScreen() {
                           className="text-xs leading-4"
                           numberOfLines={1}
                           style={{
-                            color: isSelected ? "rgba(255,255,255,0.65)" : Colors.textTertiary,
+                            color: isSelected ? Colors.textOnDarkMuted : Colors.textTertiary,
                           }}
                         >
                           {CEFR_LEVELS[level].description}
@@ -365,7 +365,7 @@ export default function OnboardingScreen() {
                       numberOfLines={1}
                       style={{
                         color:
-                          selectedLevel === null ? "rgba(255,255,255,0.65)" : Colors.textTertiary,
+                          selectedLevel === null ? Colors.textOnDarkMuted : Colors.textTertiary,
                       }}
                     >
                       Take a placement test to find out
@@ -479,7 +479,7 @@ export default function OnboardingScreen() {
                     <Text
                       className="text-[13px] font-semibold"
                       style={{
-                        color: isSelected ? "rgba(255,255,255,0.75)" : Colors.gray500,
+                        color: isSelected ? Colors.textOnDarkBright : Colors.gray500,
                       }}
                     >
                       {opt.subtitle}

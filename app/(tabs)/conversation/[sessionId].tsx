@@ -218,7 +218,7 @@ export default function ConversationSessionScreen() {
         ? Colors.accent
         : conversation.status === "error"
           ? Colors.error
-          : "rgba(255,255,255,0.3)";
+          : Colors.whiteAlpha30;
 
   return (
     <View
@@ -332,7 +332,7 @@ export default function ConversationSessionScreen() {
               value={textInput}
               onChangeText={setTextInput}
               placeholder="Type in French..."
-              placeholderTextColor="rgba(255,255,255,0.35)"
+              placeholderTextColor={Colors.whiteAlpha35}
               accessibilityLabel="Type a message in French"
               accessibilityHint="Type your message and press send"
               style={{
@@ -359,7 +359,7 @@ export default function ConversationSessionScreen() {
         {/* Bottom Controls */}
         <View
           className="flex-row justify-center items-center gap-5 pb-6 pt-3"
-          style={{ borderTopWidth: 0.5, borderTopColor: "rgba(255,255,255,0.08)" }}
+          style={{ borderTopWidth: 0.5, borderTopColor: Colors.whiteAlpha08 }}
         >
           {conversation.status === "idle" && (
             <View className="items-center justify-center">
@@ -372,7 +372,7 @@ export default function ConversationSessionScreen() {
                     height: 96,
                     borderRadius: 48,
                     borderWidth: 2,
-                    borderColor: "rgba(52,199,89,0.35)",
+                    borderColor: Colors.success35,
                   },
                   startRingAnimStyle,
                 ]}
@@ -413,9 +413,9 @@ export default function ConversationSessionScreen() {
                 accessibilityState={{ expanded: showTextInput }}
                 className="w-[52px] h-[52px] rounded-full justify-center items-center"
                 style={{
-                  backgroundColor: showTextInput ? Colors.accent20 : "rgba(255,255,255,0.1)",
+                  backgroundColor: showTextInput ? Colors.accent20 : Colors.whiteAlpha10,
                   borderWidth: 1,
-                  borderColor: showTextInput ? Colors.accent : "rgba(255,255,255,0.2)",
+                  borderColor: showTextInput ? Colors.accent : Colors.whiteAlpha20,
                 }}
               >
                 <Text
@@ -479,7 +479,7 @@ export default function ConversationSessionScreen() {
                   accessibilityLabel="Retry connection"
                   accessibilityHint="Double tap to try starting the conversation again"
                   className="border-[1.5px] border-accent rounded-3xl px-7 py-3"
-                  style={{ backgroundColor: "rgba(245,166,35,0.15)" }}
+                  style={{ backgroundColor: Colors.accent15 }}
                 >
                   <Text className="text-accent text-[15px] font-bold">Retry</Text>
                 </TouchableOpacity>
@@ -492,7 +492,7 @@ export default function ConversationSessionScreen() {
         {feedbackVisible && conversation.status === "ended" && (
           <View
             className="absolute top-0 left-0 right-0 bottom-0 justify-end"
-            style={{ backgroundColor: "rgba(8,18,35,0.92)" }}
+            style={{ backgroundColor: Colors.bgDarkOverlay }}
           >
             <View
               className="pt-4 px-6 pb-10"
@@ -532,10 +532,7 @@ export default function ConversationSessionScreen() {
                 {/* AI Feedback Summary */}
                 {conversation.feedback && (
                   <View className="bg-white/[0.07] rounded-2xl p-4 mb-3">
-                    <Text
-                      className="text-sm leading-5 mb-3"
-                      style={{ color: "rgba(255,255,255,0.85)" }}
-                    >
+                    <Text className="text-sm leading-5 mb-3" style={{ color: Colors.whiteAlpha85 }}>
                       {conversation.feedback.summary}
                     </Text>
                     <View className="flex-row gap-4 mb-3">
@@ -590,8 +587,8 @@ export default function ConversationSessionScreen() {
                   <View
                     className="rounded-2xl border p-5 my-3 items-center"
                     style={{
-                      backgroundColor: "rgba(52,199,89,0.12)",
-                      borderColor: "rgba(52,199,89,0.3)",
+                      backgroundColor: Colors.success12,
+                      borderColor: Colors.success30,
                     }}
                   >
                     <Text className="text-[17px] font-bold text-success text-center">

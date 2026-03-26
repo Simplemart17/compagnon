@@ -36,21 +36,28 @@ export const Colors = {
   accent10: "rgba(245,166,35,0.1)",
   accent15: "rgba(245,166,35,0.15)",
   accent20: "rgba(245,166,35,0.2)",
+  accent25: "rgba(245,166,35,0.25)",
   accent30: "rgba(245,166,35,0.3)",
+  accent50: "rgba(245,166,35,0.5)",
   accentLight: "#FFD180",
   warning: "#9A6400", // darkened from #FF9500 — 4.6:1 on surface (WCAG AA)
 
   // Success tints
   success10: "rgba(52,199,89,0.1)",
+  success12: "rgba(52,199,89,0.12)",
   success15: "rgba(52,199,89,0.15)",
+  success30: "rgba(52,199,89,0.3)",
+  success35: "rgba(52,199,89,0.35)",
 
   // Error tints
   error10: "rgba(255,59,48,0.1)",
   error15: "rgba(255,59,48,0.15)",
+  error25: "rgba(255,59,48,0.25)",
 
   // Dark backgrounds (auth, conversation)
   bgDark: "#0D2240",
   bgDarkCard: "#152B48",
+  bgDarkOverlay: "rgba(8,18,35,0.92)",
 
   // Text colors
   textPrimary: "#1E3A5F",
@@ -61,6 +68,9 @@ export const Colors = {
   textOnDark: "#FFFFFF",
   textOnDarkSecondary: "rgba(255,255,255,0.7)",
   textOnDarkTertiary: "rgba(255,255,255,0.5)",
+  textOnDarkQuaternary: "rgba(255,255,255,0.55)",
+  textOnDarkMuted: "rgba(255,255,255,0.65)",
+  textOnDarkBright: "rgba(255,255,255,0.75)",
 
   // Neutral grays
   gray100: "#F5F5F0",
@@ -78,6 +88,21 @@ export const Colors = {
   border: "#E0E0CE",
   borderLight: "rgba(0,0,0,0.06)",
   borderOnDark: "rgba(255,255,255,0.12)",
+
+  // White alpha (dark-theme UI elements)
+  whiteAlpha06: "rgba(255,255,255,0.06)",
+  whiteAlpha08: "rgba(255,255,255,0.08)",
+  whiteAlpha10: "rgba(255,255,255,0.1)",
+  whiteAlpha12: "rgba(255,255,255,0.12)",
+  whiteAlpha15: "rgba(255,255,255,0.15)",
+  whiteAlpha20: "rgba(255,255,255,0.2)",
+  whiteAlpha25: "rgba(255,255,255,0.25)",
+  whiteAlpha30: "rgba(255,255,255,0.3)",
+  whiteAlpha35: "rgba(255,255,255,0.35)",
+  whiteAlpha85: "rgba(255,255,255,0.85)",
+
+  // Overlays
+  overlayDark: "rgba(0,0,0,0.5)",
 
   // Skill accent colors (used on practice cards, home, etc.)
   skillListening: "#3B82F6",
@@ -114,6 +139,7 @@ export const SKILL_COLORS: Record<TCFSkill, string> = {
 /** Generate a tinted background from a hex color (e.g. "#1E3A5F") */
 export function skillTint(color: string, opacity: number = 0.1): string {
   if (!color || color[0] !== "#" || color.length < 7) {
+    if (__DEV__) console.warn(`skillTint: expected hex color, got "${color}"`);
     return `rgba(0,0,0,${opacity})`;
   }
   const r = parseInt(color.slice(1, 3), 16);

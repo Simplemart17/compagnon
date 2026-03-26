@@ -336,7 +336,7 @@ export default function ReadingScreen() {
           onPress={() => setSelectedWord(null)}
           accessibilityLabel="Close word explanation"
           className="flex-1 justify-center p-8"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ backgroundColor: Colors.overlayDark }}
         >
           <View className="bg-white rounded-2xl p-6" accessibilityRole="alert">
             <Text className="text-[22px] font-extrabold text-primary mb-2">{selectedWord}</Text>

@@ -73,9 +73,9 @@ function ConversationCard({ onPress }: ConversationCardProps) {
       <View
         className="w-[52px] h-[52px] rounded-[26px] justify-center items-center"
         style={{
-          backgroundColor: "rgba(245,166,35,0.2)",
+          backgroundColor: Colors.accent20,
           borderWidth: 1.5,
-          borderColor: "rgba(245,166,35,0.5)",
+          borderColor: Colors.accent50,
         }}
       >
         <Text className="text-[24px]">{"\uD83C\uDF99\uFE0F"}</Text>
@@ -84,7 +84,7 @@ function ConversationCard({ onPress }: ConversationCardProps) {
       {/* Text content */}
       <View className="flex-1">
         <Text className="text-white font-bold text-base">Parlez avec Compagnon</Text>
-        <Text className="text-[13px] mt-[3px]" style={{ color: "rgba(255,255,255,0.65)" }}>
+        <Text className="text-[13px] mt-[3px]" style={{ color: Colors.textOnDarkMuted }}>
           Conversez en temps réel avec votre IA
         </Text>
       </View>
@@ -93,9 +93,9 @@ function ConversationCard({ onPress }: ConversationCardProps) {
       <View
         className="rounded-2xl w-8 h-8 justify-center items-center"
         style={{
-          backgroundColor: "rgba(245,166,35,0.25)",
+          backgroundColor: Colors.accent25,
           borderWidth: 1,
-          borderColor: "rgba(245,166,35,0.5)",
+          borderColor: Colors.accent50,
         }}
       >
         <Text style={{ color: Colors.accentText }} className="text-base font-bold">
@@ -293,9 +293,9 @@ export default function HomeScreen() {
           <View
             className="w-[34px] h-[34px] rounded-[17px] justify-center items-center"
             style={{
-              backgroundColor: "rgba(245,166,35,0.15)",
+              backgroundColor: Colors.accent15,
               borderWidth: 1,
-              borderColor: "rgba(245,166,35,0.3)",
+              borderColor: Colors.accent30,
             }}
           >
             <Text className="text-[15px]">{"\uD83D\uDD14"}</Text>
@@ -333,10 +333,10 @@ export default function HomeScreen() {
           {/* Target pill */}
           <View
             className="flex-row items-center px-[9px] py-1 rounded-[20px] gap-1"
-            style={{ backgroundColor: "rgba(255,255,255,0.12)" }}
+            style={{ backgroundColor: Colors.whiteAlpha12 }}
             accessibilityLabel={`Target level: ${targetLevel}`}
           >
-            <Text className="text-[11px]" style={{ color: "rgba(255,255,255,0.7)" }}>
+            <Text className="text-[11px]" style={{ color: Colors.textOnDarkSecondary }}>
               Objectif
             </Text>
             <Text className="text-xs font-bold text-white">{targetLevel}</Text>
@@ -349,7 +349,7 @@ export default function HomeScreen() {
           accessibilityLabel={`Daily goal: ${minutesToday} of ${dailyGoal} minutes, ${goalPercent} percent complete`}
           accessibilityValue={{ min: 0, max: dailyGoal, now: minutesToday }}
         >
-          <View className="h-1 rounded-sm" style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>
+          <View className="h-1 rounded-sm" style={{ backgroundColor: Colors.whiteAlpha20 }}>
             <View
               className="h-1 rounded-sm"
               style={{
@@ -360,7 +360,7 @@ export default function HomeScreen() {
           </View>
           <Text
             className="text-[11px] mt-[5px] text-right"
-            style={{ color: "rgba(255,255,255,0.65)" }}
+            style={{ color: Colors.textOnDarkMuted }}
           >
             {minutesToday}/{dailyGoal} min
           </Text>
@@ -391,9 +391,9 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             className="rounded-xl p-3 mb-2 flex-row items-center gap-2"
             style={{
-              backgroundColor: "rgba(255,59,48,0.1)",
+              backgroundColor: Colors.error10,
               borderWidth: 1,
-              borderColor: "rgba(255,59,48,0.25)",
+              borderColor: Colors.error25,
             }}
           >
             <Text className="text-[13px] text-error flex-1 leading-[18px]">{progress.error}</Text>
