@@ -62,13 +62,9 @@ function MockTestSkeleton({ isSlow }: { isSlow: boolean }) {
     <SafeAreaView className="flex-1 bg-surface">
       {/* Header skeleton */}
       <View className="bg-primary px-4 py-3 flex-row items-center justify-between">
-        <SkeletonBar
-          width={120}
-          height={16}
-          style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
-        />
-        <SkeletonBar width={60} height={24} style={{ backgroundColor: "rgba(255,255,255,0.15)" }} />
-        <SkeletonBar width={60} height={16} style={{ backgroundColor: "rgba(255,255,255,0.15)" }} />
+        <SkeletonBar width={120} height={16} style={{ backgroundColor: Colors.whiteAlpha15 }} />
+        <SkeletonBar width={60} height={24} style={{ backgroundColor: Colors.whiteAlpha15 }} />
+        <SkeletonBar width={60} height={16} style={{ backgroundColor: Colors.whiteAlpha15 }} />
       </View>
 
       {/* Progress bar skeleton */}
