@@ -27,7 +27,7 @@ export function rawToTCFScore(rawPercent: number): TCFScore {
     return Math.round(300 + ((clamped - 50) / 15) * 99);
   } else if (clamped <= 80) {
     return Math.round(400 + ((clamped - 65) / 15) * 99);
-  } else if (clamped <= 90) {
+  } else if (clamped < 90) {
     return Math.round(500 + ((clamped - 80) / 10) * 99);
   } else {
     return Math.round(600 + ((clamped - 90) / 10) * 99);

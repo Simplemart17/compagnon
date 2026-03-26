@@ -56,8 +56,11 @@ export function calculateNextReview(current: SRSState, quality: ReviewQuality): 
   // Cap maximum interval at 365 days
   intervalDays = Math.min(intervalDays, 365);
 
+  // Set next review to the start of the target day (midnight local time)
+  // to ensure consistent calendar-day intervals regardless of review time
   const nextReview = new Date();
   nextReview.setDate(nextReview.getDate() + intervalDays);
+  nextReview.setHours(0, 0, 0, 0);
 
   return {
     easeFactor,
