@@ -6,15 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  BackHandler,
-  Platform,
-} from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -398,33 +390,15 @@ export default function MockTestSessionScreen() {
   }, [state.status]);
 
   const navigation = useNavigation();
+  const leaveConfirmedRef = useRef(false);
 
-  // BackHandler guard -- confirm before leaving during an active test (Android)
-  useEffect(() => {
-    if (state.status !== "active" || Platform.OS !== "android") return;
-
-    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
-      Alert.alert("Leave Test?", "Your progress has been saved. You can resume this test later.", [
-        { text: "Stay", style: "cancel" },
-        {
-          text: "Leave",
-          style: "destructive",
-          onPress: () => router.back(),
-        },
-      ]);
-      return true; // Prevent default back behavior
-    });
-
-    return () => handler.remove();
-  }, [state.status, router]);
-
-  // iOS navigation guard — intercept back swipe and header back button
+  // Cross-platform navigation guard — intercept back navigation on iOS and Android
   useEffect(() => {
     if (state.status !== "active") return;
 
     const unsubscribe = navigation.addListener("beforeRemove", (e) => {
-      // Only block user-initiated navigation, not programmatic (e.g. router.replace on finish)
       if (e.data.action.type !== "GO_BACK") return;
+      if (leaveConfirmedRef.current) return; // Already confirmed, let it through
 
       e.preventDefault();
       Alert.alert("Leave Test?", "Your progress has been saved. You can resume this test later.", [
@@ -432,12 +406,18 @@ export default function MockTestSessionScreen() {
         {
           text: "Leave",
           style: "destructive",
-          onPress: () => navigation.dispatch(e.data.action),
+          onPress: () => {
+            leaveConfirmedRef.current = true;
+            navigation.dispatch(e.data.action);
+          },
         },
       ]);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      leaveConfirmedRef.current = false;
+    };
   }, [state.status, navigation]);
 
   // Navigate to results when finished -- persist to Supabase first
