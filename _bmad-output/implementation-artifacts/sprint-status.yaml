@@ -62,7 +62,7 @@ development_status:
 
   # Epic 2: Companion Daily Briefing (Home Screen Evolution)
   epic-2: in-progress
-  2-1-companionmessage-component-memory-driven-briefing: review
+  2-1-companionmessage-component-memory-driven-briefing: done
   2-2-todays-plan-curated-activity-recommendations: backlog
   2-3-error-journey-progress-bar-home-screen-integration: backlog
   epic-2-retrospective: optional
