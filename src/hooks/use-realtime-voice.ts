@@ -50,6 +50,7 @@ export interface ConversationState {
   durationSeconds: number;
   error: string | null;
   feedback: ConversationFeedback | null;
+  conversationId: string | null;
 }
 
 export interface UseRealtimeVoiceOptions {
@@ -106,6 +107,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
     durationSeconds: 0,
     error: null,
     feedback: null,
+    conversationId: null,
   });
 
   const sessionRef = useRef<RealtimeSession | null>(null);
@@ -559,6 +561,7 @@ Return JSON: {
       durationSeconds: 0,
       error: null,
       feedback: null,
+      conversationId: null,
     });
 
     try {
@@ -567,6 +570,7 @@ Return JSON: {
         throw new Error("Failed to create conversation record");
       }
       conversationIdRef.current = convoId;
+      setState((prev) => ({ ...prev, conversationId: convoId }));
 
       const systemPrompt = buildConversationPrompt({
         cefrLevel,

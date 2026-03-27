@@ -38,10 +38,15 @@ import { hapticMedium } from "@/src/lib/haptics";
 import { retrieveMemories } from "@/src/lib/memory";
 import { getTopErrors } from "@/src/lib/error-tracker";
 import { captureError } from "@/src/lib/sentry";
+import { supabase } from "@/src/lib/supabase";
 import { AudioWaveform } from "@/src/components/conversation/AudioWaveform";
 import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
 import { ProcessingIndicator } from "@/src/components/conversation/ProcessingIndicator";
+import {
+  SessionComparison,
+  type SessionComparisonMetric,
+} from "@/src/components/feedback/SessionComparison";
 import type { ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors } from "@/src/lib/design";
@@ -85,6 +90,9 @@ export default function ConversationSessionScreen() {
   const [textInput, setTextInput] = useState("");
   const [showTextInput, setShowTextInput] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [comparisonMetrics, setComparisonMetrics] = useState<SessionComparisonMetric[] | null>(
+    null
+  );
 
   const insets = useSafeAreaInsets();
   const rawSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
@@ -127,6 +135,85 @@ export default function ConversationSessionScreen() {
       setFeedbackVisible(true);
     },
   });
+
+  // Fetch previous session for comparison when feedback becomes available
+  useEffect(() => {
+    if (!conversation.feedback || !conversation.conversationId || !user?.id) return;
+
+    const currentConversationId = conversation.conversationId;
+    const currentFeedback = conversation.feedback;
+
+    void (async () => {
+      try {
+        const { data: prev } = await supabase
+          .from("conversations")
+          .select("ai_feedback, duration_seconds, completed_at")
+          .eq("user_id", user.id)
+          .eq("status", "completed")
+          .neq("id", currentConversationId)
+          .order("completed_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!prev) {
+          setComparisonMetrics(null);
+          return;
+        }
+
+        // Hide comparison if previous session was > 21 days ago (3+ weeks absence)
+        if (prev.completed_at) {
+          const daysSince =
+            (Date.now() - new Date(prev.completed_at).getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSince > 21) {
+            setComparisonMetrics(null);
+            return;
+          }
+        }
+
+        const prevFeedback = prev.ai_feedback as {
+          fluencyRating?: number;
+          grammarRating?: number;
+        } | null;
+
+        if (prevFeedback?.fluencyRating == null || prevFeedback?.grammarRating == null) {
+          setComparisonMetrics(null);
+          return;
+        }
+
+        const direction = (current: number, previous: number): "up" | "down" | "same" =>
+          current > previous ? "up" : current < previous ? "down" : "same";
+
+        const formatMinutes = (seconds: number): string => {
+          const m = Math.round(seconds / 60);
+          return m < 1 ? "< 1m" : `${m}m`;
+        };
+
+        setComparisonMetrics([
+          {
+            label: "Fluency",
+            previous: `${prevFeedback.fluencyRating}/5`,
+            current: `${currentFeedback.fluencyRating}/5`,
+            direction: direction(currentFeedback.fluencyRating, prevFeedback.fluencyRating),
+          },
+          {
+            label: "Grammar",
+            previous: `${prevFeedback.grammarRating}/5`,
+            current: `${currentFeedback.grammarRating}/5`,
+            direction: direction(currentFeedback.grammarRating, prevFeedback.grammarRating),
+          },
+          {
+            label: "Duration",
+            previous: formatMinutes(prev.duration_seconds ?? 0),
+            current: formatMinutes(conversation.durationSeconds),
+            direction: direction(conversation.durationSeconds, prev.duration_seconds ?? 0),
+          },
+        ]);
+      } catch (err) {
+        captureError(err, "session-comparison-fetch");
+        setComparisonMetrics(null);
+      }
+    })();
+  }, [conversation.feedback, conversation.conversationId, conversation.durationSeconds, user?.id]);
 
   // Prevent accidental back navigation during active conversation
   useEffect(() => {
@@ -612,6 +699,12 @@ export default function ConversationSessionScreen() {
                         ))}
                       </View>
                     )}
+                  </View>
+                )}
+
+                {comparisonMetrics && (
+                  <View className="mb-3">
+                    <SessionComparison metrics={comparisonMetrics} />
                   </View>
                 )}
 
