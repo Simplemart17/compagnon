@@ -9,6 +9,8 @@ import "@/src/styles/global.css";
 import { useAuth } from "@/src/hooks/use-auth";
 import { NetworkBanner } from "@/src/components/common/NetworkBanner";
 import { ErrorBoundary as AppErrorBoundary } from "@/src/components/common/ErrorBoundary";
+import { ToastProvider } from "@/src/components/common/Toast/ToastContext";
+import { ToastContainer } from "@/src/components/common/Toast/ToastContainer";
 
 // Suppress deprecation warning from third-party dependencies using RN's built-in SafeAreaView
 LogBox.ignoreLogs(["SafeAreaView has been deprecated"]);
@@ -72,15 +74,18 @@ function RootLayoutNav() {
 
   return (
     <AppErrorBoundary>
-      <View className="flex-1">
-        <NetworkBanner />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="onboarding" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </View>
+      <ToastProvider>
+        <View className="flex-1">
+          <NetworkBanner />
+          <ToastContainer />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </View>
+      </ToastProvider>
     </AppErrorBoundary>
   );
 }

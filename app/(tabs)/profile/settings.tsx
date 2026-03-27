@@ -15,6 +15,7 @@ import Constants from "expo-constants";
 
 import { useAuth } from "@/src/hooks/use-auth";
 import { useAuthStore } from "@/src/store/auth-store";
+import { useToast } from "@/src/hooks/use-toast";
 import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
 import { CEFR_ORDER } from "@/src/types/cefr";
@@ -101,6 +102,7 @@ function RowDivider({ verticalSpacing = 14 }: RowDividerProps) {
 export default function SettingsScreen() {
   const { profile, updateProfile, signOut } = useAuth();
   const session = useAuthStore((s) => s.session);
+  const { showToast } = useToast();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -123,7 +125,11 @@ export default function SettingsScreen() {
           text: "Confirm",
           onPress: async () => {
             const { error } = await updateProfile({ current_cefr_level: level });
-            if (error) Alert.alert("Error", "Failed to update level. Please try again.");
+            if (error) {
+              showToast({ type: "error", message: "Failed to update level. Please try again." });
+            } else {
+              showToast({ type: "success", message: `Level updated to ${level}` });
+            }
           },
         },
       ]
@@ -138,7 +144,11 @@ export default function SettingsScreen() {
         text: "Confirm",
         onPress: () => {
           void updateProfile({ target_cefr_level: level }).then(({ error }) => {
-            if (error) Alert.alert("Error", "Failed to update target. Please try again.");
+            if (error) {
+              showToast({ type: "error", message: "Failed to update target. Please try again." });
+            } else {
+              showToast({ type: "success", message: `Target level set to ${level}` });
+            }
           });
         },
       },
@@ -153,7 +163,14 @@ export default function SettingsScreen() {
         text: "Confirm",
         onPress: () => {
           void updateProfile({ daily_goal_minutes: minutes }).then(({ error }) => {
-            if (error) Alert.alert("Error", "Failed to update daily goal. Please try again.");
+            if (error) {
+              showToast({
+                type: "error",
+                message: "Failed to update daily goal. Please try again.",
+              });
+            } else {
+              showToast({ type: "success", message: `Daily goal set to ${minutes} minutes` });
+            }
           });
         },
       },
@@ -163,13 +180,15 @@ export default function SettingsScreen() {
   async function handleSaveName() {
     const trimmed = nameValue.trim();
     if (!trimmed) {
-      Alert.alert("Error", "Display name cannot be empty.");
+      showToast({ type: "error", message: "Display name cannot be empty." });
       return;
     }
     const { error } = await updateProfile({ full_name: trimmed });
     if (error) {
-      Alert.alert("Error", "Failed to update name. Please try again.");
+      showToast({ type: "error", message: "Failed to update name. Please try again." });
+      return;
     }
+    showToast({ type: "success", message: "Display name updated" });
     setEditingName(false);
   }
 
@@ -210,9 +229,11 @@ export default function SettingsScreen() {
         message: JSON.stringify(exportData, null, 2),
         title: "Companion App Data Export",
       });
+
+      showToast({ type: "success", message: "Data exported successfully" });
     } catch (err) {
       captureError(err, "data-export");
-      Alert.alert("Export Failed", "Could not export your data. Please try again.");
+      showToast({ type: "error", message: "Could not export your data. Please try again." });
     } finally {
       setExportingData(false);
     }
@@ -239,11 +260,11 @@ export default function SettingsScreen() {
 
   async function confirmDeleteAccount() {
     if (deleteConfirmText.toUpperCase() !== "DELETE") {
-      Alert.alert("Error", 'Please type "DELETE" (all caps) to confirm account deletion.');
+      showToast({ type: "error", message: 'Please type "DELETE" (all caps) to confirm.' });
       return;
     }
     if (!session?.user?.id) {
-      Alert.alert("Error", "Session expired. Please sign in again.");
+      showToast({ type: "error", message: "Session expired. Please sign in again." });
       setShowDeleteConfirm(false);
       return;
     }
@@ -254,7 +275,7 @@ export default function SettingsScreen() {
       if (error) throw error;
     } catch (err) {
       captureError(err, "account-deletion");
-      Alert.alert("Error", "Failed to delete account. Please contact support.");
+      showToast({ type: "error", message: "Failed to delete account. Please contact support." });
       setDeletingAccount(false);
       setShowDeleteConfirm(false);
       return;
