@@ -19,6 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { CompanionMessage, CompanionMessageSkeleton } from "@/src/components/home/CompanionMessage";
+import { ErrorJourneyBar, ErrorJourneyBarSkeleton } from "@/src/components/home/ErrorJourneyBar";
 import { TodayPlanItem, TodayPlanSkeleton } from "@/src/components/home/TodayPlanItem";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { useDailyBriefing } from "@/src/hooks/use-daily-briefing";
@@ -443,6 +444,17 @@ export default function HomeScreen() {
                 Impossible de charger le plan. Appuyez pour réessayer.
               </Text>
             </TouchableOpacity>
+          </Animated.View>
+        ) : null}
+
+        {/* ---- Error Journey section ---- */}
+        {briefing.isLoading ? (
+          <Animated.View style={cardEntryStyle} className="mt-5">
+            <ErrorJourneyBarSkeleton />
+          </Animated.View>
+        ) : briefing.totalErrors > 0 ? (
+          <Animated.View style={cardEntryStyle} className="mt-5">
+            <ErrorJourneyBar total={briefing.totalErrors} resolved={briefing.resolvedErrors} />
           </Animated.View>
         ) : null}
 
