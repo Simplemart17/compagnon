@@ -64,7 +64,7 @@ development_status:
   epic-2: in-progress
   2-1-companionmessage-component-memory-driven-briefing: done
   2-2-todays-plan-curated-activity-recommendations: done
-  2-3-error-journey-progress-bar-home-screen-integration: backlog
+  2-3-error-journey-progress-bar-home-screen-integration: done
   epic-2-retrospective: optional
 
   # Epic 3: Enhanced Voice Conversation Experience
