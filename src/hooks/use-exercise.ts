@@ -343,6 +343,10 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
         ]);
       } catch (err) {
         captureError(err, "persist-exercise");
+        setState((s) => ({
+          ...s,
+          error: "Your progress could not be saved. Please check your connection.",
+        }));
       }
     },
     []
