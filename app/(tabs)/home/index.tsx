@@ -9,6 +9,7 @@ import {
   StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
+import NetInfo from "@react-native-community/netinfo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
@@ -18,11 +19,12 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { CompanionMessage, CompanionMessageSkeleton } from "@/src/components/home/CompanionMessage";
+import { TodayPlanItem, TodayPlanSkeleton } from "@/src/components/home/TodayPlanItem";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { useDailyBriefing } from "@/src/hooks/use-daily-briefing";
 import { useProgress } from "@/src/hooks/use-progress";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
-import { Colors, Shadows, skillTint } from "@/src/lib/design";
+import { Colors, Shadows, Typography } from "@/src/lib/design";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -108,58 +110,6 @@ function ConversationCard({ onPress }: ConversationCardProps) {
   );
 }
 
-interface SmallActionCardProps {
-  emoji: string;
-  title: string;
-  subtitle: string;
-  accentColor: string;
-  onPress: () => void;
-}
-
-function SmallActionCard({ emoji, title, subtitle, accentColor, onPress }: SmallActionCardProps) {
-  const scale = useSharedValue(1);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  return (
-    <AnimatedPressable
-      onPressIn={() => {
-        scale.value = withTiming(0.96, { duration: 100 });
-      }}
-      onPressOut={() => {
-        scale.value = withTiming(1, { duration: 100 });
-      }}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${subtitle}`}
-      className="flex-1 bg-white rounded-2xl p-4 overflow-hidden"
-      style={[
-        {
-          shadowColor: Colors.primary,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.07,
-          shadowRadius: 8,
-          elevation: 3,
-        },
-        animStyle,
-      ]}
-    >
-      {/* Left accent strip */}
-      <View
-        className="absolute left-0 top-0 bottom-0 w-1 rounded-tl-2xl rounded-bl-2xl"
-        style={{ backgroundColor: accentColor }}
-      />
-      <Text className="text-[24px] mb-2">{emoji}</Text>
-      <Text className="font-bold text-primary text-sm">{title}</Text>
-      <Text className="text-xs mt-[2px]" style={{ color: Colors.textTertiary }}>
-        {subtitle}
-      </Text>
-    </AnimatedPressable>
-  );
-}
-
 interface ActivityBarProps {
   heightPx: number;
   isGoalMet: boolean;
@@ -214,6 +164,25 @@ export default function HomeScreen() {
   const progress = useProgress();
   const briefing = useDailyBriefing();
   const [refreshing, setRefreshing] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsConnected(state.isConnected ?? true);
+    });
+    return unsubscribe;
+  }, []);
+
+  const handlePlanItemPress = useCallback(
+    (route: string, params?: Record<string, string>) => {
+      router.push({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Expo Router typed routes limitation
+        pathname: route as any,
+        params,
+      });
+    },
+    [router]
+  );
 
   const level = (profile?.current_cefr_level ?? "A1") as CEFRLevel;
   const dailyGoal = profile?.daily_goal_minutes ?? 15;
@@ -417,93 +386,65 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {/* ---- Quick Start section ---- */}
-        <Animated.View style={cardEntryStyle}>
-          <Text className="text-lg font-bold text-primary mt-5 mb-3" accessibilityRole="header">
-            Quick Start
-          </Text>
-
-          <View className="gap-3">
-            {/* Big CTA: Conversation */}
-            <ConversationCard onPress={() => router.push("/(tabs)/conversation")} />
-
-            {/* 2-column row */}
-            <View className="flex-row gap-3">
-              <SmallActionCard
-                emoji={"\uD83D\uDCDD"}
-                title="Exercice du jour"
-                subtitle="Daily Practice"
-                accentColor={Colors.accent}
-                onPress={() => router.push("/(tabs)/practice")}
-              />
-              <SmallActionCard
-                emoji={"\uD83C\uDFAF"}
-                title="Test TCF"
-                subtitle="Mock Test"
-                accentColor={Colors.skillGrammar}
-                onPress={() => router.push("/(tabs)/mock-test")}
-              />
-            </View>
-
-            {/* Fix This Mistake card */}
-            {progress.topErrors.length > 0 ? (
-              <TouchableOpacity
-                onPress={() =>
-                  router.push({
-                    pathname: "/(tabs)/practice/grammar" as const,
-                    params: {
-                      errorId: progress.topErrors[0].id,
-                      errorType: progress.topErrors[0].error_type,
-                      errorDescription: progress.topErrors[0].error_description,
-                    },
-                  })
-                }
-                accessibilityRole="button"
-                accessibilityLabel={`Fix this mistake: ${progress.topErrors[0].error_description}`}
-                accessibilityHint="Practice a targeted grammar drill"
-                className="rounded-2xl p-5"
-                style={{
-                  backgroundColor: Colors.accent10,
-                  borderWidth: 1,
-                  borderColor: Colors.accent,
-                }}
-                activeOpacity={0.75}
-              >
-                <View className="flex-row items-center mb-[6px] gap-[6px]">
-                  <Text className="text-[15px]">{"\u26A0\uFE0F"}</Text>
-                  <Text style={{ color: Colors.accentText }} className="text-[13px] font-bold">
-                    À corriger
-                  </Text>
-                </View>
-                <Text className="text-sm text-primary leading-5">
-                  {progress.topErrors[0].error_description}
-                </Text>
-                <Text style={{ color: Colors.accentText }} className="text-xs mt-2 font-semibold">
-                  Pratiquer {"\u2192"}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <View
-                className="rounded-2xl p-5"
-                style={{
-                  backgroundColor: skillTint(Colors.accent, 0.07),
-                  borderWidth: 1,
-                  borderColor: Colors.accent30,
-                }}
-              >
-                <View className="flex-row items-center mb-[6px] gap-[6px]">
-                  <Text className="text-[15px]">{"\u26A0\uFE0F"}</Text>
-                  <Text style={{ color: Colors.accentText }} className="text-[13px] font-bold">
-                    À corriger
-                  </Text>
-                </View>
-                <Text className="text-sm leading-5" style={{ color: Colors.gray700 }}>
-                  {"Terminez plus d'exercices pour voir vos corrections personnalisées ici."}
-                </Text>
-              </View>
-            )}
-          </View>
+        {/* ---- Hero conversation CTA ---- */}
+        <Animated.View style={cardEntryStyle} className="mt-5">
+          <ConversationCard onPress={() => router.push("/(tabs)/conversation")} />
         </Animated.View>
+
+        {/* ---- Today's Plan section ---- */}
+        {briefing.isLoading ? (
+          <Animated.View style={cardEntryStyle} className="mt-5">
+            <Text style={Typography.sectionHeader} className="mb-3" accessibilityRole="header">
+              Aujourd{"'"}hui
+            </Text>
+            <TodayPlanSkeleton />
+          </Animated.View>
+        ) : briefing.todayPlan.length > 0 ? (
+          <Animated.View style={cardEntryStyle} className="mt-5">
+            <Text style={Typography.sectionHeader} className="mb-3" accessibilityRole="header">
+              Aujourd{"'"}hui
+            </Text>
+            <View style={{ gap: 8 }}>
+              {briefing.todayPlan.map((item) => (
+                <TodayPlanItem
+                  key={item.id}
+                  title={item.title}
+                  subtitle={item.subtitle}
+                  iconColor={item.iconColor}
+                  iconEmoji={item.iconEmoji}
+                  badge={item.badge}
+                  disabled={!isConnected}
+                  onPress={() => handlePlanItemPress(item.route, item.params)}
+                />
+              ))}
+            </View>
+          </Animated.View>
+        ) : briefing.error ? (
+          <Animated.View style={cardEntryStyle} className="mt-5">
+            <Text style={Typography.sectionHeader} className="mb-3" accessibilityRole="header">
+              Aujourd{"'"}hui
+            </Text>
+            <TouchableOpacity
+              onPress={briefing.refresh}
+              accessibilityRole="button"
+              accessibilityLabel="Failed to load plan. Tap to retry."
+              activeOpacity={0.7}
+              className="rounded-xl p-4 items-center"
+              style={{
+                backgroundColor: Colors.error10,
+                borderWidth: 1,
+                borderColor: Colors.error25,
+              }}
+            >
+              <Text
+                className="text-[13px] text-center leading-[19px]"
+                style={{ color: Colors.error }}
+              >
+                Impossible de charger le plan. Appuyez pour réessayer.
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        ) : null}
 
         {/* ---- Skills overview section ---- */}
         <Animated.View style={cardEntryStyle}>
