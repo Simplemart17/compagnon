@@ -70,7 +70,7 @@ development_status:
   # Epic 3: Enhanced Voice Conversation Experience
   epic-3: in-progress
   3-1-audiowaveform-processing-state-processingindicator: done
-  3-2-transcriptview-condensed-mode-correctionbubble-side-note-variant: review
+  3-2-transcriptview-condensed-mode-correctionbubble-side-note-variant: done
   3-3-waveform-centered-layout-latency-masking: backlog
   epic-3-retrospective: optional
 
