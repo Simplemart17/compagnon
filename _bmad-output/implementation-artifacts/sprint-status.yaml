@@ -1,5 +1,5 @@
 # generated: 2026-03-25
-# last_updated: 2026-03-27 # story 3-1 created
+# last_updated: 2026-03-27 # story 3-2 in-progress
 # project: companion
 # project_key: NOKEY
 # tracking_system: file-system
@@ -70,7 +70,7 @@ development_status:
   # Epic 3: Enhanced Voice Conversation Experience
   epic-3: in-progress
   3-1-audiowaveform-processing-state-processingindicator: done
-  3-2-transcriptview-condensed-mode-correctionbubble-side-note-variant: backlog
+  3-2-transcriptview-condensed-mode-correctionbubble-side-note-variant: review
   3-3-waveform-centered-layout-latency-masking: backlog
   epic-3-retrospective: optional
 
