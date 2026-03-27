@@ -43,6 +43,7 @@ export interface ConversationState {
   status: "idle" | "connecting" | "connected" | "error" | "ended";
   isSpeaking: boolean;
   isAiSpeaking: boolean;
+  isProcessing: boolean;
   transcript: TranscriptEntry[];
   pendingAiText: string;
   allCorrections: Correction[];
@@ -98,6 +99,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
     status: "idle",
     isSpeaking: false,
     isAiSpeaking: false,
+    isProcessing: false,
     transcript: [],
     pendingAiText: "",
     allCorrections: [],
@@ -260,7 +262,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           break;
 
         case "input_audio_buffer.speech_stopped":
-          setState((s) => ({ ...s, isSpeaking: false }));
+          setState((s) => ({ ...s, isSpeaking: false, isProcessing: true }));
           break;
 
         // GA API event names use `output_` prefix for response audio/text events
@@ -268,7 +270,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           // Stream each audio chunk immediately for low-latency playback
           const turnId = `turn_${turnIdRef.current}`;
           void ExpoPlayAudioStream.playSound(event.delta, turnId, "pcm_s16le");
-          setState((s) => ({ ...s, isAiSpeaking: true }));
+          setState((s) => ({ ...s, isAiSpeaking: true, isProcessing: false }));
           break;
         }
 
@@ -372,9 +374,19 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           void handleFunctionCall(event.name, event.arguments, event.call_id);
           break;
 
+        case "response.done":
+          // Safety reset: clear processing if response completes without audio
+          setState((s) => ({ ...s, isProcessing: false }));
+          break;
+
         case "error":
           console.error("[RealtimeVoice] Error:", event.error);
-          setState((s) => ({ ...s, status: "error", error: event.error.message }));
+          setState((s) => ({
+            ...s,
+            status: "error",
+            error: event.error.message,
+            isProcessing: false,
+          }));
           break;
       }
     },
@@ -540,6 +552,7 @@ Return JSON: {
       status: "connecting",
       isSpeaking: false,
       isAiSpeaking: false,
+      isProcessing: false,
       transcript: [],
       pendingAiText: "",
       allCorrections: [],
@@ -678,7 +691,13 @@ Return JSON: {
     void ExpoPlayAudioStream.stopSound();
 
     const duration = durationSecondsRef.current;
-    setState((s) => ({ ...s, status: "ended", isSpeaking: false, isAiSpeaking: false }));
+    setState((s) => ({
+      ...s,
+      status: "ended",
+      isSpeaking: false,
+      isAiSpeaking: false,
+      isProcessing: false,
+    }));
 
     persistConversation(duration).catch((err) => captureError(err, "persist-conversation-end"));
     onConversationEnd?.(transcriptRef.current, correctionsRef.current);

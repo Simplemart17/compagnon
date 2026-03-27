@@ -41,6 +41,7 @@ import { captureError } from "@/src/lib/sentry";
 import { AudioWaveform } from "@/src/components/conversation/AudioWaveform";
 import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
+import { ProcessingIndicator } from "@/src/components/conversation/ProcessingIndicator";
 import type { ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors } from "@/src/lib/design";
@@ -317,10 +318,28 @@ export default function ConversationSessionScreen() {
         {(conversation.status === "connected" || conversation.status === "connecting") && (
           <View className="items-center py-2">
             <AudioWaveform
-              isActive={conversation.isSpeaking || conversation.isAiSpeaking}
-              speaker={conversation.isSpeaking ? "user" : conversation.isAiSpeaking ? "ai" : "idle"}
+              isActive={
+                conversation.isSpeaking || conversation.isAiSpeaking || conversation.isProcessing
+              }
+              speaker={
+                conversation.status === "connecting"
+                  ? undefined
+                  : conversation.isSpeaking
+                    ? "user"
+                    : conversation.isProcessing
+                      ? "processing"
+                      : conversation.isAiSpeaking
+                        ? "ai"
+                        : "idle"
+              }
               isConnecting={conversation.status === "connecting"}
               size={60}
+            />
+            <ProcessingIndicator
+              isVisible={conversation.isProcessing || conversation.status === "connecting"}
+              label={
+                conversation.status === "connecting" ? "Setting up your conversation..." : undefined
+              }
             />
           </View>
         )}
