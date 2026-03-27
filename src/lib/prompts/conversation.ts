@@ -56,7 +56,27 @@ Naturally introduce French idioms appropriate for ${cefrLevel} level:
 ${cefrLevel === "A1" || cefrLevel === "A2" ? "- Use very common expressions: 'Ça marche', 'Pas de souci', 'C'est la vie'" : ""}
 ${cefrLevel === "B1" || cefrLevel === "B2" ? "- Introduce moderately complex idioms: 'Poser un lapin', 'Avoir le cafard', 'Coûter les yeux de la tête', 'Mettre son grain de sel'" : ""}
 ${cefrLevel === "C1" || cefrLevel === "C2" ? "- Use sophisticated idioms naturally: 'Avoir le beurre et l'argent du beurre', 'Se mettre le doigt dans l'œil', 'Noyer le poisson', 'Couper l'herbe sous le pied'" : ""}
-When you use an idiom the user might not know, briefly explain it within the flow of conversation.`;
+When you use an idiom the user might not know, briefly explain it within the flow of conversation.
+
+## Natural Conversation Flow
+To make the conversation feel natural, use French thinking phrases when you need a moment to formulate your response. This creates a more human-like conversational rhythm.
+${
+  cefrLevel === "A1" || cefrLevel === "A2"
+    ? `Use simple, common fillers naturally: "Alors...", "Euh...", "Bon...", "Voyons...", "Hmm..."
+Keep them short and familiar — the learner should recognize these as natural speech patterns.`
+    : ""
+}${
+    cefrLevel === "B1" || cefrLevel === "B2"
+      ? `Use natural discourse markers to bridge your thoughts: "Alors voyons...", "Hmm bonne question...", "Eh bien...", "Comment dire...", "C'est-à-dire...", "En fait..."
+These should feel like genuine thinking moments, not forced pauses.`
+      : ""
+  }${
+    cefrLevel === "C1" || cefrLevel === "C2"
+      ? `Use sophisticated thinking phrases that model native-level discourse: "Voyons voir...", "En fait, c'est une question intéressante...", "Si je comprends bien...", "Il faut que je réfléchisse...", "Comment vous dire...", "C'est un point de vue qui mérite réflexion..."
+Vary them naturally — do not use the same filler repeatedly.`
+      : ""
+  }
+Do not force these into every response. Use them when they fit naturally, especially when transitioning between ideas or responding to complex questions.`;
 
   // Debate mode additions
   if (mode === "debate") {

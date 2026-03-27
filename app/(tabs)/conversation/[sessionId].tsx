@@ -211,6 +211,9 @@ export default function ConversationSessionScreen() {
     transform: [{ scale: startRingScale.value }],
   }));
 
+  const isConversationActive =
+    conversation.status === "connected" || conversation.status === "connecting";
+
   // Status dot color
   const statusDotColor =
     conversation.status === "connected"
@@ -236,7 +239,7 @@ export default function ConversationSessionScreen() {
       <Stack.Screen
         options={{
           headerShown: false,
-          gestureEnabled: conversation.status !== "connected",
+          gestureEnabled: !isConversationActive,
         }}
       />
       <KeyboardAvoidingView
@@ -248,7 +251,7 @@ export default function ConversationSessionScreen() {
           {/* Back button */}
           <TouchableOpacity
             onPress={() => {
-              if (conversation.status === "connected" || conversation.status === "connecting") {
+              if (isConversationActive) {
                 Alert.alert(
                   "Leave this conversation?",
                   "Leave this conversation? It will be saved.",
@@ -305,46 +308,58 @@ export default function ConversationSessionScreen() {
           <View className="w-11 h-11" />
         </View>
 
-        {/* Main Content Area — transcript is always visible */}
-        <View className="flex-1">
-          <TranscriptView
-            transcript={conversation.transcript}
-            pendingAiText={conversation.pendingAiText}
-            isAiSpeaking={conversation.isAiSpeaking}
-          />
-        </View>
-
-        {/* Small waveform above controls when conversation is active */}
-        {(conversation.status === "connected" || conversation.status === "connecting") && (
-          <View className="items-center py-2">
-            <AudioWaveform
-              isActive={
-                conversation.isSpeaking || conversation.isAiSpeaking || conversation.isProcessing
-              }
-              speaker={
-                conversation.status === "connecting"
-                  ? undefined
-                  : conversation.isSpeaking
-                    ? "user"
-                    : conversation.isProcessing
-                      ? "processing"
-                      : conversation.isAiSpeaking
-                        ? "ai"
-                        : "idle"
-              }
-              isConnecting={conversation.status === "connecting"}
-              size={60}
+        {/* Main Content Area — layout depends on conversation state */}
+        {isConversationActive ? (
+          <>
+            {/* Waveform-centered layout: condensed transcript + large waveform */}
+            <TranscriptView
+              transcript={conversation.transcript}
+              pendingAiText={conversation.pendingAiText}
+              isAiSpeaking={conversation.isAiSpeaking}
+              condensed
             />
-            <ProcessingIndicator
-              isVisible={conversation.isProcessing || conversation.status === "connecting"}
-              label={
-                conversation.status === "connecting" ? "Setting up your conversation..." : undefined
-              }
+
+            <View className="flex-1 items-center justify-center">
+              <AudioWaveform
+                isActive={
+                  conversation.isSpeaking || conversation.isAiSpeaking || conversation.isProcessing
+                }
+                speaker={
+                  conversation.status === "connecting"
+                    ? undefined
+                    : conversation.isSpeaking
+                      ? "user"
+                      : conversation.isProcessing
+                        ? "processing"
+                        : conversation.isAiSpeaking
+                          ? "ai"
+                          : "idle"
+                }
+                isConnecting={conversation.status === "connecting"}
+                size={140}
+              />
+              <ProcessingIndicator
+                isVisible={conversation.isProcessing || conversation.status === "connecting"}
+                label={
+                  conversation.status === "connecting"
+                    ? "Setting up your conversation..."
+                    : undefined
+                }
+              />
+            </View>
+          </>
+        ) : (
+          /* Default layout: full transcript dominant */
+          <View className="flex-1">
+            <TranscriptView
+              transcript={conversation.transcript}
+              pendingAiText={conversation.pendingAiText}
+              isAiSpeaking={conversation.isAiSpeaking}
             />
           </View>
         )}
 
-        {/* Text Input */}
+        {/* Text Input — between waveform area and bottom controls */}
         {showTextInput && conversation.status === "connected" && (
           <View className="bg-white/[0.08] rounded-[28px] px-4 py-2 mx-4 mb-3 flex-row items-center gap-2">
             <TextInput
