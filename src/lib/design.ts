@@ -99,6 +99,8 @@ export const Colors = {
   whiteAlpha25: "rgba(255,255,255,0.25)",
   whiteAlpha30: "rgba(255,255,255,0.3)",
   whiteAlpha35: "rgba(255,255,255,0.35)",
+  whiteAlpha65: "rgba(255,255,255,0.65)",
+  whiteAlpha07: "rgba(255,255,255,0.07)",
   whiteAlpha85: "rgba(255,255,255,0.85)",
 
   // Overlays
