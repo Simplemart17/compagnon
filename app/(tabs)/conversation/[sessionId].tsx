@@ -9,7 +9,7 @@
  * - End conversation with feedback summary
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -47,6 +47,10 @@ import {
   SessionComparison,
   type SessionComparisonMetric,
 } from "@/src/components/feedback/SessionComparison";
+import {
+  MilestoneBanner,
+  type MilestoneBannerProps,
+} from "@/src/components/feedback/MilestoneBanner";
 import type { ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors } from "@/src/lib/design";
@@ -93,6 +97,9 @@ export default function ConversationSessionScreen() {
   const [comparisonMetrics, setComparisonMetrics] = useState<SessionComparisonMetric[] | null>(
     null
   );
+  const [milestone, setMilestone] = useState<MilestoneBannerProps | null>(null);
+  const [preConversationCefrLevel, setPreConversationCefrLevel] = useState<string | null>(null);
+  const cefrCapturedRef = useRef(false);
 
   const insets = useSafeAreaInsets();
   const rawSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
@@ -123,6 +130,14 @@ export default function ConversationSessionScreen() {
       }
     })();
   }, [user?.id, topic]);
+
+  // Capture CEFR level at conversation start for promotion detection
+  useEffect(() => {
+    if (profile?.current_cefr_level && !cefrCapturedRef.current) {
+      setPreConversationCefrLevel(profile.current_cefr_level);
+      cefrCapturedRef.current = true;
+    }
+  }, [profile?.current_cefr_level]);
 
   const conversation = useRealtimeVoice({
     cefrLevel,
@@ -214,6 +229,109 @@ export default function ConversationSessionScreen() {
       }
     })();
   }, [conversation.feedback, conversation.conversationId, conversation.durationSeconds, user?.id]);
+
+  // Detect milestones (personal best, error resolution, CEFR promotion) when feedback arrives
+  useEffect(() => {
+    if (!conversation.feedback || !conversation.conversationId || !user?.id) return;
+
+    const currentConversationId = conversation.conversationId;
+    const currentFeedback = conversation.feedback;
+
+    void (async () => {
+      try {
+        // --- CEFR promotion detection (highest priority) ---
+        if (preConversationCefrLevel) {
+          const { data: updatedProfile } = await supabase
+            .from("profiles")
+            .select("current_cefr_level")
+            .eq("id", user.id)
+            .single();
+
+          if (updatedProfile && updatedProfile.current_cefr_level !== preConversationCefrLevel) {
+            setMilestone({
+              icon: "\uD83C\uDF1F",
+              title: "CEFR Promotion!",
+              subtitle: `Welcome to ${updatedProfile.current_cefr_level}!`,
+              type: "cefr_promotion",
+            });
+            return;
+          }
+        }
+
+        // --- Personal best detection (second priority) ---
+        const { data: allPrev } = await supabase
+          .from("conversations")
+          .select("ai_feedback")
+          .eq("user_id", user.id)
+          .eq("status", "completed")
+          .neq("id", currentConversationId);
+
+        if (allPrev && allPrev.length > 0) {
+          let maxFluency = 0;
+          let maxGrammar = 0;
+
+          for (const row of allPrev) {
+            const fb = row.ai_feedback as {
+              fluencyRating?: number;
+              grammarRating?: number;
+            } | null;
+            if (fb?.fluencyRating != null && fb.fluencyRating > maxFluency) {
+              maxFluency = fb.fluencyRating;
+            }
+            if (fb?.grammarRating != null && fb.grammarRating > maxGrammar) {
+              maxGrammar = fb.grammarRating;
+            }
+          }
+
+          const fluencyBest = currentFeedback.fluencyRating > maxFluency && maxFluency > 0;
+          const grammarBest = currentFeedback.grammarRating > maxGrammar && maxGrammar > 0;
+
+          if (fluencyBest || grammarBest) {
+            const subtitle =
+              fluencyBest && grammarBest
+                ? `Fluency ${currentFeedback.fluencyRating}/5 & Grammar ${currentFeedback.grammarRating}/5`
+                : fluencyBest
+                  ? `Your best fluency score: ${currentFeedback.fluencyRating}/5`
+                  : `Your best grammar score: ${currentFeedback.grammarRating}/5`;
+            setMilestone({
+              icon: "\uD83C\uDFC6",
+              title: "New Personal Best!",
+              subtitle,
+              type: "personal_best",
+            });
+            return;
+          }
+        }
+
+        // --- Error resolution detection (third priority) ---
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { data: resolvedErrors } = await supabase
+          .from("error_patterns")
+          .select("error_description")
+          .eq("user_id", user.id)
+          .eq("resolved", true)
+          .gte("last_occurred", fiveMinutesAgo)
+          .order("last_occurred", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (resolvedErrors) {
+          setMilestone({
+            icon: "\uD83C\uDFAF",
+            title: "Pattern Resolved!",
+            subtitle: resolvedErrors.error_description,
+            type: "error_resolved",
+          });
+          return;
+        }
+
+        setMilestone(null);
+      } catch (err) {
+        captureError(err, "milestone-detection");
+        setMilestone(null);
+      }
+    })();
+  }, [conversation.feedback, conversation.conversationId, user?.id, preConversationCefrLevel]);
 
   // Prevent accidental back navigation during active conversation
   useEffect(() => {
@@ -699,6 +817,12 @@ export default function ConversationSessionScreen() {
                         ))}
                       </View>
                     )}
+                  </View>
+                )}
+
+                {milestone && (
+                  <View className="mb-3">
+                    <MilestoneBanner {...milestone} />
                   </View>
                 )}
 
