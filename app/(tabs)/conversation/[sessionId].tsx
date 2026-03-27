@@ -34,7 +34,7 @@ import Reanimated, {
 
 import { useRealtimeVoice } from "@/src/hooks/use-realtime-voice";
 import { useAuthStore } from "@/src/store/auth-store";
-import { hapticMedium } from "@/src/lib/haptics";
+import { hapticLight, hapticMedium } from "@/src/lib/haptics";
 import { retrieveMemories } from "@/src/lib/memory";
 import { getTopErrors } from "@/src/lib/error-tracker";
 import { captureError } from "@/src/lib/sentry";
@@ -51,9 +51,10 @@ import {
   MilestoneBanner,
   type MilestoneBannerProps,
 } from "@/src/components/feedback/MilestoneBanner";
+import { ErrorJourneyBar } from "@/src/components/home/ErrorJourneyBar";
 import type { ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
-import { Colors } from "@/src/lib/design";
+import { Colors, Radii, Typography } from "@/src/lib/design";
 
 /** Sanitize technical error messages into user-friendly strings. */
 function sanitizeErrorMessage(error: string | null): string {
@@ -83,6 +84,78 @@ function sanitizeErrorMessage(error: string | null): string {
   return error;
 }
 
+/** Inline rating bar with animated fill */
+function RatingBar({
+  label,
+  value,
+  fillColor,
+  isPersonalBest,
+}: {
+  label: string;
+  value: number;
+  fillColor: string;
+  isPersonalBest: boolean;
+}) {
+  const clamped = Math.max(0, Math.min(5, value));
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming((clamped / 5) * 100, { duration: 600 });
+  }, [clamped, progress]);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: `${progress.value}%`,
+  }));
+
+  return (
+    <View
+      accessible
+      accessibilityRole="none"
+      accessibilityLabel={`${label}: ${clamped} out of 5${isPersonalBest ? ", personal best" : ""}`}
+    >
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+        <Text style={{ ...Typography.caption, color: Colors.whiteAlpha85, fontWeight: "600" }}>
+          {label}
+        </Text>
+        <Text style={{ ...Typography.caption, color: fillColor, fontWeight: "700" }}>
+          {clamped}/5
+        </Text>
+      </View>
+      <View
+        style={{
+          height: 8,
+          backgroundColor: Colors.whiteAlpha08,
+          borderRadius: Radii.chip,
+          overflow: "hidden",
+        }}
+      >
+        <Reanimated.View
+          style={[
+            {
+              height: 8,
+              backgroundColor: fillColor,
+              borderRadius: Radii.chip,
+            },
+            fillStyle,
+          ]}
+        />
+      </View>
+      {isPersonalBest && (
+        <Text
+          style={{
+            ...Typography.caption,
+            color: Colors.success,
+            marginTop: 4,
+            fontWeight: "600",
+          }}
+        >
+          Your best {label.toLowerCase()} score!
+        </Text>
+      )}
+    </View>
+  );
+}
+
 export default function ConversationSessionScreen() {
   const { sessionId, mode: modeParam } = useLocalSearchParams<{
     sessionId: string;
@@ -98,6 +171,14 @@ export default function ConversationSessionScreen() {
     null
   );
   const [milestone, setMilestone] = useState<MilestoneBannerProps | null>(null);
+  const [errorJourney, setErrorJourney] = useState<{ total: number; resolved: number } | null>(
+    null
+  );
+  const [nextAction, setNextAction] = useState<{
+    label: string;
+    route: string;
+    params?: Record<string, string>;
+  } | null>(null);
   const [preConversationCefrLevel, setPreConversationCefrLevel] = useState<string | null>(null);
   const cefrCapturedRef = useRef(false);
 
@@ -333,6 +414,93 @@ export default function ConversationSessionScreen() {
     })();
   }, [conversation.feedback, conversation.conversationId, user?.id, preConversationCefrLevel]);
 
+  // Fetch error journey counts when feedback arrives
+  useEffect(() => {
+    if (!conversation.feedback || !user?.id) return;
+
+    void (async () => {
+      try {
+        const { count: totalCount, error: totalError } = await supabase
+          .from("error_patterns")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+
+        if (totalError) {
+          captureError(totalError, "error-journey-total-query");
+          setErrorJourney(null);
+          return;
+        }
+
+        if (totalCount == null || totalCount === 0) {
+          setErrorJourney(null);
+          return;
+        }
+
+        const { count: resolvedCount, error: resolvedError } = await supabase
+          .from("error_patterns")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("resolved", true);
+
+        if (resolvedError) {
+          captureError(resolvedError, "error-journey-resolved-query");
+        }
+
+        setErrorJourney({ total: totalCount, resolved: resolvedCount ?? 0 });
+      } catch (err) {
+        captureError(err, "error-journey-fetch");
+        setErrorJourney(null);
+      }
+    })();
+  }, [conversation.feedback, user?.id]);
+
+  // Derive contextual next action from feedback
+  useEffect(() => {
+    if (!conversation.feedback) return;
+
+    const corrections = conversation.allCorrections ?? [];
+
+    // Count correction categories for structured matching
+    const categoryCounts = { pronunciation: 0, grammar: 0, vocabulary: 0, register: 0 };
+    for (const c of corrections) {
+      if (typeof c !== "string" && c.category) {
+        categoryCounts[c.category] = (categoryCounts[c.category] ?? 0) + 1;
+      }
+    }
+
+    // Also check improvements text for keywords (covers cases without structured corrections)
+    const improvementsText = (conversation.feedback.improvements ?? []).join(" ").toLowerCase();
+
+    if (
+      categoryCounts.pronunciation > 0 ||
+      improvementsText.includes("prononciation") ||
+      improvementsText.includes("pronunciation") ||
+      improvementsText.includes("accent")
+    ) {
+      setNextAction({ label: "Practice Pronunciation", route: "/(tabs)/practice/pronunciation" });
+    } else if (
+      categoryCounts.grammar > 0 ||
+      improvementsText.includes("grammar") ||
+      improvementsText.includes("grammaire")
+    ) {
+      const firstGrammarError = corrections.find(
+        (c) => typeof c !== "string" && c.category === "grammar"
+      );
+      setNextAction({
+        label: "Review Grammar",
+        route: "/(tabs)/practice/grammar",
+        params:
+          firstGrammarError && typeof firstGrammarError !== "string"
+            ? { errorType: firstGrammarError.explanation }
+            : undefined,
+      });
+    } else if (categoryCounts.vocabulary > 0 || improvementsText.includes("vocabul")) {
+      setNextAction({ label: "Review Vocabulary", route: "/(tabs)/practice/vocabulary" });
+    } else {
+      setNextAction({ label: "Continue Practicing", route: "/(tabs)/practice" });
+    }
+  }, [conversation.feedback, conversation.allCorrections]);
+
   // Prevent accidental back navigation during active conversation
   useEffect(() => {
     if (conversation.status !== "connected" && conversation.status !== "connecting") return;
@@ -418,6 +586,15 @@ export default function ConversationSessionScreen() {
 
   const isConversationActive =
     conversation.status === "connected" || conversation.status === "connecting";
+
+  // Extract first name for personalized header
+  const firstName = profile?.full_name?.split(" ")[0] || "Learner";
+
+  // Check if this session is a personal best for fluency or grammar
+  const isFluencyBest =
+    milestone?.type === "personal_best" && milestone.subtitle?.toLowerCase().includes("fluency");
+  const isGrammarBest =
+    milestone?.type === "personal_best" && milestone.subtitle?.toLowerCase().includes("grammar");
 
   // Status dot color
   const statusDotColor =
@@ -737,129 +914,315 @@ export default function ConversationSessionScreen() {
               className="pt-4 px-6 pb-10"
               style={{
                 backgroundColor: Colors.bgDarkCard,
-                borderTopLeftRadius: 28,
-                borderTopRightRadius: 28,
+                borderTopLeftRadius: Radii.heroBottom,
+                borderTopRightRadius: Radii.heroBottom,
                 maxHeight: "78%",
               }}
             >
               {/* Drag handle */}
               <View className="w-10 h-1 rounded-sm bg-white/20 self-center mb-5" />
 
-              <Text className="text-[22px] font-extrabold text-white">Bilan de conversation</Text>
-              <Text className="text-[13px] text-white/[0.65] mb-4 mt-1">
+              {/* Personalized header */}
+              <Text style={{ ...Typography.subsectionHeader, color: Colors.textOnDark }}>
+                Great Session, {firstName}!
+              </Text>
+              <Text
+                style={{
+                  ...Typography.caption,
+                  color: Colors.whiteAlpha65,
+                  marginTop: 4,
+                  marginBottom: 16,
+                }}
+              >
                 {formatDuration(conversation.durationSeconds)} • {conversation.transcript.length}{" "}
-                messages
+                exchanges
               </Text>
 
               {/* Stat tiles */}
               <View className="flex-row gap-3 mb-4">
-                <View className="flex-1 bg-white/[0.07] rounded-2xl p-4 items-center">
-                  <Text className="text-[28px] font-extrabold text-white">
+                <View
+                  accessible
+                  accessibilityLabel={`Your turns: ${conversation.transcript.filter((t) => t.role === "user").length}`}
+                  className="flex-1 p-4 items-center"
+                  style={{
+                    backgroundColor: Colors.whiteAlpha07,
+                    borderRadius: Radii.card,
+                  }}
+                >
+                  <Text style={{ ...Typography.statNumber, color: Colors.textOnDark }}>
                     {conversation.transcript.filter((t) => t.role === "user").length}
                   </Text>
-                  <Text className="text-[11px] text-white/[0.65] mt-1">Your turns</Text>
+                  <Text style={{ ...Typography.label, color: Colors.whiteAlpha65, marginTop: 4 }}>
+                    Your turns
+                  </Text>
                 </View>
-                <View className="flex-1 bg-white/[0.07] rounded-2xl p-4 items-center">
-                  <Text className="text-[28px] font-extrabold text-accent">
+                <View
+                  accessible
+                  accessibilityLabel={`Corrections: ${conversation.allCorrections.length}`}
+                  className="flex-1 p-4 items-center"
+                  style={{
+                    backgroundColor: Colors.whiteAlpha07,
+                    borderRadius: Radii.card,
+                  }}
+                >
+                  <Text style={{ ...Typography.statNumber, color: Colors.accent }}>
                     {conversation.allCorrections.length}
                   </Text>
-                  <Text className="text-[11px] text-white/[0.65] mt-1">Corrections</Text>
+                  <Text style={{ ...Typography.label, color: Colors.whiteAlpha65, marginTop: 4 }}>
+                    Corrections
+                  </Text>
                 </View>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} style={{ flexShrink: 1 }}>
-                {/* AI Feedback Summary */}
-                {conversation.feedback && (
-                  <View className="bg-white/[0.07] rounded-2xl p-4 mb-3">
-                    <Text className="text-sm leading-5 mb-3" style={{ color: Colors.whiteAlpha85 }}>
-                      {conversation.feedback.summary}
-                    </Text>
-                    <View className="flex-row gap-4 mb-3">
-                      <View className="flex-1 items-center">
-                        <Text className="text-[22px] font-extrabold text-success">
-                          {conversation.feedback.fluencyRating}/5
-                        </Text>
-                        <Text className="text-[10px] text-white/[0.65] mt-0.5">Fluency</Text>
-                      </View>
-                      <View className="flex-1 items-center">
-                        <Text className="text-[22px] font-extrabold text-accent">
-                          {conversation.feedback.grammarRating}/5
-                        </Text>
-                        <Text className="text-[10px] text-white/[0.65] mt-0.5">Grammar</Text>
-                      </View>
-                      <View className="flex-1 items-center">
-                        <Text
-                          className="text-[22px] font-extrabold"
-                          style={{ color: Colors.skillListening }}
-                        >
-                          {conversation.feedback.vocabularyUsed}
-                        </Text>
-                        <Text className="text-[10px] text-white/[0.65] mt-0.5">Words</Text>
-                      </View>
-                    </View>
-                    {conversation.feedback.strengths.length > 0 && (
-                      <View className="mb-2">
-                        <Text className="text-xs font-bold text-success mb-1">Strengths</Text>
-                        {conversation.feedback.strengths.map((s, i) => (
-                          <Text key={i} className="text-xs text-white/70 leading-[18px]">
-                            + {s}
-                          </Text>
-                        ))}
-                      </View>
-                    )}
-                    {conversation.feedback.improvements.length > 0 && (
-                      <View>
-                        <Text className="text-xs font-bold text-accent mb-1">Areas to improve</Text>
-                        {conversation.feedback.improvements.map((s, i) => (
-                          <Text key={i} className="text-xs text-white/70 leading-[18px]">
-                            - {s}
-                          </Text>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                )}
+              {/* AI feedback summary text */}
+              {conversation.feedback && (
+                <Text
+                  style={{
+                    ...Typography.bodySecondary,
+                    color: Colors.whiteAlpha85,
+                    marginBottom: 12,
+                    lineHeight: 20,
+                  }}
+                >
+                  {conversation.feedback.summary}
+                </Text>
+              )}
 
+              <ScrollView showsVerticalScrollIndicator={false} style={{ flexShrink: 1 }}>
+                {/* MilestoneBanner (if earned) */}
                 {milestone && (
                   <View className="mb-3">
                     <MilestoneBanner {...milestone} />
                   </View>
                 )}
 
+                {/* Rating bars */}
+                {conversation.feedback && (
+                  <View
+                    className="mb-3 p-4"
+                    style={{
+                      backgroundColor: Colors.whiteAlpha07,
+                      borderRadius: Radii.card,
+                    }}
+                  >
+                    {/* Fluency bar */}
+                    <RatingBar
+                      label="Fluency"
+                      value={conversation.feedback.fluencyRating}
+                      fillColor={Colors.success}
+                      isPersonalBest={isFluencyBest}
+                    />
+
+                    {/* Grammar bar */}
+                    <View style={{ marginTop: 12 }}>
+                      <RatingBar
+                        label="Grammar"
+                        value={conversation.feedback.grammarRating}
+                        fillColor={Colors.accent}
+                        isPersonalBest={isGrammarBest}
+                      />
+                    </View>
+
+                    {/* Vocabulary count */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: 12,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          ...Typography.caption,
+                          color: Colors.whiteAlpha85,
+                          fontWeight: "600",
+                        }}
+                      >
+                        Vocabulary
+                      </Text>
+                      <Text
+                        style={{
+                          ...Typography.caption,
+                          color: Colors.skillListening,
+                          fontWeight: "700",
+                        }}
+                      >
+                        {conversation.feedback.vocabularyUsed} words
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* SessionComparison (if applicable) */}
                 {comparisonMetrics && (
                   <View className="mb-3">
                     <SessionComparison metrics={comparisonMetrics} />
                   </View>
                 )}
 
+                {/* "What We Noticed" observations */}
+                {conversation.feedback &&
+                  (conversation.feedback.strengths.length > 0 ||
+                    conversation.feedback.improvements.length > 0 ||
+                    milestone?.type === "error_resolved") && (
+                    <View
+                      className="mb-3"
+                      style={{
+                        backgroundColor: Colors.whiteAlpha07,
+                        borderRadius: Radii.card,
+                        padding: 16,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          ...Typography.label,
+                          fontWeight: "700",
+                          color: Colors.textOnDark,
+                          marginBottom: 10,
+                        }}
+                      >
+                        What We Noticed
+                      </Text>
+
+                      {/* Error resolution celebration */}
+                      {milestone?.type === "error_resolved" && (
+                        <Text
+                          style={{
+                            ...Typography.bodySecondary,
+                            color: Colors.success,
+                            marginBottom: 8,
+                          }}
+                        >
+                          You used to struggle with {milestone.subtitle}. Not anymore!
+                        </Text>
+                      )}
+
+                      {/* Strengths */}
+                      {conversation.feedback.strengths.map((s, i) => (
+                        <View key={`s-${i}`} style={{ flexDirection: "row", marginBottom: 4 }}>
+                          <Text style={{ color: Colors.success, marginRight: 6 }}>✓</Text>
+                          <Text
+                            style={{
+                              ...Typography.bodySecondary,
+                              color: Colors.whiteAlpha85,
+                              flex: 1,
+                            }}
+                          >
+                            {s}
+                          </Text>
+                        </View>
+                      ))}
+
+                      {/* Improvements */}
+                      {conversation.feedback.improvements.map((s, i) => (
+                        <View key={`i-${i}`} style={{ flexDirection: "row", marginBottom: 4 }}>
+                          <Text style={{ color: Colors.accent, marginRight: 6 }}>→</Text>
+                          <Text
+                            style={{
+                              ...Typography.bodySecondary,
+                              color: Colors.whiteAlpha85,
+                              flex: 1,
+                            }}
+                          >
+                            {s}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                {/* Corrections or "Impeccable" message */}
                 {conversation.allCorrections.length > 0 ? (
-                  <CorrectionBubble corrections={conversation.allCorrections} />
+                  <View className="mb-3">
+                    <CorrectionBubble corrections={conversation.allCorrections} />
+                  </View>
                 ) : (
                   <View
-                    className="rounded-2xl border p-5 my-3 items-center"
+                    className="rounded-2xl border p-5 mb-3 items-center"
                     style={{
                       backgroundColor: Colors.success12,
                       borderColor: Colors.success30,
                     }}
                   >
-                    <Text className="text-[17px] font-bold text-success text-center">
+                    <Text
+                      style={{
+                        ...Typography.cardTitle,
+                        color: Colors.success,
+                        textAlign: "center",
+                      }}
+                    >
                       Impeccable ! Aucune correction.
                     </Text>
                   </View>
                 )}
 
-                {/* Close button */}
+                {/* ErrorJourneyBar */}
+                {errorJourney != null && errorJourney.total > 0 && (
+                  <View className="mb-3">
+                    <ErrorJourneyBar
+                      total={errorJourney.total}
+                      resolved={errorJourney.resolved}
+                      containerStyle={{
+                        backgroundColor: Colors.whiteAlpha07,
+                        borderRadius: Radii.card,
+                      }}
+                    />
+                  </View>
+                )}
+
+                {/* Contextual next action button */}
+                {nextAction && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      hapticLight();
+                      router.push({
+                        pathname: nextAction.route as "/(tabs)/practice/pronunciation",
+                        params: nextAction.params,
+                      });
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={nextAction.label}
+                    accessibilityHint="Double tap to navigate to practice"
+                    style={{
+                      backgroundColor: Colors.accent,
+                      borderRadius: Radii.button,
+                      height: 52,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginTop: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        ...Typography.cardTitle,
+                        color: Colors.textOnDark,
+                      }}
+                    >
+                      {nextAction.label}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Close text link */}
                 <TouchableOpacity
                   onPress={() => {
                     setFeedbackVisible(false);
                     router.back();
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel="Finished"
+                  accessibilityLabel="Close feedback"
                   accessibilityHint="Double tap to close feedback and return to topics"
-                  className="bg-primary rounded-xl h-[52px] justify-center items-center mt-5"
+                  style={{
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginTop: 12,
+                    minHeight: 44,
+                  }}
                 >
-                  <Text className="text-base font-bold text-white">Terminé</Text>
+                  <Text style={{ ...Typography.bodySecondary, color: Colors.whiteAlpha65 }}>
+                    Close
+                  </Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>

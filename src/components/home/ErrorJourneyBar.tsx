@@ -14,6 +14,8 @@ export interface ErrorJourneyBarProps {
   total: number;
   /** Number of resolved error patterns */
   resolved: number;
+  /** Optional style override for the outermost container (e.g. dark-mode background) */
+  containerStyle?: import("react-native").ViewStyle;
 }
 
 // ---------------------------------------------------------------------------
@@ -28,6 +30,7 @@ export interface ErrorJourneyBarProps {
 export const ErrorJourneyBar = React.memo(function ErrorJourneyBar({
   total,
   resolved: rawResolved,
+  containerStyle,
 }: ErrorJourneyBarProps) {
   // Clamp resolved to total to handle race conditions between parallel count queries
   const resolved = Math.min(rawResolved, total);
@@ -57,12 +60,15 @@ export const ErrorJourneyBar = React.memo(function ErrorJourneyBar({
           : `Error patterns: ${resolved} of ${total} resolved, ${percentage} percent`
       }
       accessibilityValue={{ min: 0, max: total, now: resolved }}
-      style={{
-        backgroundColor: skillTint(Colors.primary, 0.04),
-        borderRadius: Radii.button,
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-      }}
+      style={[
+        {
+          backgroundColor: skillTint(Colors.primary, 0.04),
+          borderRadius: Radii.button,
+          paddingVertical: 8,
+          paddingHorizontal: 10,
+        },
+        containerStyle,
+      ]}
     >
       {/* Label row */}
       <View
