@@ -25,11 +25,17 @@ interface TranscriptViewProps {
   transcript: TranscriptEntry[];
   pendingAiText: string;
   isAiSpeaking: boolean;
+  condensed?: boolean;
 }
 
 interface AnimatedMessageProps {
   entry: TranscriptEntry;
   shouldAnimate: boolean;
+  condensed?: boolean;
+  /** Corrections from the following AI message, to render below this user message in sideNote mode */
+  sideNoteCorrections?: TranscriptEntry["corrections"];
+  /** Whether sideNote corrections should be visible (hidden while AI is speaking for latest turn) */
+  showSideNoteCorrections?: boolean;
 }
 
 /** Strip the Correction Report section from AI text for clean display */
@@ -44,6 +50,9 @@ function getDisplayText(text: string): string {
 const AnimatedMessage = React.memo(function AnimatedMessage({
   entry,
   shouldAnimate,
+  condensed = false,
+  sideNoteCorrections,
+  showSideNoteCorrections = true,
 }: AnimatedMessageProps) {
   const isUser = entry.role === "user";
 
@@ -98,12 +107,26 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
         </Text>
       </View>
 
-      {/* Corrections below AI messages */}
-      {entry.role === "assistant" && entry.corrections && entry.corrections.length > 0 && (
-        <View className="mt-1.5">
-          <CorrectionBubble corrections={entry.corrections} compact />
-        </View>
-      )}
+      {/* Default variant: corrections below AI messages */}
+      {!condensed &&
+        entry.role === "assistant" &&
+        entry.corrections &&
+        entry.corrections.length > 0 && (
+          <View className="mt-1.5">
+            <CorrectionBubble corrections={entry.corrections} compact />
+          </View>
+        )}
+
+      {/* Condensed/sideNote variant: corrections below user messages */}
+      {condensed &&
+        isUser &&
+        showSideNoteCorrections &&
+        sideNoteCorrections &&
+        sideNoteCorrections.length > 0 && (
+          <View className="mt-1.5" style={{ alignSelf: "flex-start" }}>
+            <CorrectionBubble corrections={sideNoteCorrections} compact variant="sideNote" />
+          </View>
+        )}
     </Reanimated.View>
   );
 });
@@ -187,7 +210,15 @@ function PendingAiBubble({ text }: { text: string }) {
   );
 }
 
-export function TranscriptView({ transcript, pendingAiText, isAiSpeaking }: TranscriptViewProps) {
+/** Fixed height for condensed mode — architectural contract from Epic 3 (Story 3.3 allocates 160px) */
+const CONDENSED_HEIGHT = 160;
+
+export function TranscriptView({
+  transcript,
+  pendingAiText,
+  isAiSpeaking,
+  condensed = false,
+}: TranscriptViewProps) {
   const flatListRef = useRef<FlatList<TranscriptEntry>>(null);
   const prevLengthRef = useRef(transcript.length);
 
@@ -210,11 +241,46 @@ export function TranscriptView({ transcript, pendingAiText, isAiSpeaking }: Tran
 
   const keyExtractor = useCallback((item: TranscriptEntry) => item.id, []);
 
+  // Use refs to avoid capturing transcript/isAiSpeaking in renderItem closure (preserves FlatList memoization)
+  const transcriptRef = useRef(transcript);
+  transcriptRef.current = transcript;
+  const isAiSpeakingRef = useRef(isAiSpeaking);
+  isAiSpeakingRef.current = isAiSpeaking;
+
   const renderItem = useCallback(
-    ({ item, index }: { item: TranscriptEntry; index: number }) => (
-      <AnimatedMessage entry={item} shouldAnimate={index >= animateFromIndex.current} />
-    ),
-    []
+    ({ item, index }: { item: TranscriptEntry; index: number }) => {
+      // In condensed mode, attach corrections from the following AI message to the user message
+      let sideNoteCorrections: TranscriptEntry["corrections"] | undefined;
+      let showSideNoteCorrections = true;
+
+      if (condensed && item.role === "user") {
+        const currentTranscript = transcriptRef.current;
+        // Look ahead for the next AI message's corrections
+        const nextEntry = currentTranscript[index + 1];
+        if (nextEntry?.role === "assistant" && nextEntry.corrections?.length) {
+          sideNoteCorrections = nextEntry.corrections;
+        }
+        // Gate latest user message corrections on isAiSpeaking
+        const lastUserIdx = currentTranscript.reduce(
+          (acc, e, i) => (e.role === "user" ? i : acc),
+          -1
+        );
+        if (index === lastUserIdx) {
+          showSideNoteCorrections = !isAiSpeakingRef.current;
+        }
+      }
+
+      return (
+        <AnimatedMessage
+          entry={item}
+          shouldAnimate={index >= animateFromIndex.current}
+          condensed={condensed}
+          sideNoteCorrections={sideNoteCorrections}
+          showSideNoteCorrections={showSideNoteCorrections}
+        />
+      );
+    },
+    [condensed]
   );
 
   /** Footer renders streaming AI text and typing indicator below the list */
@@ -232,16 +298,24 @@ export function TranscriptView({ transcript, pendingAiText, isAiSpeaking }: Tran
     );
   }, [pendingAiText, isAiSpeaking]);
 
-  return (
+  const flatList = (
     <FlatList
       ref={flatListRef}
       data={transcript}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
+      extraData={condensed ? `${transcript.length}-${isAiSpeaking}` : transcript.length}
       ListFooterComponent={renderFooter}
-      className="flex-1"
+      className={condensed ? undefined : "flex-1"}
+      style={condensed ? { flex: 1 } : undefined}
       contentContainerStyle={{ padding: 16, gap: 12 }}
       showsVerticalScrollIndicator={false}
     />
   );
+
+  if (condensed) {
+    return <View style={{ height: CONDENSED_HEIGHT }}>{flatList}</View>;
+  }
+
+  return flatList;
 }

@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Reanimated, {
+  SlideInLeft,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -15,11 +16,12 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import type { Correction } from "@/src/types/conversation";
-import { Colors, skillTint } from "@/src/lib/design";
+import { Colors, Radii, Typography, skillTint } from "@/src/lib/design";
 
 interface CorrectionBubbleProps {
   corrections: Correction[];
   compact?: boolean;
+  variant?: "default" | "sideNote";
 }
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -33,9 +35,13 @@ const CATEGORY_STYLES: Record<string, { bg: string; text: string; label: string 
   register: { bg: skillTint(Colors.success, 0.2), text: Colors.success, label: "Register" },
 };
 
+/** Animation timing constant — architectural contract from Epic 3 */
+const SIDE_NOTE_DURATION = 200;
+
 export const CorrectionBubble = React.memo(function CorrectionBubble({
   corrections,
   compact = false,
+  variant = "default",
 }: CorrectionBubbleProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
@@ -63,6 +69,28 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
   const visibleCorrections = compact ? corrections.slice(0, 2) : corrections;
 
   const categoryStyles = CATEGORY_STYLES;
+
+  if (variant === "sideNote") {
+    return (
+      <Reanimated.View entering={SlideInLeft.duration(SIDE_NOTE_DURATION)}>
+        {visibleCorrections.map((correction, index) => {
+          const catStyle = categoryStyles[correction.category] ?? categoryStyles.grammar;
+          const isExpanded = expandedIndex === index;
+
+          return (
+            <SideNoteItem
+              key={`${correction.original}-${index}`}
+              correction={correction}
+              catStyle={catStyle}
+              isExpanded={isExpanded}
+              onToggle={() => setExpandedIndex(isExpanded ? null : index)}
+              isLast={index === visibleCorrections.length - 1}
+            />
+          );
+        })}
+      </Reanimated.View>
+    );
+  }
 
   return (
     <Reanimated.View style={animStyle}>
@@ -150,5 +178,123 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
         })}
       </View>
     </Reanimated.View>
+  );
+});
+
+/** SideNote correction item — lighter amber left-border card */
+interface SideNoteItemProps {
+  correction: Correction;
+  catStyle: { bg: string; text: string; label: string };
+  isExpanded: boolean;
+  onToggle: () => void;
+  isLast: boolean;
+}
+
+const SideNoteItem = React.memo(function SideNoteItem({
+  correction,
+  catStyle,
+  isExpanded,
+  onToggle,
+  isLast,
+}: SideNoteItemProps) {
+  const heightAnim = useSharedValue(isExpanded ? 1 : 0);
+
+  useEffect(() => {
+    heightAnim.value = withTiming(isExpanded ? 1 : 0, { duration: SIDE_NOTE_DURATION });
+  }, [isExpanded, heightAnim]);
+
+  const expandStyle = useAnimatedStyle(() => ({
+    opacity: heightAnim.value,
+    maxHeight: heightAnim.value * 500,
+  }));
+
+  return (
+    <TouchableOpacity
+      onPress={onToggle}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Correction: "${correction.original}" should be "${correction.corrected}"`}
+      accessibilityHint={
+        isExpanded
+          ? "Double-tap to collapse correction details"
+          : "Double-tap to expand correction details"
+      }
+      accessibilityState={{ expanded: isExpanded }}
+      style={{
+        borderLeftWidth: 3,
+        borderLeftColor: Colors.accent,
+        borderTopRightRadius: Radii.button,
+        borderBottomRightRadius: Radii.button,
+        backgroundColor: skillTint(Colors.accent, 0.08),
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        marginBottom: isLast ? 0 : 6,
+        minHeight: 44,
+      }}
+    >
+      {/* Collapsed: badge + one-liner + tap hint */}
+      <View className="flex-row flex-wrap items-center">
+        <View className="mr-1.5 rounded px-1.5 py-0.5" style={{ backgroundColor: catStyle.bg }}>
+          <Text className="text-[9px] font-semibold" style={{ color: catStyle.text }}>
+            {catStyle.label}
+          </Text>
+        </View>
+        <Text
+          style={{
+            fontSize: Typography.caption.fontSize,
+            color: Colors.correctionOriginal,
+            fontStyle: "italic",
+          }}
+        >
+          {correction.original}
+        </Text>
+        <Text
+          style={{
+            fontSize: Typography.caption.fontSize,
+            color: skillTint(Colors.surfaceWhite, 0.3),
+            marginHorizontal: 4,
+          }}
+        >
+          {"\u2192"}
+        </Text>
+        <Text
+          style={{
+            fontSize: Typography.caption.fontSize,
+            fontWeight: "700",
+            color: Colors.success,
+          }}
+        >
+          {correction.corrected}
+        </Text>
+      </View>
+
+      {/* Tap for details hint */}
+      {!isExpanded && (
+        <Text
+          style={{
+            fontSize: Typography.label.fontSize,
+            color: Colors.textOnDarkMuted,
+            marginTop: 2,
+          }}
+        >
+          Tap for details
+        </Text>
+      )}
+
+      {/* Expanded: explanation */}
+      <Reanimated.View style={[{ overflow: "hidden" }, expandStyle]}>
+        <Text
+          style={{
+            fontSize: Typography.caption.fontSize,
+            color: skillTint(Colors.surfaceWhite, 0.55),
+            fontStyle: "italic",
+            lineHeight: 18,
+            marginTop: 4,
+          }}
+        >
+          {correction.explanation}
+        </Text>
+      </Reanimated.View>
+    </TouchableOpacity>
   );
 });
