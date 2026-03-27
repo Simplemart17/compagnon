@@ -23,7 +23,7 @@ import { Colors, skillTint } from "@/src/lib/design";
 
 interface AudioWaveformProps {
   isActive: boolean;
-  speaker?: "user" | "ai" | "idle";
+  speaker?: "user" | "ai" | "idle" | "processing";
   size?: number;
   isConnecting?: boolean;
   /** @deprecated Color is now derived from speaker prop. This prop is ignored. */
@@ -34,9 +34,13 @@ const BAR_PERIODS_MS = [1100, 900, 750, 620, 750, 900, 1100];
 // Fraction of maxBarHeight each bar reaches at its peak
 const BAR_PEAK_FRACTIONS = [0.45, 0.65, 0.85, 1.0, 0.85, 0.65, 0.45];
 
-function getBarColor(speaker: "user" | "ai" | "idle", isConnecting: boolean): string {
+function getBarColor(
+  speaker: "user" | "ai" | "idle" | "processing",
+  isConnecting: boolean
+): string {
   if (isConnecting) return skillTint(Colors.accent, 0.6);
   if (speaker === "user") return Colors.accent;
+  if (speaker === "processing") return Colors.accent;
   if (speaker === "ai") return Colors.surfaceWhite;
   return skillTint(Colors.surfaceWhite, 0.22);
 }
@@ -120,6 +124,35 @@ export function AudioWaveform({
       return;
     }
 
+    if (speaker === "processing") {
+      // Smooth 300ms transition into processing pulse (AC-B4)
+      const processingPeak = maxBarHeight * 0.4;
+      barHeights.forEach((h) => {
+        h.value = withTiming(processingPeak, { duration: 300 }, (finished) => {
+          if (finished) {
+            h.value = withRepeat(
+              withSequence(
+                withTiming(minHeight, {
+                  duration: 800,
+                  easing: Easing.inOut(Easing.sin),
+                }),
+                withTiming(processingPeak, {
+                  duration: 800,
+                  easing: Easing.inOut(Easing.sin),
+                })
+              ),
+              -1
+            );
+          }
+        });
+      });
+      ringScale.value = withRepeat(
+        withSequence(withTiming(1.05, { duration: 1000 }), withTiming(1.0, { duration: 1000 })),
+        -1
+      );
+      return;
+    }
+
     if (isActive) {
       // Each bar loops independently between minHeight and its peak
       barHeights.forEach((h, i) => {
@@ -164,7 +197,7 @@ export function AudioWaveform({
       ringScale.value = withTiming(1.0, { duration: 400 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, isConnecting]);
+  }, [isActive, isConnecting, speaker]);
 
   const innerRingAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: ringScale.value }],
@@ -176,7 +209,7 @@ export function AudioWaveform({
 
   // Derive ring border colors from bar color with reduced opacity
   const innerBorderColor = isActive
-    ? speaker === "user"
+    ? speaker === "user" || speaker === "processing"
       ? skillTint(Colors.accent, 0.25)
       : speaker === "ai"
         ? skillTint(Colors.surfaceWhite, 0.25)
@@ -184,7 +217,7 @@ export function AudioWaveform({
     : skillTint(Colors.surfaceWhite, 0.06);
 
   const outerBorderColor = isActive
-    ? speaker === "user"
+    ? speaker === "user" || speaker === "processing"
       ? skillTint(Colors.accent, 0.12)
       : speaker === "ai"
         ? Colors.borderOnDark
