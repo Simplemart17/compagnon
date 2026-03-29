@@ -8,7 +8,7 @@
  * States: idle -> generating -> active -> checking -> results
  */
 
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, TextInput, ScrollView, Pressable } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeInUp, SlideInRight } from "react-native-reanimated";
 import { useRouter } from "expo-router";
@@ -18,6 +18,7 @@ import { useDictation } from "@/src/hooks/use-dictation";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import type { DifficultyTag, WordResult } from "@/src/hooks/use-dictation";
 import { Colors, Shadows, Typography, skillTint } from "@/src/lib/design";
+import { fireScoreHaptic, getScoreColor, getScoreLabel } from "@/src/lib/score-framing";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -181,6 +182,13 @@ export default function DictationScreen() {
   const router = useRouter();
   const d = useDictation();
   const isSlow = useSlowLoading(d.screenState === "generating");
+
+  // Fire haptic when results appear
+  useEffect(() => {
+    if (d.screenState === "results") {
+      fireScoreHaptic(d.overallAccuracy);
+    }
+  }, [d.screenState, d.overallAccuracy]);
 
   // -------------------------------------------------------------------------
   // Idle state (pre-exercise)
@@ -459,8 +467,7 @@ export default function DictationScreen() {
   // Results state
   // -------------------------------------------------------------------------
   if (d.screenState === "results") {
-    const accuracyColor =
-      d.overallAccuracy >= 80 ? SUCCESS : d.overallAccuracy >= 50 ? ACCENT : ERROR_COLOR;
+    const accuracyColor = getScoreColor(d.overallAccuracy);
 
     return (
       <ScrollView
@@ -474,7 +481,7 @@ export default function DictationScreen() {
             style={{
               borderWidth: 6,
               borderColor: accuracyColor,
-              backgroundColor: `${accuracyColor}10`,
+              backgroundColor: skillTint(accuracyColor, 0.06),
             }}
           >
             <Text
@@ -487,14 +494,8 @@ export default function DictationScreen() {
               {d.overallAccuracy}%
             </Text>
           </View>
-          <Text className="text-xl font-bold text-primary mt-3">
-            {d.overallAccuracy >= 90
-              ? "Excellent !"
-              : d.overallAccuracy >= 80
-                ? "Très bien !"
-                : d.overallAccuracy >= 60
-                  ? "Bon travail !"
-                  : "Continuez !"}
+          <Text style={{ ...Typography.subsectionHeader, color: Colors.primary, marginTop: 12 }}>
+            {getScoreLabel(d.overallAccuracy)}
           </Text>
 
           {d.isSavingResults && (
@@ -557,7 +558,7 @@ export default function DictationScreen() {
             Sentence breakdown
           </Text>
           {d.sentenceResults.map((r, i) => {
-            const color = r.accuracy >= 80 ? SUCCESS : r.accuracy >= 50 ? ACCENT : ERROR_COLOR;
+            const color = getScoreColor(r.accuracy);
             return (
               <View
                 key={i}

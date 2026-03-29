@@ -5,11 +5,11 @@
  * and a visual score indicator.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 
-import { hapticSuccess } from "@/src/lib/haptics";
-import { Colors, skillTint } from "@/src/lib/design";
+import { Colors, Typography, skillTint } from "@/src/lib/design";
+import { fireScoreHaptic, getScoreColor, getScoreLabel } from "@/src/lib/score-framing";
 
 interface ScoreCardProps {
   score: number;
@@ -17,21 +17,6 @@ interface ScoreCardProps {
   correctCount: number;
   onRetry: () => void;
   onBack: () => void;
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 80) return Colors.success;
-  if (score >= 60) return Colors.accent;
-  return Colors.error;
-}
-
-function getScoreLabel(score: number): string {
-  if (score >= 90) return "Excellent!";
-  if (score >= 80) return "Great job!";
-  if (score >= 70) return "Good work!";
-  if (score >= 60) return "Keep going!";
-  if (score >= 50) return "Almost there!";
-  return "Keep practicing!";
 }
 
 export const ScoreCard = React.memo(function ScoreCard({
@@ -42,11 +27,14 @@ export const ScoreCard = React.memo(function ScoreCard({
   onBack,
 }: ScoreCardProps) {
   const color = getScoreColor(score);
+  const hapticFiredRef = useRef(false);
 
-  // Fire haptic when score is displayed
   useEffect(() => {
-    hapticSuccess();
-  }, []);
+    if (!hapticFiredRef.current) {
+      hapticFiredRef.current = true;
+      fireScoreHaptic(score);
+    }
+  }, [score]);
 
   return (
     <View
@@ -63,10 +51,12 @@ export const ScoreCard = React.memo(function ScoreCard({
         }}
         accessibilityLabel={`${score} percent`}
       >
-        <Text style={{ fontSize: 40, fontWeight: "800", color }}>{score}%</Text>
+        <Text style={{ ...Typography.scoreDisplay, color }}>{score}%</Text>
       </View>
 
-      <Text className="text-[22px] font-bold text-primary">{getScoreLabel(score)}</Text>
+      <Text style={{ ...Typography.subsectionHeader, color: Colors.primary }}>
+        {getScoreLabel(score)}
+      </Text>
 
       {/* Stats */}
       <View
@@ -74,24 +64,24 @@ export const ScoreCard = React.memo(function ScoreCard({
         accessibilityLabel={`${correctCount} correct, ${totalQuestions - correctCount} incorrect, ${totalQuestions} total`}
       >
         <View className="items-center">
-          <Text className="text-[28px] font-extrabold text-success">{correctCount}</Text>
-          <Text className="text-xs" style={{ color: Colors.gray700 }}>
+          <Text style={{ ...Typography.statNumber, color: Colors.success }}>{correctCount}</Text>
+          <Text className="text-xs" style={{ color: Colors.textSecondary }}>
             Correct
           </Text>
         </View>
         <View className="w-px bg-surface-300" />
         <View className="items-center">
-          <Text className="text-[28px] font-extrabold text-error">
+          <Text style={{ ...Typography.statNumber, color: Colors.error }}>
             {totalQuestions - correctCount}
           </Text>
-          <Text className="text-xs" style={{ color: Colors.gray700 }}>
+          <Text className="text-xs" style={{ color: Colors.textSecondary }}>
             Incorrect
           </Text>
         </View>
         <View className="w-px bg-surface-300" />
         <View className="items-center">
-          <Text className="text-[28px] font-extrabold text-primary">{totalQuestions}</Text>
-          <Text className="text-xs" style={{ color: Colors.gray700 }}>
+          <Text style={{ ...Typography.statNumber, color: Colors.primary }}>{totalQuestions}</Text>
+          <Text className="text-xs" style={{ color: Colors.textSecondary }}>
             Total
           </Text>
         </View>

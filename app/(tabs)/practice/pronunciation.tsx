@@ -29,6 +29,7 @@ import { classifyError } from "@/src/lib/error-messages";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { WordScore } from "@/src/lib/pronunciation";
 import { Colors, Shadows, Typography, skillTint } from "@/src/lib/design";
+import { fireScoreHaptic, getScoreColor, getScoreLabel } from "@/src/lib/score-framing";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,24 +38,6 @@ import { Colors, Shadows, Typography, skillTint } from "@/src/lib/design";
 interface GeneratedSentence {
   sentence: string;
   translation: string;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function getScoreColor(score: number): string {
-  if (score >= 80) return Colors.success;
-  if (score >= 60) return Colors.accent;
-  return Colors.error;
-}
-
-function getScoreLabel(score: number): string {
-  if (score >= 90) return "Excellent !";
-  if (score >= 80) return "Très bien !";
-  if (score >= 70) return "Bon travail !";
-  if (score >= 60) return "Pas mal !";
-  return "Continuez !";
 }
 
 // ---------------------------------------------------------------------------
@@ -177,6 +160,13 @@ export default function PronunciationScreen() {
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
   }));
+
+  // Fire haptic when pronunciation result appears
+  useEffect(() => {
+    if (pronunciation.result) {
+      fireScoreHaptic(pronunciation.result.overallScore);
+    }
+  }, [pronunciation.result]);
 
   // Track whether we have started recording at least once for this sentence
   const hasRecordedRef = useRef(false);
@@ -385,11 +375,11 @@ export default function PronunciationScreen() {
               backgroundColor: skillTint(overallColor, 0.06),
             }}
           >
-            <Text style={{ fontSize: 48, fontWeight: "800", color: overallColor }}>
+            <Text style={{ ...Typography.bigNumber, color: overallColor }}>
               {Math.round(result.overallScore)}%
             </Text>
           </View>
-          <Text className="text-xl font-bold text-primary mt-3">
+          <Text style={{ ...Typography.subsectionHeader, color: Colors.primary, marginTop: 12 }}>
             {getScoreLabel(result.overallScore)}
           </Text>
         </View>
