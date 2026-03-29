@@ -3,11 +3,20 @@ import { Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";
 
 import { Colors, Typography } from "@/src/lib/design";
+import { useTabBadges } from "@/src/hooks/use-tab-badges";
 
 const TAB_ACTIVE_COLOR = Colors.primary;
 const TAB_INACTIVE_COLOR = Colors.textTertiary;
 
+const badgeStyle = {
+  backgroundColor: Colors.accent,
+  fontSize: Typography.tiny.fontSize,
+  fontWeight: "700" as const,
+};
+
 export default function TabLayout() {
+  const { practiceBadge, talkBadge } = useTabBadges();
+
   return (
     <Tabs
       screenOptions={{
@@ -51,6 +60,8 @@ export default function TabLayout() {
         options={{
           title: "Talk",
           headerTitle: "Conversation",
+          tabBarBadge: talkBadge ? "" : undefined,
+          tabBarBadgeStyle: talkBadge ? badgeStyle : undefined,
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{
@@ -69,6 +80,8 @@ export default function TabLayout() {
         options={{
           title: "Practice",
           headerShown: false,
+          tabBarBadge: practiceBadge ?? undefined,
+          tabBarBadgeStyle: practiceBadge ? badgeStyle : undefined,
           tabBarIcon: ({ color }) => (
             <SymbolView
               name={{ ios: "book.fill", android: "book", web: "book" }}
