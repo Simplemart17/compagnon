@@ -84,7 +84,7 @@ development_status:
   # Epic 5: UX System Patterns & Polish
   epic-5: in-progress
   5-1-toast-notification-system: done
-  5-2-exercise-score-framing-tab-badge-indicators: review
+  5-2-exercise-score-framing-tab-badge-indicators: done
   5-3-offline-transition-handling-component-promotion: backlog
   epic-5-retrospective: optional
 
