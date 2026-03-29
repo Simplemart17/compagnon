@@ -5,7 +5,7 @@
  * Grammar & Syntax, Cohesion & Coherence, Lexical Richness, Register.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useRouter } from "expo-router";
@@ -16,6 +16,7 @@ import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { fireScoreHaptic, getScoreColor, getScoreLabel } from "@/src/lib/score-framing";
 
 export default function WritingScreen() {
   const router = useRouter();
@@ -37,6 +38,13 @@ export default function WritingScreen() {
   }, [exercise, userText, cefrLevel]);
 
   const wordCount = userText.trim().split(/\s+/).filter(Boolean).length;
+
+  // Fire haptic when evaluation result appears
+  useEffect(() => {
+    if (exercise.evaluation) {
+      fireScoreHaptic(exercise.evaluation.overallScore);
+    }
+  }, [exercise.evaluation]);
 
   // Pre-exercise
   if (!exercise.exercise && !exercise.isGenerating) {
@@ -147,19 +155,19 @@ export default function WritingScreen() {
             className="w-[120px] h-[120px] rounded-full justify-center items-center bg-white"
             style={{
               borderWidth: 5,
-              borderColor:
-                eval_.overallScore >= 70
-                  ? Colors.success
-                  : eval_.overallScore >= 50
-                    ? Colors.accent
-                    : Colors.error,
+              borderColor: getScoreColor(eval_.overallScore),
             }}
           >
-            <Text className="text-[36px] font-extrabold text-primary">{eval_.overallScore}</Text>
-            <Text className="text-xs" style={{ color: Colors.gray700 }}>
+            <Text style={{ ...Typography.display, fontWeight: "800", color: Colors.primary }}>
+              {eval_.overallScore}
+            </Text>
+            <Text className="text-xs" style={{ color: Colors.textSecondary }}>
               / 100
             </Text>
           </View>
+          <Text style={{ ...Typography.subsectionHeader, color: Colors.primary, marginTop: 12 }}>
+            {getScoreLabel(eval_.overallScore)}
+          </Text>
         </View>
 
         {/* 4 Dimension scores */}
