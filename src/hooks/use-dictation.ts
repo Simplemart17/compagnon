@@ -372,7 +372,7 @@ export function useDictation(): UseDictationReturn {
     if (isFullyCorrect) {
       hapticSuccess();
     } else {
-      hapticError();
+      hapticLight();
     }
   }, [currentSentence, userInput]);
 

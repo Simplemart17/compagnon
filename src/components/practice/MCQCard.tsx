@@ -8,7 +8,7 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 
-import { hapticLight, hapticSuccess, hapticError } from "@/src/lib/haptics";
+import { hapticLight, hapticSuccess } from "@/src/lib/haptics";
 import type { MCQContent } from "@/src/types/exercise";
 import { Colors } from "@/src/lib/design";
 
@@ -33,7 +33,7 @@ export const MCQCard = React.memo(function MCQCard({
       if (selectedAnswer === correctOption?.id) {
         hapticSuccess();
       } else {
-        hapticError();
+        hapticLight();
       }
     }
     prevShowResult.current = showResult;
