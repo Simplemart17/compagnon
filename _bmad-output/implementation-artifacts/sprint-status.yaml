@@ -85,7 +85,7 @@ development_status:
   epic-5: in-progress
   5-1-toast-notification-system: done
   5-2-exercise-score-framing-tab-badge-indicators: done
-  5-3-offline-transition-handling-component-promotion: review
+  5-3-offline-transition-handling-component-promotion: done
   epic-5-retrospective: optional
 
   # Epic 6: Echo Practice
