@@ -19,7 +19,8 @@ type PracticeSkill =
   | "grammar"
   | "pronunciation"
   | "dictation"
-  | "echo";
+  | "echo"
+  | "translation";
 
 /** Extend SKILL_LABELS with pronunciation and dictation (not TCFSkills, so not in constants) */
 const PRACTICE_LABELS: Record<PracticeSkill, { en: string; fr: string }> = {
@@ -27,6 +28,7 @@ const PRACTICE_LABELS: Record<PracticeSkill, { en: string; fr: string }> = {
   pronunciation: { en: "Pronunciation", fr: "Prononciation" },
   dictation: { en: "Dictation", fr: "Dict\u00e9e" },
   echo: { en: "Echo Practice", fr: "Pratique d'\u00e9cho" },
+  translation: { en: "Translation", fr: "Traduction" },
 };
 
 const PRACTICE_SKILLS: {
@@ -76,6 +78,12 @@ const PRACTICE_SKILLS: {
     emoji: "\uD83C\uDF99\uFE0F",
     color: Colors.skillListening,
     description: "Listen, repeat aloud, then type what you heard",
+  },
+  {
+    skill: "translation",
+    emoji: "\uD83C\uDF10",
+    color: Colors.skillTranslation,
+    description: "Hear a sentence, speak the French translation",
   },
 ];
 
@@ -189,6 +197,7 @@ export default function PracticeScreen() {
             Colors.skillGrammar,
             Colors.skillPronunciation,
             Colors.skillDictation,
+            Colors.skillTranslation,
           ].map((color, i) => (
             <View key={i} className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
           ))}
