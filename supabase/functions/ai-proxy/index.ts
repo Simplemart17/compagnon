@@ -16,8 +16,9 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
-/** Max request body size: 50 KB (prevents prompt injection via massive payloads) */
+/** Max request body size: 50 KB for text, 5 MB for audio (transcription) */
 const MAX_BODY_BYTES = 50 * 1024;
+const MAX_AUDIO_BODY_BYTES = 5 * 1024 * 1024;
 
 /** Rate limit: 30 requests per minute per user */
 const RATE_LIMIT = { requests: 30, windowSeconds: 60 };
@@ -66,10 +67,10 @@ Deno.serve(async (req: Request) => {
       return rateLimitResponse(corsHeaders, resetIn);
     }
 
-    // Request size guard
+    // Pre-parse size guard using content-length (best-effort, header may be absent)
     const contentLength = parseInt(req.headers.get("content-length") ?? "0", 10);
-    if (contentLength > MAX_BODY_BYTES) {
-      return errorResponse({ code: "BODY_TOO_LARGE", message: "Request body too large (max 50 KB)", status: 413, corsHeaders });
+    if (contentLength > MAX_AUDIO_BODY_BYTES) {
+      return errorResponse({ code: "BODY_TOO_LARGE", message: `Request body too large (max ${MAX_AUDIO_BODY_BYTES / 1024} KB)`, status: 413, corsHeaders });
     }
 
     let body: Record<string, unknown>;
@@ -79,6 +80,11 @@ Deno.serve(async (req: Request) => {
       return errorResponse({ code: "INVALID_PARAMS", message: "Request body must be valid JSON", status: 400, corsHeaders });
     }
     const { action, ...params } = body;
+
+    // Post-parse size guard for non-audio actions (stricter limit)
+    if (action !== "transcribe" && contentLength > MAX_BODY_BYTES) {
+      return errorResponse({ code: "BODY_TOO_LARGE", message: "Request body too large (max 50 KB)", status: 413, corsHeaders });
+    }
 
     let openaiResponse: Response;
 
@@ -160,6 +166,61 @@ Deno.serve(async (req: Request) => {
           }),
         });
         break;
+      }
+
+      case "transcribe": {
+        if (!params.audio || typeof params.audio !== "string" || params.audio.length === 0) {
+          return errorResponse({ code: "INVALID_PARAMS", message: "Missing or empty 'audio' base64 string for transcription", status: 400, corsHeaders });
+        }
+
+        // Convert base64 audio to binary — guard against invalid base64
+        let audioBytes: Uint8Array;
+        try {
+          const binaryStr = atob(params.audio as string);
+          audioBytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            audioBytes[i] = binaryStr.charCodeAt(i);
+          }
+        } catch {
+          return errorResponse({ code: "INVALID_PARAMS", message: "Invalid base64 audio data", status: 400, corsHeaders });
+        }
+
+        // Use generic octet-stream MIME — Whisper detects format from file headers
+        // (iOS sends WAV, Android sends M4A/AAC)
+        const audioBlob = new Blob([audioBytes], { type: "application/octet-stream" });
+
+        const formData = new FormData();
+        formData.append("file", audioBlob, "audio.bin");
+        formData.append("model", "whisper-1");
+        formData.append("language", (params.language as string) ?? "fr");
+        formData.append("response_format", "json");
+
+        openaiResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+          },
+          body: formData,
+        });
+
+        if (!openaiResponse.ok) {
+          const upstreamMessage = await parseUpstreamError(openaiResponse);
+          return errorResponse({ code: "UPSTREAM_ERROR", message: `OpenAI Whisper error: ${upstreamMessage}`, status: openaiResponse.status, corsHeaders });
+        }
+
+        const transcriptionData = await openaiResponse.json();
+        const transcribedText = transcriptionData?.text;
+        if (typeof transcribedText !== "string") {
+          return errorResponse({ code: "UPSTREAM_ERROR", message: "Whisper returned no transcription text", status: 502, corsHeaders });
+        }
+
+        return new Response(JSON.stringify({ text: transcribedText }), {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "X-RateLimit-Remaining": String(remaining),
+          },
+        });
       }
 
       default:

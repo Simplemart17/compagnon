@@ -190,6 +190,50 @@ export async function generateSpeech(
   throw lastError ?? new Error("TTS request failed");
 }
 
+/** Transcribe audio using OpenAI Whisper (returns transcription text) */
+export async function transcribeAudio(
+  audioBase64: string,
+  language: string = "fr"
+): Promise<string> {
+  await requireNetwork();
+
+  const maxRetries = 1;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-proxy", {
+        body: {
+          action: "transcribe",
+          audio: audioBase64,
+          language,
+        },
+      });
+
+      if (error) throw new Error(`Transcription error: ${error.message}`);
+      if (data?.error) throw new Error(`Whisper error: ${data.error}`);
+
+      const text = data?.text;
+      if (!text || typeof text !== "string") {
+        throw new Error("Empty transcription response");
+      }
+
+      return text;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      if (attempt < maxRetries && isRetryable(lastError)) {
+        await sleep(1000);
+        continue;
+      }
+
+      throw lastError;
+    }
+  }
+
+  throw lastError ?? new Error("Transcription request failed");
+}
+
 /** Generate text embeddings for companion memory */
 export async function generateEmbedding(text: string): Promise<number[]> {
   await requireNetwork();
