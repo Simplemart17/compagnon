@@ -1,6 +1,6 @@
 # Story 7.1: Translation Prompt Builder & Evaluation Logic
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

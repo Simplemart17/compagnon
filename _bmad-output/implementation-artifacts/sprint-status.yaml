@@ -97,7 +97,7 @@ development_status:
 
   # Epic 7: Speech-to-Speech Translation
   epic-7: in-progress
-  7-1-translation-prompt-builder-evaluation-logic: review
+  7-1-translation-prompt-builder-evaluation-logic: done
   7-2-translation-exercise-hook: backlog
   7-3-translation-screen-practice-hub-integration: backlog
   epic-7-retrospective: optional
