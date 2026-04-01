@@ -1,5 +1,5 @@
 # generated: 2026-03-25
-# last_updated: 2026-04-01 # story 7-1 in-progress
+# last_updated: 2026-04-01 # story 7-2 review
 # project: companion
 # project_key: NOKEY
 # tracking_system: file-system
@@ -98,7 +98,7 @@ development_status:
   # Epic 7: Speech-to-Speech Translation
   epic-7: in-progress
   7-1-translation-prompt-builder-evaluation-logic: done
-  7-2-translation-exercise-hook: backlog
+  7-2-translation-exercise-hook: review
   7-3-translation-screen-practice-hub-integration: backlog
   epic-7-retrospective: optional
 
