@@ -1,5 +1,5 @@
 # generated: 2026-03-25
-# last_updated: 2026-03-31 # story 6-1 review
+# last_updated: 2026-03-31 # story 6-1 done
 # project: companion
 # project_key: NOKEY
 # tracking_system: file-system
@@ -90,7 +90,7 @@ development_status:
 
   # Epic 6: Echo Practice
   epic-6: in-progress
-  6-1-echo-practice-prompt-builder-exercise-generation: review
+  6-1-echo-practice-prompt-builder-exercise-generation: done
   6-2-echo-practice-hook-multi-step-exercise-flow: backlog
   6-3-echo-practice-screen-practice-hub-integration: backlog
   epic-6-retrospective: optional
