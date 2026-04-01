@@ -16,6 +16,7 @@ import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { OfflineFallback } from "@/src/components/common/OfflineFallback";
 import { fireScoreHaptic, getScoreColor, getScoreLabel } from "@/src/lib/score-framing";
 
 export default function WritingScreen() {
@@ -58,7 +59,9 @@ export default function WritingScreen() {
           Write in French and get AI-powered evaluation{"\n"}on grammar, cohesion, vocabulary, and
           register.
         </Text>
-        {exercise.error ? (
+        {exercise.offlineFallback ? (
+          <OfflineFallback onDismiss={exercise.clearOfflineFallback} />
+        ) : exercise.error ? (
           <>
             <Text className="text-error text-[13px] mb-4 text-center">{exercise.error}</Text>
             <View className="flex-row gap-3 w-full px-4">

@@ -14,6 +14,7 @@ import Animated, { FadeIn, FadeInDown, FadeInUp, SlideInRight } from "react-nati
 import { useRouter } from "expo-router";
 
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { OfflineFallback } from "@/src/components/common/OfflineFallback";
 import { useDictation } from "@/src/hooks/use-dictation";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import type { DifficultyTag, WordResult } from "@/src/hooks/use-dictation";
@@ -212,7 +213,9 @@ export default function DictationScreen() {
             {d.sentenceCount} sentences
           </Text>
 
-          {d.generateError ? (
+          {d.offlineFallback ? (
+            <OfflineFallback onDismiss={d.clearOfflineFallback} />
+          ) : d.generateError ? (
             <>
               <Text className="text-error text-[13px] mb-4 text-center">{d.generateError}</Text>
               <View className="flex-row gap-3 w-full px-4">

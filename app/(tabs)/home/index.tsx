@@ -26,6 +26,7 @@ import { useDailyBriefing } from "@/src/hooks/use-daily-briefing";
 import { useProgress } from "@/src/hooks/use-progress";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { ActivityBar } from "@/src/components/common/ActivityBar";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -108,49 +109,6 @@ function ConversationCard({ onPress }: ConversationCardProps) {
         </Text>
       </View>
     </AnimatedPressable>
-  );
-}
-
-interface ActivityBarProps {
-  heightPx: number;
-  isGoalMet: boolean;
-  delay: number;
-  dayLabel: string;
-}
-
-function ActivityBar({ heightPx, isGoalMet, delay, dayLabel }: ActivityBarProps) {
-  const animHeight = useSharedValue(0);
-
-  useEffect(() => {
-    animHeight.value = withDelay(delay, withTiming(heightPx, { duration: 400 }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heightPx, delay]);
-
-  const barStyle = useAnimatedStyle(() => ({
-    height: animHeight.value,
-  }));
-
-  return (
-    <View
-      className="flex-1 items-center"
-      accessibilityLabel={`${dayLabel}: ${isGoalMet ? "daily goal met" : "daily goal not met"}`}
-    >
-      <View className="w-3/4 h-12 justify-end">
-        <Animated.View
-          style={[
-            {
-              backgroundColor: isGoalMet ? Colors.success : Colors.primary,
-              borderTopLeftRadius: 4,
-              borderTopRightRadius: 4,
-            },
-            barStyle,
-          ]}
-        />
-      </View>
-      <Text className="text-[9px] mt-1" style={{ color: Colors.textTertiary }}>
-        {dayLabel}
-      </Text>
-    </View>
   );
 }
 

@@ -24,6 +24,7 @@ import { MCQCard } from "@/src/components/practice/MCQCard";
 import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { OfflineFallback } from "@/src/components/common/OfflineFallback";
 
 export default function GrammarScreen() {
   const router = useRouter();
@@ -285,7 +286,9 @@ export default function GrammarScreen() {
         <Text className="text-sm text-center mb-8 leading-5" style={{ color: Colors.gray700 }}>
           Practice verb conjugation, tenses, prepositions,{"\n"}and vocabulary in TCF format.
         </Text>
-        {exercise.error ? (
+        {exercise.offlineFallback ? (
+          <OfflineFallback onDismiss={exercise.clearOfflineFallback} />
+        ) : exercise.error ? (
           <>
             <Text className="text-error text-[13px] mb-4 text-center">{exercise.error}</Text>
             <View className="flex-row gap-3 w-full px-4">
