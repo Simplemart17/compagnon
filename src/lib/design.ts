@@ -113,6 +113,7 @@ export const Colors = {
   skillGrammar: "#8B5CF6",
   skillPronunciation: "#EC4899",
   skillDictation: "#06B6D4",
+  skillTranslation: "#F97316",
   skillVocabulary: "#F5A623",
   skillMockTest: "#8B5CF6",
   skillConversation: "#3B82F6",

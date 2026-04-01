@@ -1,5 +1,5 @@
 # generated: 2026-03-25
-# last_updated: 2026-04-01 # story 7-2 done
+# last_updated: 2026-04-01 # story 7-3 review
 # project: companion
 # project_key: NOKEY
 # tracking_system: file-system
@@ -99,7 +99,7 @@ development_status:
   epic-7: in-progress
   7-1-translation-prompt-builder-evaluation-logic: done
   7-2-translation-exercise-hook: done
-  7-3-translation-screen-practice-hub-integration: backlog
+  7-3-translation-screen-practice-hub-integration: review
   epic-7-retrospective: optional
 
   # Epic 8: Push Notification Engine
