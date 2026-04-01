@@ -22,6 +22,8 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { extractAndStoreMemories } from "@/src/lib/memory";
 import { trackError, extractErrorsFromCorrections } from "@/src/lib/error-tracker";
 import { captureError } from "@/src/lib/sentry";
+import { isOnline } from "@/src/lib/network";
+import { enqueueWrite } from "@/src/lib/cache";
 import {
   updateStreak,
   updateSkillProgress,
@@ -40,7 +42,7 @@ export interface TranscriptEntry {
 }
 
 export interface ConversationState {
-  status: "idle" | "connecting" | "connected" | "error" | "ended";
+  status: "idle" | "connecting" | "connected" | "error" | "disconnected" | "ended";
   isSpeaking: boolean;
   isAiSpeaking: boolean;
   isProcessing: boolean;
@@ -112,6 +114,8 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
 
   const sessionRef = useRef<RealtimeSession | null>(null);
   const durationRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const endRef = useRef<(() => void) | null>(null);
+  const isEndingRef = useRef(false);
   const currentAiTextRef = useRef("");
   const transcriptRef = useRef<TranscriptEntry[]>([]);
   const correctionsRef = useRef<Correction[]>([]);
@@ -382,13 +386,27 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           break;
 
         case "error":
-          console.error("[RealtimeVoice] Error:", event.error);
-          setState((s) => ({
-            ...s,
-            status: "error",
-            error: event.error.message,
-            isProcessing: false,
-          }));
+          captureError(event.error, "realtime-voice-error");
+          if (event.error.code === "connection_lost") {
+            // Mark disconnected immediately, then clean up & persist
+            setState((s) => ({
+              ...s,
+              status: "disconnected",
+              error: event.error.message,
+              isProcessing: false,
+              isSpeaking: false,
+              isAiSpeaking: false,
+            }));
+            // endRef is set below — triggers full cleanup + persist
+            endRef.current?.();
+          } else {
+            setState((s) => ({
+              ...s,
+              status: "error",
+              error: event.error.message,
+              isProcessing: false,
+            }));
+          }
           break;
       }
     },
@@ -434,6 +452,42 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
 
       const conversationId = conversationIdRef.current;
       const minutesPracticed = Math.ceil(duration / 60);
+
+      // If offline (e.g., after connection_lost), queue critical data and bail
+      const online = await isOnline();
+      if (!online) {
+        try {
+          // Queue conversation completion update
+          await enqueueWrite({
+            table: "conversations",
+            operation: "update",
+            payload: {
+              duration_seconds: duration,
+              status: "completed",
+              completed_at: new Date().toISOString(),
+            },
+            filter: { column: "id", value: conversationId },
+          });
+
+          // Queue transcript messages
+          const messages = transcriptRef.current.map((entry) => ({
+            conversation_id: conversationId,
+            role: entry.role,
+            content: entry.text,
+            corrections: entry.corrections ?? null,
+          }));
+          for (const msg of messages) {
+            await enqueueWrite({
+              table: "conversation_messages",
+              operation: "insert",
+              payload: msg as unknown as Record<string, unknown>,
+            });
+          }
+        } catch (queueErr) {
+          captureError(queueErr, "persist-conversation-offline-queue");
+        }
+        return;
+      }
 
       try {
         // 1. Update conversation record
@@ -549,6 +603,7 @@ Return JSON: {
     durationSecondsRef.current = 0;
     startTimeRef.current = 0;
     conversationIdRef.current = null;
+    isEndingRef.current = false;
 
     setState({
       status: "connecting",
@@ -684,6 +739,10 @@ Return JSON: {
 
   /** End the conversation */
   const end = useCallback((): void => {
+    // Guard against double invocation (e.g., connection_lost → end → disconnect → onclose → end)
+    if (isEndingRef.current) return;
+    isEndingRef.current = true;
+
     if (durationRef.current) {
       clearInterval(durationRef.current);
       durationRef.current = null;
@@ -695,9 +754,10 @@ Return JSON: {
     void ExpoPlayAudioStream.stopSound();
 
     const duration = durationSecondsRef.current;
+    // Preserve "disconnected" status if already set by connection_lost handler
     setState((s) => ({
       ...s,
-      status: "ended",
+      status: s.status === "disconnected" ? "disconnected" : "ended",
       isSpeaking: false,
       isAiSpeaking: false,
       isProcessing: false,
@@ -706,6 +766,11 @@ Return JSON: {
     persistConversation(duration).catch((err) => captureError(err, "persist-conversation-end"));
     onConversationEnd?.(transcriptRef.current, correctionsRef.current);
   }, [onConversationEnd, stopAudioStreaming, persistConversation]);
+
+  // Keep endRef in sync for use by handleEvent (avoids circular dependency)
+  useEffect(() => {
+    endRef.current = end;
+  }, [end]);
 
   // Cleanup on unmount
   useEffect(() => {

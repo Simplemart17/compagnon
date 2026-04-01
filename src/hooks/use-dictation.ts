@@ -207,6 +207,8 @@ export interface UseDictationReturn {
   userInput: string;
   sentenceResults: SentenceResult[];
   generateError: string | null;
+  /** True when generation failed due to network — show offline fallback UI */
+  offlineFallback: boolean;
   isPlayingAudio: boolean;
   audioError: string | null;
   hasPlayed: boolean;
@@ -228,6 +230,7 @@ export interface UseDictationReturn {
   skipSentence: () => void;
   nextSentence: () => Promise<void>;
   tryAgain: () => void;
+  clearOfflineFallback: () => void;
 }
 
 export function useDictation(): UseDictationReturn {
@@ -243,6 +246,7 @@ export function useDictation(): UseDictationReturn {
   const [userInput, setUserInput] = useState("");
   const [sentenceResults, setSentenceResults] = useState<SentenceResult[]>([]);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [offlineFallback, setOfflineFallback] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [hasPlayed, setHasPlayed] = useState(false);
@@ -303,8 +307,13 @@ export function useDictation(): UseDictationReturn {
       setScreenState("active");
     } catch (err) {
       captureError(err, "dictation-generation");
-      const { message } = classifyError(err, "Could not generate sentences. Please try again.");
-      setGenerateError(message);
+      const classified = classifyError(err, "Could not generate sentences. Please try again.");
+      if (classified.category === "network") {
+        setOfflineFallback(true);
+        setGenerateError(null);
+      } else {
+        setGenerateError(classified.message);
+      }
       setScreenState("idle");
       hapticError();
     } finally {
@@ -469,6 +478,10 @@ export function useDictation(): UseDictationReturn {
     return Math.max(1, Math.round((Date.now() - startTimeRef.current) / 60000));
   }, []);
 
+  const clearOfflineFallback = useCallback(() => {
+    setOfflineFallback(false);
+  }, []);
+
   return {
     screenState,
     sentences,
@@ -477,6 +490,7 @@ export function useDictation(): UseDictationReturn {
     userInput,
     sentenceResults,
     generateError,
+    offlineFallback,
     isPlayingAudio,
     audioError,
     hasPlayed,
@@ -494,5 +508,6 @@ export function useDictation(): UseDictationReturn {
     skipSentence,
     nextSentence,
     tryAgain,
+    clearOfflineFallback,
   };
 }

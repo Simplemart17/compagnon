@@ -7,9 +7,10 @@
 
 import { useCallback, useRef, useState } from "react";
 
-import { invalidateCache, CACHE_KEYS } from "@/src/lib/cache";
+import { invalidateCache, enqueueWrite, CACHE_KEYS } from "@/src/lib/cache";
 import { captureError } from "@/src/lib/sentry";
 import { classifyError } from "@/src/lib/error-messages";
+import { useToast } from "@/src/hooks/use-toast";
 import {
   updateStreak,
   updateSkillProgress,
@@ -47,6 +48,8 @@ export interface ExerciseState {
   score: number | null;
   evaluation: WritingEvaluation | null;
   error: string | null;
+  /** True when exercise generation failed due to network — show offline fallback UI */
+  offlineFallback: boolean;
 }
 
 export interface UseExerciseReturn extends ExerciseState {
@@ -57,6 +60,7 @@ export interface UseExerciseReturn extends ExerciseState {
   previousQuestion: () => void;
   calculateScore: () => number;
   reset: () => void;
+  clearOfflineFallback: () => void;
 }
 
 interface MCQQuestion {
@@ -129,6 +133,8 @@ function validateMCQExercise(
 }
 
 export function useExercise(): UseExerciseReturn {
+  const { showToast } = useToast();
+
   const [state, setState] = useState<ExerciseState>({
     isGenerating: false,
     isEvaluating: false,
@@ -139,6 +145,7 @@ export function useExercise(): UseExerciseReturn {
     score: null,
     evaluation: null,
     error: null,
+    offlineFallback: false,
   });
 
   // Ref to avoid stale closures in callbacks that need current state
@@ -157,6 +164,7 @@ export function useExercise(): UseExerciseReturn {
         score: null,
         evaluation: null,
         error: null,
+        offlineFallback: false,
         currentQuestionIndex: 0,
       }));
 
@@ -280,11 +288,15 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
         setState((s) => ({ ...s, isGenerating: false, exercise, cefrLevel }));
       } catch (err) {
         captureError(err, "exercise-generation");
-        const { message } = classifyError(
+        const classified = classifyError(
           err,
           "Something went wrong generating your exercise. Please try again."
         );
-        setState((s) => ({ ...s, isGenerating: false, error: message }));
+        if (classified.category === "network") {
+          setState((s) => ({ ...s, isGenerating: false, offlineFallback: true, error: null }));
+        } else {
+          setState((s) => ({ ...s, isGenerating: false, error: classified.message }));
+        }
       }
     },
     []
@@ -305,9 +317,9 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
 
       try {
         const current = stateRef.current;
-
-        // 1. Save exercise record
-        const { error: exerciseError } = await supabase.from("exercises").insert({
+        // Use a stable completed_at so offline queue replay is deterministic
+        const completedAt = new Date().toISOString();
+        const exerciseData = {
           user_id: userId,
           skill,
           cefr_level: cefrLevel,
@@ -317,9 +329,31 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
           ai_evaluation: current.evaluation,
           score,
           completed: true,
-          completed_at: new Date().toISOString(),
-        });
-        if (exerciseError) captureError(exerciseError, "persist-exercise-insert");
+          completed_at: completedAt,
+        };
+
+        // 1. Save exercise record
+        const { error: exerciseError } = await supabase.from("exercises").insert(exerciseData);
+        if (exerciseError) {
+          // Check if this is a network error — queue for offline sync
+          const classified = classifyError(exerciseError, "");
+          if (classified.category === "network") {
+            await enqueueWrite({
+              table: "exercises",
+              operation: "insert",
+              payload: exerciseData as unknown as Record<string, unknown>,
+            });
+            showToast({
+              type: "warning",
+              message:
+                "Exercise queued offline — will sync when you're back online. Progress stats will update on your next session.",
+            });
+            // Side-effects (streak, skill, activity) can't run offline.
+            // They are self-correcting on next online session.
+            return;
+          }
+          captureError(exerciseError, "persist-exercise-insert");
+        }
 
         // 2. Update skill progress with score (running average)
         await updateSkillProgress(userId, skill, score, 0);
@@ -343,13 +377,24 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
         ]);
       } catch (err) {
         captureError(err, "persist-exercise");
-        setState((s) => ({
-          ...s,
-          error: "Your progress could not be saved. Please check your connection.",
-        }));
+        const classified = classifyError(err, "");
+        if (classified.category === "network") {
+          // Exercise row may already be inserted; side-effects (streak/skill/activity) failed.
+          // These are self-correcting on next online session — don't claim data was queued.
+          showToast({
+            type: "warning",
+            message:
+              "Exercise saved, but progress stats couldn't update offline. They'll catch up next time.",
+          });
+        } else {
+          setState((s) => ({
+            ...s,
+            error: "Your progress could not be saved. Please check your connection.",
+          }));
+        }
       }
     },
-    []
+    [showToast]
   );
 
   const submitWriting = useCallback(
@@ -388,11 +433,13 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
         );
       } catch (err) {
         captureError(err, "writing-evaluation");
-        const { message } = classifyError(
+        const classified = classifyError(
           err,
           "Something went wrong evaluating your writing. Please try submitting again."
         );
-        setState((s) => ({ ...s, isEvaluating: false, error: message }));
+        // For writing evaluation, don't show offlineFallback — the user has already written
+        // their essay. Show an error with retry instead of hiding their work.
+        setState((s) => ({ ...s, isEvaluating: false, error: classified.message }));
       }
     },
     [state.exercise, persistExercise]
@@ -439,6 +486,22 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
     return score;
   }, [persistExercise]);
 
+  const clearOfflineFallback = useCallback((): void => {
+    // Reset to idle state so the user can start fresh or navigate away
+    setState({
+      isGenerating: false,
+      isEvaluating: false,
+      exercise: null,
+      cefrLevel: null,
+      currentQuestionIndex: 0,
+      answers: {},
+      score: null,
+      evaluation: null,
+      error: null,
+      offlineFallback: false,
+    });
+  }, []);
+
   const reset = useCallback((): void => {
     setState({
       isGenerating: false,
@@ -450,6 +513,7 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
       score: null,
       evaluation: null,
       error: null,
+      offlineFallback: false,
     });
   }, []);
 
@@ -462,5 +526,6 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
     previousQuestion,
     calculateScore,
     reset,
+    clearOfflineFallback,
   };
 }
