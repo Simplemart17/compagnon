@@ -1,7 +1,14 @@
 import type { CEFRLevel, TCFSkill } from "./cefr";
 
 /** Exercise types supported across practice modules */
-export type ExerciseType = "mcq" | "fill_blank" | "free_write" | "dictation" | "matching" | "echo";
+export type ExerciseType =
+  | "mcq"
+  | "fill_blank"
+  | "free_write"
+  | "dictation"
+  | "matching"
+  | "echo"
+  | "translation";
 
 /** A single MCQ option */
 export interface MCQOption {
@@ -42,6 +49,38 @@ export interface EchoContent {
   sentences: EchoSentence[];
 }
 
+/** A single translation exercise sentence */
+export interface TranslationSentence {
+  source: string; // English sentence (A1-B1) or French sentence (B2+ paraphrasing)
+  target: string; // Expected French translation or paraphrase
+  explanation: string; // Why this translation is correct / key grammar notes
+  difficulty: CEFRLevel; // Sentence difficulty level
+  grammarFocus: string; // Primary grammar structure being tested
+}
+
+/** Translation exercise content (stored in DB) */
+export interface TranslationContent {
+  mode: "translation" | "paraphrasing"; // A1-B1 vs B2+
+  sentences: TranslationSentence[];
+}
+
+/** A single dimension score in translation evaluation */
+export interface TranslationDimensionScore {
+  score: number; // 0-100
+  feedback: string; // Specific dimension feedback
+}
+
+/** Translation evaluation result from AI */
+export interface TranslationEvaluation {
+  accuracy: TranslationDimensionScore;
+  fluency: TranslationDimensionScore;
+  naturalness: TranslationDimensionScore;
+  overallScore: number; // Weighted average
+  corrections?: string; // Key mistakes and how to fix them
+  expectedTranslation: string;
+  userTranscription: string;
+}
+
 /** Writing evaluation result from AI */
 export interface WritingEvaluation {
   overallScore: number;
@@ -74,7 +113,7 @@ export interface Exercise {
   skill: TCFSkill;
   cefr_level: CEFRLevel;
   exercise_type: ExerciseType;
-  content: MCQContent | WritingContent | EchoContent;
+  content: MCQContent | WritingContent | EchoContent | TranslationContent;
   user_answer: unknown | null;
   ai_evaluation: WritingEvaluation | null;
   score: number | null;
