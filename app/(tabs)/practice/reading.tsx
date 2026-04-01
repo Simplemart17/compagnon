@@ -17,6 +17,7 @@ import { MCQCard } from "@/src/components/practice/MCQCard";
 import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { OfflineFallback } from "@/src/components/common/OfflineFallback";
 
 export default function ReadingScreen() {
   const router = useRouter();
@@ -68,7 +69,9 @@ export default function ReadingScreen() {
           Read a French passage and answer comprehension questions.
           {"\n"}Tap highlighted words for explanations in French!
         </Text>
-        {exercise.error ? (
+        {exercise.offlineFallback ? (
+          <OfflineFallback onDismiss={exercise.clearOfflineFallback} />
+        ) : exercise.error ? (
           <>
             <Text className="text-error text-[13px] mb-4 text-center">{exercise.error}</Text>
             <View className="flex-row gap-3 w-full px-4">
