@@ -1,0 +1,295 @@
+/**
+ * Send Notifications Edge Function
+ *
+ * Server-to-server function invoked by pg_cron every hour.
+ * Queries eligible users for streak-at-risk and SRS vocabulary review
+ * notifications, then delivers via Expo Push API.
+ *
+ * Authentication: X-Cron-Secret header (NOT user JWT).
+ * Rate limited to 5 requests per minute.
+ */
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import Expo from "https://esm.sh/expo-server-sdk";
+import type {
+  ExpoPushMessage,
+  ExpoPushTicket,
+} from "https://esm.sh/expo-server-sdk";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { errorResponse } from "../_shared/errors.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const CRON_SECRET = Deno.env.get("CRON_SECRET");
+
+/** Rate limit: 5 requests per minute (prevents accidental rapid re-invocation). */
+const RATE_LIMIT = { requests: 5, windowSeconds: 60 };
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+/** Constant-time string comparison to prevent timing attacks. */
+function timingSafeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const aBuf = encoder.encode(a);
+  const bBuf = encoder.encode(b);
+  if (aBuf.byteLength !== bBuf.byteLength) return false;
+  return crypto.subtle.timingSafeEqual(aBuf, bBuf);
+}
+
+interface StreakRow {
+  user_id: string;
+  streak_days: number;
+  token: string;
+  platform: string;
+}
+
+interface SrsRow {
+  user_id: string;
+  due_count: number;
+  token: string;
+  platform: string;
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  const requestId = crypto.randomUUID();
+
+  try {
+    // 1. Verify required environment variables
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return errorResponse({
+        code: "INTERNAL_ERROR",
+        message: "Server misconfiguration: Supabase env vars not set",
+        status: 500,
+        corsHeaders,
+      });
+    }
+    if (!CRON_SECRET) {
+      return errorResponse({
+        code: "INTERNAL_ERROR",
+        message: "Server misconfiguration: CRON_SECRET not set",
+        status: 500,
+        corsHeaders,
+      });
+    }
+
+    // 2. Authenticate via X-Cron-Secret header (constant-time comparison)
+    const requestSecret = req.headers.get("X-Cron-Secret");
+    if (!requestSecret || !timingSafeEqual(requestSecret, CRON_SECRET)) {
+      return errorResponse({
+        code: "AUTH_MISSING",
+        message: "Invalid cron secret",
+        status: 401,
+        corsHeaders,
+      });
+    }
+
+    // 3. Rate limiting — use "cron" as the key since this is server-to-server
+    const { allowed, resetIn } = checkRateLimit(
+      "cron",
+      RATE_LIMIT.requests,
+      RATE_LIMIT.windowSeconds,
+    );
+    if (!allowed) {
+      return rateLimitResponse(corsHeaders, resetIn);
+    }
+
+    // 4. Create admin Supabase client (bypasses RLS for cross-user queries)
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // 5. Query streak-at-risk users
+    let queryErrors = 0;
+    const { data: streakRows, error: streakError } = await supabaseAdmin
+      .rpc("get_streak_notification_targets") as { data: StreakRow[] | null; error: unknown };
+
+    if (streakError) {
+      queryErrors++;
+      console.error(`[${requestId}] streak query failed:`, streakError);
+    }
+
+    // 6. Query SRS due-cards users
+    const { data: srsRows, error: srsError } = await supabaseAdmin
+      .rpc("get_srs_notification_targets") as { data: SrsRow[] | null; error: unknown };
+
+    if (srsError) {
+      queryErrors++;
+      console.error(`[${requestId}] SRS query failed:`, srsError);
+    }
+
+    // 7. Cross-run idempotency: exclude users already notified within the past hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: recentLogs } = await supabaseAdmin
+      .from("notification_log")
+      .select("user_id, type")
+      .gte("sent_at", oneHourAgo);
+
+    const recentlyNotified = new Set<string>();
+    if (recentLogs) {
+      for (const log of recentLogs) {
+        recentlyNotified.add(`${log.user_id}:${log.type}`);
+      }
+    }
+
+    // 8. Build notification messages
+    const messages: ExpoPushMessage[] = [];
+    const streakTokensSent = new Set<string>();
+    const srsTokensSent = new Set<string>();
+    const streakUserIds: string[] = [];
+    const srsUserIds: string[] = [];
+
+    // Streak notifications
+    if (streakRows) {
+      for (const row of streakRows) {
+        if (recentlyNotified.has(`${row.user_id}:streak`)) continue;
+        if (streakTokensSent.has(row.token)) continue;
+        if (!Expo.isExpoPushToken(row.token)) {
+          console.warn(`[${requestId}] Invalid Expo token for user ${row.user_id}: ${row.token}`);
+          continue;
+        }
+        messages.push({
+          to: row.token,
+          title: "Don't break your streak! \u{1F525}",
+          body: `Your ${row.streak_days}-day streak is waiting! A quick practice keeps it alive.`,
+          sound: "default",
+          priority: "high",
+          data: { screen: "home" },
+        });
+        streakTokensSent.add(row.token);
+        streakUserIds.push(row.user_id);
+      }
+    }
+
+    // SRS notifications
+    if (srsRows) {
+      for (const row of srsRows) {
+        if (recentlyNotified.has(`${row.user_id}:srs`)) continue;
+        if (srsTokensSent.has(row.token)) continue;
+        if (!Expo.isExpoPushToken(row.token)) {
+          console.warn(`[${requestId}] Invalid Expo token for user ${row.user_id}: ${row.token}`);
+          continue;
+        }
+        messages.push({
+          to: row.token,
+          title: "Vocabulary review time \u{1F4DA}",
+          body: `You have ${row.due_count} vocabulary cards ready for review.`,
+          sound: "default",
+          priority: "high",
+          data: { screen: "vocabulary" },
+        });
+        srsTokensSent.add(row.token);
+        srsUserIds.push(row.user_id);
+      }
+    }
+
+    // 8. Send notifications via Expo Push API
+    const expo = new Expo();
+    let sent = 0;
+    let failed = 0;
+    const invalidTokens: string[] = [];
+
+    if (messages.length > 0) {
+      const chunks = expo.chunkPushNotifications(messages);
+
+      for (const chunk of chunks) {
+        try {
+          const tickets: ExpoPushTicket[] =
+            await expo.sendPushNotificationsAsync(chunk);
+
+          for (let i = 0; i < tickets.length; i++) {
+            const ticket = tickets[i];
+            if (ticket.status === "ok") {
+              sent++;
+            } else {
+              failed++;
+              // Check for DeviceNotRegistered to clean up invalid tokens
+              if (
+                ticket.status === "error" &&
+                ticket.details?.error === "DeviceNotRegistered"
+              ) {
+                const token = (chunk[i] as ExpoPushMessage).to as string;
+                invalidTokens.push(token);
+              }
+            }
+          }
+        } catch (chunkError) {
+          console.error(`[${requestId}] chunk send failed:`, chunkError);
+          failed += chunk.length;
+        }
+      }
+    }
+
+    // 10. Log sent notifications for cross-run idempotency
+    const logEntries: { user_id: string; type: string }[] = [];
+    const uniqueStreakUsers = [...new Set(streakUserIds)];
+    const uniqueSrsUsers = [...new Set(srsUserIds)];
+    for (const uid of uniqueStreakUsers) {
+      logEntries.push({ user_id: uid, type: "streak" });
+    }
+    for (const uid of uniqueSrsUsers) {
+      logEntries.push({ user_id: uid, type: "srs" });
+    }
+    if (logEntries.length > 0) {
+      const { error: logError } = await supabaseAdmin
+        .from("notification_log")
+        .insert(logEntries);
+      if (logError) {
+        console.error(`[${requestId}] notification_log insert failed:`, logError);
+      }
+    }
+
+    // 11. Clean up invalid tokens
+    let tokensCleanedUp = 0;
+    if (invalidTokens.length > 0) {
+      const { error: deleteError, count } = await supabaseAdmin
+        .from("device_tokens")
+        .delete()
+        .in("token", invalidTokens);
+
+      if (deleteError) {
+        console.error(`[${requestId}] token cleanup failed:`, deleteError);
+      } else {
+        tokensCleanedUp = count ?? invalidTokens.length;
+        console.log(
+          `[${requestId}] cleaned up ${tokensCleanedUp} invalid tokens: ${invalidTokens.join(", ")}`,
+        );
+      }
+    }
+
+    // 12. Return summary
+    const summary = {
+      sent,
+      failed,
+      tokensCleanedUp,
+      queryErrors,
+      streakNotifications: streakTokensSent.size,
+      srsNotifications: srsTokensSent.size,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log(`[${requestId}] notification run complete:`, JSON.stringify(summary));
+
+    return new Response(JSON.stringify(summary), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error(
+      `[${requestId}] send-notifications unexpected error:`,
+      err instanceof Error ? err.message : err,
+    );
+    return errorResponse({
+      code: "INTERNAL_ERROR",
+      message: "Notification delivery failed",
+      status: 500,
+      corsHeaders,
+    });
+  }
+});
