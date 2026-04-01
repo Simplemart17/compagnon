@@ -18,13 +18,15 @@ type PracticeSkill =
   | "writing"
   | "grammar"
   | "pronunciation"
-  | "dictation";
+  | "dictation"
+  | "echo";
 
 /** Extend SKILL_LABELS with pronunciation and dictation (not TCFSkills, so not in constants) */
 const PRACTICE_LABELS: Record<PracticeSkill, { en: string; fr: string }> = {
   ...SKILL_LABELS,
   pronunciation: { en: "Pronunciation", fr: "Prononciation" },
   dictation: { en: "Dictation", fr: "Dict\u00e9e" },
+  echo: { en: "Echo Practice", fr: "Pratique d'\u00e9cho" },
 };
 
 const PRACTICE_SKILLS: {
@@ -68,6 +70,12 @@ const PRACTICE_SKILLS: {
     emoji: "\uD83D\uDCDD",
     color: Colors.skillDictation,
     description: "Listen to French sentences and type what you hear",
+  },
+  {
+    skill: "echo",
+    emoji: "\uD83C\uDF99\uFE0F",
+    color: Colors.skillListening,
+    description: "Listen, repeat aloud, then type what you heard",
   },
 ];
 

@@ -20,6 +20,7 @@ export default function PracticeLayout() {
       <Stack.Screen name="vocabulary" options={{ title: "Vocabulary" }} />
       <Stack.Screen name="pronunciation" options={{ title: "Pronunciation" }} />
       <Stack.Screen name="dictation" options={{ title: "Dictation" }} />
+      <Stack.Screen name="echo" options={{ title: "Echo Practice" }} />
     </Stack>
   );
 }
