@@ -1,7 +1,7 @@
 import type { CEFRLevel, TCFSkill } from "./cefr";
 
 /** Exercise types supported across practice modules */
-export type ExerciseType = "mcq" | "fill_blank" | "free_write" | "dictation" | "matching";
+export type ExerciseType = "mcq" | "fill_blank" | "free_write" | "dictation" | "matching" | "echo";
 
 /** A single MCQ option */
 export interface MCQOption {
@@ -26,6 +26,20 @@ export interface WritingContent {
   minWords: number;
   maxWords: number;
   context?: string;
+}
+
+/** A single echo practice sentence */
+export interface EchoSentence {
+  sentence: string; // The French sentence to echo
+  translation: string; // English translation
+  expectedSpelling: string; // Canonical spelling for comparison
+  difficulty: "easy" | "medium" | "hard";
+  grammarFocus?: string; // Grammar point this sentence targets
+}
+
+/** Echo practice exercise content (stored in DB) */
+export interface EchoContent {
+  sentences: EchoSentence[];
 }
 
 /** Writing evaluation result from AI */
@@ -60,7 +74,7 @@ export interface Exercise {
   skill: TCFSkill;
   cefr_level: CEFRLevel;
   exercise_type: ExerciseType;
-  content: MCQContent | WritingContent;
+  content: MCQContent | WritingContent | EchoContent;
   user_answer: unknown | null;
   ai_evaluation: WritingEvaluation | null;
   score: number | null;
