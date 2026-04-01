@@ -27,6 +27,7 @@ import { CEFR_LEVELS } from "@/src/types/cefr";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, SKILL_COLORS, skillTint } from "@/src/lib/design";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { StatTile } from "@/src/components/common/StatTile";
 import type { CEFRLevel, TCFSkill } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -44,69 +45,10 @@ const SKILL_ROUTES: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Animated stat tile
+// Animated skill card (profile-specific — NOT promoted)
 // ---------------------------------------------------------------------------
 
-interface StatTileProps {
-  value: string;
-  unit: string;
-  label: string;
-  delay: number;
-}
-
-function StatTile({ value, unit, label, delay }: StatTileProps) {
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(20);
-
-  useEffect(() => {
-    opacity.value = withDelay(
-      delay,
-      withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) })
-    );
-    translateY.value = withDelay(
-      delay,
-      withTiming(0, { duration: 400, easing: Easing.out(Easing.quad) })
-    );
-  }, [delay, opacity, translateY]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  return (
-    <Animated.View
-      className="flex-1 items-center rounded-2xl bg-white px-2.5 py-3.5"
-      accessibilityLabel={`${label}: ${value}${unit.length > 0 ? ` ${unit}` : ""}`}
-      style={[
-        animStyle,
-        {
-          shadowColor: Colors.shadow,
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 6,
-        },
-      ]}
-    >
-      <Text className="text-2xl font-extrabold text-primary">{value}</Text>
-      {unit.length > 0 ? (
-        <Text className="mt-px text-[10px]" style={{ color: Colors.textTertiary }}>
-          {unit}
-        </Text>
-      ) : null}
-      <Text className="mt-0.5 text-xs" style={{ color: Colors.gray700 }}>
-        {label}
-      </Text>
-    </Animated.View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Animated skill card
-// ---------------------------------------------------------------------------
-
-interface SkillCardProps {
+interface ProfileSkillCardProps {
   skill: TCFSkill;
   skillLevel: CEFRLevel;
   exercises: number;
@@ -115,7 +57,14 @@ interface SkillCardProps {
   onPress?: () => void;
 }
 
-function SkillCard({ skill, skillLevel, exercises, score, delay, onPress }: SkillCardProps) {
+function ProfileSkillCard({
+  skill,
+  skillLevel,
+  exercises,
+  score,
+  delay,
+  onPress,
+}: ProfileSkillCardProps) {
   const opacity = useSharedValue(0);
   const translateX = useSharedValue(-20);
 
@@ -410,7 +359,7 @@ export default function ProfileScreen() {
               const skillScore = skillData?.score ?? 0;
 
               return (
-                <SkillCard
+                <ProfileSkillCard
                   key={skill}
                   skill={skill}
                   skillLevel={skillLevel}

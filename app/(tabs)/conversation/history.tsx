@@ -29,7 +29,7 @@ import Reanimated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { supabase } from "@/src/lib/supabase";
@@ -307,6 +307,7 @@ function HighlightedText({
 
 export default function ConversationHistoryScreen() {
   const router = useRouter();
+  const { highlight } = useLocalSearchParams<{ highlight?: string }>();
   const user = useAuthStore((s) => s.user);
 
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
@@ -401,6 +402,17 @@ export default function ConversationHistoryScreen() {
     setTranscriptSearch("");
     setActiveMatchIdx(0);
   }, []);
+
+  // Auto-open transcript when navigated with ?highlight=conversationId
+  const highlightHandled = useRef(false);
+  useEffect(() => {
+    if (!highlight || highlightHandled.current || conversations.length === 0) return;
+    const target = conversations.find((c) => c.id === highlight);
+    if (target) {
+      highlightHandled.current = true;
+      void openTranscript(target);
+    }
+  }, [highlight, conversations, openTranscript]);
 
   // ---------------------------------------------------------------------------
   // Filtered conversation list

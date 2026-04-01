@@ -167,6 +167,7 @@ export default function ConversationSessionScreen() {
   const [textInput, setTextInput] = useState("");
   const [showTextInput, setShowTextInput] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const hasNavigatedDisconnect = useRef(false);
   const [comparisonMetrics, setComparisonMetrics] = useState<SessionComparisonMetric[] | null>(
     null
   );
@@ -596,13 +597,28 @@ export default function ConversationSessionScreen() {
   const isGrammarBest =
     milestone?.type === "personal_best" && milestone.subtitle?.toLowerCase().includes("grammar");
 
+  // Auto-navigate to history on disconnection after 3 seconds
+  useEffect(() => {
+    if (conversation.status !== "disconnected") return;
+    const timer = setTimeout(() => {
+      if (!hasNavigatedDisconnect.current) {
+        hasNavigatedDisconnect.current = true;
+        router.replace({
+          pathname: "/(tabs)/conversation/history",
+          params: { highlight: conversation.conversationId ?? undefined },
+        });
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [conversation.status, conversation.conversationId, router]);
+
   // Status dot color
   const statusDotColor =
     conversation.status === "connected"
       ? Colors.success
       : conversation.status === "connecting"
         ? Colors.accent
-        : conversation.status === "error"
+        : conversation.status === "error" || conversation.status === "disconnected"
           ? Colors.error
           : Colors.whiteAlpha30;
 
@@ -679,9 +695,11 @@ export default function ConversationSessionScreen() {
                     ? "Connecting..."
                     : conversation.status === "error"
                       ? "Error"
-                      : conversation.status === "ended"
-                        ? "Ended"
-                        : "Ready"}
+                      : conversation.status === "disconnected"
+                        ? "Disconnected"
+                        : conversation.status === "ended"
+                          ? "Ended"
+                          : "Ready"}
               </Text>
             </View>
           </View>
@@ -872,6 +890,45 @@ export default function ConversationSessionScreen() {
             >
               <Text className="text-white text-base font-bold">Done</Text>
             </TouchableOpacity>
+          )}
+
+          {conversation.status === "disconnected" && (
+            <View className="items-center">
+              <Text style={{ ...Typography.bigNumber, color: Colors.accent, marginBottom: 12 }}>
+                !
+              </Text>
+              <Text
+                style={{
+                  ...Typography.body,
+                  color: Colors.whiteAlpha85,
+                  textAlign: "center",
+                  marginBottom: 20,
+                  marginHorizontal: 32,
+                }}
+              >
+                Connection lost — your conversation has been saved
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!hasNavigatedDisconnect.current) {
+                    hasNavigatedDisconnect.current = true;
+                    router.replace({
+                      pathname: "/(tabs)/conversation/history",
+                      params: { highlight: conversation.conversationId ?? undefined },
+                    });
+                  }
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="View Transcript"
+                accessibilityHint="Double tap to view your saved conversation"
+                className="border-[1.5px] border-accent rounded-3xl px-7 py-3"
+                style={{ backgroundColor: Colors.accent15, minWidth: 44, minHeight: 44 }}
+              >
+                <Text style={{ ...Typography.body, color: Colors.accent, fontWeight: "700" }}>
+                  View Transcript
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {conversation.status === "error" && (
