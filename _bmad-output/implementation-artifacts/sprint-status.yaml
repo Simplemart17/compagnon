@@ -92,7 +92,7 @@ development_status:
   epic-6: in-progress
   6-1-echo-practice-prompt-builder-exercise-generation: done
   6-2-echo-practice-hook-multi-step-exercise-flow: done
-  6-3-echo-practice-screen-practice-hub-integration: review
+  6-3-echo-practice-screen-practice-hub-integration: done
   epic-6-retrospective: optional
 
   # Epic 7: Speech-to-Speech Translation
