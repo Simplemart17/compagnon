@@ -8,6 +8,8 @@ import {
   Alert,
   Platform,
   Share,
+  Switch,
+  Linking,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,6 +18,7 @@ import Constants from "expo-constants";
 import { useAuth } from "@/src/hooks/use-auth";
 import { useAuthStore } from "@/src/store/auth-store";
 import { useToast } from "@/src/hooks/use-toast";
+import { useNotificationPreferences } from "@/src/hooks/use-notifications";
 import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
 import { CEFR_ORDER } from "@/src/types/cefr";
@@ -103,6 +106,7 @@ export default function SettingsScreen() {
   const { profile, updateProfile, signOut } = useAuth();
   const session = useAuthStore((s) => s.session);
   const { showToast } = useToast();
+  const { preferences, updatePreference, permissionStatus } = useNotificationPreferences();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -517,6 +521,82 @@ export default function SettingsScreen() {
             <Text className="text-base" style={{ color: Colors.gray700 }}>
               {email}
             </Text>
+          </SettingsCard>
+
+          {/* ---- Section: Notifications ---- */}
+          <SectionLabel topMargin={0}>Notifications</SectionLabel>
+
+          <SettingsCard>
+            {/* Streak Reminders */}
+            <View className="flex-row items-center justify-between" style={{ minHeight: 44 }}>
+              <Text className="text-[15px] text-primary">Streak Reminders</Text>
+              <Switch
+                value={preferences.streakAlerts}
+                onValueChange={async (value) => {
+                  try {
+                    await updatePreference("streakAlerts", value);
+                    showToast({ type: "success", message: "Notification preference updated" });
+                  } catch {
+                    showToast({ type: "error", message: "Failed to update preference" });
+                  }
+                }}
+                trackColor={{ false: Colors.gray300, true: Colors.primary }}
+                thumbColor={Colors.surfaceWhite}
+                accessibilityRole="switch"
+                accessibilityLabel="Streak reminders"
+                accessibilityState={{ checked: preferences.streakAlerts }}
+              />
+            </View>
+
+            <RowDivider />
+
+            {/* Vocabulary Review Reminders */}
+            <View className="flex-row items-center justify-between" style={{ minHeight: 44 }}>
+              <Text className="text-[15px] text-primary">Vocabulary Review Reminders</Text>
+              <Switch
+                value={preferences.srsReminders}
+                onValueChange={async (value) => {
+                  try {
+                    await updatePreference("srsReminders", value);
+                    showToast({ type: "success", message: "Notification preference updated" });
+                  } catch {
+                    showToast({ type: "error", message: "Failed to update preference" });
+                  }
+                }}
+                trackColor={{ false: Colors.gray300, true: Colors.primary }}
+                thumbColor={Colors.surfaceWhite}
+                accessibilityRole="switch"
+                accessibilityLabel="Vocabulary review reminders"
+                accessibilityState={{ checked: preferences.srsReminders }}
+              />
+            </View>
+
+            {/* Enable Notifications — shown when permission denied */}
+            {permissionStatus === "denied" && (
+              <>
+                <RowDivider />
+                <TouchableOpacity
+                  onPress={() => Linking.openSettings()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Enable notifications"
+                  accessibilityHint="Opens device settings to enable notification permissions"
+                  className="flex-row items-center justify-between"
+                  style={{ minHeight: 44 }}
+                >
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text className="text-[15px]" style={{ color: Colors.accent }}>
+                      Enable Notifications
+                    </Text>
+                    <Text className="mt-0.5 text-xs" style={{ color: Colors.textTertiary }}>
+                      Companion needs notification access for streak and vocabulary reminders
+                    </Text>
+                  </View>
+                  <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
+                    Settings {"\u2192"}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </SettingsCard>
 
           {/* Sign out */}
