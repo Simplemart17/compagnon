@@ -5,6 +5,7 @@ import * as Device from "expo-device";
 
 import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
+import { Colors } from "@/src/lib/design";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,7 +53,7 @@ export async function registerForPushNotifications(): Promise<void> {
         name: "Default",
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#1E3A5F",
+        lightColor: Colors.primary,
       });
     }
 
