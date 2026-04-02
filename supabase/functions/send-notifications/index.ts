@@ -14,6 +14,7 @@ import Expo from "https://esm.sh/expo-server-sdk";
 import type {
   ExpoPushMessage,
   ExpoPushTicket,
+  ExpoPushReceipt,
 } from "https://esm.sh/expo-server-sdk";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { errorResponse } from "../_shared/errors.ts";
@@ -106,6 +107,54 @@ Deno.serve(async (req: Request) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    const expo = new Expo();
+
+    // 4b. Check receipts from previous run's tickets
+    let receiptsChecked = 0;
+    let receiptInvalidTokens: string[] = [];
+    try {
+      const { data: uncheckedTickets } = await supabaseAdmin
+        .from("notification_log")
+        .select("id, ticket_id, token")
+        .eq("receipt_checked", false)
+        .not("ticket_id", "is", null)
+        .lt("sent_at", new Date(Date.now() - 15 * 60 * 1000).toISOString());
+
+      if (uncheckedTickets && uncheckedTickets.length > 0) {
+        const ticketIds = uncheckedTickets
+          .map((t: { ticket_id: string }) => t.ticket_id)
+          .filter(Boolean);
+
+        if (ticketIds.length > 0) {
+          const receiptMap: Record<string, ExpoPushReceipt> =
+            await expo.getPushNotificationReceiptsAsync(ticketIds);
+
+          const tokenMap = new Map<string, string>();
+          for (const t of uncheckedTickets) {
+            if (t.ticket_id && t.token) tokenMap.set(t.ticket_id, t.token);
+          }
+
+          for (const [ticketId, receipt] of Object.entries(receiptMap)) {
+            if (receipt.status === "error" && receipt.details?.error === "DeviceNotRegistered") {
+              const token = tokenMap.get(ticketId);
+              if (token) receiptInvalidTokens.push(token);
+            }
+          }
+
+          // Mark all as checked
+          const checkedIds = uncheckedTickets.map((t: { id: string }) => t.id);
+          await supabaseAdmin
+            .from("notification_log")
+            .update({ receipt_checked: true })
+            .in("id", checkedIds);
+
+          receiptsChecked = ticketIds.length;
+        }
+      }
+    } catch (receiptErr) {
+      console.error(`[${requestId}] receipt check failed:`, receiptErr);
+    }
+
     // 5. Query streak-at-risk users
     let queryErrors = 0;
     const { data: streakRows, error: streakError } = await supabaseAdmin
@@ -191,10 +240,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // 8. Send notifications via Expo Push API
-    const expo = new Expo();
     let sent = 0;
     let failed = 0;
     const invalidTokens: string[] = [];
+    const ticketTokenPairs: { ticketId: string; token: string }[] = [];
 
     if (messages.length > 0) {
       const chunks = expo.chunkPushNotifications(messages);
@@ -206,8 +255,13 @@ Deno.serve(async (req: Request) => {
 
           for (let i = 0; i < tickets.length; i++) {
             const ticket = tickets[i];
+            const token = (chunk[i] as ExpoPushMessage).to as string;
             if (ticket.status === "ok") {
               sent++;
+              // Store ticket ID for receipt checking in the next run
+              if ("id" in ticket && ticket.id) {
+                ticketTokenPairs.push({ ticketId: ticket.id, token });
+              }
             } else {
               failed++;
               // Check for DeviceNotRegistered to clean up invalid tokens
@@ -215,7 +269,6 @@ Deno.serve(async (req: Request) => {
                 ticket.status === "error" &&
                 ticket.details?.error === "DeviceNotRegistered"
               ) {
-                const token = (chunk[i] as ExpoPushMessage).to as string;
                 invalidTokens.push(token);
               }
             }
@@ -227,16 +280,47 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 10. Log sent notifications for cross-run idempotency
-    const logEntries: { user_id: string; type: string }[] = [];
+    // 10. Log sent notifications for cross-run idempotency (with ticket IDs for receipt checking)
+    const logEntries: { user_id: string; type: string; ticket_id?: string; token?: string }[] = [];
     const uniqueStreakUsers = [...new Set(streakUserIds)];
     const uniqueSrsUsers = [...new Set(srsUserIds)];
+
+    // Build a token→ticketId map for enriching log entries
+    const tokenToTicket = new Map<string, string>();
+    for (const pair of ticketTokenPairs) {
+      tokenToTicket.set(pair.token, pair.ticketId);
+    }
+
+    // Build a token→userId map from the original notification data
+    const tokenToUser = new Map<string, string>();
+    if (streakRows) {
+      for (const row of streakRows) tokenToUser.set(row.token, row.user_id);
+    }
+    if (srsRows) {
+      for (const row of srsRows) tokenToUser.set(row.token, row.user_id);
+    }
+
     for (const uid of uniqueStreakUsers) {
       logEntries.push({ user_id: uid, type: "streak" });
     }
     for (const uid of uniqueSrsUsers) {
       logEntries.push({ user_id: uid, type: "srs" });
     }
+
+    // Enrich log entries with ticket IDs where available
+    for (const entry of logEntries) {
+      for (const [token, userId] of tokenToUser.entries()) {
+        if (userId === entry.user_id) {
+          const ticketId = tokenToTicket.get(token);
+          if (ticketId) {
+            entry.ticket_id = ticketId;
+            entry.token = token;
+            break;
+          }
+        }
+      }
+    }
+
     if (logEntries.length > 0) {
       const { error: logError } = await supabaseAdmin
         .from("notification_log")
@@ -246,20 +330,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 11. Clean up invalid tokens
+    // 11. Clean up invalid tokens (from both send tickets and receipt checks)
+    const allInvalidTokens = [...new Set([...invalidTokens, ...receiptInvalidTokens])];
     let tokensCleanedUp = 0;
-    if (invalidTokens.length > 0) {
+    if (allInvalidTokens.length > 0) {
       const { error: deleteError, count } = await supabaseAdmin
         .from("device_tokens")
         .delete()
-        .in("token", invalidTokens);
+        .in("token", allInvalidTokens);
 
       if (deleteError) {
         console.error(`[${requestId}] token cleanup failed:`, deleteError);
       } else {
-        tokensCleanedUp = count ?? invalidTokens.length;
+        tokensCleanedUp = count ?? allInvalidTokens.length;
         console.log(
-          `[${requestId}] cleaned up ${tokensCleanedUp} invalid tokens: ${invalidTokens.join(", ")}`,
+          `[${requestId}] cleaned up ${tokensCleanedUp} invalid tokens: ${allInvalidTokens.join(", ")}`,
         );
       }
     }
@@ -269,6 +354,7 @@ Deno.serve(async (req: Request) => {
       sent,
       failed,
       tokensCleanedUp,
+      receiptsChecked,
       queryErrors,
       streakNotifications: streakTokensSent.size,
       srsNotifications: srsTokensSent.size,
