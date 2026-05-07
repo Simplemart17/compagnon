@@ -175,7 +175,6 @@ export function useEchoPractice(): UseEchoPracticeReturn {
           let slowBase64 = slowAudioCacheRef.current.get(currentIndex);
           if (!slowBase64) {
             slowBase64 = await generateSpeech(currentSentence.sentence, {
-              voice: "coral",
               speed: 0.75,
             });
             slowAudioCacheRef.current.set(currentIndex, slowBase64);

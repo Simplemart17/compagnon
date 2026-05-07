@@ -257,7 +257,6 @@ export function useTranslation(): UseTranslationReturn {
             const sentence = exerciseRef.current.content.sentences[currentIndex];
             if (sentence) {
               slowBase64 = await generateSpeech(sentence.source, {
-                voice: "coral",
                 speed: 0.75,
               });
               slowAudioCacheRef.current.set(currentIndex, slowBase64);

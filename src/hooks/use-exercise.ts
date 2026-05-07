@@ -186,7 +186,6 @@ export function useExercise(): UseExerciseReturn {
             try {
               const speed = cefrLevel === "A1" || cefrLevel === "A2" ? 0.85 : 1.0;
               audioBase64 = await generateSpeech(result.passage, {
-                voice: "coral",
                 speed,
               });
             } catch {
