@@ -118,6 +118,10 @@ export function useEchoPractice(): UseEchoPracticeReturn {
   const slowAudioCacheRef = useRef<Map<number, string>>(new Map());
   const sentenceResultsRef = useRef<EchoPracticeSentenceResult[]>([]);
   sentenceResultsRef.current = sentenceResults;
+  // CEFR level captured at exercise-generation time. If the user is auto-
+  // promoted mid-session, results are still credited to the level the
+  // exercise was generated at — not whatever the profile reads now.
+  const generatedAtLevelRef = useRef<CEFRLevel | null>(null);
 
   const currentSentence = sentences[currentIndex] ?? null;
 
@@ -143,6 +147,7 @@ export function useEchoPractice(): UseEchoPracticeReturn {
 
     try {
       const result = await generateEchoExercise({ cefrLevel, userId: user.id });
+      generatedAtLevelRef.current = cefrLevel;
       setSentences(result.sentences);
       exerciseIdRef.current = result.exerciseId;
       setScreenState("listen");
@@ -292,9 +297,10 @@ export function useEchoPractice(): UseEchoPracticeReturn {
           const overallScore = Math.round((avgListening + avgPronunciation + avgSpelling) / 3);
           const timeSpentSeconds = Math.round((now - startTimeRef.current) / 1000);
 
+          const creditLevel = generatedAtLevelRef.current ?? cefrLevel;
           await Promise.all([
-            updateSkillProgress(user.id, "listening", avgListening, elapsed),
-            updateSkillProgress(user.id, "speaking", avgPronunciation, elapsed),
+            updateSkillProgress(user.id, "listening", creditLevel, avgListening, elapsed),
+            updateSkillProgress(user.id, "speaking", creditLevel, avgPronunciation, elapsed),
             incrementDailyActivity(user.id, { minutes: elapsed, exercises: 1 }),
             updateStreak(user.id),
           ]);
@@ -354,7 +360,7 @@ export function useEchoPractice(): UseEchoPracticeReturn {
         setIsSavingResults(false);
       }
     }
-  }, [currentIndex, sentences.length, user?.id]);
+  }, [cefrLevel, currentIndex, sentences.length, user?.id]);
 
   const skipSentence = useCallback(() => {
     if (!currentSentence) return;
@@ -382,6 +388,7 @@ export function useEchoPractice(): UseEchoPracticeReturn {
     setCurrentPronunciationResult(null);
     slowAudioCacheRef.current.clear();
     exerciseIdRef.current = null;
+    generatedAtLevelRef.current = null;
     void generateExercise();
   }, [generateExercise]);
 

@@ -538,7 +538,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           totalEntries > 0
             ? Math.max(20, Math.round(100 - (correctedEntries / Math.max(totalEntries, 1)) * 30))
             : 70; // Default if no user entries
-        await updateSkillProgress(user.id, "speaking", speakingScore, minutesPracticed);
+        await updateSkillProgress(user.id, "speaking", cefrLevel, speakingScore, minutesPracticed);
 
         // 5. Increment daily activity
         await incrementDailyActivity(user.id, {

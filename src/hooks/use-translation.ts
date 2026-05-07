@@ -115,6 +115,10 @@ export function useTranslation(): UseTranslationReturn {
   const recordedAudioRef = useRef<string | null>(null);
   const exerciseRef = useRef<TranslationExerciseResult | null>(null);
   exerciseRef.current = exercise;
+  // CEFR level captured at exercise-generation time. If the user is auto-
+  // promoted mid-session, results are still credited to the level the
+  // exercise was generated at — not whatever the profile reads now.
+  const generatedAtLevelRef = useRef<CEFRLevel | null>(null);
 
   const currentSentence = exercise?.content.sentences[currentIndex] ?? null;
 
@@ -141,8 +145,9 @@ export function useTranslation(): UseTranslationReturn {
         const elapsedMinutes = Math.max(1, Math.round((now - startTimeRef.current) / 60000));
         const timeSpentSeconds = Math.round((now - startTimeRef.current) / 1000);
 
+        const creditLevel = generatedAtLevelRef.current ?? cefrLevel;
         await Promise.all([
-          updateSkillProgress(user.id, "speaking", overallScore, elapsedMinutes),
+          updateSkillProgress(user.id, "speaking", creditLevel, overallScore, elapsedMinutes),
           incrementDailyActivity(user.id, { minutes: elapsedMinutes, exercises: 1 }),
           updateStreak(user.id),
         ]);
@@ -196,7 +201,7 @@ export function useTranslation(): UseTranslationReturn {
         setIsSavingResults(false);
       }
     },
-    [user?.id]
+    [cefrLevel, user?.id]
   );
 
   // -------------------------------------------------------------------------
@@ -222,6 +227,7 @@ export function useTranslation(): UseTranslationReturn {
 
     try {
       const result = await generateTranslationExercise({ cefrLevel, userId: user.id });
+      generatedAtLevelRef.current = cefrLevel;
       setExercise(result);
       exerciseIdRef.current = result.exerciseId;
       setScreenState("listen");
@@ -441,6 +447,7 @@ export function useTranslation(): UseTranslationReturn {
     slowAudioCacheRef.current.clear();
     recordedAudioRef.current = null;
     exerciseIdRef.current = null;
+    generatedAtLevelRef.current = null;
     isSubmittingRef.current = false;
     setScreenState("idle");
   }, [recorder, audioPlayer]);
