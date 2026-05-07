@@ -34,7 +34,9 @@ Check off each item as you complete it.
 - [ ] Create a Sentry project at sentry.io (React Native type)
 - [ ] Copy the DSN
 - [ ] Add to `.env.local`: `EXPO_PUBLIC_SENTRY_DSN=https://...`
-- [ ] Update `app.json` Sentry plugin: replace `YOUR_SENTRY_ORG` with your org slug
+- [ ] Update `app.json` Sentry plugin: set `"organization"` to your Sentry org slug (e.g. `"companion-org"`) — never paste a DSN here
+- [ ] Confirm DSN is set only in `EXPO_PUBLIC_SENTRY_DSN` (`.env.local` locally, GitHub Actions secret in CI) and is not present anywhere in `app.json`
+- [ ] After replacing the runtime DSN with a fresh one (operator action), add the rotated DSN to `.env.local` and as the `EXPO_PUBLIC_SENTRY_DSN` GitHub Actions secret. The DSN that previously lived in `app.json` is in git history and must be considered compromised.
 - [ ] Verify Sentry receives a test event (`npx expo start`, trigger an error)
 
 ---

@@ -38,6 +38,8 @@ AI API keys (`OPENAI_API_KEY`, `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`) are se
 
 **CEFR promotion contract:** `src/lib/activity.ts` — pure decision helper `evaluatePromotion()`, regression-tested by `src/lib/__tests__/activity.test.ts`. Promotion requires evidence in all 5 TCF skills at the current level (verified 2026-05-07, story 9-2).
 
+**Sentry telemetry contract:** `src/lib/sentry.ts` — `scrubEvent()` is the GDPR scrubber wired into `Sentry.init.beforeSend`; allowlist + 80-char redaction rule; `captureError`'s `extras` is typed `Record<string, string|number|boolean|null>` to prevent payload leaks. Verified 2026-05-07, story 9-3.
+
 ### Routing (`app/`)
 
 Expo Router file-based routing with three route groups:

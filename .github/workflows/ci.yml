@@ -39,6 +39,20 @@ jobs:
       - name: Hex color check
         run: npm run check:colors
 
+      - name: Sentry DSN leak guard
+        run: |
+          # Story 9-3: prevent regression of the leak that triggered the story.
+          # A DSN URL must never live in source — only in EXPO_PUBLIC_SENTRY_DSN env.
+          # Pattern matches both regional and non-regional Sentry ingest hosts.
+          if grep -rE 'https://[A-Za-z0-9]+@[A-Za-z0-9.]+\.ingest(\.[a-z]+)?\.sentry\.io/[0-9]+' \
+              --include='*.json' --include='*.ts' --include='*.tsx' --include='*.js' \
+              --include='*.yml' --include='*.yaml' --include='*.md' \
+              --exclude-dir=node_modules --exclude-dir=.git . ; then
+            echo "::error::Sentry DSN URL found in source. DSN must only live in EXPO_PUBLIC_SENTRY_DSN env (see story 9-3)."
+            exit 1
+          fi
+          echo "✓ No Sentry DSN URL in source files"
+
       - name: Validate SQL migrations
         run: |
           # Ensure all migration files parse as valid SQL (basic syntax check)
