@@ -4,19 +4,25 @@ import type { ConversationTopic } from "@/src/types/conversation";
 /** Number of occurrences before generating a micro-drill */
 export const MICRO_DRILL_THRESHOLD = 3;
 
-/** TCF scoring constants */
+// Verified against docs/tcf-spec-source.md (TCF Canada, fetched 2026-05-07
+// from https://www.france-education-international.fr/test/tcf-canada).
+// TCF Canada has four mandatory sections (Listening + Reading QCM, plus
+// Writing + Speaking production tasks). Unlike TCF Tout Public, there is no
+// Grammar / Maîtrise des Structures section — the Grammar skill in this app
+// is retained only as a non-TCF practice skill.
+// Pinned by src/lib/__tests__/tcf-spec.test.ts.
 export const TCF = {
+  VARIANT: "canada" as const,
   MIN_SCORE: 0,
   MAX_SCORE: 699,
   C1_MIN: 500,
-  LISTENING_QUESTIONS: 29,
-  LISTENING_MINUTES: 25,
-  READING_QUESTIONS: 29,
-  READING_MINUTES: 45,
-  GRAMMAR_QUESTIONS: 18,
-  GRAMMAR_MINUTES: 15,
-  SPEAKING_MINUTES: 12,
+  LISTENING_QUESTIONS: 39,
+  LISTENING_MINUTES: 35,
+  READING_QUESTIONS: 39,
+  READING_MINUTES: 60,
   WRITING_MINUTES: 60,
+  /** Includes 2 minutes of preparation time built into the section. */
+  SPEAKING_MINUTES: 12,
 } as const;
 
 /** Skill display names */
