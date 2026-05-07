@@ -27,3 +27,27 @@ export function captureError(
     Sentry.captureException(err);
   });
 }
+
+export interface Breadcrumb {
+  category: string;
+  message: string;
+  level?: "info" | "warning" | "error" | "debug";
+  data?: Record<string, unknown>;
+}
+
+/**
+ * Emit a Sentry breadcrumb. Non-blocking; swallows any SDK error so
+ * a transient Sentry issue can't break the surrounding flow.
+ */
+export function addBreadcrumb(crumb: Breadcrumb): void {
+  try {
+    Sentry.addBreadcrumb({
+      category: crumb.category,
+      message: crumb.message,
+      level: crumb.level ?? "info",
+      data: crumb.data,
+    });
+  } catch {
+    // Breadcrumbs must never throw into application code.
+  }
+}

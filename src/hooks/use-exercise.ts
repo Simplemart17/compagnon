@@ -355,7 +355,7 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
         }
 
         // 2. Update skill progress with score (running average)
-        await updateSkillProgress(userId, skill, score, 0);
+        await updateSkillProgress(userId, skill, cefrLevel, score, 0);
 
         // 3. Increment daily activity counters
         await incrementDailyActivity(userId, { exercises: 1, minutes: 5 });

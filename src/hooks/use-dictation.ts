@@ -255,6 +255,10 @@ export function useDictation(): UseDictationReturn {
   const startTimeRef = useRef<number>(Date.now());
   const speechCacheRef = useRef<Map<number, string>>(new Map());
   const isGeneratingRef = useRef(false);
+  // CEFR level captured at exercise-generation time. If the user is auto-
+  // promoted mid-session, results are still credited to the level the
+  // exercise was generated at — not whatever the profile reads now.
+  const generatedAtLevelRef = useRef<CEFRLevel | null>(null);
 
   const currentSentence = sentences[currentIndex] ?? null;
 
@@ -303,6 +307,7 @@ export function useDictation(): UseDictationReturn {
         throw new Error("No sentences generated");
       }
 
+      generatedAtLevelRef.current = cefrLevel;
       setSentences(result.sentences.slice(0, SENTENCE_COUNT));
       setScreenState("active");
     } catch (err) {
@@ -429,8 +434,9 @@ export function useDictation(): UseDictationReturn {
               : 0;
           const elapsed = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 60000));
 
+          const creditLevel = generatedAtLevelRef.current ?? cefrLevel;
           await Promise.all([
-            updateSkillProgress(user.id, "listening", avg, elapsed),
+            updateSkillProgress(user.id, "listening", creditLevel, avg, elapsed),
             incrementDailyActivity(user.id, { minutes: elapsed, exercises: 1 }),
             updateStreak(user.id),
           ]);
@@ -440,7 +446,7 @@ export function useDictation(): UseDictationReturn {
       }
       setIsSavingResults(false);
     }
-  }, [currentIndex, sentences.length, sentenceResults, user?.id]);
+  }, [cefrLevel, currentIndex, sentences.length, sentenceResults, user?.id]);
 
   const tryAgain = useCallback(() => {
     setSentences([]);
@@ -450,6 +456,7 @@ export function useDictation(): UseDictationReturn {
     setHasPlayed(false);
     setAudioError(null);
     speechCacheRef.current.clear();
+    generatedAtLevelRef.current = null;
     void generateSentencesAction();
   }, [generateSentencesAction]);
 
