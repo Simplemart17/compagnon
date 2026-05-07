@@ -11,12 +11,17 @@ import Animated, {
 
 import { TCF } from "@/src/lib/constants";
 import { Colors, Shadows, skillTint } from "@/src/lib/design";
+import { TCF_QCM_SECTIONS, roundToNearestFive } from "@/src/lib/tcf";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type TestSection = "full" | "listening" | "reading" | "grammar";
+type TestSection = "full" | "listening" | "reading";
+
+const QCM_TOTAL_MINUTES = TCF_QCM_SECTIONS.listening.minutes + TCF_QCM_SECTIONS.reading.minutes;
+
+const QCM_PILL_MINUTES = roundToNearestFive(QCM_TOTAL_MINUTES);
 
 // ---------------------------------------------------------------------------
 // Full simulation card
@@ -56,7 +61,7 @@ function FullSimCard({ onPress }: FullSimCardProps) {
         }}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel="TCF Complet. Full simulation with 3 mandatory sections, approximately 95 minutes"
+        accessibilityLabel={`TCF Canada comprehension. Listening and reading sections back-to-back, approximately ${QCM_PILL_MINUTES} minutes.`}
         className="bg-primary rounded-3xl p-6 overflow-hidden"
       >
         {/* Subtle inner overlay for depth */}
@@ -72,21 +77,21 @@ function FullSimCard({ onPress }: FullSimCardProps) {
 
         {/* Badge */}
         <Text className="text-accent text-[10px] font-bold tracking-[1.5px] mb-[10px]">
-          SIMULATION COMPLÈTE
+          COMPRÉHENSION COMPLÈTE
         </Text>
 
         {/* Title */}
-        <Text className="text-white text-[22px] font-extrabold mb-2">TCF Complet</Text>
+        <Text className="text-white text-[22px] font-extrabold mb-2">TCF Canada — QCM</Text>
 
         {/* Description */}
         <Text className="text-[13px] leading-5 mb-4" style={{ color: Colors.textOnDarkSecondary }}>
-          3 sections obligatoires : {"\xC9"}coute ({TCF.LISTENING_MINUTES} min) + Lecture (
-          {TCF.READING_MINUTES} min) + Grammaire
+          2 sections de compréhension : Écoute ({TCF_QCM_SECTIONS.listening.minutes} min) + Lecture
+          ({TCF_QCM_SECTIONS.reading.minutes} min)
         </Text>
 
         {/* Bottom row: time pill + section dots */}
         <View className="flex-row items-center justify-between">
-          {/* ~95 min amber pill */}
+          {/* QCM total pill, computed from TCF.* */}
           <View
             className="rounded-2xl px-[14px] py-[6px]"
             style={{
@@ -95,12 +100,12 @@ function FullSimCard({ onPress }: FullSimCardProps) {
               borderColor: skillTint(Colors.accent, 0.4),
             }}
           >
-            <Text className="text-accent text-xs font-bold">~95 min</Text>
+            <Text className="text-accent text-xs font-bold">~{QCM_PILL_MINUTES} min</Text>
           </View>
 
-          {/* 3 section dots: blue, green, purple */}
+          {/* 2 section dots: listening, reading */}
           <View className="flex-row gap-[6px]">
-            {[Colors.skillListening, Colors.skillReading, Colors.skillGrammar].map((color, i) => (
+            {[Colors.skillListening, Colors.skillReading].map((color, i) => (
               <View
                 key={i}
                 className="w-[10px] h-[10px] rounded-full"
@@ -111,6 +116,60 @@ function FullSimCard({ onPress }: FullSimCardProps) {
         </View>
       </Pressable>
     </Animated.View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Coming-soon production-section placeholder card
+// ---------------------------------------------------------------------------
+
+interface ComingSoonCardProps {
+  emoji: string;
+  nameFr: string;
+  nameSub: string;
+  minutes: number;
+  followUp: string;
+  accentColor: string;
+}
+
+function ComingSoonCard({
+  emoji,
+  nameFr,
+  nameSub,
+  minutes,
+  followUp,
+  accentColor,
+}: ComingSoonCardProps) {
+  return (
+    <View
+      className="bg-white rounded-2xl flex-row items-center p-4 gap-[14px] overflow-hidden opacity-60"
+      style={{ ...Shadows.card }}
+      accessible
+      accessibilityRole="text"
+      accessibilityState={{ disabled: true }}
+      accessibilityHint="Not yet available"
+      accessibilityLabel={`${nameFr} — ${nameSub}, ${minutes} minutes. Coming soon: ${followUp}.`}
+    >
+      <View
+        className="absolute left-0 top-0 bottom-0 w-1"
+        style={{ backgroundColor: accentColor }}
+      />
+      <View
+        className="w-[52px] h-[52px] rounded-[26px] justify-center items-center"
+        style={{ backgroundColor: skillTint(accentColor, 0.09) }}
+      >
+        <Text className="text-[24px]">{emoji}</Text>
+      </View>
+      <View className="flex-1">
+        <Text className="text-base font-bold text-primary">{nameFr}</Text>
+        <Text className="text-xs mt-[3px]" style={{ color: Colors.textTertiary }}>
+          {nameSub} | {minutes} min
+        </Text>
+        <Text className="text-[11px] mt-[3px]" style={{ color: Colors.textTertiary }}>
+          Bientôt disponible · {followUp}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -216,7 +275,7 @@ function SectionCard({
 // ---------------------------------------------------------------------------
 
 const SECTIONS: {
-  id: "listening" | "reading" | "grammar";
+  id: "listening" | "reading";
   nameFr: string;
   nameSub: string;
   questions: number;
@@ -226,30 +285,21 @@ const SECTIONS: {
 }[] = [
   {
     id: "listening",
-    nameFr: "Compr\xE9hension Orale",
-    nameSub: "Listening",
-    questions: TCF.LISTENING_QUESTIONS,
-    minutes: TCF.LISTENING_MINUTES,
+    nameFr: TCF_QCM_SECTIONS.listening.nameFr,
+    nameSub: TCF_QCM_SECTIONS.listening.nameEn,
+    questions: TCF_QCM_SECTIONS.listening.questions,
+    minutes: TCF_QCM_SECTIONS.listening.minutes,
     emoji: "\uD83C\uDFA7",
     color: Colors.skillListening,
   },
   {
     id: "reading",
-    nameFr: "Compr\xE9hension \xC9crite",
-    nameSub: "Reading",
-    questions: TCF.READING_QUESTIONS,
-    minutes: TCF.READING_MINUTES,
+    nameFr: TCF_QCM_SECTIONS.reading.nameFr,
+    nameSub: TCF_QCM_SECTIONS.reading.nameEn,
+    questions: TCF_QCM_SECTIONS.reading.questions,
+    minutes: TCF_QCM_SECTIONS.reading.minutes,
     emoji: "\uD83D\uDCD6",
     color: Colors.skillReading,
-  },
-  {
-    id: "grammar",
-    nameFr: "Structures de la Langue",
-    nameSub: "Grammar & Vocabulary",
-    questions: TCF.GRAMMAR_QUESTIONS,
-    minutes: TCF.GRAMMAR_MINUTES,
-    emoji: "\uD83E\uDDE0",
-    color: Colors.skillGrammar,
   },
 ];
 
@@ -287,7 +337,7 @@ export default function MockTestScreen() {
           className="text-xs tracking-[0.5px] text-center mt-1"
           style={{ color: Colors.textOnDarkSecondary }}
         >
-          Test de Connaissance du Fran{"\xE7"}ais
+          Test de Connaissance du Fran{"\xE7"}ais — Canada
         </Text>
       </View>
 
@@ -322,6 +372,29 @@ export default function MockTestScreen() {
               onPress={() => startTest(section.id)}
             />
           ))}
+        </View>
+
+        {/* Production sections — bientôt disponibles */}
+        <Text className="text-lg font-bold text-primary mx-5 mt-7 mb-3" accessibilityRole="header">
+          Production écrite et orale
+        </Text>
+        <View className="px-5 gap-3">
+          <ComingSoonCard
+            emoji="✍️"
+            nameFr="Expression Écrite"
+            nameSub="Writing"
+            minutes={TCF.WRITING_MINUTES}
+            followUp="Epic 10"
+            accentColor={Colors.skillWriting}
+          />
+          <ComingSoonCard
+            emoji="🎤"
+            nameFr="Expression Orale"
+            nameSub="Speaking"
+            minutes={TCF.SPEAKING_MINUTES}
+            followUp="Story 9-8"
+            accentColor={Colors.skillPronunciation}
+          />
         </View>
       </ScrollView>
     </View>
