@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-04-01 # epics 3-8 retro, all epics transitioned to done
+last_updated: 2026-05-06 # added epics 9-17 from shippable-roadmap.md (independent 10-agent audit)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -108,3 +108,125 @@ development_status:
   8-2-streak-srs-notification-delivery: done
   8-3-notification-preferences-ui-client-integration: done
   epic-8-retrospective: done
+
+  # ──────────────────────────────────────────────────────────────────
+  # Path-to-Shippable epics (added 2026-05-06 from independent 10-agent audit)
+  # Source: _bmad-output/planning-artifacts/shippable-roadmap.md
+  # NOTE: Several Epic 1–8 "done" items were re-opened by the audit; the
+  # specific reopened sub-items are tracked as stories under Epics 9–17,
+  # not by reverting prior epic statuses. See shippable-roadmap.md §9.
+  # ──────────────────────────────────────────────────────────────────
+
+  # Epic 9: Release Blockers (P0) — must fix before any external beta
+  epic-9: backlog
+  9-1-tcf-spec-verification-correction: backlog
+  9-2-cefr-promotion-engine-fix: backlog
+  9-3-sentry-leak-remediation: backlog
+  9-4-stored-prompt-injection-defense: backlog
+  9-5-voice-transcript-dedup: backlog
+  9-6-auth-listener-token-refresh-fix: backlog
+  9-7-zod-validation-infrastructure: backlog
+  9-8-speaking-section-pipeline: backlog
+  9-9-submit-credentials-deploy-substrate: backlog
+  epic-9-retrospective: optional
+
+  # Epic 10: TCF Pedagogy Realignment (P0/P1)
+  epic-10: backlog
+  10-1-authoritative-tcf-spec-sourcing: backlog
+  10-2-scoring-scale-calibration: backlog
+  10-3-per-level-passage-sentence-calibration: backlog
+  10-4-vocabulary-frequency-caps: backlog
+  10-5-placement-test-prompt-extraction: backlog
+  10-6-speaking-rubric-scoring-pipeline: backlog
+  10-7-linguistic-accuracy-pass: backlog
+  10-8-anti-cheat-frequency-anti-repetition: backlog
+  epic-10-retrospective: optional
+
+  # Epic 11: AI Robustness & Cost Discipline (P1)
+  epic-11: backlog
+  11-1-correction-protocol-tool-calls: backlog
+  11-2-realtime-reconnect-barge-in: backlog
+  11-3-edge-function-upstream-timeouts: backlog
+  11-4-replace-rate-limit-upstash: backlog
+  11-5-cost-discipline-pass: backlog
+  11-6-embedding-based-error-tracker-dedupe: backlog
+  11-7-prompt-truncation: backlog
+  11-8-empty-response-detection-retry-parity: backlog
+  epic-11-retrospective: optional
+
+  # Epic 12: Mobile/Architecture Hardening (P1)
+  epic-12: backlog
+  12-1-realtime-orchestrator-decomposition: backlog
+  12-2-auth-subscription-bootstrap: backlog
+  12-3-atomic-rpc-mutations: backlog
+  12-4-realtime-start-race-fix: backlog
+  12-5-expoplayaudiostream-lifecycle: backlog
+  12-6-transcript-ref-cap: backlog
+  12-7-encrypted-profile-cache: backlog
+  12-8-password-policy-tightening: backlog
+  12-9-email-verification-gate: backlog
+  12-10-npm-audit-fix: backlog
+  12-11-edge-function-error-sanitization: backlog
+  12-12-pronunciation-history-cap: backlog
+  epic-12-retrospective: optional
+
+  # Epic 13: Performance Hot Paths (P2)
+  epic-13: backlog
+  13-1-transcript-render-storm-fix: backlog
+  13-2-home-query-fan-out-reduction: backlog
+  13-3-session-feedback-aggregate-rpc: backlog
+  13-4-streaming-mock-test-generation: backlog
+  13-5-history-modal-flatlist: backlog
+  13-6-sentry-sampling-screenshot-disable: backlog
+  13-7-className-style-resolution-hot-paths: backlog
+  13-8-prompt-truncation-perf-verify: backlog
+  epic-13-retrospective: optional
+
+  # Epic 14: UI/UX Consistency (P2)
+  epic-14: backlog
+  14-1-language-strategy-rewrite: backlog
+  14-2-card-consolidation: backlog
+  14-3-icon-system-replacement: backlog
+  14-4-token-enforcement-lint: backlog
+  14-5-accent-color-overload-resolution: backlog
+  14-6-post-onboarding-tour: backlog
+  14-7-mock-test-landing-resume-history: backlog
+  14-8-themed-dialog-component: backlog
+  14-9-hero-pattern-unification: backlog
+  epic-14-retrospective: optional
+
+  # Epic 15: Test Coverage & QA Infrastructure (P1)
+  epic-15: backlog
+  15-1-lib-unit-tests: backlog
+  15-2-hook-integration-tests: backlog
+  15-3-edge-function-deno-tests: backlog
+  15-4-golden-flow-e2e: backlog
+  15-5-ai-schema-regression-tests: backlog
+  15-6-ci-coverage-gating: backlog
+  epic-15-retrospective: optional
+
+  # Epic 16: Deploy & Launch Readiness (P1)
+  epic-16: in-progress
+  16-1-real-submit-credentials: backlog
+  16-2-runtime-version-eas-update-channels: review # 2026-05-06: expo-updates installed, app.json + eas.json wired, OTA workflow + runbook created; needs first TestFlight build with expo-updates + rollback rehearsal
+  16-3-edge-function-deploy-automation: backlog
+  16-4-sentry-source-map-upload: backlog
+  16-5-staging-environment-setup: backlog
+  16-6-migration-rollback-playbook: backlog
+  16-7-edge-function-error-to-sentry: backlog
+  16-8-uptime-check: backlog
+  16-9-app-store-google-play-submission: backlog
+  16-10-beta-tester-recruitment: backlog
+  epic-16-retrospective: optional
+
+  # Epic 17: Backend Hardening & Long-Tail (P2/P3) — can ship beta before this
+  epic-17: backlog
+  17-1-mock-tests-questions-normalization: backlog
+  17-2-notification-log-rls-documentation: backlog
+  17-3-set-updated-at-hardening: backlog
+  17-4-companion-memory-source-conv-index: backlog
+  17-5-send-notifications-pagination: backlog
+  17-6-pgvector-extensions-schema: backlog
+  17-7-reverse-migrations-template: backlog
+  17-8-push-token-log-truncation: backlog
+  epic-17-retrospective: optional
