@@ -46,7 +46,18 @@ export function calculateSectionScore(
   return { rawPercent, tcfScore, cefrLevel };
 }
 
-/** Weights for each skill in composite score calculation */
+/**
+ * Weights for each skill in composite score calculation.
+ *
+ * NOTE (Epic 10.2 — P1-1, do not edit in story 9-1):
+ * After the 2026-05-07 pivot to TCF Canada, the exam has 4 mandatory
+ * sections (listening, reading, writing, speaking) — Grammar is no longer
+ * part of TCF Canada and is retained only as a non-TCF practice skill.
+ * The `grammar: 0.2` weight is therefore obsolete for TCF readiness math
+ * and the equal-fifths weighting is wrong for the new variant. Recalibration
+ * (4-skill composite, possibly non-equal weights aligned to publisher
+ * reporting) is owned by Epic 10.2. Do not change here.
+ */
 const SKILL_WEIGHTS: Record<TCFSkill, number> = {
   listening: 0.2,
   reading: 0.2,
