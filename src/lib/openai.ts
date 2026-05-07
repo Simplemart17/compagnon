@@ -125,21 +125,14 @@ export async function chatCompletionJSON<T>(
   return JSON.parse(raw) as T;
 }
 
-/** Generate speech audio from text using OpenAI TTS (returns Base64 string) */
+/** Azure French neural voice (server maps short name → full Azure voice name) */
+export type FrenchVoice = "denise" | "henri" | "vivienne" | "brigitte" | "remy" | "eloise";
+
+/** Generate speech audio from text using Azure Neural TTS (returns Base64 string) */
 export async function generateSpeech(
   text: string,
   options?: {
-    voice?:
-      | "alloy"
-      | "ash"
-      | "ballad"
-      | "coral"
-      | "echo"
-      | "sage"
-      | "shimmer"
-      | "verse"
-      | "marin"
-      | "cedar";
+    voice?: FrenchVoice;
     speed?: number;
   }
 ): Promise<string> {
@@ -154,7 +147,7 @@ export async function generateSpeech(
         body: {
           action: "tts",
           input: text,
-          voice: options?.voice ?? "coral",
+          voice: options?.voice ?? "denise",
           speed: options?.speed ?? 1.0,
         },
       });

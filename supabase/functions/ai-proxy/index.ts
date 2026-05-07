@@ -13,8 +13,34 @@ import { errorResponse, parseUpstreamError } from "../_shared/errors.ts";
 const ALLOWED_MODELS = ["gpt-4o", "gpt-4o-mini"];
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const AZURE_SPEECH_KEY = Deno.env.get("AZURE_SPEECH_KEY");
+const AZURE_SPEECH_REGION = Deno.env.get("AZURE_SPEECH_REGION") ?? "westeurope";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+
+/** Allowed Azure French neural voices, mapped from short client-side names */
+const AZURE_VOICES: Record<string, string> = {
+  denise: "fr-FR-DeniseNeural",
+  henri: "fr-FR-HenriNeural",
+  vivienne: "fr-FR-VivienneMultilingualNeural",
+  brigitte: "fr-FR-BrigitteNeural",
+  remy: "fr-FR-RemyMultilingualNeural",
+  eloise: "fr-FR-EloiseNeural",
+};
+const DEFAULT_AZURE_VOICE = "denise";
+
+/** Max characters for a single TTS request (Azure soft limit ~10k) */
+const MAX_TTS_CHARS = 4000;
+
+/** Escape characters that have special meaning inside SSML/XML */
+function escapeXml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
 
 /** Max request body size: 50 KB for text, 5 MB for audio (transcription) */
 const MAX_BODY_BYTES = 50 * 1024;
@@ -115,31 +141,46 @@ Deno.serve(async (req: Request) => {
       }
 
       case "tts": {
+        if (!AZURE_SPEECH_KEY) {
+          return errorResponse({ code: "INTERNAL_ERROR", message: "Server misconfiguration: AZURE_SPEECH_KEY not set", status: 500, corsHeaders });
+        }
         if (!params.input || typeof params.input !== "string") {
           return errorResponse({ code: "INVALID_PARAMS", message: "Missing or invalid 'input' string for TTS", status: 400, corsHeaders });
         }
-        openaiResponse = await fetch("https://api.openai.com/v1/audio/speech", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini-tts",
-            input: params.input,
-            voice: params.voice ?? "coral",
-            speed: params.speed ?? 1.0,
-            response_format: "mp3",
-          }),
-        });
+        if (params.input.length > MAX_TTS_CHARS) {
+          return errorResponse({ code: "BODY_TOO_LARGE", message: `TTS input too long (max ${MAX_TTS_CHARS} chars)`, status: 413, corsHeaders });
+        }
 
-        if (!openaiResponse.ok) {
-          const upstreamMessage = await parseUpstreamError(openaiResponse);
-          return errorResponse({ code: "UPSTREAM_ERROR", message: `OpenAI TTS error: ${upstreamMessage}`, status: openaiResponse.status, corsHeaders });
+        const voiceKey = typeof params.voice === "string" ? params.voice.toLowerCase() : DEFAULT_AZURE_VOICE;
+        const azureVoice = AZURE_VOICES[voiceKey] ?? AZURE_VOICES[DEFAULT_AZURE_VOICE];
+
+        // Clamp speed to Azure's safe range
+        const rawSpeed = typeof params.speed === "number" ? params.speed : 1.0;
+        const rate = Math.min(Math.max(rawSpeed, 0.5), 2.0);
+
+        const ssml = `<speak version="1.0" xml:lang="fr-FR"><voice name="${azureVoice}"><prosody rate="${rate}">${escapeXml(params.input)}</prosody></voice></speak>`;
+
+        const azureTtsResponse = await fetch(
+          `https://${AZURE_SPEECH_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
+          {
+            method: "POST",
+            headers: {
+              "Ocp-Apim-Subscription-Key": AZURE_SPEECH_KEY,
+              "Content-Type": "application/ssml+xml",
+              "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+              "User-Agent": "companion-app",
+            },
+            body: ssml,
+          }
+        );
+
+        if (!azureTtsResponse.ok) {
+          const upstreamMessage = await parseUpstreamError(azureTtsResponse);
+          return errorResponse({ code: "UPSTREAM_ERROR", message: `Azure TTS error: ${upstreamMessage}`, status: azureTtsResponse.status, corsHeaders });
         }
 
         // Return audio as binary
-        const audioBuffer = await openaiResponse.arrayBuffer();
+        const audioBuffer = await azureTtsResponse.arrayBuffer();
         return new Response(audioBuffer, {
           headers: {
             ...corsHeaders,
