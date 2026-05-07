@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-07 # story 9-3 done (Sentry leak remediation reviewed and patched)
+last_updated: 2026-05-07 # story 9-4 done (stored prompt injection defense reviewed and merged)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -122,7 +122,7 @@ development_status:
   9-1-tcf-spec-verification-correction: done
   9-2-cefr-promotion-engine-fix: done
   9-3-sentry-leak-remediation: done
-  9-4-stored-prompt-injection-defense: backlog
+  9-4-stored-prompt-injection-defense: done
   9-5-voice-transcript-dedup: backlog
   9-6-auth-listener-token-refresh-fix: backlog
   9-7-zod-validation-infrastructure: backlog

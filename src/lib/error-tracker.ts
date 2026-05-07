@@ -2,9 +2,23 @@ import { supabase } from "./supabase";
 import { chatCompletionJSON } from "./openai";
 import { captureError } from "./sentry";
 import { MICRO_DRILL_THRESHOLD } from "./constants";
+import { sanitizeMemoryContent } from "./memory";
 
 /** Error types that get tracked */
 export type ErrorType = "grammar" | "pronunciation" | "vocabulary" | "register";
+
+/**
+ * Single source of truth for the four `ErrorType` literals. The
+ * `Record<ErrorType, true>` annotation enforces compile-time exhaustiveness —
+ * adding a new ErrorType variant without updating this record is a TS error.
+ */
+const ERROR_TYPE_RECORD: Record<ErrorType, true> = {
+  grammar: true,
+  pronunciation: true,
+  vocabulary: true,
+  register: true,
+};
+const ERROR_TYPES: ReadonlySet<ErrorType> = new Set(Object.keys(ERROR_TYPE_RECORD) as ErrorType[]);
 
 /** An error pattern record from the database */
 export interface ErrorPattern {
@@ -20,19 +34,33 @@ export interface ErrorPattern {
 
 /**
  * Record a new error occurrence, or increment the count if it already exists.
+ *
+ * `description` is sanitized via `sanitizeMemoryContent` at the boundary so
+ * every writer to `error_patterns.error_description` (not just
+ * `extractErrorsFromCorrections`) inherits the 300-char cap and injection-token
+ * strip — matches the CLAUDE.md "called on every write" contract.
+ *
+ * Returns silently if `errorType` is not a known literal or if `description`
+ * sanitizes to the empty string (sanitization-driven drops are not anomalies
+ * and are not captured to Sentry).
  */
 export async function trackError(
   userId: string,
   errorType: ErrorType,
   description: string
 ): Promise<void> {
+  // Defensive runtime checks — keep behavior consistent across all callers.
+  if (!ERROR_TYPES.has(errorType)) return;
+  const safeDescription = typeof description === "string" ? sanitizeMemoryContent(description) : "";
+  if (safeDescription.length === 0) return;
+
   // Check if this error pattern already exists
   const { data: existing } = await supabase
     .from("error_patterns")
     .select("id, occurrences")
     .eq("user_id", userId)
     .eq("error_type", errorType)
-    .eq("error_description", description)
+    .eq("error_description", safeDescription)
     .eq("resolved", false)
     .maybeSingle();
 
@@ -49,7 +77,7 @@ export async function trackError(
     if (updateError) {
       captureError(updateError, "track-error-update", {
         errorType,
-        description,
+        description: safeDescription,
       });
     }
   } else {
@@ -57,13 +85,13 @@ export async function trackError(
     const { error: insertError } = await supabase.from("error_patterns").insert({
       user_id: userId,
       error_type: errorType,
-      error_description: description,
+      error_description: safeDescription,
     });
 
     if (insertError) {
       captureError(insertError, "track-error-insert", {
         errorType,
-        description,
+        description: safeDescription,
       });
     }
   }
@@ -230,15 +258,20 @@ Example pattern: "Confuses passe compose with imparfait for habitual past action
 
   if (!result.patterns || result.patterns.length === 0) return;
 
-  // Track each extracted error pattern
+  // Track each extracted error pattern. trackError sanitizes the description
+  // via sanitizeMemoryContent internally, so call-site validation only needs
+  // to check the category literal-union and skip absent patterns. Sanitizer
+  // is idempotent — calling it again here would be redundant.
   for (const item of result.patterns) {
-    if (!item.pattern) continue;
+    if (!item.pattern || typeof item.pattern !== "string") continue;
+    if (typeof item.category !== "string" || !ERROR_TYPES.has(item.category as ErrorType)) {
+      continue;
+    }
 
     try {
       await trackError(userId, item.category as ErrorType, item.pattern);
     } catch (err) {
       captureError(err instanceof Error ? err : new Error(String(err)), "extract-errors-track", {
-        pattern: item.pattern,
         category: item.category,
       });
     }
