@@ -1,6 +1,6 @@
 # Story 9.4: Stored Prompt Injection Defense
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
