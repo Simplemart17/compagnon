@@ -67,7 +67,7 @@
       [
         "@sentry/react-native/expo",
         {
-          "organization": "https://af6766cf50c90c8d54732c65fd5a5a51@o4510981632360448.ingest.us.sentry.io/4510981633998848",
+          "organization": "simplemart-inc",
           "project": "companion"
         }
       ]

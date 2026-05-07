@@ -370,7 +370,11 @@ export async function checkCefrPromotion(userId: string): Promise<void> {
           category: "cefr-promotion",
           level: "info",
           message: `cefr-promotion-skipped: ${decision.reason}`,
-          data: { currentLevel, missingSkills: decision.missingSkills },
+          data: {
+            currentLevel,
+            // Stringify the array — scrubber gates on primitives only.
+            missingSkills: decision.missingSkills.join(","),
+          },
         });
         lastSkippedBreadcrumb.set(userId, fingerprint);
       }

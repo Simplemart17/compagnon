@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/src/lib/design";
 
-const LAST_UPDATED = "March 1, 2026";
+const LAST_UPDATED = "May 7, 2026";
 
 interface Section {
   heading: string;
@@ -17,7 +17,7 @@ const sections: Section[] = [
   },
   {
     heading: "2. Information We Collect",
-    body: 'Account information: your email address and display name when you create an account.\n\nLearning data: exercises you complete, scores, daily activity, streaks, and your CEFR level progress -- used solely to personalise your learning experience.\n\nVoice recordings: audio captured during pronunciation assessments and voice conversation sessions. Audio is streamed to our secure servers for real-time processing and is not retained after the session ends.\n\nConversation transcripts: text transcripts of your voice and text conversations with the AI companion, including corrections. These are stored to generate your learning summary and improve personalisation.\n\nCompanion memory: facts and preferences extracted from your conversations (e.g. your name, topics you enjoy) to make future sessions more relevant.\n\nError patterns: categories of recurring mistakes (e.g. "subject-verb agreement") used to generate targeted practice exercises.\n\nDevice information: general technical information (OS version, app version) collected automatically by our error monitoring provider for crash reporting.',
+    body: 'Account information: your email address and display name when you create an account.\n\nLearning data: exercises you complete, scores, daily activity, streaks, and your CEFR level progress -- used solely to personalise your learning experience.\n\nVoice recordings: audio captured during pronunciation assessments and voice conversation sessions. Audio is streamed to our secure servers for real-time processing and is not retained after the session ends.\n\nConversation transcripts: text transcripts of your voice and text conversations with the AI companion, including corrections. These are stored to generate your learning summary and improve personalisation.\n\nCompanion memory: facts and preferences extracted from your conversations (e.g. your name, topics you enjoy) to make future sessions more relevant.\n\nError patterns: categories of recurring mistakes (e.g. "subject-verb agreement") used to generate targeted practice exercises.\n\nDevice information: OS version and app version collected automatically by our error monitoring provider for crash reporting. No screenshots, transcripts, conversation content, or email are shared with the error monitor.',
   },
   {
     heading: "3. How We Use Your Information",
@@ -25,7 +25,7 @@ const sections: Section[] = [
   },
   {
     heading: "4. Third-Party Services",
-    body: "Companion relies on the following third-party providers to deliver its features. Each provider's own privacy policy governs their data practices.\n\nSupabase (supabase.com): Our database and authentication provider. Your account data and learning history are stored on Supabase infrastructure.\n\nOpenAI (openai.com): Powers AI conversation, exercise generation, text-to-speech, and companion memory embeddings. Conversation content is sent to OpenAI's API for processing per their usage policies.\n\nMicrosoft Azure Speech (azure.microsoft.com): Powers pronunciation assessment. Audio clips are transmitted to Azure for phoneme-level scoring.\n\nSentry (sentry.io): Crash reporting and error monitoring. Device metadata and anonymised error information may be shared with Sentry.",
+    body: "Companion relies on the following third-party providers to deliver its features. Each provider's own privacy policy governs their data practices.\n\nSupabase (supabase.com): Our database and authentication provider. Your account data and learning history are stored on Supabase infrastructure.\n\nOpenAI (openai.com): Powers AI conversation, exercise generation, text-to-speech, and companion memory embeddings. Conversation content is sent to OpenAI's API for processing per their usage policies.\n\nMicrosoft Azure Speech (azure.microsoft.com): Powers pronunciation assessment. Audio clips are transmitted to Azure for phoneme-level scoring.\n\nSentry (sentry.io): Crash reporting and error monitoring. We send anonymised crash reports tagged only with your opaque user ID -- never your email, screenshots, conversation transcripts, or French text content. Sentry may automatically collect device OS and app version for crash diagnostics.",
   },
   {
     heading: "5. Data Retention",
