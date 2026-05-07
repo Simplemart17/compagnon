@@ -3,6 +3,13 @@
     "name": "Companion",
     "slug": "companion",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ce8862a4-5a0a-4276-8cb6-24faeaee424a",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "companion",

@@ -1,0 +1,86 @@
+name: EAS Update (OTA)
+
+# Manually triggered. Publishes a JS-only OTA update to the chosen channel.
+# Use for bug fixes and content updates that do NOT require native code changes.
+# See _bmad-output/planning-artifacts/runbooks/ota-hotfix.md for the full safety checklist.
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Target channel
+        required: true
+        default: preview
+        type: choice
+        options: [preview, production]
+      message:
+        description: Update message (shown in Expo dashboard and required by App Review)
+        required: true
+        type: string
+      platform:
+        description: Platform
+        required: false
+        default: all
+        type: choice
+        options: [all, ios, android]
+
+jobs:
+  publish:
+    name: EAS Update -> ${{ github.event.inputs.channel }}
+    runs-on: ubuntu-latest
+    # Only allow publishing to production from main
+    environment: ${{ github.event.inputs.channel == 'production' && 'production' || 'preview' }}
+
+    steps:
+      - name: "Guard: production updates must originate from main"
+        if: ${{ github.event.inputs.channel == 'production' && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "::error::Production OTA updates may only be published from the main branch."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test
+        run: npm test
+
+      - name: Publish OTA update
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+        run: |
+          eas update \
+            --channel ${{ github.event.inputs.channel }} \
+            --platform ${{ github.event.inputs.platform }} \
+            --message "${{ github.event.inputs.message }}" \
+            --non-interactive
+
+      # NOTE: Sentry source-map upload is gated on Epic 9.3 (remove DSN from app.json,
+      # add SENTRY_AUTH_TOKEN secret, configure beforeSend scrubber). Without it,
+      # production stack traces from OTA-shipped code will be minified.
+      # Once Epic 9.3 lands, add a `npx sentry-expo-upload-sourcemaps` step here.
