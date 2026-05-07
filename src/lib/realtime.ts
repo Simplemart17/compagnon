@@ -6,6 +6,15 @@
  *
  * Targets the GA Realtime API (not the beta interface).
  * See: https://platform.openai.com/docs/guides/realtime-websocket
+ *
+ * Modality contract (story 9-5): voice sessions configure
+ * `output_modalities: ["audio"]` so the GA API emits exactly one terminal
+ * transcript event (`response.output_audio_transcript.done`) per AI turn.
+ * Enabling `"text"` alongside `"audio"` causes BOTH `response.output_text.done`
+ * and `response.output_audio_transcript.done` to fire for the same response,
+ * which doubles every AI turn in the UI and DB. Do not re-add `"text"` without
+ * the dedup safety net in `src/lib/realtime-transcript.ts` and a follow-up to
+ * the regression suite in `src/lib/__tests__/realtime-dedup.test.ts`.
  */
 
 import { captureError } from "./sentry";
@@ -29,12 +38,47 @@ const CONNECT_TIMEOUT_MS = 15_000;
 export type RealtimeEvent =
   | { type: "session.created"; session: Record<string, unknown> }
   | { type: "session.updated"; session: Record<string, unknown> }
-  | { type: "response.output_audio.delta"; delta: string }
-  | { type: "response.output_audio.done" }
-  | { type: "response.output_text.delta"; delta: string }
-  | { type: "response.output_text.done"; text: string }
-  | { type: "response.output_audio_transcript.delta"; delta: string }
-  | { type: "response.output_audio_transcript.done"; transcript: string }
+  | {
+      type: "response.output_audio.delta";
+      delta: string;
+      response_id?: string;
+      item_id?: string;
+      content_index?: number;
+    }
+  | {
+      type: "response.output_audio.done";
+      response_id?: string;
+      item_id?: string;
+      content_index?: number;
+    }
+  | {
+      type: "response.output_text.delta";
+      delta: string;
+      response_id?: string;
+      item_id?: string;
+      content_index?: number;
+    }
+  | {
+      type: "response.output_text.done";
+      text: string;
+      response_id?: string;
+      item_id?: string;
+      content_index?: number;
+    }
+  | {
+      type: "response.output_audio_transcript.delta";
+      delta: string;
+      response_id?: string;
+      item_id?: string;
+      content_index?: number;
+    }
+  | {
+      type: "response.output_audio_transcript.done";
+      transcript: string;
+      response_id?: string;
+      item_id?: string;
+      content_index?: number;
+    }
   | { type: "response.done"; response: Record<string, unknown> }
   | { type: "input_audio_buffer.speech_started" }
   | { type: "input_audio_buffer.speech_stopped" }
@@ -218,6 +262,16 @@ export class RealtimeSession {
    *
    * Uses the GA Realtime API format with nested audio configuration
    * and `type: "realtime"` session type.
+   *
+   * Voice sessions configure `output_modalities: ["audio"]` to ensure
+   * exactly one terminal transcript event (`response.output_audio_transcript.done`)
+   * fires per response. Enabling `"text"` alongside `"audio"` causes the GA API
+   * to emit BOTH `response.output_text.done` and
+   * `response.output_audio_transcript.done` for the same response, which doubles
+   * the assistant turn in the UI and in `conversation_messages`. See story 9-5.
+   *
+   * The audio transcript is the canonical text we render and persist; audio-only
+   * keeps voice playback working AND yields a single terminal event per turn.
    */
   private configureSession(): void {
     const turnDetection = this.config.turnDetection ?? {
@@ -231,7 +285,7 @@ export class RealtimeSession {
       type: "session.update",
       session: {
         type: "realtime",
-        output_modalities: ["text", "audio"],
+        output_modalities: ["audio"],
         instructions: this.config.systemPrompt,
         audio: {
           input: {
