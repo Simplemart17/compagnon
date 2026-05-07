@@ -12,7 +12,7 @@ import {
   registerForPushNotifications,
   setupNotificationResponseListener,
 } from "@/src/hooks/use-notifications";
-import { captureError } from "@/src/lib/sentry";
+import { captureError, getSentryInitConfig } from "@/src/lib/sentry";
 import { NetworkBanner } from "@/src/components/common/NetworkBanner";
 import { ErrorBoundary as AppErrorBoundary } from "@/src/components/common/ErrorBoundary";
 import { ToastProvider } from "@/src/components/common/Toast/ToastContext";
@@ -38,16 +38,8 @@ Notifications.setNotificationHandler({
 
 // Initialize Sentry as early as possible — before any component renders.
 // DSN is read from EXPO_PUBLIC_SENTRY_DSN; if absent, Sentry is a no-op.
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
-  // Capture 100% of transactions in dev, 10% in production to control volume
-  tracesSampleRate: __DEV__ ? 1.0 : 0.1,
-  // Enable all auto-instrumentation
-  enableAutoSessionTracking: true,
-  attachScreenshot: true,
-  enableCaptureFailedRequests: true,
-});
+// Config is owned by src/lib/sentry.ts and snapshot-tested for privacy posture.
+Sentry.init(getSentryInitConfig());
 
 function RootLayoutNav() {
   const { session, user, isLoading, isOnboarded } = useAuth();
@@ -89,7 +81,8 @@ function RootLayoutNav() {
   // Identify user in Sentry for error attribution
   useEffect(() => {
     if (user) {
-      Sentry.setUser({ id: user.id, email: user.email });
+      // GDPR: user.id is opaque (auth.uid()); never send email — it's a direct identifier.
+      Sentry.setUser({ id: user.id });
     } else {
       Sentry.setUser(null);
     }
