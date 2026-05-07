@@ -13,7 +13,7 @@ import { cacheWithFallback, CACHE_KEYS, CACHE_TTL, invalidateCache } from "@/src
 import { SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, SKILL_COLORS } from "@/src/lib/design";
 import { getTopErrors } from "@/src/lib/error-tracker";
-import { retrieveMemories } from "@/src/lib/memory";
+import { retrieveMemories, sanitizeMemoryContent } from "@/src/lib/memory";
 import { captureError } from "@/src/lib/sentry";
 import { supabase } from "@/src/lib/supabase";
 import { getLocalDateString } from "@/src/lib/activity";
@@ -108,12 +108,16 @@ function composeMessage(name: string | null, data: BriefingData): string {
     parts.push(`${greeting}!`);
   }
 
-  // Memory context (first relevant memory)
+  // Memory context (first relevant memory). Read-time sanitize defends against
+  // any pre-9-4 row, future-bug-introduced row, or directly-edited DB row
+  // surfacing instruction-like text into the UI greeting.
   if (data.memories.length > 0) {
-    const memory = data.memories[0];
-    // Truncate long memories to keep the message concise
-    const truncated = memory.length > 80 ? memory.slice(0, 77) + "..." : memory;
-    parts.push(`I remember: ${truncated}`);
+    const memory = sanitizeMemoryContent(data.memories[0]);
+    if (memory.length > 0) {
+      // Truncate long memories to keep the message concise
+      const truncated = memory.length > 80 ? memory.slice(0, 77) + "..." : memory;
+      parts.push(`I remember: ${truncated}`);
+    }
   }
 
   // Activity context
@@ -163,13 +167,15 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
     usedRoutes.add(route);
   }
 
-  // Priority 2: Error pattern drills
+  // Priority 2: Error pattern drills. Read-time sanitize on error_description
+  // — same reasoning as the memory greeting above. Skip the slot if the
+  // sanitized description is empty (don't early-return — Priority 3+ still apply).
   if (data.errorPatterns.length > 0 && items.length < 3) {
     const topError = data.errorPatterns[0];
     const route = "/(tabs)/practice/grammar";
-    const desc = topError.error_description;
-    const truncatedDesc = desc.length > 40 ? desc.slice(0, 37) + "..." : desc;
-    if (!usedRoutes.has(route)) {
+    const desc = sanitizeMemoryContent(topError.error_description);
+    if (desc.length > 0 && !usedRoutes.has(route)) {
+      const truncatedDesc = desc.length > 40 ? desc.slice(0, 37) + "..." : desc;
       items.push({
         id: `error-${topError.id}`,
         title: `Fix: ${truncatedDesc}`,
