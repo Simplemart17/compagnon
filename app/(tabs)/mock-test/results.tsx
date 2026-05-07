@@ -30,6 +30,7 @@ interface TestResults {
 const SECTION_LABELS: Record<string, { name: string; emoji: string }> = {
   listening: { name: "Compréhension Orale", emoji: "\uD83C\uDFA7" },
   reading: { name: "Compréhension Écrite", emoji: "\uD83D\uDCD6" },
+  // Legacy — TCF Canada has no Grammar section; kept for historical results only.
   grammar: { name: "Structures de la Langue", emoji: "\uD83E\uDDE0" },
 };
 

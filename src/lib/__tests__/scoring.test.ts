@@ -1,3 +1,4 @@
+import { TCF } from "../constants";
 import {
   rawToTCFScore,
   calculateSectionScore,
@@ -56,9 +57,11 @@ describe("rawToTCFScore", () => {
 });
 
 describe("calculateSectionScore", () => {
-  it("calculates correct percentage and TCF score", () => {
-    const result = calculateSectionScore(20, 29);
-    expect(result.rawPercent).toBeCloseTo(68.97, 1);
+  it("calculates correct percentage and TCF score (TCF Canada listening size)", () => {
+    // 27 / 39 ≈ 69.23 % — same B2 territory as the original test, but using
+    // the TCF Canada section size verified by tcf-spec.test.ts.
+    const result = calculateSectionScore(27, 39);
+    expect(result.rawPercent).toBeCloseTo(69.23, 1);
     expect(result.tcfScore).toBeGreaterThanOrEqual(400);
     expect(result.tcfScore).toBeLessThan(500);
     expect(result.cefrLevel).toBe("B2");
@@ -71,11 +74,27 @@ describe("calculateSectionScore", () => {
     expect(result.cefrLevel).toBeNull();
   });
 
-  it("returns perfect score for all correct", () => {
-    const result = calculateSectionScore(29, 29);
+  it("returns perfect score for all correct (TCF Canada listening size)", () => {
+    const result = calculateSectionScore(39, 39);
     expect(result.rawPercent).toBe(100);
     expect(result.tcfScore).toBe(699);
     expect(result.cefrLevel).toBe("C2");
+  });
+
+  it("derives section size from TCF.READING_QUESTIONS to catch silent drift", () => {
+    // If TCF.READING_QUESTIONS ever diverges from 39 (e.g. publisher revises
+    // the spec or a careless edit lands), this test recomputes against the
+    // current constant so the math contract stays anchored to the source of
+    // truth rather than a hard-coded literal.
+    const total = TCF.READING_QUESTIONS;
+    const allCorrect = calculateSectionScore(total, total);
+    expect(allCorrect.rawPercent).toBe(100);
+    expect(allCorrect.tcfScore).toBe(699);
+
+    const halfCorrect = calculateSectionScore(Math.floor(total / 2), total);
+    expect(halfCorrect.rawPercent).toBeGreaterThan(45);
+    expect(halfCorrect.rawPercent).toBeLessThan(55);
+    expect(halfCorrect.cefrLevel).toBe("A2");
   });
 });
 

@@ -1,8 +1,11 @@
 /**
- * Active TCF Mock Test Session
+ * Active TCF Canada Mock Test Session
  *
- * Simulates a real TCF test with timer, progressive questions,
- * and section navigation. Supports full test (3 sections) or single section.
+ * Simulates a real TCF Canada exam (QCM portion) with timer, progressive
+ * questions, and section navigation. Supports the full QCM run
+ * (Listening + Reading) or a single section. Writing and Speaking are
+ * mandatory in TCF Canada too but use separate non-MCQ pipelines:
+ * Writing — Epic 10.6, Speaking — story 9-8.
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -12,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { chatCompletionJSON } from "@/src/lib/openai";
 import { buildMockTestPrompt } from "@/src/lib/prompts/mock-test";
+import { ALL_QCM_SECTIONS, TCF_QCM_SECTIONS } from "@/src/lib/tcf";
 import { rawToTCFScore } from "@/src/lib/scoring";
 import { levelFromScore } from "@/src/types/cefr";
 import { useAuthStore } from "@/src/store/auth-store";
@@ -26,7 +30,24 @@ import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import type { MCQContent } from "@/src/types/exercise";
 import type { CEFRLevel } from "@/src/types/cefr";
 
-type Section = "listening" | "reading" | "grammar";
+type Section = "listening" | "reading";
+
+/**
+ * SCHEMA NOTE — `mock_tests.test_type === "full"` semantic shift.
+ *
+ * Pre-2026-05-07 (TCF Tout Public): "full" meant 3 sections (listening,
+ * reading, grammar) totalling 85 minutes.
+ * Post-2026-05-07 (TCF Canada pivot): "full" means 2 sections (listening,
+ * reading) totalling 95 minutes.
+ *
+ * Existing rows with `test_type = "full"` may have been recorded under
+ * either semantic, but they are differentiated by the keys present in
+ * their `questions` JSON. The resume path filters out unknown section keys
+ * (see initTest below); analytics/aggregation jobs that consume historical
+ * mock_tests data should treat pre-pivot rows as a separate cohort. A
+ * migration that backfills a `variant` column (`tout_public`|`canada`) is
+ * tracked as a follow-up in docs/tcf-spec-source.md.
+ */
 
 interface TestState {
   sections: Section[];
@@ -37,24 +58,10 @@ interface TestState {
   status: "loading" | "active" | "finished";
 }
 
-const SECTION_META: Record<
-  Section,
-  { name: string; nameFr: string; timeMinutes: number; questionCount: number }
-> = {
-  listening: {
-    name: "Listening",
-    nameFr: "Compréhension Orale",
-    timeMinutes: 25,
-    questionCount: 29,
-  },
-  reading: { name: "Reading", nameFr: "Compréhension Écrite", timeMinutes: 45, questionCount: 29 },
-  grammar: {
-    name: "Grammar",
-    nameFr: "Structures de la Langue",
-    timeMinutes: 15,
-    questionCount: 18,
-  },
-};
+// Per-section runtime metadata is provided by `TCF_QCM_SECTIONS` in
+// `@/src/lib/tcf`, which derives every question count and minute value from
+// the canonical `TCF` constant in `@/src/lib/constants`. Do NOT re-declare
+// section metadata here.
 
 /** Skeleton loading screen shown while generating TCF test */
 function MockTestSkeleton({ isSlow }: { isSlow: boolean }) {
@@ -121,15 +128,12 @@ export default function MockTestSessionScreen() {
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
 
-  const VALID_SECTIONS: Section[] = ["listening", "reading", "grammar"];
-
-  const sections: Section[] =
-    testId === "full" ? ["listening", "reading", "grammar"] : [testId as Section];
+  const sections: Section[] = testId === "full" ? [...ALL_QCM_SECTIONS] : [testId as Section];
 
   const [state, setState] = useState<TestState>({
     sections,
     currentSectionIndex: 0,
-    questions: { listening: [], reading: [], grammar: [] },
+    questions: { listening: [], reading: [] },
     answers: {},
     timeRemaining: 0,
     status: "loading",
@@ -148,7 +152,7 @@ export default function MockTestSessionScreen() {
     profile?.current_cefr_level ??
     "B1") as CEFRLevel;
 
-  const isInvalidTestId = testId !== "full" && !VALID_SECTIONS.includes(testId as Section);
+  const isInvalidTestId = testId !== "full" && !ALL_QCM_SECTIONS.includes(testId as Section);
 
   useEffect(() => {
     if (isInvalidTestId) {
@@ -192,7 +196,15 @@ export default function MockTestSessionScreen() {
   // Generate test questions or resume from saved state
   useEffect(() => {
     async function initTest() {
+      // Bail early on invalid route params (e.g., a stale /mock-test/grammar
+      // deep link). The redirect effect above will navigate away on next
+      // render; running the DB query here would otherwise hydrate state from
+      // a legacy row whose section is no longer in the Section union.
+      if (isInvalidTestId) return;
+
       const userId = useAuthStore.getState().user?.id;
+      const expectedTotalSeconds =
+        sections.reduce((sum, s) => sum + TCF_QCM_SECTIONS[s].minutes, 0) * 60;
 
       // Check for an in-progress test to resume
       if (userId) {
@@ -210,7 +222,14 @@ export default function MockTestSessionScreen() {
           try {
             // Resume from saved state
             const saved = existing.section_scores;
-            const resumedQuestions = existing.questions as Record<Section, MCQContent[]>;
+            const rawQuestions = (existing.questions ?? {}) as Record<string, MCQContent[]>;
+
+            // Filter out any keys that aren't in the current Section union
+            // (e.g., legacy "grammar" rows from before the TCF Canada pivot).
+            const resumedQuestions: Record<Section, MCQContent[]> = {
+              listening: Array.isArray(rawQuestions.listening) ? rawQuestions.listening : [],
+              reading: Array.isArray(rawQuestions.reading) ? rawQuestions.reading : [],
+            };
 
             // Validate saved state is not corrupt
             const hasValidQuestions = sections.some(
@@ -218,20 +237,31 @@ export default function MockTestSessionScreen() {
             );
             if (!hasValidQuestions) throw new Error("Corrupt saved state: no valid questions");
 
-            // Subtract elapsed time since last save to prevent gaining time
+            // Clamp currentSectionIndex against the *current* sections array.
+            // Legacy 3-section "full" rows could land at index 2 (grammar)
+            // which is out of range for the new 2-section run.
+            const safeSectionIndex = Math.min(
+              Math.max(0, saved.currentSectionIndex ?? 0),
+              sections.length - 1
+            );
+
+            // Subtract elapsed time since last save to prevent gaining time.
+            // Also clamp against the new spec total — a legacy 85-min budget
+            // should not entitle a resumed run to more than the new 95-min cap.
             let adjustedTimeRemaining = saved.timeRemaining ?? 0;
             if (saved.savedAt && adjustedTimeRemaining > 0) {
               const elapsedMs = Date.now() - saved.savedAt;
               const elapsedSeconds = Math.floor(elapsedMs / 1000);
               adjustedTimeRemaining = Math.max(0, adjustedTimeRemaining - elapsedSeconds);
             }
+            adjustedTimeRemaining = Math.min(adjustedTimeRemaining, expectedTotalSeconds);
 
             setActiveTestId(existing.id);
             setAnsweredQuestions(new Set(saved.answeredQuestions ?? []));
-            setCurrentQuestionIndex(saved.currentQuestionIndex ?? 0);
+            setCurrentQuestionIndex(Math.max(0, saved.currentQuestionIndex ?? 0));
             setState({
               sections,
-              currentSectionIndex: saved.currentSectionIndex ?? 0,
+              currentSectionIndex: safeSectionIndex,
               questions: resumedQuestions,
               answers: saved.answers ?? {},
               timeRemaining: adjustedTimeRemaining,
@@ -269,7 +299,6 @@ export default function MockTestSessionScreen() {
       const allQuestions: Record<Section, MCQContent[]> = {
         listening: [],
         reading: [],
-        grammar: [],
       };
 
       let generationFailed = false;
@@ -278,7 +307,7 @@ export default function MockTestSessionScreen() {
           const prompt = buildMockTestPrompt({
             section,
             targetLevel: cefrLevel,
-            questionCount: SECTION_META[section].questionCount,
+            questionCount: TCF_QCM_SECTIONS[section].questions,
           });
 
           const result = await chatCompletionJSON<{
@@ -309,7 +338,7 @@ export default function MockTestSessionScreen() {
             return opts.length === 4 && correctCount === 1;
           });
 
-          const expected = SECTION_META[section].questionCount;
+          const expected = TCF_QCM_SECTIONS[section].questions;
           if (validated.length < Math.ceil(expected * 0.5) && validated.length > 0) {
             captureError(
               new Error(
@@ -344,7 +373,7 @@ export default function MockTestSessionScreen() {
         return;
       }
 
-      const totalMinutes = sections.reduce((sum, s) => sum + SECTION_META[s].timeMinutes, 0);
+      const totalMinutes = sections.reduce((sum, s) => sum + TCF_QCM_SECTIONS[s].minutes, 0);
 
       // Create in-progress record in DB
       if (userId) {
@@ -533,7 +562,7 @@ export default function MockTestSessionScreen() {
         overallTcfScore,
         overallCefrLevel: levelFromScore(overallTcfScore) ?? "Below A1",
         testType: testId,
-        isPartialTest: testState.sections.length < 3,
+        isPartialTest: testState.sections.length < ALL_QCM_SECTIONS.length,
       };
     },
     [testId]
@@ -618,7 +647,7 @@ export default function MockTestSessionScreen() {
   const isLastQuestion = currentQuestionIndex >= currentQuestions.length - 1;
   const isLastSection = state.currentSectionIndex >= state.sections.length - 1;
   const answerKey = `${currentSection}_${currentQuestionIndex}`;
-  const sectionMeta = SECTION_META[currentSection];
+  const sectionMeta = TCF_QCM_SECTIONS[currentSection];
   const isTimeLow = state.timeRemaining < 300; // < 5 min
 
   return (
