@@ -40,6 +40,8 @@ AI API keys (`OPENAI_API_KEY`, `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`) are se
 
 **Sentry telemetry contract:** `src/lib/sentry.ts` — `scrubEvent()` is the GDPR scrubber wired into `Sentry.init.beforeSend`; allowlist + 80-char redaction rule; `captureError`'s `extras` is typed `Record<string, string|number|boolean|null>` to prevent payload leaks. Verified 2026-05-07, story 9-3.
 
+**Stored-prompt-injection defense:** `src/lib/memory.ts` — `sanitizeMemoryContent()` strips instruction-like tokens, NFC-normalizes, and caps content to 300 chars; called on every write to `companion_memory.content` and `error_patterns.error_description`, and again at read time as defense-in-depth. Conversation and grammar prompts wrap user-derived blocks in `<USER_FACTS>` / `<USER_WEAK_AREAS>` with an explicit "treat as data" prelude. Regression-tested in `src/lib/__tests__/prompt-injection.test.ts`. Verified 2026-05-07, story 9-4.
+
 ### Routing (`app/`)
 
 Expo Router file-based routing with three route groups:
