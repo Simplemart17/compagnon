@@ -15,13 +15,19 @@ import { ExpoPlayAudioStream } from "@mykin-ai/expo-audio-stream";
 import type { EventSubscription } from "expo-modules-core";
 
 import { RealtimeSession, type RealtimeConfig, type RealtimeEvent } from "@/src/lib/realtime";
+import {
+  acceptDelta,
+  appendIfNew,
+  resolveTranscriptKey,
+  type TranscriptEntry,
+} from "@/src/lib/realtime-transcript";
 import { buildConversationPrompt } from "@/src/lib/prompts/conversation";
 import { chatCompletionJSON } from "@/src/lib/openai";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
 import { extractAndStoreMemories } from "@/src/lib/memory";
 import { trackError, extractErrorsFromCorrections } from "@/src/lib/error-tracker";
-import { captureError } from "@/src/lib/sentry";
+import { addBreadcrumb, captureError } from "@/src/lib/sentry";
 import { isOnline } from "@/src/lib/network";
 import { enqueueWrite } from "@/src/lib/cache";
 import {
@@ -33,13 +39,9 @@ import {
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { ConversationFeedback, ConversationMode, Correction } from "@/src/types/conversation";
 
-export interface TranscriptEntry {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  corrections?: Correction[];
-  timestamp: number;
-}
+// Re-exported so existing consumers (e.g. TranscriptView) keep their import path.
+// The canonical definition lives in `@/src/lib/realtime-transcript`.
+export type { TranscriptEntry };
 
 export interface ConversationState {
   status: "idle" | "connecting" | "connected" | "error" | "disconnected" | "ended";
@@ -124,6 +126,13 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
   const startTimeRef = useRef<number>(0);
   const statusRef = useRef(state.status);
   statusRef.current = state.status;
+
+  /** Set of upstream item/response keys whose terminal `.done` event has already produced a TranscriptEntry. */
+  const processedResponseItemsRef = useRef<Set<string>>(new Set());
+  /** item_id of the AI response currently being streamed; null between turns. */
+  const inflightItemIdRef = useRef<string | null>(null);
+  /** Monotonic counter for user-side TranscriptEntry ids; collision-free across same-millisecond bursts. */
+  const userTurnCounterRef = useRef(0);
 
   // Audio recording via expo-audio-stream (full-duplex PCM streaming)
   const subscriptionRef = useRef<EventSubscription | null>(null);
@@ -255,6 +264,70 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
     [user, cefrLevel]
   );
 
+  /**
+   * Append a single AI-turn transcript entry, applying response-id dedup.
+   * Returns true if the entry was added, false if it was deduped.
+   *
+   * Centralized so both the audio-transcript and text-fallback paths route
+   * through one append + one parseCorrections call. See story 9-5.
+   */
+  const appendAiTranscriptEntry = useCallback(
+    (text: string, key: string): boolean => {
+      const result = appendIfNew(
+        {
+          processed: processedResponseItemsRef.current,
+          transcript: transcriptRef.current,
+          corrections: correctionsRef.current,
+        },
+        key,
+        text,
+        {
+          parseCorrections,
+          onDedup: (k) => {
+            // Defensive: dedup is expected behavior, not an error. A breadcrumb
+            // gives us visibility if the safety net ever fires in production
+            // after the modality switch. `key` is on the Sentry allowlist;
+            // free-text content is intentionally not logged.
+            addBreadcrumb({
+              category: "realtime",
+              level: "warning",
+              message: "Duplicate transcript event suppressed",
+              data: { key: k },
+            });
+          },
+        }
+      );
+
+      if (!result.appended) return false;
+
+      transcriptRef.current = result.transcript;
+      correctionsRef.current = result.corrections;
+
+      // Only clear streaming state if the appended turn IS the in-flight one.
+      // This protects a still-streaming turn from being wiped by an out-of-turn
+      // terminal event that happens to land first (e.g., a duplicated `.done`
+      // for an already-completed earlier turn whose key is still in the Set
+      // would never reach here, but a mis-ordered `.done` for a different
+      // item_id could).
+      const isInflight = inflightItemIdRef.current === null || inflightItemIdRef.current === key;
+      if (isInflight) {
+        currentAiTextRef.current = "";
+        inflightItemIdRef.current = null;
+      }
+
+      setState((s) => ({
+        ...s,
+        transcript: result.transcript,
+        pendingAiText: isInflight ? "" : s.pendingAiText,
+        allCorrections: result.corrections,
+      }));
+
+      onTranscriptUpdate?.(result.transcript);
+      return true;
+    },
+    [parseCorrections, onTranscriptUpdate]
+  );
+
   /** Handle incoming Realtime API events */
   const handleEvent = useCallback(
     (event: RealtimeEvent) => {
@@ -285,69 +358,55 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           setState((s) => ({ ...s, isAiSpeaking: false }));
           break;
 
-        case "response.output_text.delta":
-          currentAiTextRef.current += event.delta;
-          setState((s) => ({ ...s, pendingAiText: currentAiTextRef.current }));
+        // Defensive: with output_modalities=["audio"], this event should not fire.
+        // The acceptDelta guard drops it if the audio-transcript path has already
+        // adopted an in-flight item_id; if the modality config ever drifts, the
+        // .done helper's response-id dedup blocks the duplicate entry.
+        case "response.output_text.delta": {
+          const result = acceptDelta(
+            {
+              inflightItemId: inflightItemIdRef.current,
+              pendingText: currentAiTextRef.current,
+            },
+            event.item_id ?? null,
+            event.delta
+          );
+          if (result.accepted) {
+            inflightItemIdRef.current = result.state.inflightItemId;
+            currentAiTextRef.current = result.state.pendingText;
+            setState((s) => ({ ...s, pendingAiText: currentAiTextRef.current }));
+          }
           break;
+        }
 
         case "response.output_text.done": {
-          const fullText = event.text;
-          const corrections = parseCorrections(fullText);
-
-          const entry: TranscriptEntry = {
-            id: `ai_${Date.now()}`,
-            role: "assistant",
-            text: fullText,
-            corrections: corrections.length > 0 ? corrections : undefined,
-            timestamp: Date.now(),
-          };
-
-          transcriptRef.current = [...transcriptRef.current, entry];
-          correctionsRef.current = [...correctionsRef.current, ...corrections];
-          currentAiTextRef.current = "";
-
-          setState((s) => ({
-            ...s,
-            transcript: transcriptRef.current,
-            pendingAiText: "",
-            allCorrections: correctionsRef.current,
-          }));
-
-          onTranscriptUpdate?.(transcriptRef.current);
+          const key = resolveTranscriptKey(event, event.text);
+          appendAiTranscriptEntry(event.text, key);
           break;
         }
 
         // In voice mode, the AI responds with audio and the transcript arrives
         // via response.output_audio_transcript events (GA API naming).
-        case "response.output_audio_transcript.delta":
-          currentAiTextRef.current += event.delta;
-          setState((s) => ({ ...s, pendingAiText: currentAiTextRef.current }));
+        case "response.output_audio_transcript.delta": {
+          const result = acceptDelta(
+            {
+              inflightItemId: inflightItemIdRef.current,
+              pendingText: currentAiTextRef.current,
+            },
+            event.item_id ?? null,
+            event.delta
+          );
+          if (result.accepted) {
+            inflightItemIdRef.current = result.state.inflightItemId;
+            currentAiTextRef.current = result.state.pendingText;
+            setState((s) => ({ ...s, pendingAiText: currentAiTextRef.current }));
+          }
           break;
+        }
 
         case "response.output_audio_transcript.done": {
-          const audioTranscriptText = event.transcript;
-          const audioCorrections = parseCorrections(audioTranscriptText);
-
-          const audioEntry: TranscriptEntry = {
-            id: `ai_${Date.now()}`,
-            role: "assistant",
-            text: audioTranscriptText,
-            corrections: audioCorrections.length > 0 ? audioCorrections : undefined,
-            timestamp: Date.now(),
-          };
-
-          transcriptRef.current = [...transcriptRef.current, audioEntry];
-          correctionsRef.current = [...correctionsRef.current, ...audioCorrections];
-          currentAiTextRef.current = "";
-
-          setState((s) => ({
-            ...s,
-            transcript: transcriptRef.current,
-            pendingAiText: "",
-            allCorrections: correctionsRef.current,
-          }));
-
-          onTranscriptUpdate?.(transcriptRef.current);
+          const key = resolveTranscriptKey(event, event.transcript);
+          appendAiTranscriptEntry(event.transcript, key);
           break;
         }
 
@@ -362,7 +421,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
             );
             if (textContent?.transcript) {
               const entry: TranscriptEntry = {
-                id: `user_${Date.now()}`,
+                id: `user_${userTurnCounterRef.current++}`,
                 role: "user",
                 text: textContent.transcript,
                 timestamp: Date.now(),
@@ -381,12 +440,24 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           break;
 
         case "response.done":
-          // Safety reset: clear processing if response completes without audio
-          setState((s) => ({ ...s, isProcessing: false }));
+          // Safety reset: clear processing if response completes without audio.
+          // Also drop any in-flight delta accumulator so a cancelled or
+          // tool-only turn cannot leak its pending text into the prefix of
+          // the next turn (whose first delta would otherwise concatenate
+          // onto the leftover via `acceptDelta`'s adopt path).
+          inflightItemIdRef.current = null;
+          currentAiTextRef.current = "";
+          setState((s) => ({ ...s, isProcessing: false, pendingAiText: "" }));
           break;
 
         case "error":
           captureError(event.error, "realtime-voice-error");
+          // Drop any in-flight delta accumulator on every error path so a
+          // mid-stream failure (rate limit, transient API error) cannot leak
+          // the cancelled turn's prefix into the next one if the session is
+          // resumed without a full `start()`.
+          inflightItemIdRef.current = null;
+          currentAiTextRef.current = "";
           if (event.error.code === "connection_lost") {
             // Mark disconnected immediately, then clean up & persist
             setState((s) => ({
@@ -396,6 +467,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
               isProcessing: false,
               isSpeaking: false,
               isAiSpeaking: false,
+              pendingAiText: "",
             }));
             // endRef is set below — triggers full cleanup + persist
             endRef.current?.();
@@ -405,12 +477,13 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
               status: "error",
               error: event.error.message,
               isProcessing: false,
+              pendingAiText: "",
             }));
           }
           break;
       }
     },
-    [parseCorrections, onTranscriptUpdate, handleFunctionCall]
+    [appendAiTranscriptEntry, handleFunctionCall, onTranscriptUpdate]
   );
 
   /** Create a conversation record in Supabase */
@@ -604,6 +677,9 @@ Return JSON: {
     startTimeRef.current = 0;
     conversationIdRef.current = null;
     isEndingRef.current = false;
+    processedResponseItemsRef.current = new Set();
+    inflightItemIdRef.current = null;
+    userTurnCounterRef.current = 0;
 
     setState({
       status: "connecting",
@@ -722,7 +798,7 @@ Return JSON: {
       if (!sessionRef.current?.isConnected) return;
 
       const entry: TranscriptEntry = {
-        id: `user_${Date.now()}`,
+        id: `user_${userTurnCounterRef.current++}`,
         role: "user",
         text,
         timestamp: Date.now(),

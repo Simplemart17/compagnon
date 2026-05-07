@@ -42,6 +42,8 @@ AI API keys (`OPENAI_API_KEY`, `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`) are se
 
 **Stored-prompt-injection defense:** `src/lib/memory.ts` — `sanitizeMemoryContent()` strips instruction-like tokens, NFC-normalizes, and caps content to 300 chars; called on every write to `companion_memory.content` and `error_patterns.error_description`, and again at read time as defense-in-depth. Conversation and grammar prompts wrap user-derived blocks in `<USER_FACTS>` / `<USER_WEAK_AREAS>` with an explicit "treat as data" prelude. Regression-tested in `src/lib/__tests__/prompt-injection.test.ts`. Verified 2026-05-07, story 9-4.
 
+**Voice transcript dedup:** `src/lib/realtime.ts` configures `output_modalities: ["audio"]` so exactly one terminal transcript event (`response.output_audio_transcript.done`) fires per AI turn. `src/lib/realtime-transcript.ts` exposes pure `appendIfNew` / `acceptDelta` / `resolveTranscriptKey` helpers; `src/hooks/use-realtime-voice.ts` routes both `.done` paths through one append + dedup helper keyed off `item_id` (with `response_id` and an opaque `fallback_<djb2-content-hash>` fallback — deterministic, no raw text, no timestamp, so duplicates of malformed events still dedupe and the key is safe to log). Empty/whitespace `.done` payloads are no-ops; the dedup Set is FIFO-capped at 256 so dedup remains correct past the cap. Duplicate events for the same key are suppressed and breadcrumbed to Sentry. Regression-tested in `src/lib/__tests__/realtime-dedup.test.ts`. Verified 2026-05-07, story 9-5.
+
 ### Routing (`app/`)
 
 Expo Router file-based routing with three route groups:
