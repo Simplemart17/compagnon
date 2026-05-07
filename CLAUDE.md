@@ -36,6 +36,8 @@ AI API keys (`OPENAI_API_KEY`, `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`) are se
 
 **TCF spec source of truth:** the app targets **TCF Canada** (verified 2026-05-07). Section question counts and time limits are pinned in `src/lib/constants.ts` (`TCF` object), regression-tested by `src/lib/__tests__/tcf-spec.test.ts`, and citation-traced in `docs/tcf-spec-source.md`.
 
+**CEFR promotion contract:** `src/lib/activity.ts` — pure decision helper `evaluatePromotion()`, regression-tested by `src/lib/__tests__/activity.test.ts`. Promotion requires evidence in all 5 TCF skills at the current level (verified 2026-05-07, story 9-2).
+
 ### Routing (`app/`)
 
 Expo Router file-based routing with three route groups:

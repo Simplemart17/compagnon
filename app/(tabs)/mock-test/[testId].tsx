@@ -499,6 +499,10 @@ export default function MockTestSessionScreen() {
               if (mockError) captureError(mockError, "mock-test-save");
             }
 
+            // TODO(story-9-8): Wire per-skill score writes from `results.sections` into
+            // updateSkillProgress(userId, "listening" | "reading" | "writing" | "speaking",
+            //   currentLevel, sectionScore, sectionMinutes) once Story 9-8 lands the Speaking
+            // pipeline and re-confirms section/skill mapping for TCF Canada.
             await incrementDailyActivity(userId, { exercises: 1 });
             await updateStreak(userId);
             await checkCefrPromotion(userId);
