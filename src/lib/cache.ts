@@ -211,6 +211,21 @@ export async function clearAllCache(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Module-scope in-flight Promise guard for `flushWriteQueue`.
+ *
+ * Reason (story 9-6, defects D2/D3): the queue itself is single-keyed
+ * (`WRITE_QUEUE_KEY`), so concurrent flushes from different callers (auth
+ * listener, NetworkBanner reconnect, future call sites) would race each other
+ * — both reading the same queue, both replaying each write, both persisting
+ * the remaining list. Result on the wire: duplicate inserts/updates.
+ *
+ * The guard returns the in-flight Promise to concurrent callers so they
+ * observe the same `flushed` count from a single replay pass. The reset in
+ * `finally` ensures a rejected flush does not permanently lock the function.
+ */
+let flushInFlight: Promise<number> | null = null;
+
+/**
  * Read the current write queue from storage.
  */
 async function readQueue(): Promise<QueuedWrite[]> {
@@ -256,6 +271,14 @@ export async function enqueueWrite(write: Omit<QueuedWrite, "id" | "createdAt">)
  * Successfully replayed writes are removed from the queue; failed writes
  * remain for the next attempt.
  *
+ * Idempotency (story 9-6): the function is guarded by a module-scope
+ * in-flight Promise. Concurrent callers (auth listener, NetworkBanner
+ * reconnect, future sites) observe the same in-flight Promise and resolve
+ * with the same `flushed` count — the queue is read, replayed, and persisted
+ * exactly once per flush window, never racing itself into double inserts.
+ * The guard resets in `finally` so a rejected flush does not permanently
+ * lock the function.
+ *
  * @param supabaseClient - The initialised Supabase client
  * @returns The number of successfully flushed writes.
  */
@@ -271,55 +294,66 @@ export async function flushWriteQueue(supabaseClient: {
     ) => PromiseLike<{ error: unknown }>;
   };
 }): Promise<number> {
-  const online = await isOnline();
-  if (!online) return 0;
+  // Idempotency guard — concurrent callers share a single replay pass.
+  if (flushInFlight) return flushInFlight;
 
-  const queue = await readQueue();
-  if (queue.length === 0) return 0;
-
-  const remaining: QueuedWrite[] = [];
-  let flushed = 0;
-
-  for (const write of queue) {
+  flushInFlight = (async (): Promise<number> => {
     try {
-      let result: { error: unknown };
+      const online = await isOnline();
+      if (!online) return 0;
 
-      switch (write.operation) {
-        case "insert":
-          result = await supabaseClient.from(write.table).insert(write.payload);
-          break;
-        case "update":
-          if (!write.filter) {
-            // Cannot update without a filter -- discard
-            continue;
+      const queue = await readQueue();
+      if (queue.length === 0) return 0;
+
+      const remaining: QueuedWrite[] = [];
+      let flushed = 0;
+
+      for (const write of queue) {
+        try {
+          let result: { error: unknown };
+
+          switch (write.operation) {
+            case "insert":
+              result = await supabaseClient.from(write.table).insert(write.payload);
+              break;
+            case "update":
+              if (!write.filter) {
+                // Cannot update without a filter -- discard
+                continue;
+              }
+              result = await supabaseClient
+                .from(write.table)
+                .update(write.payload)
+                .eq(write.filter.column, write.filter.value);
+              break;
+            case "upsert":
+              result = await supabaseClient
+                .from(write.table)
+                .upsert(write.payload, { onConflict: write.onConflict });
+              break;
+            default:
+              // Unknown operation -- discard
+              continue;
           }
-          result = await supabaseClient
-            .from(write.table)
-            .update(write.payload)
-            .eq(write.filter.column, write.filter.value);
-          break;
-        case "upsert":
-          result = await supabaseClient
-            .from(write.table)
-            .upsert(write.payload, { onConflict: write.onConflict });
-          break;
-        default:
-          // Unknown operation -- discard
-          continue;
+
+          if (result.error) {
+            remaining.push(write);
+          } else {
+            flushed++;
+          }
+        } catch {
+          remaining.push(write);
+        }
       }
 
-      if (result.error) {
-        remaining.push(write);
-      } else {
-        flushed++;
-      }
-    } catch {
-      remaining.push(write);
+      await persistQueue(remaining);
+      return flushed;
+    } finally {
+      flushInFlight = null;
     }
-  }
+  })();
 
-  await persistQueue(remaining);
-  return flushed;
+  return flushInFlight;
 }
 
 /**
