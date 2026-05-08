@@ -9,6 +9,7 @@ import { useState, useCallback, useRef, useMemo } from "react";
 
 import { useAuthStore } from "@/src/store/auth-store";
 import { chatCompletionJSON, generateSpeech } from "@/src/lib/openai";
+import { dictationSetSchema } from "@/src/lib/schemas/ai-responses";
 import { useAudioPlayer } from "@/src/hooks/use-audio-player";
 import { updateStreak, updateSkillProgress, incrementDailyActivity } from "@/src/lib/activity";
 import { hapticLight, hapticMedium, hapticSuccess, hapticError } from "@/src/lib/haptics";
@@ -27,10 +28,6 @@ export interface DictationSentence {
   sentence: string;
   translation: string;
   difficulty: DifficultyTag;
-}
-
-interface DictationSet {
-  sentences: DictationSentence[];
 }
 
 /** Result of comparing a single word */
@@ -281,7 +278,7 @@ export function useDictation(): UseDictationReturn {
     startTimeRef.current = Date.now();
 
     try {
-      const result = await chatCompletionJSON<DictationSet>(
+      const result = await chatCompletionJSON(
         [
           {
             role: "system",
@@ -300,13 +297,11 @@ export function useDictation(): UseDictationReturn {
             content: `Generate ${SENTENCE_COUNT} ${cefrLevel}-level French dictation sentences.`,
           },
         ],
-        { temperature: 0.8 }
+        dictationSetSchema,
+        { temperature: 0.8, feature: "dictation-generation" }
       );
 
-      if (!result.sentences || result.sentences.length === 0) {
-        throw new Error("No sentences generated");
-      }
-
+      // Schema enforces `sentences[]` is non-empty; no manual check needed.
       generatedAtLevelRef.current = cefrLevel;
       setSentences(result.sentences.slice(0, SENTENCE_COUNT));
       setScreenState("active");

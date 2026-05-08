@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { chatCompletionJSON } from "@/src/lib/openai";
+import { mockTestSectionSchema } from "@/src/lib/schemas/ai-responses";
 import { buildMockTestPrompt } from "@/src/lib/prompts/mock-test";
 import { ALL_QCM_SECTIONS, TCF_QCM_SECTIONS } from "@/src/lib/tcf";
 import { rawToTCFScore } from "@/src/lib/scoring";
@@ -310,45 +311,55 @@ export default function MockTestSessionScreen() {
             questionCount: TCF_QCM_SECTIONS[section].questions,
           });
 
-          const result = await chatCompletionJSON<{
-            passages?: { id: string; text: string }[];
-            questions: {
-              question: string;
-              passage?: string;
-              passageId?: string;
-              options: { id: string; text: string; isCorrect: boolean }[];
-              explanation: string;
-            }[];
-          }>([{ role: "system", content: prompt }], { temperature: 0.4, maxTokens: 4096 });
+          const result = await chatCompletionJSON(
+            [{ role: "system", content: prompt }],
+            mockTestSectionSchema,
+            { temperature: 0.4, maxTokens: 4096, feature: `mock-test-${section}` }
+          );
 
-          // For listening/reading, attach passage text to questions that reference a passageId
+          // Schema's `mcqQuestionSchema.superRefine` already enforced 4
+          // options + 1 correct per question; the inline filter that did
+          // this manually was deleted by story 9-7. We still need to attach
+          // passage text to questions that reference a passageId.
+          //
+          // We must mutate locally because each question is `Readonly<...>`
+          // after Zod's parse. Cast to a mutable shape, then write the
+          // domain-level question count vs section-undercount Sentry signal
+          // under its own context tag (`mock-test-undercount`) so it doesn't
+          // collide with the parse-failure tag.
+          const questions = result.questions.map((q) => ({ ...q })) as {
+            question: string;
+            passage?: string;
+            passageId?: string;
+            options: { id: string; text: string; isCorrect: boolean }[];
+            explanation: string;
+          }[];
+
           if (result.passages && result.passages.length > 0) {
             const passageMap = new Map(result.passages.map((p) => [p.id, p.text]));
-            for (const q of result.questions) {
+            for (const q of questions) {
               if (q.passageId && !q.passage) {
                 q.passage = passageMap.get(q.passageId) ?? undefined;
               }
             }
           }
 
-          // Validate: each question must have exactly 4 options with exactly 1 correct
-          const validated = result.questions.filter((q) => {
-            const opts = q.options ?? [];
-            const correctCount = opts.filter((o) => o.isCorrect).length;
-            return opts.length === 4 && correctCount === 1;
-          });
-
+          // Domain-level undercount alert. Story 9-7 review (P3): the prior
+          // `> 0` clause silently suppressed the empty-section case, letting
+          // a fully-empty test navigate to the active screen with zero
+          // questions. The empty case now ALSO captures, so observability
+          // is preserved end-to-end.
           const expected = TCF_QCM_SECTIONS[section].questions;
-          if (validated.length < Math.ceil(expected * 0.5) && validated.length > 0) {
+          if (questions.length < Math.ceil(expected * 0.5)) {
             captureError(
               new Error(
-                `Section ${section}: only ${validated.length}/${expected} questions passed validation`
+                `Section ${section}: only ${questions.length}/${expected} questions generated`
               ),
-              "mock-test-validation-truncated"
+              "mock-test-undercount"
             );
           }
 
-          allQuestions[section] = validated;
+          allQuestions[section] = questions;
         } catch (err) {
           captureError(err, `mock-test-generate-${section}`);
           allQuestions[section] = [];

@@ -23,6 +23,7 @@ import {
 } from "@/src/lib/realtime-transcript";
 import { buildConversationPrompt } from "@/src/lib/prompts/conversation";
 import { chatCompletionJSON } from "@/src/lib/openai";
+import { conversationFeedbackSchema } from "@/src/lib/schemas/ai-responses";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
 import { extractAndStoreMemories } from "@/src/lib/memory";
@@ -628,7 +629,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
         // 8. Generate AI feedback summary (non-blocking for UI)
         if (transcript.length > 50) {
           try {
-            const feedback = await chatCompletionJSON<ConversationFeedback>(
+            const feedback = await chatCompletionJSON(
               [
                 {
                   role: "system",
@@ -644,7 +645,8 @@ Return JSON: {
                 },
                 { role: "user", content: transcript },
               ],
-              { temperature: 0.3 }
+              conversationFeedbackSchema,
+              { temperature: 0.3, feature: "conversation-feedback" }
             );
             setState((s) => ({ ...s, feedback }));
 

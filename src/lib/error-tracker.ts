@@ -3,6 +3,7 @@ import { chatCompletionJSON } from "./openai";
 import { captureError } from "./sentry";
 import { MICRO_DRILL_THRESHOLD } from "./constants";
 import { sanitizeMemoryContent } from "./memory";
+import { errorPatternBatchSchema, microDrillSchema } from "./schemas/ai-responses";
 
 /** Error types that get tracked */
 export type ErrorType = "grammar" | "pronunciation" | "vocabulary" | "register";
@@ -149,7 +150,7 @@ export async function generateMicroDrill(
   error: ErrorPattern,
   cefrLevel: string
 ): Promise<MicroDrill> {
-  const drill = await chatCompletionJSON<MicroDrill>(
+  const drill = await chatCompletionJSON(
     [
       {
         role: "system",
@@ -178,7 +179,8 @@ Response format JSON:
 }`,
       },
     ],
-    { temperature: 0.5, maxTokens: 1024 }
+    microDrillSchema,
+    { temperature: 0.5, maxTokens: 1024, feature: "error-tracker-micro-drill" }
   );
 
   return drill;
@@ -229,16 +231,7 @@ export async function extractErrorsFromCorrections(
     )
     .join("\n");
 
-  interface BatchPatternResult {
-    patterns: {
-      original: string;
-      corrected: string;
-      pattern: string;
-      category: string;
-    }[];
-  }
-
-  const result = await chatCompletionJSON<BatchPatternResult>(
+  const result = await chatCompletionJSON(
     [
       {
         role: "system",
@@ -253,10 +246,11 @@ Response format:
 Example pattern: "Confuses passe compose with imparfait for habitual past actions"`,
       },
     ],
-    { temperature: 0.2, maxTokens: 1024 }
+    errorPatternBatchSchema,
+    { temperature: 0.2, maxTokens: 1024, feature: "error-tracker-batch" }
   );
 
-  if (!result.patterns || result.patterns.length === 0) return;
+  if (result.patterns.length === 0) return;
 
   // Track each extracted error pattern. trackError sanitizes the description
   // via sanitizeMemoryContent internally, so call-site validation only needs

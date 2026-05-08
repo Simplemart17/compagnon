@@ -1,3 +1,14 @@
+import type { z } from "zod";
+
+import type {
+  echoSentenceSchema,
+  translationSentenceSchema,
+  translationDimensionScoreSchema,
+  translationEvaluationSchema,
+  writingEvaluationSchema,
+  writingErrorSchema,
+} from "@/src/lib/schemas/ai-responses";
+
 import type { CEFRLevel, TCFSkill } from "./cefr";
 
 /** Exercise types supported across practice modules */
@@ -35,14 +46,13 @@ export interface WritingContent {
   context?: string;
 }
 
-/** A single echo practice sentence */
-export interface EchoSentence {
-  sentence: string; // The French sentence to echo
-  translation: string; // English translation
-  expectedSpelling: string; // Canonical spelling for comparison
-  difficulty: "easy" | "medium" | "hard";
-  grammarFocus?: string; // Grammar point this sentence targets
-}
+/**
+ * AI-validated types — derived from Zod schemas in
+ * `src/lib/schemas/ai-responses.ts`. The interfaces these aliases replace
+ * had identical shapes; switching to `z.infer<...>` ensures the type system
+ * mirrors runtime validation exactly. Story 9-7.
+ */
+export type EchoSentence = z.infer<typeof echoSentenceSchema>;
 
 /** Echo practice exercise content (stored in DB) */
 export interface EchoContent {
@@ -50,13 +60,7 @@ export interface EchoContent {
 }
 
 /** A single translation exercise sentence */
-export interface TranslationSentence {
-  source: string; // English sentence (A1-B1) or French sentence (B2+ paraphrasing)
-  target: string; // Expected French translation or paraphrase
-  explanation: string; // Why this translation is correct / key grammar notes
-  difficulty: CEFRLevel; // Sentence difficulty level
-  grammarFocus: string; // Primary grammar structure being tested
-}
+export type TranslationSentence = z.infer<typeof translationSentenceSchema>;
 
 /** Translation exercise content (stored in DB) */
 export interface TranslationContent {
@@ -65,46 +69,26 @@ export interface TranslationContent {
 }
 
 /** A single dimension score in translation evaluation */
-export interface TranslationDimensionScore {
-  score: number; // 0-100
-  feedback: string; // Specific dimension feedback
-}
+export type TranslationDimensionScore = z.infer<typeof translationDimensionScoreSchema>;
 
-/** Translation evaluation result from AI */
-export interface TranslationEvaluation {
-  accuracy: TranslationDimensionScore;
-  fluency: TranslationDimensionScore;
-  naturalness: TranslationDimensionScore;
-  overallScore: number; // Weighted average
-  corrections?: string; // Key mistakes and how to fix them
+/**
+ * Translation evaluation result from AI.
+ *
+ * The `expectedTranslation` and `userTranscription` fields are caller-attached
+ * after schema parsing — the schema marks them optional, but consumers always
+ * see them populated by `evaluateTranslation`. We narrow them to required
+ * here since that's the contract for downstream consumers.
+ */
+export type TranslationEvaluation = z.infer<typeof translationEvaluationSchema> & {
   expectedTranslation: string;
   userTranscription: string;
-}
+};
 
 /** Writing evaluation result from AI */
-export interface WritingEvaluation {
-  overallScore: number;
-  grammarScore: number;
-  cohesionScore: number;
-  lexicalRichnessScore: number;
-  registerScore: number;
-  errors: WritingError[];
-  suggestions: string[];
-  rewriteSuggestion?: string;
-  tcfEstimatedScore?: number;
-  vocabularyDiversityRatio?: number;
-  connectorsUsed?: string[];
-  connectorsMissing?: string[];
-  summary?: string;
-}
+export type WritingEvaluation = z.infer<typeof writingEvaluationSchema>;
 
 /** A specific error found in user's writing */
-export interface WritingError {
-  original: string;
-  correction: string;
-  explanation: string;
-  category: "grammar" | "cohesion" | "vocabulary" | "register";
-}
+export type WritingError = z.infer<typeof writingErrorSchema>;
 
 /** Exercise record stored in database */
 export interface Exercise {

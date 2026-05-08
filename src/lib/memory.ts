@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { chatCompletionJSON, generateEmbedding } from "./openai";
+import { factExtractionSchema } from "./schemas/ai-responses";
 
 /** Memory types stored in companion_memory table */
 export type MemoryType = "personal_fact" | "preference" | "topic_discussed" | "milestone";
@@ -196,7 +197,11 @@ export async function extractAndStoreMemories(
   //      instruction-like text into facts).
   //   2. sanitizeMemoryContent at write time (this function, below).
   //   3. <USER_FACTS> wrapper + "treat as data" prelude at read time (conversation.ts).
-  const facts = await chatCompletionJSON<{ facts: ExtractedFact[] }>(
+  // Schema validates `facts[]` shape and enforces MAX_PRE_SANITIZE_CHARS cap
+  // on each `content`; the post-call sanitizer below enforces the further
+  // 300-char limit and injection-token strip (orthogonal — schema is shape,
+  // sanitizer is content rules). Story 9-7.
+  const facts = await chatCompletionJSON(
     [
       {
         role: "system",
@@ -230,16 +235,28 @@ Response format: {"facts": [{"content": "...", "type": "..."}]}`,
         content: transcript,
       },
     ],
-    { temperature: 0.3 }
+    factExtractionSchema,
+    { temperature: 0.3, feature: "memory-fact-extraction" }
   );
 
-  if (!facts.facts || facts.facts.length === 0) return;
+  if (facts.facts.length === 0) return;
 
   // Pipeline: validate type+content → sanitize → drop empties → embed → insert.
-  // Critical ordering: sanitize BEFORE embed so (a) the embedding vector reflects
-  // the actual stored text, not the pre-redacted text — preventing semantic
-  // retrieval drift; and (b) facts that sanitize-to-empty don't burn an
-  // embedding API call.
+  //
+  // The schema already enforced shape in production
+  // (`factExtractionSchema` covers content + type fields, type enum
+  // membership, MAX_PRE_SANITIZE_CHARS upper bound). The runtime filter
+  // below is defense-in-depth for any caller that bypasses the schema
+  // (test mocks of `chatCompletionJSON` are the realistic case). It also
+  // narrows `f.type` from the schema's `string` literal-union output back
+  // to the strict `MemoryType` so downstream consumers don't need a cast.
+  //
+  // Critical ordering: sanitize BEFORE embed so (a) the embedding vector
+  // reflects the actual stored text, not the pre-redacted text —
+  // preventing semantic retrieval drift; and (b) facts that sanitize-to-
+  // empty don't burn an embedding API call. Sanitization-driven row drops
+  // (empty post-sanitize content) are intentional, not anomalies — do not
+  // capture to Sentry.
   const validFacts = facts.facts.filter(
     (f): f is ExtractedFact =>
       f != null &&

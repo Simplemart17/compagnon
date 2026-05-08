@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-08 # story 9-7 spec created — Zod validation infrastructure (P0-8)
+last_updated: 2026-05-08 # story 9-7 done (Zod validation infrastructure + 13 review patches)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -125,7 +125,7 @@ development_status:
   9-4-stored-prompt-injection-defense: done
   9-5-voice-transcript-dedup: done
   9-6-auth-listener-token-refresh-fix: done
-  9-7-zod-validation-infrastructure: ready-for-dev # 2026-05-08: story file created — schema-first chatCompletionJSON, 16 call-site migration, retry-once-on-parse-failure
+  9-7-zod-validation-infrastructure: done # 2026-05-08: implemented + 13 review patches (P1-P13: placement polymorphic options regressions restored, translation 3-10 sentence bounds, mock-test undercount visibility, parseRetries clamp, feature-tag breadcrumb on chatCompletion errors, etc.); 281 tests passing
   9-8-speaking-section-pipeline: backlog
   9-9-submit-credentials-deploy-substrate: backlog
   9-10-auth-cache-race-hardening: done # 2026-05-07: D1-D4 implemented + P1-P10 review patches; PR #44

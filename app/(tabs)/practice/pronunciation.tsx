@@ -24,6 +24,7 @@ import { usePronunciation } from "@/src/hooks/use-pronunciation";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useAuthStore } from "@/src/store/auth-store";
 import { chatCompletionJSON } from "@/src/lib/openai";
+import { pronunciationSentenceSchema } from "@/src/lib/schemas/ai-responses";
 import { captureError } from "@/src/lib/sentry";
 import { classifyError } from "@/src/lib/error-messages";
 import type { CEFRLevel } from "@/src/types/cefr";
@@ -35,10 +36,9 @@ import { fireScoreHaptic, getScoreColor, getScoreLabel } from "@/src/lib/score-f
 // Types
 // ---------------------------------------------------------------------------
 
-interface GeneratedSentence {
-  sentence: string;
-  translation: string;
-}
+// `GeneratedSentence` shape is now `z.infer<typeof pronunciationSentenceSchema>`
+// from `src/lib/schemas/ai-responses.ts`. Story 9-7.
+type GeneratedSentence = { sentence: string; translation: string };
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -186,7 +186,7 @@ export default function PronunciationScreen() {
     hasRecordedRef.current = false;
 
     try {
-      const result = await chatCompletionJSON<GeneratedSentence>(
+      const result = await chatCompletionJSON(
         [
           {
             role: "system",
@@ -202,7 +202,8 @@ export default function PronunciationScreen() {
             content: `Generate a ${cefrLevel}-level French sentence for pronunciation practice.`,
           },
         ],
-        { temperature: 0.9 }
+        pronunciationSentenceSchema,
+        { temperature: 0.9, feature: "pronunciation-sentence-gen" }
       );
       setSentence(result);
     } catch (err) {
