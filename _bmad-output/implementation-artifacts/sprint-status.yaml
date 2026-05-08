@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-07 # story 9-10 review (auth+cache race hardening — D1-D4 implemented)
+last_updated: 2026-05-07 # story 9-10 done (auth+cache race hardening — D1-D4 + P1-P10 review patches)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -128,7 +128,7 @@ development_status:
   9-7-zod-validation-infrastructure: backlog
   9-8-speaking-section-pipeline: backlog
   9-9-submit-credentials-deploy-substrate: backlog
-  9-10-auth-cache-race-hardening: review # 2026-05-07: D1-D4 implemented; manual smoke tests deferred to reviewer
+  9-10-auth-cache-race-hardening: done # 2026-05-07: D1-D4 implemented + P1-P10 review patches; PR #44
   epic-9-retrospective: optional
 
   # Epic 10: TCF Pedagogy Realignment (P0/P1)

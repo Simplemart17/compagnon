@@ -1,6 +1,6 @@
 # Story 9.10: Auth + Cache Race Hardening
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
