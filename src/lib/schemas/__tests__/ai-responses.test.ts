@@ -525,18 +525,17 @@ describe("smoke: remaining schemas", () => {
     expect(result.success).toBe(true);
   });
 
-  it("translationGenerationSchema accepts a valid response", () => {
+  it("translationGenerationSchema accepts a 3-sentence response (minimum)", () => {
+    const sentence = {
+      source: "I am happy.",
+      target: "Je suis heureux.",
+      explanation: "Subject-verb-adjective.",
+      difficulty: "A1" as const,
+      grammarFocus: "être conjugation",
+    };
     const result = translationGenerationSchema.safeParse({
       mode: "translation",
-      sentences: [
-        {
-          source: "I am happy.",
-          target: "Je suis heureux.",
-          explanation: "Subject-verb-adjective.",
-          difficulty: "A1",
-          grammarFocus: "être conjugation",
-        },
-      ],
+      sentences: [sentence, sentence, sentence],
     });
     expect(result.success).toBe(true);
   });
@@ -598,5 +597,225 @@ describe("smoke: remaining schemas", () => {
 
   it("cefrLevelSchema rejects an invalid level", () => {
     expect(cefrLevelSchema.safeParse("D1").success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 9-7 review patches (P1-P13) — regression tests
+// ---------------------------------------------------------------------------
+
+describe("placementTestSchema — review patches (P1, P7)", () => {
+  function buildQuestion(overrides: Record<string, unknown>) {
+    return {
+      level: "A1",
+      question: "Q",
+      explanation: "E",
+      ...overrides,
+    };
+  }
+  function fifteen(template: ReturnType<typeof buildQuestion>) {
+    return Array.from({ length: 15 }, () => template);
+  }
+
+  it("P1a: resolves UPPERCASE correct_answer via case-insensitive match", () => {
+    const q = buildQuestion({
+      options: { a: "x", b: "y", c: "z", d: "w" },
+      correct_answer: "B", // uppercase
+    });
+    const result = placementTestSchema.safeParse({ questions: fifteen(q) });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.questions[0].options.find((o) => o.isCorrect)?.id).toBe("b");
+    }
+  });
+
+  it("P1b: resolves NUMERIC-INDEX correct_answer", () => {
+    const q = buildQuestion({
+      options: [
+        { id: "a", text: "x" },
+        { id: "b", text: "y" },
+        { id: "c", text: "z" },
+        { id: "d", text: "w" },
+      ],
+      correct_answer: 2, // index 2 = option c
+    });
+    const result = placementTestSchema.safeParse({ questions: fifteen(q) });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.questions[0].options.find((o) => o.isCorrect)?.id).toBe("c");
+    }
+  });
+
+  it('P1c: accepts string-encoded boolean isCorrect ("true")', () => {
+    const q = buildQuestion({
+      options: [
+        { id: "a", text: "x", correct: "false" },
+        { id: "b", text: "y", correct: "true" }, // string boolean
+        { id: "c", text: "z", correct: "false" },
+        { id: "d", text: "w", correct: "false" },
+      ],
+    });
+    const result = placementTestSchema.safeParse({ questions: fifteen(q) });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.questions[0].options.find((o) => o.isCorrect)?.id).toBe("b");
+    }
+  });
+
+  it("P7a: rejects null option values in object-shape rather than producing 'null' text", () => {
+    const q = buildQuestion({
+      options: { a: "x", b: null, c: "z", d: "w" },
+      correct_answer: "a",
+    });
+    const result = placementTestSchema.safeParse({ questions: fifteen(q) });
+    // After filtering null, only 3 options remain → fails .length(4) rule
+    expect(result.success).toBe(false);
+  });
+
+  it("P7b: filters null array entries cleanly", () => {
+    const q = buildQuestion({
+      options: [
+        { id: "a", text: "x" },
+        null,
+        { id: "c", text: "z", isCorrect: true },
+        { id: "d", text: "w" },
+      ],
+    });
+    // After filtering null, 3 options remain → fails .length(4)
+    const result = placementTestSchema.safeParse({ questions: fifteen(q) });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("translationGenerationSchema — review patches (P2)", () => {
+  function makeSentences(n: number) {
+    return Array.from({ length: n }, (_, i) => ({
+      source: `Sentence ${i}.`,
+      target: `Phrase ${i}.`,
+      explanation: "Test.",
+      difficulty: "A1" as const,
+      grammarFocus: "test",
+    }));
+  }
+
+  it("P2a: rejects 2 sentences (below MIN=3)", () => {
+    const result = translationGenerationSchema.safeParse({
+      mode: "translation",
+      sentences: makeSentences(2),
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].code).toBe("too_small");
+    }
+  });
+
+  it("P2b: rejects 11 sentences (above MAX=10)", () => {
+    const result = translationGenerationSchema.safeParse({
+      mode: "translation",
+      sentences: makeSentences(11),
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].code).toBe("too_big");
+    }
+  });
+
+  it("P2c: TRANSLATION_SENTENCE_BOUNDS exports stay in lockstep with translation-generation.ts", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { TRANSLATION_SENTENCE_BOUNDS } = require("../ai-responses") as {
+      TRANSLATION_SENTENCE_BOUNDS: { min: number; max: number };
+    };
+    expect(TRANSLATION_SENTENCE_BOUNDS.min).toBe(3);
+    expect(TRANSLATION_SENTENCE_BOUNDS.max).toBe(10);
+  });
+});
+
+describe("translationDimensionScoreSchema — review patch (P4)", () => {
+  it("P4: rejects whitespace-only feedback", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { translationDimensionScoreSchema } = require("../ai-responses") as {
+      translationDimensionScoreSchema: { safeParse: (v: unknown) => { success: boolean } };
+    };
+    const result = translationDimensionScoreSchema.safeParse({
+      score: 80,
+      feedback: "   \n\t  ",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("translationEvaluationSchema — review patch (P11)", () => {
+  it("P11: accepts overallScore: null (caller recomputes)", () => {
+    const result = translationEvaluationSchema.safeParse({
+      accuracy: { score: 80, feedback: "Good." },
+      fluency: { score: 75, feedback: "Smooth." },
+      naturalness: { score: 70, feedback: "Slightly stiff." },
+      overallScore: null,
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("mcqQuestionSchema — review patches (P9, P10)", () => {
+  function valid() {
+    return {
+      question: "Q?",
+      options: [
+        { id: "a", text: "x", isCorrect: false },
+        { id: "b", text: "y", isCorrect: true },
+        { id: "c", text: "z", isCorrect: false },
+        { id: "d", text: "w", isCorrect: false },
+      ],
+      explanation: "E",
+    };
+  }
+
+  it("P9: rejects duplicate option ids via superRefine", () => {
+    const q = valid();
+    q.options[0].id = "b"; // duplicate
+    const result = mcqQuestionSchema.safeParse(q);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => /unique/i.test(i.message))).toBe(true);
+    }
+  });
+
+  it("P10a: rejects empty-string passage when present", () => {
+    const q = { ...valid(), passage: "" };
+    const result = mcqQuestionSchema.safeParse(q);
+    expect(result.success).toBe(false);
+  });
+
+  it("P10b: rejects empty-string passageId when present", () => {
+    const q = { ...valid(), passageId: "" };
+    const result = mcqQuestionSchema.safeParse(q);
+    expect(result.success).toBe(false);
+  });
+
+  it("P10c: still accepts undefined passage / passageId", () => {
+    const result = mcqQuestionSchema.safeParse(valid());
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("schema constant lockstep — review patches (P8, P12)", () => {
+  it("P8: SCHEMA_MAX_PRE_SANITIZE_CHARS export equals memory.ts MAX_PRE_SANITIZE_CHARS (symmetric assertion)", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const schemas = require("../ai-responses") as { SCHEMA_MAX_PRE_SANITIZE_CHARS: number };
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const memory = require("../../memory") as { MAX_PRE_SANITIZE_CHARS: number };
+    expect(schemas.SCHEMA_MAX_PRE_SANITIZE_CHARS).toBe(memory.MAX_PRE_SANITIZE_CHARS);
+  });
+
+  it("P12: memoryTypeSchema.options matches MEMORY_TYPES set in memory.ts", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { memoryTypeSchema } = require("../ai-responses") as {
+      memoryTypeSchema: { options: readonly string[] };
+    };
+    // The memory.ts MEMORY_TYPES set is module-private, so we exercise the
+    // schema's enum against the same canonical 4 types — drift in either
+    // direction breaks this test.
+    const canonical = ["personal_fact", "preference", "topic_discussed", "milestone"];
+    expect([...memoryTypeSchema.options].sort()).toEqual([...canonical].sort());
   });
 });

@@ -260,3 +260,103 @@ describe("chatCompletionJSON — retry-once-on-parse-failure (story 9-7)", () =>
     expect(caught!.message.length).toBeLessThan(200);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Story 9-7 review patches (P5, P6, P13) — regression tests
+// ---------------------------------------------------------------------------
+
+describe("chatCompletionJSON — review patches (P5, P6, P13)", () => {
+  it("P5a: parseRetries: -1 is clamped to 0; emits exactly 1 chat call (not zero)", async () => {
+    mockAiResponseOnce(JSON.stringify({ wrong: "shape" }));
+
+    await expect(
+      chatCompletionJSON([{ role: "user", content: "x" }], fooSchema, {
+        feature: "test-p5a",
+        parseRetries: -1,
+      })
+    ).rejects.toThrow(/AI schema parse failed/);
+
+    // Clamp behavior: at least 1 attempt always runs; -1 is treated as 0.
+    expect(mockedInvoke).toHaveBeenCalledTimes(1);
+    expect(mockedAddBreadcrumb).toHaveBeenCalledTimes(0);
+    expect(mockedCaptureError).toHaveBeenCalledTimes(1);
+    expect(mockedCaptureError).toHaveBeenCalledWith(
+      expect.any(Error),
+      "ai-schema-parse-failed",
+      expect.objectContaining({ feature: "test-p5a", attempt: 1 })
+    );
+  });
+
+  it("P5b: parseRetries: 1.7 (fractional) is floored to 1, not silently amplified", async () => {
+    mockAiResponseOnce(JSON.stringify({ wrong: "1" }));
+    mockAiResponseOnce(JSON.stringify({ foo: "ok" }));
+
+    const result = await chatCompletionJSON([{ role: "user", content: "x" }], fooSchema, {
+      feature: "test-p5b",
+      parseRetries: 1.7,
+    });
+    expect(result).toEqual({ foo: "ok" });
+    // Floor(1.7) = 1 retry → 2 total attempts.
+    expect(mockedInvoke).toHaveBeenCalledTimes(2);
+  });
+
+  it("P6: chatCompletion error inside chatCompletionJSON emits a feature-tagged breadcrumb before re-throwing", async () => {
+    // Non-retryable error message — `isRetryable` is false-ish for "auth" /
+    // "validation" patterns, so chatCompletion's own 2-retry loop short-
+    // circuits and rethrows on the first attempt. (A retryable network error
+    // would trigger up to 3 chatCompletion attempts and require 3 mocks.)
+    const authError = new Error("AI proxy error: 401 unauthorized");
+    mockedInvoke.mockRejectedValueOnce(authError);
+
+    await expect(
+      chatCompletionJSON([{ role: "user", content: "x" }], fooSchema, {
+        feature: "test-p6",
+      })
+    ).rejects.toThrow(/unauthorized/);
+
+    // The original network error is rethrown unwrapped — same as before — but
+    // now a breadcrumb tagged with the feature is recorded so Sentry can
+    // correlate the failure to the schema-layer call site.
+    expect(mockedAddBreadcrumb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "ai",
+        level: "error",
+        message: "chatCompletion threw inside chatCompletionJSON",
+        data: expect.objectContaining({ feature: "test-p6", attempt: 1 }),
+      })
+    );
+    // The schema-parse-failed captureError is NOT emitted — the failure was
+    // upstream of schema validation.
+    expect(mockedCaptureError).not.toHaveBeenCalledWith(
+      expect.any(Error),
+      "ai-schema-parse-failed",
+      expect.anything()
+    );
+  });
+
+  it("P13: empty issue path falls back to '<root>' rather than producing a literal empty path", async () => {
+    // Force a Zod root-level error with `path: []`: schema expects a string,
+    // response is a number. Both attempts return non-string so retry exhausts.
+    const stringSchema = z.string();
+    mockAiResponseOnce(JSON.stringify(42));
+    mockAiResponseOnce(JSON.stringify(43));
+
+    let caught: Error | null = null;
+    try {
+      await chatCompletionJSON(
+        [{ role: "user", content: "x" }],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        stringSchema as unknown as z.ZodType<any>,
+        { feature: "test-p13" }
+      );
+    } catch (e) {
+      caught = e as Error;
+    }
+    expect(caught).not.toBeNull();
+    // The constructed Error message must contain "<root>" (not a literal
+    // empty path producing the double-space artifact "AI schema parse
+    // failed:  — ").
+    expect(caught!.message).toContain("<root>");
+    expect(caught!.message).not.toMatch(/AI schema parse failed:\s+—/);
+  });
+});
