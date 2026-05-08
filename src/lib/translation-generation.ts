@@ -9,6 +9,7 @@ import {
   buildTranslationEvaluationPrompt,
 } from "@/src/lib/prompts/translation";
 import {
+  TRANSLATION_SENTENCE_BOUNDS,
   translationGenerationSchema,
   translationEvaluationSchema,
 } from "@/src/lib/schemas/ai-responses";
@@ -21,8 +22,10 @@ export interface TranslationExerciseResult {
 }
 
 const CEFR_LEVELS_PARAPHRASING: CEFRLevel[] = ["B2", "C1", "C2"];
-const MIN_SENTENCES = 3;
-const MAX_SENTENCES = 10;
+// Sourced from the schema so the runtime cap and the validation cap stay in
+// lockstep. Story 9-7 review (P2 fix).
+const MIN_SENTENCES = TRANSLATION_SENTENCE_BOUNDS.min;
+const MAX_SENTENCES = TRANSLATION_SENTENCE_BOUNDS.max;
 
 /** Determine exercise mode from CEFR level */
 function getModeForLevel(cefrLevel: CEFRLevel): "translation" | "paraphrasing" {

@@ -170,18 +170,40 @@ export async function chatCompletionJSON<T>(
   schema: z.ZodType<T>,
   options: ChatCompletionJSONOptions
 ): Promise<T> {
-  const { feature, parseRetries = 1, model, temperature, maxTokens } = options;
+  const { feature, model, temperature, maxTokens } = options;
+  // Clamp parseRetries to a non-negative integer (story 9-7 review, P5).
+  // A negative value would yield `totalAttempts = 0` — the loop would never
+  // run, and the function would throw with `lastIssue: null` and a
+  // misleading "AI schema parse failed: <root> — unknown" message despite
+  // zero AI calls being made.
+  const parseRetries = Math.max(0, Math.floor(options.parseRetries ?? 1));
   const totalAttempts = parseRetries + 1;
 
   let lastIssue: { path: string; message: string; code: string } | null = null;
 
   for (let attempt = 1; attempt <= totalAttempts; attempt++) {
-    const raw = await chatCompletion(messages, {
-      model,
-      temperature,
-      maxTokens,
-      responseFormat: "json_object",
-    });
+    let raw: string;
+    try {
+      raw = await chatCompletion(messages, {
+        model,
+        temperature,
+        maxTokens,
+        responseFormat: "json_object",
+      });
+    } catch (err) {
+      // Story 9-7 review (P6): preserve the schema-layer `feature` tag in
+      // Sentry observability when the underlying chatCompletion exhausts its
+      // own retry layer and throws. Without this breadcrumb, the only Sentry
+      // tag is whatever the outer caller passes (e.g., "writing-evaluation"
+      // from the call site), losing the schema-layer correlation.
+      addBreadcrumb({
+        category: "ai",
+        level: "error",
+        message: "chatCompletion threw inside chatCompletionJSON",
+        data: { feature, attempt },
+      });
+      throw err;
+    }
 
     let parsed: unknown;
     try {
@@ -199,10 +221,16 @@ export async function chatCompletionJSON<T>(
     }
 
     const firstIssue = result.error.issues[0];
+    // Story 9-7 review (P13): use `||` not `??` so an empty-array path
+    // (Zod's root-level error case, where issues[0].path is `[]`) falls
+    // back to "<root>" rather than rendering as a literal empty string
+    // (which produces "AI schema parse failed:  — <message>" — the
+    // double space is observability noise).
+    const issuePath = firstIssue?.path.join(".") || "<root>";
     lastIssue = {
-      path: firstIssue?.path.join(".") ?? "<root>",
-      message: firstIssue?.message ?? "unknown",
-      code: firstIssue?.code ?? "unknown",
+      path: issuePath,
+      message: firstIssue?.message || "unknown",
+      code: firstIssue?.code || "unknown",
     };
 
     if (attempt < totalAttempts) {
@@ -217,12 +245,12 @@ export async function chatCompletionJSON<T>(
   }
 
   const finalError = new Error(
-    `AI schema parse failed: ${lastIssue?.path ?? "<root>"} — ${lastIssue?.message ?? "unknown"}`
+    `AI schema parse failed: ${lastIssue?.path || "<root>"} — ${lastIssue?.message || "unknown"}`
   );
   captureError(finalError, "ai-schema-parse-failed", {
     feature,
     attempt: totalAttempts,
-    code: lastIssue?.code ?? "unknown",
+    code: lastIssue?.code || "unknown",
   });
   throw finalError;
 }

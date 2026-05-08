@@ -344,8 +344,13 @@ export default function MockTestSessionScreen() {
             }
           }
 
+          // Domain-level undercount alert. Story 9-7 review (P3): the prior
+          // `> 0` clause silently suppressed the empty-section case, letting
+          // a fully-empty test navigate to the active screen with zero
+          // questions. The empty case now ALSO captures, so observability
+          // is preserved end-to-end.
           const expected = TCF_QCM_SECTIONS[section].questions;
-          if (questions.length < Math.ceil(expected * 0.5) && questions.length > 0) {
+          if (questions.length < Math.ceil(expected * 0.5)) {
             captureError(
               new Error(
                 `Section ${section}: only ${questions.length}/${expected} questions generated`
