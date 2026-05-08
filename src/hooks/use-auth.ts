@@ -15,6 +15,32 @@ import { useAuthStore } from "@/src/store/auth-store";
 import type { UserProfile } from "@/src/types/user";
 
 /**
+ * Pure decision helper for the userId-guard on profile loads (story 9-10, AC #1).
+ *
+ * When a `loadProfile(userIdA)` call is in-flight and `SIGNED_OUT` (or sign-in
+ * as `userIdB`) fires before the profile resolves, the result must NOT be
+ * applied — the local state has already moved on. This helper is the branch
+ * decision; the call site in `loadProfile` wires it to `setProfile` /
+ * `flushWriteQueue` / `addBreadcrumb`.
+ *
+ * Pure so it can be unit-tested without React or Zustand. See
+ * `src/lib/__tests__/auth-load-profile-stale.test.ts`.
+ *
+ * @param loadedUserId   The userId that originated the in-flight `loadProfile`.
+ * @param currentUserId  The userId currently held in `useAuthStore` (or
+ *                       `undefined` if signed out).
+ * @returns `"apply"` when the load is still fresh, `"drop-stale"` otherwise.
+ */
+export type ApplyProfileDecision = "apply" | "drop-stale";
+
+export function applyProfileIfFresh(
+  loadedUserId: string,
+  currentUserId: string | undefined
+): ApplyProfileDecision {
+  return currentUserId === loadedUserId ? "apply" : "drop-stale";
+}
+
+/**
  * Initialize auth listener and load user profile.
  *
  * Auth listener event gating (story 9-6): the `onAuthStateChange` callback
@@ -32,10 +58,32 @@ import type { UserProfile } from "@/src/types/user";
  * does not surface as an unhandled promise rejection. Cold-start profile
  * loading is delegated to the listener's `INITIAL_SESSION` branch — the
  * initial `getSession()` only warms the session ref before paint.
+ *
+ * Auth + cache race hardening (story 9-10):
+ * - `loadProfile` wraps `setProfile` and `flushWriteQueue` with a userId-guard
+ *   (`applyProfileIfFresh`) so an in-flight load that resolves after
+ *   `SIGNED_OUT` (or a sign-in as a different user) does not clobber the
+ *   cleared profile or flush the previous user's queue. The dropped result is
+ *   breadcrumbed with `phase: "load-profile-stale"`.
+ * - `loadProfile`'s catch path sets `profileFetchFailed = true` so the auth
+ *   guard at `app/_layout.tsx` can route to a retry surface (rather than
+ *   `/onboarding`) when both network and cache reads fail. Successful loads
+ *   clear the flag; `reset()` clears it on sign-out.
+ * - `retryProfileFetch` is exposed for the retry CTA — a flush-skipping
+ *   re-invocation of `loadProfile(user.id)`.
  */
 export function useAuth() {
-  const { session, user, profile, isLoading, isOnboarded, setSession, setProfile, setLoading } =
-    useAuthStore();
+  const {
+    session,
+    user,
+    profile,
+    isLoading,
+    isOnboarded,
+    profileFetchFailed,
+    setSession,
+    setProfile,
+    setLoading,
+  } = useAuthStore();
 
   useEffect(() => {
     // Cold-start: capture any AuthError surfaced through the resolved Promise
@@ -80,6 +128,12 @@ export function useAuth() {
           return;
         case "clear-profile":
           setProfile(null);
+          // Story 9-10 (P5 from 9-10 review): also clear the failure flag so
+          // an auto-emitted `SIGNED_OUT` (token expiry / refresh failure /
+          // server-side revocation) — which bypasses `signOut()`'s `reset()`
+          // call — does not leave a stale `profileFetchFailed = true` into
+          // the next session.
+          useAuthStore.getState().setProfileFetchFailed(false);
           setLoading(false);
           return;
         case "session-only":
@@ -107,6 +161,18 @@ export function useAuth() {
    * Load the user's profile (with offline cache fallback) and optionally
    * flush the offline write queue.
    *
+   * Story 9-10 (AC #1, #3) hardening:
+   * - Both `setProfile` and `flushWriteQueue` are wrapped in a userId-guard
+   *   (`applyProfileIfFresh`). If the current user in `useAuthStore` no
+   *   longer matches the `userId` that originated this load (sign-out raced
+   *   the in-flight fetch, or a new user signed in), the result is dropped
+   *   silently with a `phase: "load-profile-stale"` breadcrumb — no
+   *   `setProfile` and no queue flush on behalf of the wrong user.
+   * - The catch path sets `profileFetchFailed = true` so the auth guard at
+   *   `app/_layout.tsx` can route to a retry surface (rather than
+   *   `/onboarding`) when both network and cache reads fail. The flag is
+   *   cleared on a successful applied load and on `reset()`.
+   *
    * @param userId  The authenticated user's ID.
    * @param opts.flushQueue  When true (default), flush the write queue after
    *   the profile load. The auth listener sets this to false on
@@ -132,13 +198,41 @@ export function useAuth() {
         CACHE_TTL.PROFILE
       );
 
+      // Story 9-10 AC #1 + P4 (9-10 review): once cacheWithFallback resolves
+      // we are on a successful path regardless of whether `profile` is truthy
+      // (a successful network call can legitimately return null when the row
+      // is missing or RLS-filtered). Apply the userId-guard to BOTH the
+      // setProfile branch AND the success-side flag clear so:
+      //  - a stale-context resolution does not clobber the cleared profile
+      //    (and emits a `phase: "load-profile-stale"` breadcrumb);
+      //  - a fresh-context successful resolution always clears the failure
+      //    flag, even when the resolved profile is null — otherwise a retry
+      //    that happens to return null leaves the user pinned on
+      //    `ProfileRetryScreen` forever.
+      const currentUserIdAfterFetch = useAuthStore.getState().user?.id;
+      if (applyProfileIfFresh(userId, currentUserIdAfterFetch) === "drop-stale") {
+        addBreadcrumb({
+          category: "auth",
+          level: "info",
+          message: "loadProfile result dropped — user changed mid-flight",
+          data: { phase: "load-profile-stale" },
+        });
+        return; // do not apply or flush — the in-flight context is stale
+      }
+
       if (profile) {
         setProfile(profile);
       }
+      // P4 (9-10 review): clear the flag on ANY fresh-context success, not
+      // only when `profile` is truthy.
+      useAuthStore.getState().setProfileFetchFailed(false);
 
       // Flush any queued writes now that we have connectivity. The flush is
       // idempotent (story 9-6, `flushWriteQueue` in-flight guard) so concurrent
       // callers (this hook + NetworkBanner reconnect) do not double-replay.
+      // The userId-guard above already proved freshness for the current
+      // microtask; an interleaved sign-out between this point and
+      // `flushWriteQueue` is a pre-existing race acknowledged in 9-6.
       if (opts.flushQueue ?? true) {
         void flushWriteQueue(supabase);
       }
@@ -150,9 +244,32 @@ export function useAuth() {
       if (!isNetworkError) {
         captureError(err, "auth-load-profile");
       }
+      // Story 9-10 AC #3: mark profile fetch as failed so the auth guard
+      // routes to a retry surface instead of misrouting an already-onboarded
+      // user to `/onboarding`.
+      // P1 (9-10 review): only set the flag when the context is still fresh
+      // — a catch that fires after sign-out (or sign-in as a different user)
+      // must not pollute the new user's session with the stale failure.
+      const currentUserIdAfterCatch = useAuthStore.getState().user?.id;
+      if (applyProfileIfFresh(userId, currentUserIdAfterCatch) === "apply") {
+        useAuthStore.getState().setProfileFetchFailed(true);
+      }
     } finally {
       setLoading(false);
     }
+  }
+
+  /**
+   * Retry a previously failed profile load (story 9-10, AC #3).
+   *
+   * Wraps `loadProfile(user.id, { flushQueue: false })` — `flushQueue` is
+   * false because the failure path implies we are still recovering from an
+   * offline state, and the queue flush is owned by reconnection
+   * (`NetworkBanner`) rather than this retry surface.
+   */
+  async function retryProfileFetch(): Promise<void> {
+    if (!user) return;
+    await loadProfile(user.id, { flushQueue: false });
   }
 
   async function signInWithEmail(email: string, password: string) {
@@ -231,6 +348,8 @@ export function useAuth() {
     profile,
     isLoading,
     isOnboarded,
+    profileFetchFailed,
+    retryProfileFetch,
     signInWithEmail,
     signUpWithEmail,
     signOut,

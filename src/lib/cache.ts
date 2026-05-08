@@ -227,12 +227,19 @@ let flushInFlight: Promise<number> | null = null;
 
 /**
  * Read the current write queue from storage.
+ *
+ * Defensive (P8 from 9-10 review): if the persisted JSON is not an array
+ * (poison pill from a corrupt storage layer or a future schema migration
+ * gone wrong), return `[]` rather than letting downstream `.map`/`.filter`/
+ * iteration throw. The on-disk poison pill is left in place so a subsequent
+ * `persistQueue` overwrites it with a known-good shape.
  */
 async function readQueue(): Promise<QueuedWrite[]> {
   try {
     const raw = await AsyncStorage.getItem(WRITE_QUEUE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as QueuedWrite[];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as QueuedWrite[]) : [];
   } catch {
     return [];
   }
@@ -279,6 +286,23 @@ export async function enqueueWrite(write: Omit<QueuedWrite, "id" | "createdAt">)
  * The guard resets in `finally` so a rejected flush does not permanently
  * lock the function.
  *
+ * Story 9-10 hardening:
+ * - **AC #2 (atomic merge on persist):** before the terminal `persistQueue`
+ *   we re-read the queue and merge any writes whose id was NOT in the flush
+ *   snapshot — these were enqueued mid-flight via `enqueueWrite`. Without
+ *   this merge, a fire-and-forget `enqueueWrite(w3)` racing a
+ *   `flushWriteQueue` that started with `[w1, w2]` would be silently lost
+ *   when the flush's `persistQueue([])` overwrites the storage value of
+ *   `[w1, w2, w3]`. The merge preserves `w3` for the next flush.
+ * - **AC #4 (catch-and-return-0):** the IIFE body is wrapped in `try/catch`.
+ *   An internal failure (e.g. `isOnline` throwing, AsyncStorage panic)
+ *   resolves to `0` for all concurrent callers and emits
+ *   `captureError(_, "cache-flush-internal")`. The public contract is
+ *   "returns the count of successfully flushed writes" — `0` is a legal
+ *   value meaning "no writes flushed this round." Concurrent callers
+ *   awaiting the same in-flight Promise are no longer poisoned by a
+ *   transient internal failure.
+ *
  * @param supabaseClient - The initialised Supabase client
  * @returns The number of successfully flushed writes.
  */
@@ -298,15 +322,23 @@ export async function flushWriteQueue(supabaseClient: {
   if (flushInFlight) return flushInFlight;
 
   flushInFlight = (async (): Promise<number> => {
+    // P3 (9-10 review): hoist `flushed` and `remaining` so the catch path
+    // can persist consumed writes off the queue and report the true count.
+    // Returning `0` after partial success would (a) lie to callers about
+    // progress and (b) leave already-flushed writes on the queue, where the
+    // next flush would replay them as duplicates.
+    let flushed = 0;
+    const remaining: QueuedWrite[] = [];
+    let queueSnapshot: QueuedWrite[] = [];
+    let didReplayLoop = false;
+
     try {
       const online = await isOnline();
       if (!online) return 0;
 
       const queue = await readQueue();
+      queueSnapshot = queue;
       if (queue.length === 0) return 0;
-
-      const remaining: QueuedWrite[] = [];
-      let flushed = 0;
 
       for (const write of queue) {
         try {
@@ -345,8 +377,63 @@ export async function flushWriteQueue(supabaseClient: {
           remaining.push(write);
         }
       }
+      didReplayLoop = true;
 
-      await persistQueue(remaining);
+      // Story 9-10 AC #2: atomically reconcile with any writes enqueued
+      // during the flush. The flush snapshot was `queue` (read at the start).
+      // Any write whose id is NOT in the snapshot was enqueued mid-flight by
+      // `enqueueWrite` and must survive the post-flush persist. The
+      // `remaining` list still carries the failure state of the writes the
+      // flush attempted to replay; we append the truly-new writes to it.
+      //
+      // P2 (9-10 review): the merge step must NOT cause `persistQueue` to be
+      // skipped on failure — if `currentQueue` is malformed, falling back to
+      // `remaining` alone is preferable to leaving the snapshot's flushed
+      // writes on the queue (they would be replayed as duplicates next time).
+      let mergedQueue: QueuedWrite[];
+      try {
+        const snapshotIds = new Set(queue.map((w) => w.id));
+        const currentQueue = await readQueue();
+        const newWrites = currentQueue.filter((w) => !snapshotIds.has(w.id));
+        mergedQueue = [...remaining, ...newWrites];
+      } catch (mergeErr) {
+        // Defensive: the shape-validation in `readQueue` already protects
+        // against most causes here. Capture for visibility, but proceed to
+        // persist `remaining` so consumed writes leave the queue.
+        captureError(mergeErr, "cache-flush-internal");
+        mergedQueue = remaining;
+      }
+      await persistQueue(mergedQueue);
+      return flushed;
+    } catch (err) {
+      // Story 9-10 AC #4: internal error during flush (e.g. `isOnline` threw,
+      // AsyncStorage panic). Capture for visibility and resolve to the true
+      // `flushed` count (0 if the failure happened before the replay loop
+      // ran) — concurrent callers awaiting the same in-flight Promise must
+      // not be poisoned by a transient internal failure. The next call (with
+      // the condition cleared) proceeds normally because `finally` resets
+      // the guard.
+      captureError(err, "cache-flush-internal");
+      // P2/P3 (9-10 review): if the replay loop actually ran, persist
+      // `remaining` so the writes we consumed are removed from the on-disk
+      // queue (otherwise the next flush replays them = duplicate inserts).
+      // Mid-flight writes from `enqueueWrite` are reconciled by the
+      // best-effort merge; if it fails, we still drop the snapshot's
+      // consumed writes so duplicates don't pile up — at the cost of
+      // possibly losing one mid-flight enqueue, which is the same trade
+      // already accepted by the spec's "out of scope" race window.
+      if (didReplayLoop) {
+        try {
+          const snapshotIds = new Set(queueSnapshot.map((w) => w.id));
+          const currentQueue = await readQueue();
+          const newWrites = currentQueue.filter((w) => !snapshotIds.has(w.id));
+          await persistQueue([...remaining, ...newWrites]);
+        } catch {
+          // Last-ditch: at minimum drop the consumed writes. `persistQueue`
+          // itself swallows storage errors via its own try/catch.
+          await persistQueue(remaining);
+        }
+      }
       return flushed;
     } finally {
       flushInFlight = null;
