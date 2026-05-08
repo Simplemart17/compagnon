@@ -15,6 +15,7 @@ import { useAuth } from "@/src/hooks/use-auth";
 import { useAuthStore } from "@/src/store/auth-store";
 import { captureError } from "@/src/lib/sentry";
 import { chatCompletionJSON } from "@/src/lib/openai";
+import { placementTestSchema } from "@/src/lib/schemas/ai-responses";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { LEVEL_COLORS } from "@/src/lib/constants";
 import { Colors, Typography } from "@/src/lib/design";
@@ -23,17 +24,17 @@ import { CEFR_LEVELS } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { MCQContent } from "@/src/types/exercise";
 
-/** Shape of a single placement question returned by the AI */
+// Placement question shape is now `z.infer<typeof placementQuestionSchema>`
+// from `src/lib/schemas/ai-responses.ts`. The schema's `.preprocess()` step
+// covers all of the polymorphic-options normalization (object→array,
+// `correct_answer` field → `isCorrect: true` on the matching option) that
+// previously required ~30 lines of hand-rolled code at this call site.
+// Story 9-7.
 interface PlacementQuestion {
   level: CEFRLevel;
   question: string;
   options: { id: string; text: string; isCorrect: boolean }[];
   explanation: string;
-}
-
-/** Shape of the full AI response */
-interface PlacementResponse {
-  questions: PlacementQuestion[];
 }
 
 /** CEFR level to question index mapping (1-indexed question numbers)
@@ -49,20 +50,10 @@ const LEVEL_RANGES: { level: CEFRLevel; start: number; end: number }[] = [
 
 const TOTAL_QUESTIONS = 15;
 
-/** Resolve isCorrect from various AI response formats */
-function resolveIsCorrect(option: Record<string, unknown>): boolean {
-  // Direct boolean
-  if (typeof option.isCorrect === "boolean") return option.isCorrect;
-  if (typeof option.correct === "boolean") return option.correct;
-  if (typeof option.is_correct === "boolean") return option.is_correct;
-
-  // String "true"/"false"
-  if (typeof option.isCorrect === "string") return option.isCorrect.toLowerCase() === "true";
-  if (typeof option.correct === "string") return option.correct.toLowerCase() === "true";
-  if (typeof option.is_correct === "string") return option.is_correct.toLowerCase() === "true";
-
-  return false;
-}
+// `resolveIsCorrect` (15 lines, deleted by story 9-7) is replaced by the
+// `placementQuestionSchema.preprocess` + `placementOptionInputSchema.transform`
+// pipeline in `src/lib/schemas/ai-responses.ts`, which handles all of the
+// `correct`/`is_correct`/string-vs-boolean variants declaratively.
 
 /** Determine the CEFR level for a given 1-indexed question number */
 function levelForQuestion(questionNumber: number): CEFRLevel {
@@ -465,7 +456,13 @@ export default function PlacementTestScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await chatCompletionJSON<PlacementResponse>(
+      // The schema's `.preprocess()` handles polymorphic options shapes
+      // (object-vs-array, `correct_answer` field → `isCorrect: true`).
+      // Per story 9-7, we use `parseRetries: 2` to reflect the high stakes
+      // of this single-shot placement test. The outer `MAX_RETRIES` loop
+      // remains as an AI-quality fallback (e.g., model returns the wrong
+      // CEFR distribution). Two layers, deliberately separate.
+      const response = await chatCompletionJSON(
         [
           { role: "system", content: SYSTEM_PROMPT },
           {
@@ -474,96 +471,30 @@ export default function PlacementTestScreen() {
               'Generate a 15-question French placement test covering grammar, vocabulary, reading comprehension, and pragmatics. Distribute: A1(3), A2(3), B1(3), B2(3), C1(2), C2(1). Vary the correct answer position. Return JSON with a "questions" array.',
           },
         ],
+        placementTestSchema,
         {
           model: "gpt-4o",
           temperature: 0.5,
           maxTokens: 4096,
+          feature: "placement-test",
+          parseRetries: 2,
         }
       );
 
-      if (!response.questions || response.questions.length === 0) {
-        throw new Error("No questions received from AI");
-      }
-
-      // Normalize: ensure every question has options as an array of {id, text, isCorrect}
-      const normalized = response.questions.map((q) => {
-        const raw = q as unknown as Record<string, unknown>;
-        let opts: { id: string; text: string; isCorrect: boolean }[] = [];
-        const rawOpts: unknown = q.options;
-
-        // If options is an object like {a: "text", ...}, convert to array
-        if (rawOpts && typeof rawOpts === "object" && !Array.isArray(rawOpts)) {
-          opts = Object.entries(rawOpts as Record<string, unknown>).map(([key, val]) => ({
-            id: key,
-            text:
-              typeof val === "string"
-                ? val
-                : (((val as Record<string, unknown>)?.text as string) ?? String(val)),
-            isCorrect: false, // will be resolved below
-          }));
-        } else if (Array.isArray(rawOpts)) {
-          // Ensure each option has the required shape
-          opts = rawOpts.map((o: Record<string, unknown>, oi: number) => ({
-            id:
-              (o.id as string) ??
-              (o.label as string)?.toLowerCase() ??
-              String.fromCharCode(97 + oi),
-            text:
-              (o.text as string) ??
-              (o.label as string) ??
-              (o.value as string) ??
-              (typeof o === "string" ? o : String(o)),
-            isCorrect: resolveIsCorrect(o),
-          }));
-        }
-
-        // If no option is marked correct, check for a question-level correct answer field
-        // GPT often returns: correct_answer, answer, correctAnswer, correct, correctOption
-        const hasCorrect = opts.some((o) => o.isCorrect === true);
-        if (!hasCorrect && opts.length > 0) {
-          const correctId = String(
-            raw.correct_answer ??
-              raw.answer ??
-              raw.correctAnswer ??
-              raw.correct ??
-              raw.correctOption ??
-              raw.correct_option ??
-              ""
-          )
-            .toLowerCase()
-            .trim();
-
-          if (correctId) {
-            opts = opts.map((o) => ({
-              ...o,
-              isCorrect: o.id === correctId || o.text === correctId,
-            }));
-          }
-
-          // If still no correct option found, try matching by index (e.g., correctAnswer: 0)
-          if (!opts.some((o) => o.isCorrect)) {
-            const correctIdx = raw.correct_answer ?? raw.correctAnswer ?? raw.answer;
-            if (typeof correctIdx === "number" && correctIdx >= 0 && correctIdx < opts.length) {
-              opts[correctIdx].isCorrect = true;
-            }
-          }
-        }
-
-        return { ...q, options: opts };
-      });
-
-      // Validate: every question must have exactly 1 correct answer
-      const valid = normalized.every(
-        (q) => q.options.filter((o: { isCorrect: boolean }) => o.isCorrect).length === 1
-      );
-      if (!valid) {
-        console.warn(
-          "[placement-test] Some questions have 0 or >1 correct answers -- retrying generation"
-        );
-        throw new Error("Invalid question format received. Retrying...");
-      }
-
-      setQuestions(normalized);
+      // Schema enforced 15 questions, exactly 1 correct per question, all
+      // shapes well-formed. No further normalization needed — the
+      // preprocess step in `placementQuestionSchema` already mapped
+      // object-options to array, resolved `correct_answer` to
+      // `isCorrect: true`, etc.
+      //
+      // The `as PlacementQuestion[]` cast is structurally safe: the schema's
+      // output (verified by `z.infer<typeof placementTestSchema>` in
+      // tests) matches `PlacementQuestion[]` exactly. The cast is required
+      // because Zod's `preprocess + transform` chain infers the questions
+      // array element as `unknown` at the `z.ZodType<T>` boundary —
+      // tracked as a known Zod inference quirk for ZodEffects, not a
+      // runtime correctness issue.
+      setQuestions(response.questions as PlacementQuestion[]);
     } catch (err: unknown) {
       if (attempt < MAX_RETRIES) {
         console.warn(`[placement-test] Attempt ${attempt + 1} failed, retrying...`);

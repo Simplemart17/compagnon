@@ -5,8 +5,11 @@
  * never leave the server.
  */
 
+import type { z } from "zod";
+
 import { supabase } from "./supabase";
 import { requireNetwork } from "./network";
+import { addBreadcrumb, captureError } from "./sentry";
 
 type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -108,21 +111,120 @@ export async function chatCompletion(
   throw lastError ?? new Error("AI request failed");
 }
 
-/** Send a chat completion request and parse the JSON response */
+/**
+ * Options for `chatCompletionJSON`. The `feature` tag is required so every
+ * Sentry event emitted by a parse failure is grep-able by call-site
+ * (`feature: "exercise-listening"`, `feature: "writing-evaluation"`, …).
+ * `parseRetries` defaults to 1 (matches story 9-7 spec: "retry once, then
+ * fail loudly"); the placement-test call site overrides to 2.
+ */
+export interface ChatCompletionJSONOptions {
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  /** Tag passed to Sentry on parse failure for observability. Required. */
+  feature: string;
+  /** Per-call-site retry budget for parse failures. Default 1 (= one retry). */
+  parseRetries?: number;
+}
+
+/**
+ * Send a chat completion request, parse it as JSON, and validate the result
+ * against the supplied Zod schema.
+ *
+ * Contract — story 9-7:
+ *   1. Calls `chatCompletion(messages, { ...options, responseFormat: "json_object" })`.
+ *      The existing network-retry logic inside `chatCompletion` (transient
+ *      HTTP/timeout retries via `isRetryable`) is preserved.
+ *   2. `JSON.parse` errors are NOT parse-retried — a non-JSON response from a
+ *      JSON-mode request is an upstream invariant break, not a schema drift,
+ *      and re-prompting will not change it. Captured and rethrown.
+ *   3. Runs `schema.safeParse(parsed)`. On `success: true`, returns
+ *      `result.data`.
+ *   4. On `success: false`, emits a Sentry breadcrumb (`category: "ai"`,
+ *      `level: "warning"`, `data: { feature, attempt, code }`) and retries
+ *      the entire chain (chat call + parse + safeParse) up to `parseRetries`
+ *      more times. Default budget = 1.
+ *   5. After exhausting retries, calls
+ *      `captureError(new Error(...), "ai-schema-parse-failed",
+ *      { feature, attempt, code })` and throws the constructed Error.
+ *
+ * The constructed Error message is short and allowlist-safe (per the GDPR
+ * scrubber's 80-char rule): `"AI schema parse failed: <path> — <issue.message>"`.
+ * The raw `ZodError` is NOT included — it could echo user-derived field values.
+ *
+ * @example
+ * ```ts
+ * import { writingEvaluationSchema } from "@/src/lib/schemas/ai-responses";
+ *
+ * const evaluation = await chatCompletionJSON(
+ *   messages,
+ *   writingEvaluationSchema,
+ *   { feature: "writing-evaluation", temperature: 0.3 }
+ * );
+ * // `evaluation` is typed as `z.infer<typeof writingEvaluationSchema>`.
+ * ```
+ */
 export async function chatCompletionJSON<T>(
   messages: ChatMessage[],
-  options?: {
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-  }
+  schema: z.ZodType<T>,
+  options: ChatCompletionJSONOptions
 ): Promise<T> {
-  const raw = await chatCompletion(messages, {
-    ...options,
-    responseFormat: "json_object",
-  });
+  const { feature, parseRetries = 1, model, temperature, maxTokens } = options;
+  const totalAttempts = parseRetries + 1;
 
-  return JSON.parse(raw) as T;
+  let lastIssue: { path: string; message: string; code: string } | null = null;
+
+  for (let attempt = 1; attempt <= totalAttempts; attempt++) {
+    const raw = await chatCompletion(messages, {
+      model,
+      temperature,
+      maxTokens,
+      responseFormat: "json_object",
+    });
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      // Non-JSON response from a JSON-mode call is an upstream defect; no
+      // retry — re-prompting won't fix it.
+      captureError(err, "ai-proxy-json-parse", { feature });
+      throw err;
+    }
+
+    const result = schema.safeParse(parsed);
+    if (result.success) {
+      return result.data;
+    }
+
+    const firstIssue = result.error.issues[0];
+    lastIssue = {
+      path: firstIssue?.path.join(".") ?? "<root>",
+      message: firstIssue?.message ?? "unknown",
+      code: firstIssue?.code ?? "unknown",
+    };
+
+    if (attempt < totalAttempts) {
+      addBreadcrumb({
+        category: "ai",
+        level: "warning",
+        message: "AI schema parse failed — retrying",
+        data: { feature, attempt, code: lastIssue.code },
+      });
+      // Loop continues — retry the whole chain.
+    }
+  }
+
+  const finalError = new Error(
+    `AI schema parse failed: ${lastIssue?.path ?? "<root>"} — ${lastIssue?.message ?? "unknown"}`
+  );
+  captureError(finalError, "ai-schema-parse-failed", {
+    feature,
+    attempt: totalAttempts,
+    code: lastIssue?.code ?? "unknown",
+  });
+  throw finalError;
 }
 
 /** Azure French neural voice (server maps short name → full Azure voice name) */

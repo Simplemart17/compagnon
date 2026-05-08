@@ -1,10 +1,5 @@
 import type { CEFRLevel } from "@/src/types/cefr";
-import { CEFR_ORDER } from "@/src/types/cefr";
-import type {
-  TranslationContent,
-  TranslationEvaluation,
-  TranslationSentence,
-} from "@/src/types/exercise";
+import type { TranslationContent, TranslationEvaluation } from "@/src/types/exercise";
 import { chatCompletionJSON, generateSpeech } from "@/src/lib/openai";
 import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
@@ -13,12 +8,10 @@ import {
   buildTranslationPrompt,
   buildTranslationEvaluationPrompt,
 } from "@/src/lib/prompts/translation";
-
-/** Shape returned by the AI for translation generation */
-interface TranslationGenerationResponse {
-  mode: "translation" | "paraphrasing";
-  sentences: TranslationSentence[];
-}
+import {
+  translationGenerationSchema,
+  translationEvaluationSchema,
+} from "@/src/lib/schemas/ai-responses";
 
 /** Result returned by generateTranslationExercise */
 export interface TranslationExerciseResult {
@@ -36,87 +29,6 @@ function getModeForLevel(cefrLevel: CEFRLevel): "translation" | "paraphrasing" {
   return CEFR_LEVELS_PARAPHRASING.includes(cefrLevel) ? "paraphrasing" : "translation";
 }
 
-/** Validate the AI response has the expected shape */
-function validateTranslationResponse(data: unknown): TranslationGenerationResponse {
-  if (!data || typeof data !== "object") {
-    throw new Error("Translation response is not an object");
-  }
-
-  const obj = data as Record<string, unknown>;
-
-  if (obj.mode !== "translation" && obj.mode !== "paraphrasing") {
-    throw new Error(`Translation response has invalid mode: ${String(obj.mode)}`);
-  }
-
-  if (!Array.isArray(obj.sentences) || obj.sentences.length === 0) {
-    throw new Error("Translation response missing sentences array");
-  }
-
-  if (obj.sentences.length < MIN_SENTENCES || obj.sentences.length > MAX_SENTENCES) {
-    throw new Error(
-      `Translation response has ${obj.sentences.length} sentences, expected ${MIN_SENTENCES}-${MAX_SENTENCES}`
-    );
-  }
-
-  for (const s of obj.sentences) {
-    if (!s || typeof s !== "object") {
-      throw new Error("Translation sentence is not an object");
-    }
-    const sentence = s as Record<string, unknown>;
-    if (typeof sentence.source !== "string" || !sentence.source.trim()) {
-      throw new Error("Translation sentence missing 'source' field");
-    }
-    if (typeof sentence.target !== "string" || !sentence.target.trim()) {
-      throw new Error("Translation sentence missing 'target' field");
-    }
-    if (typeof sentence.explanation !== "string" || !sentence.explanation.trim()) {
-      throw new Error("Translation sentence missing 'explanation' field");
-    }
-    if (
-      typeof sentence.difficulty !== "string" ||
-      !CEFR_ORDER.includes(sentence.difficulty as CEFRLevel)
-    ) {
-      throw new Error(
-        `Translation sentence has invalid difficulty: ${String(sentence.difficulty)}, expected a CEFR level`
-      );
-    }
-    if (typeof sentence.grammarFocus !== "string" || !sentence.grammarFocus.trim()) {
-      throw new Error("Translation sentence missing 'grammarFocus' field");
-    }
-  }
-
-  return data as TranslationGenerationResponse;
-}
-
-/** Validate the AI evaluation response */
-function validateEvaluationResponse(data: unknown): TranslationEvaluation {
-  if (!data || typeof data !== "object") {
-    throw new Error("Evaluation response is not an object");
-  }
-
-  const obj = data as Record<string, unknown>;
-
-  for (const dim of ["accuracy", "fluency", "naturalness"] as const) {
-    const d = obj[dim] as Record<string, unknown> | undefined;
-    if (!d || typeof d !== "object") {
-      throw new Error(`Evaluation response missing '${dim}' dimension`);
-    }
-    if (typeof d.score !== "number" || d.score < 0 || d.score > 100) {
-      throw new Error(`Evaluation '${dim}' score must be 0-100, got ${String(d.score)}`);
-    }
-    if (typeof d.feedback !== "string" || !d.feedback.trim()) {
-      throw new Error(`Evaluation '${dim}' missing feedback`);
-    }
-  }
-
-  if (typeof obj.overallScore !== "number" || obj.overallScore < 0 || obj.overallScore > 100) {
-    // Will be recomputed by caller as weighted average
-    (obj as Record<string, unknown>).overallScore = -1;
-  }
-
-  return data as TranslationEvaluation;
-}
-
 /** Generate translation exercise sentences with TTS audio and persist to DB */
 export async function generateTranslationExercise(params: {
   cefrLevel: CEFRLevel;
@@ -129,11 +41,12 @@ export async function generateTranslationExercise(params: {
 
   await requireNetwork();
 
-  // Generate sentences via AI
+  // Generate sentences via AI — Zod schema enforces shape (replaces hand-rolled
+  // `validateTranslationResponse`, story 9-7).
   let content: TranslationContent;
   try {
     const prompt = buildTranslationPrompt({ cefrLevel, sentenceCount });
-    const raw = await chatCompletionJSON<unknown>(
+    const validated = await chatCompletionJSON(
       [
         { role: "system", content: prompt },
         {
@@ -144,9 +57,14 @@ export async function generateTranslationExercise(params: {
               : "Generate English-to-French translation exercise sentences.",
         },
       ],
-      { temperature: 0.4, model: "gpt-4o", maxTokens: 2048 }
+      translationGenerationSchema,
+      {
+        temperature: 0.4,
+        model: "gpt-4o",
+        maxTokens: 2048,
+        feature: "translation-generation",
+      }
     );
-    const validated = validateTranslationResponse(raw);
     // Enforce mode matches what we requested — don't trust AI's mode field
     content = { mode, sentences: validated.sentences };
   } catch (err) {
@@ -217,34 +135,39 @@ export async function evaluateTranslation(params: {
 
   try {
     const prompt = buildTranslationEvaluationPrompt(params);
-    const raw = await chatCompletionJSON<unknown>(
+    const validated = await chatCompletionJSON(
       [
         { role: "system", content: prompt },
         { role: "user", content: "Evaluate this translation." },
       ],
-      { temperature: 0.4, model: "gpt-4o", maxTokens: 2048 }
+      translationEvaluationSchema,
+      {
+        temperature: 0.4,
+        model: "gpt-4o",
+        maxTokens: 2048,
+        feature: "translation-evaluation",
+      }
     );
 
-    const evaluation = validateEvaluationResponse(raw);
+    // Compute overallScore if the model omitted it (schema marks it optional);
+    // weighted-average from the dimensions matches the existing domain rule.
+    const overallScore =
+      typeof validated.overallScore === "number"
+        ? validated.overallScore
+        : Math.round(
+            validated.accuracy.score * 0.4 +
+              validated.fluency.score * 0.3 +
+              validated.naturalness.score * 0.3
+          );
 
-    // Compute overallScore if not provided, out of range, or invalid
-    if (
-      typeof evaluation.overallScore !== "number" ||
-      evaluation.overallScore < 0 ||
-      evaluation.overallScore > 100
-    ) {
-      evaluation.overallScore = Math.round(
-        evaluation.accuracy.score * 0.4 +
-          evaluation.fluency.score * 0.3 +
-          evaluation.naturalness.score * 0.3
-      );
-    }
-
-    // Attach context to the evaluation
-    evaluation.expectedTranslation = params.expectedTarget;
-    evaluation.userTranscription = params.userTranscription;
-
-    return evaluation;
+    // Attach caller-side context. The schema marks these optional; the
+    // consumer-facing `TranslationEvaluation` type narrows them to required.
+    return {
+      ...validated,
+      overallScore,
+      expectedTranslation: params.expectedTarget,
+      userTranscription: params.userTranscription,
+    };
   } catch (err) {
     captureError(err, "translation-evaluation");
     throw err;

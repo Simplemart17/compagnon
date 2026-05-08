@@ -22,6 +22,13 @@ import { buildListeningExercisePrompt } from "@/src/lib/prompts/listening";
 import { buildReadingExercisePrompt } from "@/src/lib/prompts/reading";
 import { buildGrammarExercisePrompt } from "@/src/lib/prompts/grammar";
 import { buildWritingEvaluatorPrompt } from "@/src/lib/prompts/writing";
+import {
+  listeningExerciseSchema,
+  readingExerciseSchema,
+  grammarExerciseSchema,
+  writingPromptGenerationSchema,
+  writingEvaluationSchema,
+} from "@/src/lib/schemas/ai-responses";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
 import { CEFR_ORDER } from "@/src/types/cefr";
@@ -63,74 +70,11 @@ export interface UseExerciseReturn extends ExerciseState {
   clearOfflineFallback: () => void;
 }
 
-interface MCQQuestion {
-  question: string;
-  options: { id: string; text: string; isCorrect: boolean }[];
-  explanation: string;
-}
-
-interface ListeningResponse {
-  passage: string;
-  questions: MCQQuestion[];
-  vocabularyHighlights?: string[];
-}
-
-interface ReadingResponse {
-  passage: string;
-  questions: MCQQuestion[];
-  wordExplanations?: Record<string, string>;
-}
-
-interface GrammarResponse {
-  questions: MCQQuestion[];
-}
-
-/**
- * Validate that an MCQ exercise response from the AI is well-formed.
- *
- * Checks:
- * - `questions` is a non-empty array
- * - Each question has an `options` array with exactly 4 items
- * - Exactly one option per question has `isCorrect: true`
- * - Each question has a non-empty `explanation`
- *
- * Throws a descriptive error if validation fails.
- */
-function validateMCQExercise(
-  questions: unknown,
-  skill: string
-): asserts questions is MCQQuestion[] {
-  if (!Array.isArray(questions) || questions.length === 0) {
-    throw new Error(
-      `Invalid ${skill} exercise: "questions" must be a non-empty array, got ${typeof questions}`
-    );
-  }
-
-  for (let i = 0; i < questions.length; i++) {
-    const q = questions[i] as Record<string, unknown>;
-    const label = `${skill} question ${i + 1}`;
-
-    if (!Array.isArray(q.options)) {
-      throw new Error(`Invalid ${label}: "options" must be an array`);
-    }
-
-    if (q.options.length !== 4) {
-      throw new Error(`Invalid ${label}: expected exactly 4 options, got ${q.options.length}`);
-    }
-
-    const correctCount = (q.options as { isCorrect?: boolean }[]).filter(
-      (o) => o.isCorrect === true
-    ).length;
-
-    if (correctCount !== 1) {
-      throw new Error(`Invalid ${label}: expected exactly 1 correct option, found ${correctCount}`);
-    }
-
-    if (typeof q.explanation !== "string" || q.explanation.trim().length === 0) {
-      throw new Error(`Invalid ${label}: "explanation" must be a non-empty string`);
-    }
-  }
-}
+// AI-response shapes are now derived from Zod schemas in
+// `src/lib/schemas/ai-responses.ts`. The hand-rolled `validateMCQExercise`
+// function (lines 99-133 prior to story 9-7) was deleted — its rules
+// (4 options, 1 correct, non-empty explanation) are enforced declaratively
+// by `mcqQuestionSchema.superRefine`. Story 9-7.
 
 export function useExercise(): UseExerciseReturn {
   const { showToast } = useToast();
@@ -174,12 +118,11 @@ export function useExercise(): UseExerciseReturn {
         switch (skill) {
           case "listening": {
             const prompt = buildListeningExercisePrompt({ cefrLevel, dialect: "metropolitan" });
-            const result = await chatCompletionJSON<ListeningResponse>(
+            const result = await chatCompletionJSON(
               [{ role: "system", content: prompt }],
-              { temperature: 0.4 }
+              listeningExerciseSchema,
+              { temperature: 0.4, feature: "exercise-listening" }
             );
-
-            validateMCQExercise(result.questions, "listening");
 
             // Generate TTS audio for the passage
             let audioBase64: string | undefined;
@@ -206,12 +149,11 @@ export function useExercise(): UseExerciseReturn {
 
           case "reading": {
             const prompt = buildReadingExercisePrompt({ cefrLevel });
-            const result = await chatCompletionJSON<ReadingResponse>(
+            const result = await chatCompletionJSON(
               [{ role: "system", content: prompt }],
-              { temperature: 0.4 }
+              readingExerciseSchema,
+              { temperature: 0.4, feature: "exercise-reading" }
             );
-
-            validateMCQExercise(result.questions, "reading");
 
             exercise = {
               skill: "reading",
@@ -227,12 +169,11 @@ export function useExercise(): UseExerciseReturn {
 
           case "grammar": {
             const prompt = buildGrammarExercisePrompt({ cefrLevel });
-            const result = await chatCompletionJSON<GrammarResponse>(
+            const result = await chatCompletionJSON(
               [{ role: "system", content: prompt }],
-              { temperature: 0.4 }
+              grammarExerciseSchema,
+              { temperature: 0.4, feature: "exercise-grammar" }
             );
-
-            validateMCQExercise(result.questions, "grammar");
 
             exercise = {
               skill: "grammar",
@@ -257,7 +198,7 @@ export function useExercise(): UseExerciseReturn {
             };
 
             // Generate a writing prompt
-            const result = await chatCompletionJSON<{ prompt: string; context: string }>(
+            const result = await chatCompletionJSON(
               [
                 {
                   role: "system",
@@ -266,7 +207,8 @@ Task type: ${taskNumber === 1 ? "Short message (50-80 words)" : taskNumber === 2
 Return JSON: { "prompt": "the writing task in French", "context": "brief context in English for the student" }`,
                 },
               ],
-              { temperature: 0.4 }
+              writingPromptGenerationSchema,
+              { temperature: 0.4, feature: "exercise-writing-prompt" }
             );
 
             writingPrompt.prompt = result.prompt;
@@ -409,7 +351,7 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
           prompt: state.exercise.writingPrompt.prompt,
         });
 
-        const evaluation = await chatCompletionJSON<WritingEvaluation>(
+        const evaluation = await chatCompletionJSON(
           [
             { role: "system", content: prompt },
             {
@@ -417,7 +359,8 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
               content: `Task: ${state.exercise.writingPrompt.prompt}\n\nStudent's writing:\n${text}`,
             },
           ],
-          { temperature: 0.3 }
+          writingEvaluationSchema,
+          { temperature: 0.3, feature: "writing-evaluation" }
         );
 
         setState((s) => ({
