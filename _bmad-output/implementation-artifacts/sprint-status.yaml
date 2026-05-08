@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-07 # story 9-5 done (voice transcript dedup, post-review hardening, smoke test verified)
+last_updated: 2026-05-07 # story 9-6 review (auth listener token-refresh fix; manual smoke test deferred)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -124,7 +124,7 @@ development_status:
   9-3-sentry-leak-remediation: done
   9-4-stored-prompt-injection-defense: done
   9-5-voice-transcript-dedup: done
-  9-6-auth-listener-token-refresh-fix: backlog
+  9-6-auth-listener-token-refresh-fix: review
   9-7-zod-validation-infrastructure: backlog
   9-8-speaking-section-pipeline: backlog
   9-9-submit-credentials-deploy-substrate: backlog
