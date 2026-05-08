@@ -560,6 +560,35 @@ describe("extractAndStoreMemories — runtime validation gate", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Schema-level rejection of over-cap fact content (story 9-7 AC #6)
+// ---------------------------------------------------------------------------
+
+describe("factExtractionSchema — content length cap (story 9-7)", () => {
+  it("rejects fact content above MAX_PRE_SANITIZE_CHARS", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { factExtractionSchema } = require("../schemas/ai-responses");
+    const oversize = "x".repeat(MAX_PRE_SANITIZE_CHARS + 1);
+    const result = factExtractionSchema.safeParse({
+      facts: [{ content: oversize, type: "preference" }],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].code).toBe("too_big");
+    }
+  });
+
+  it("accepts fact content at exactly MAX_PRE_SANITIZE_CHARS", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { factExtractionSchema } = require("../schemas/ai-responses");
+    const atCap = "y".repeat(MAX_PRE_SANITIZE_CHARS);
+    const result = factExtractionSchema.safeParse({
+      facts: [{ content: atCap, type: "preference" }],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // trackError — write-time sanitize at the boundary
 // ---------------------------------------------------------------------------
 
