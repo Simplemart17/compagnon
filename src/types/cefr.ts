@@ -1,11 +1,35 @@
 /** CEFR (Common European Framework of Reference) levels for language proficiency */
 export type CEFRLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 
-/** TCF skill categories matching the 5 test components */
+/**
+ * TCF skill categories.
+ *
+ * NOTE: TCF Canada has 4 mandatory sections (listening, reading, writing,
+ * speaking) — Grammar is retained in this union as a non-TCF practice skill
+ * per operator decision (2026-05-07; see docs/tcf-spec-source.md §10
+ * follow-up #1). The TCF Canada composite (see `SKILL_WEIGHTS_TCF_CANADA`
+ * in src/lib/scoring.ts) explicitly excludes `grammar`.
+ */
 export type TCFSkill = "listening" | "reading" | "speaking" | "writing" | "grammar";
 
-/** TCF score range: 0-699 */
+/**
+ * Listening / Reading TCF score (0–699).
+ *
+ * Nominal `number` alias — TypeScript-flag-only protection. The publisher
+ * scales Listening + Reading on 0–699 (CLB-relevant from 331/342 per
+ * docs/tcf-spec-source.md §2.1).
+ */
 export type TCFScore = number;
+
+/**
+ * Writing / Speaking score (0–20).
+ *
+ * Nominal `number` alias — TypeScript-flag-only protection. The publisher
+ * scales Writing + Speaking on 0–20 (CLB-relevant from 4 per
+ * docs/tcf-spec-source.md §2.1). Distinct from `TCFScore` so call sites
+ * cannot accidentally mix the 0–699 and 0–20 scales.
+ */
+export type WritingSpeakingScore = number;
 
 /** CEFR level metadata */
 export interface CEFRLevelInfo {
@@ -17,7 +41,20 @@ export interface CEFRLevelInfo {
   tcfScoreMax: number;
 }
 
-/** Mapping of CEFR levels to TCF score ranges */
+/**
+ * UI-display CEFR ↔ TCF round-number bands.
+ *
+ * **NOT IRCC-EQUIVALENT** — these are convenience labels for self-assessment
+ * grid display (e.g., the "B2" pill on the home screen). For IRCC / Express
+ * Entry math (CLB equivalency, promotion gates), use
+ * `src/lib/ircc-bands.ts` `IRCC_CLB_BANDS` instead, which is sourced
+ * verbatim from the IRCC equivalency table.
+ *
+ * Source: round-number convention used by HiTCF, ouizami, tcfprep
+ * third-party tables (per docs/tcf-spec-source.md §2.3). The publisher
+ * (France Éducation International) does not publish a verbatim
+ * TCF-score → CEFR-level table on its landing page.
+ */
 export const CEFR_LEVELS: Record<CEFRLevel, CEFRLevelInfo> = {
   A1: {
     level: "A1",

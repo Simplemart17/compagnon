@@ -214,7 +214,17 @@ export interface PromotionDecision {
   missingSkills: TCFSkill[];
 }
 
-/** Score threshold a skill row must clear to count as "passing" for promotion. */
+/**
+ * Score threshold a skill row must clear to count as "passing" for promotion.
+ *
+ * Note (Story 10-2): this is on the internal 0–100 `skill_progress.score`
+ * scale (clamped by `clampScore`), NOT on the publisher's IRCC scales
+ * (0–699 for Listening/Reading, 0–20 for Writing/Speaking — see
+ * `src/lib/ircc-bands.ts`). The promotion gate is intentionally UX-soft and
+ * uses an internal-percent threshold rather than a per-skill IRCC CLB band
+ * lookup; switching to `IRCC_CLB_BANDS` would change CEFR promotion behavior
+ * in subtle ways that need their own pedagogy review (deferred follow-up).
+ */
 const PASSING_SCORE = 85;
 /** Number of distinct skills (out of 5) that must clear PASSING_SCORE. */
 const MIN_PASSING_SKILLS = 3;

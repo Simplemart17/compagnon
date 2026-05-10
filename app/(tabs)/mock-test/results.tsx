@@ -8,7 +8,7 @@
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { LEVEL_COLORS } from "@/src/lib/constants";
+import { LEVEL_COLORS, TCF } from "@/src/lib/constants";
 import { Colors, Typography } from "@/src/lib/design";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -57,7 +57,10 @@ export default function MockTestResultsScreen() {
     };
   }
 
-  const distanceToC1 = Math.max(0, 500 - results.overallTcfScore);
+  // UX continuity hint — `TCF.C1_MIN` is the UI round-number band per
+  // src/types/cefr.ts CEFR_LEVELS JSDoc. For IRCC math, use
+  // src/lib/ircc-bands.ts instead.
+  const distanceToC1 = Math.max(0, TCF.C1_MIN - results.overallTcfScore);
   const scoreColor = getScoreColor(results.overallTcfScore);
 
   return (

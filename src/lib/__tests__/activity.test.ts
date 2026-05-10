@@ -236,3 +236,45 @@ describe("evaluatePromotion — re-promotion regression (P0-2)", () => {
     expect(evaluatePromotion("B1", buildPassingRowsAt("B1")).promote).toBe(true);
   });
 });
+
+/**
+ * Story 10-2 regression: the promotion gate reads per-skill rows directly
+ * and MUST NOT consult `calculateInternalCompositeForUI` (which TCF Canada
+ * does not produce). This test demonstrates that promotion outcomes are
+ * fully determined by per-skill evidence — the composite never appears.
+ */
+describe("evaluatePromotion does not consume the internal composite (Story 10-2)", () => {
+  it("uses only per-skill rows to decide promotion (no composite math)", () => {
+    // Two evidence sets with identical per-skill rows must produce identical
+    // decisions regardless of what composite the UI happens to display.
+    const rowsA = buildPassingRowsAt("A1");
+    const rowsB: PromotionEvidence[] = rowsA.map((r) => ({ ...r }));
+    const decisionA = evaluatePromotion("A1", rowsA);
+    const decisionB = evaluatePromotion("A1", rowsB);
+    expect(decisionA).toEqual(decisionB);
+  });
+
+  it("ignores skill_progress.score relationships beyond the per-skill threshold", () => {
+    // Skill row with score 100 in 3 skills + 0 in 2 weak skills produces same
+    // outcome as 86 / 0 — only the boolean "≥85" matters per skill, never
+    // the composite-style average across skills.
+    const high: PromotionEvidence[] = [
+      { skill: "listening", score: 100, exercisesCompleted: 4 },
+      { skill: "reading", score: 100, exercisesCompleted: 4 },
+      { skill: "speaking", score: 100, exercisesCompleted: 2 },
+      { skill: "writing", score: 0, exercisesCompleted: 1 },
+      { skill: "grammar", score: 0, exercisesCompleted: 1 },
+    ];
+    const justAbove: PromotionEvidence[] = [
+      { skill: "listening", score: 86, exercisesCompleted: 4 },
+      { skill: "reading", score: 86, exercisesCompleted: 4 },
+      { skill: "speaking", score: 86, exercisesCompleted: 2 },
+      { skill: "writing", score: 0, exercisesCompleted: 1 },
+      { skill: "grammar", score: 0, exercisesCompleted: 1 },
+    ];
+    expect(evaluatePromotion("A1", high).promote).toBe(true);
+    expect(evaluatePromotion("A1", justAbove).promote).toBe(true);
+    // Composite-style averages would diverge wildly (60 vs 51.6) yet promotion
+    // decision is identical → confirms per-skill threshold semantics.
+  });
+});

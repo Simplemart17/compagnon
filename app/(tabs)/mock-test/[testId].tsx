@@ -17,7 +17,7 @@ import { chatCompletionJSON } from "@/src/lib/openai";
 import { mockTestSectionSchema } from "@/src/lib/schemas/ai-responses";
 import { buildMockTestPrompt } from "@/src/lib/prompts/mock-test";
 import { ALL_QCM_SECTIONS, TCF_QCM_SECTIONS } from "@/src/lib/tcf";
-import { rawToTCFScore } from "@/src/lib/scoring";
+import { rawPercentToListeningReadingScore } from "@/src/lib/scoring";
 import { levelFromScore } from "@/src/types/cefr";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/lib/supabase";
@@ -557,7 +557,7 @@ export default function MockTestSessionScreen() {
           if (answer === correctOption?.id) correct++;
         }
         const rawPercent = questions.length > 0 ? (correct / questions.length) * 100 : 0;
-        const tcfScore = rawToTCFScore(rawPercent);
+        const tcfScore = rawPercentToListeningReadingScore(rawPercent, section);
 
         sectionResults[section] = {
           score: Math.round(rawPercent),
