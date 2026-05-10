@@ -2,6 +2,24 @@ import { TCF } from "@/src/lib/constants";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 /**
+ * TCF Canada mock-test prompt builder. Generates a single-section
+ * QCM (Listening or Reading) spanning A1–C2 difficulty.
+ *
+ * Per-passage word-count guidance (the AI infers passage length from
+ * difficulty + section): see `docs/tcf-spec-source.md §3.1` (listening,
+ * operator-derived) and `§4.1` (reading, operator-derived). The
+ * single-skill prompt builders at `src/lib/prompts/listening.ts` and
+ * `src/lib/prompts/reading.ts` carry the per-CEFR ranges; this builder
+ * spans the full A1–C2 range and lets the AI scale per-passage.
+ *
+ * Scoring is computed downstream from raw correctness count via
+ * `rawPercentToListeningReadingScore` in `src/lib/scoring.ts` (Story
+ * 10-2; IRCC-band-anchored). The AI is intentionally NOT given a
+ * scoring band table — its job is to generate questions, not produce
+ * scores.
+ */
+
+/**
  * Sections of the TCF Canada exam that are generated as multiple-choice
  * questionnaires. Writing and Speaking are mandatory in TCF Canada too but
  * use separate (non-MCQ) production-task pipelines:
@@ -47,17 +65,24 @@ TCF Canada uses progressive difficulty. Questions MUST span the entire A1-to-C2 
 
 ${sectionConfig.instructions}
 
-## Scoring Calibration
-Each correct answer = 1 point. The total raw score maps to TCF 0-699 scale:
-- 0-20%: Below A1 (0-99)
-- 21-35%: A1 (100-199)
-- 36-50%: A2 (200-299)
-- 51-65%: B1 (300-399)
-- 66-80%: B2 (400-499)
-- 81-90%: C1 (500-599)
-- 91-100%: C2 (600-699)
+## Scoring
+Binary correct/incorrect — 1 point per right answer. The total raw correctness count is converted downstream to the TCF 0-699 scale by src/lib/scoring.ts rawPercentToListeningReadingScore (IRCC CLB-anchored, Story 10-2); do NOT emit a score yourself.
 
-## Passage Grouping — IMPORTANT
+${
+  section === "reading"
+    ? `## Passage Word Counts (per docs/tcf-spec-source.md §4.1)
+Each reading passage's \`wordCount\` MUST reflect the passage's difficulty:
+- A1 passages: 30–60 words
+- A2 passages: 60–120 words
+- B1 passages: 120–250 words
+- B2 passages: 250–450 words
+- C1 passages: 450–700 words
+- C2 passages: 600+ words
+Early passages (q1-q${Math.floor(count * 0.2)}) sit in the A1–A2 range; late passages (q${Math.floor(count * 0.85) + 1}+) sit in B2–C2.
+
+`
+    : ""
+}## Passage Grouping — IMPORTANT
 You MUST emit 6-8 passages in the "passages" array, each with a unique \`id\`
 ("p1", "p2", "p3", ...). Each question's "passageId" field MUST reference one
 of those ids. Do NOT label every question with "p1" — questions must be
@@ -72,7 +97,7 @@ that reference it.
   "totalQuestions": ${count},
   "timeLimitMinutes": ${sectionConfig.timeLimitMinutes},
   ${section === "listening" ? '"passages": [\n    {\n      "id": "p1",\n      "text": "<passage 1 text to be spoken>",\n      "type": "<dialogue|monologue|announcement>",\n      "suggestedSpeed": 1.0,\n      "questionIds": ["q1", "q2", "q3"]\n    },\n    {\n      "id": "p2",\n      "text": "<passage 2 text to be spoken>",\n      "type": "<dialogue|monologue|announcement>",\n      "suggestedSpeed": 1.0,\n      "questionIds": ["q4", "q5", "q6"]\n    }\n  ],' : ""}
-  ${section === "reading" ? '"passages": [\n    {\n      "id": "p1",\n      "text": "<reading passage 1>",\n      "type": "<article|email|advertisement|notice>",\n      "wordCount": 150,\n      "questionIds": ["q1", "q2", "q3"]\n    },\n    {\n      "id": "p2",\n      "text": "<reading passage 2>",\n      "type": "<article|email|advertisement|notice>",\n      "wordCount": 200,\n      "questionIds": ["q4", "q5", "q6"]\n    }\n  ],' : ""}
+  ${section === "reading" ? '"passages": [\n    {\n      "id": "p1",\n      "text": "<reading passage 1>",\n      "type": "<article|email|advertisement|notice>",\n      "wordCount": <integer word count, see "Passage Word Counts" guidance above>,\n      "questionIds": ["q1", "q2", "q3"]\n    },\n    {\n      "id": "p2",\n      "text": "<reading passage 2>",\n      "type": "<article|email|advertisement|notice>",\n      "wordCount": <integer word count, see "Passage Word Counts" guidance above>,\n      "questionIds": ["q4", "q5", "q6"]\n    }\n  ],' : ""}
   "questions": [
     {
       "id": "q1",
@@ -90,10 +115,6 @@ that reference it.
   ]
 }`;
 }
-
-// The "## Scoring Calibration" block in the prompt body above is the legacy
-// linear curve. Recalibration against real TCF data is owned by Epic 10.2
-// (P1-1) — do not edit the band table here in story 9-1.
 
 const SECTION_CONFIGS: Record<
   MockTestQcmSection,
