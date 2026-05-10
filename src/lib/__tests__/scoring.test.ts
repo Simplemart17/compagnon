@@ -28,7 +28,7 @@ import {
  */
 
 describe("rawPercentToListeningReadingScore — boundary + clamp behavior", () => {
-  it("maps 0% to 0 (below CLB 1 floor)", () => {
+  it("maps 0% to score 0 (lowest end of CLB 1–3 raw band)", () => {
     expect(rawPercentToListeningReadingScore(0, "listening")).toBe(0);
     expect(rawPercentToListeningReadingScore(0, "reading")).toBe(0);
   });
@@ -52,21 +52,27 @@ describe("rawPercentToListeningReadingScore — boundary + clamp behavior", () =
 });
 
 describe("rawPercentToListeningReadingScore — CLB band round-trip", () => {
-  // Anchor pairs (raw%, expected CLB level) sourced from
+  // 12 anchor pairs (raw%, expected CLB level) sourced from
   // docs/tcf-spec-source.md §2.2 calibration in scoring.ts.
   // Each raw% MUST produce a score that lands in the expected CLB band.
+  // Includes lower-bound / interior / upper-bound coverage of each CLB
+  // band so off-by-one boundary regressions are caught.
   const listeningAnchors: {
     rawPercent: number;
     expectedCLB: keyof typeof IRCC_CLB_BANDS.listeningReading;
   }[] = [
     { rawPercent: 10, expectedCLB: "1-3" }, // well below CLB 4
-    { rawPercent: 40, expectedCLB: "4" },
-    { rawPercent: 55, expectedCLB: "5" },
-    { rawPercent: 65, expectedCLB: "6" },
-    { rawPercent: 78, expectedCLB: "7" }, // Express Entry territory
-    { rawPercent: 85, expectedCLB: "8" },
-    { rawPercent: 90, expectedCLB: "9" },
-    { rawPercent: 96, expectedCLB: "10-12" },
+    { rawPercent: 35, expectedCLB: "4" }, // CLB 4 lower boundary (exclusive-upper semantic)
+    { rawPercent: 40, expectedCLB: "4" }, // CLB 4 interior
+    { rawPercent: 50, expectedCLB: "5" }, // CLB 5 lower boundary
+    { rawPercent: 55, expectedCLB: "5" }, // CLB 5 interior
+    { rawPercent: 65, expectedCLB: "6" }, // CLB 6 interior
+    { rawPercent: 75, expectedCLB: "7" }, // CLB 7 lower boundary — Express Entry threshold
+    { rawPercent: 78, expectedCLB: "7" }, // CLB 7 interior
+    { rawPercent: 85, expectedCLB: "8" }, // CLB 8 interior
+    { rawPercent: 90, expectedCLB: "9" }, // CLB 9 interior
+    { rawPercent: 93, expectedCLB: "10-12" }, // CLB 10-12 lower boundary
+    { rawPercent: 96, expectedCLB: "10-12" }, // CLB 10-12 interior
   ];
 
   it.each(listeningAnchors)(
@@ -104,7 +110,7 @@ describe("rawPercentToListeningReadingScore — monotonicity", () => {
 });
 
 describe("rawPercentToWritingSpeakingScore — boundary + clamp behavior", () => {
-  it("maps 0% to 0 (below CLB 1 floor)", () => {
+  it("maps 0% to score 0 (lowest end of CLB 1–3 raw band)", () => {
     expect(rawPercentToWritingSpeakingScore(0)).toBe(0);
   });
 
@@ -126,7 +132,7 @@ describe("rawPercentToWritingSpeakingScore — boundary + clamp behavior", () =>
 });
 
 describe("rawPercentToWritingSpeakingScore — CLB band round-trip", () => {
-  // 9 anchor pairs covering each CLB band + 0% + 100% boundaries.
+  // 9 anchor pairs covering each CLB band + boundary coverage.
   const wsAnchors: {
     rawPercent: number;
     expectedCLB: keyof typeof IRCC_CLB_BANDS.writingSpeaking;
@@ -135,7 +141,8 @@ describe("rawPercentToWritingSpeakingScore — CLB band round-trip", () => {
     { rawPercent: 25, expectedCLB: "4" },
     { rawPercent: 32, expectedCLB: "5" },
     { rawPercent: 42, expectedCLB: "6" },
-    { rawPercent: 55, expectedCLB: "7" }, // Express Entry threshold
+    { rawPercent: 50, expectedCLB: "7" }, // CLB 7 lower boundary — Express Entry threshold
+    { rawPercent: 55, expectedCLB: "7" }, // CLB 7 interior
     { rawPercent: 65, expectedCLB: "8" },
     { rawPercent: 75, expectedCLB: "9" },
     { rawPercent: 90, expectedCLB: "10-12" },
@@ -169,7 +176,7 @@ describe("calculateSectionScore", () => {
   });
 
   it("returns zero for zero total questions", () => {
-    const result = calculateSectionScore(0, 0);
+    const result = calculateSectionScore(0, 0, "listening");
     expect(result.rawPercent).toBe(0);
     expect(result.tcfScore).toBe(0);
     expect(result.cefrLevel).toBeNull();
@@ -182,43 +189,55 @@ describe("calculateSectionScore", () => {
     expect(result.cefrLevel).toBe("C2");
   });
 
-  it("defaults to listening when skill omitted (back-compat)", () => {
-    const result = calculateSectionScore(39, 39);
-    expect(result.tcfScore).toBe(699);
+  it("listening and reading at the same raw% may produce different TCF scores (band differences)", () => {
+    // 27/39 = 69.23% — within CLB 6 raw band but listening and reading
+    // CLB 6 score ranges differ (listening 398-457, reading 406-452).
+    const listening = calculateSectionScore(27, 39, "listening");
+    const reading = calculateSectionScore(27, 39, "reading");
+    expect(listening.tcfScore).toBeGreaterThanOrEqual(398);
+    expect(listening.tcfScore).toBeLessThanOrEqual(457);
+    expect(reading.tcfScore).toBeGreaterThanOrEqual(406);
+    expect(reading.tcfScore).toBeLessThanOrEqual(452);
   });
 });
 
 describe("calculateInternalCompositeForUI", () => {
-  it("calculates equal-weighted composite for the 4 TCF Canada skills", () => {
+  it("averages listening + reading on the 0–699 scale (4-skill scope: L/R only)", () => {
     const result = calculateInternalCompositeForUI({
       listening: 400,
       reading: 400,
-      speaking: 400,
-      writing: 400,
     });
     expect(result.compositeScore).toBe(400);
     expect(result.cefrLevel).toBe("B2");
     expect(result.distanceToC1).toBe(100);
   });
 
-  it("silently drops grammar from the average (TCF Canada is 4-skill)", () => {
+  it("silently drops writing/speaking (0–20 scale) — composite is L/R-only to avoid scale conflation", () => {
     const result = calculateInternalCompositeForUI({
       listening: 500,
       reading: 500,
       writing: 12,
       speaking: 14,
-      // Grammar value is dropped — TCF Canada has no Grammar section.
-      grammar: 800,
     });
-    // Average of 500, 500, 12, 14 = 256.5 → 257 (grammar's 800 excluded).
-    expect(result.compositeScore).toBe(257);
+    // Only listening + reading are averaged. writing=12 (0–20) and
+    // speaking=14 (0–20) are silently dropped — they are on a different
+    // scale and would produce meaningless math if mixed in.
+    expect(result.compositeScore).toBe(500);
+    expect(result.cefrLevel).toBe("C1");
+    expect(result.distanceToC1).toBe(0);
   });
 
-  it("handles partial skill scores", () => {
+  it("silently drops grammar (not a TCF Canada skill)", () => {
     const result = calculateInternalCompositeForUI({
-      listening: 500,
-      reading: 500,
+      listening: 400,
+      reading: 400,
+      grammar: 800, // dropped: not part of TCF Canada
     });
+    expect(result.compositeScore).toBe(400);
+  });
+
+  it("handles partial skill scores (only listening present)", () => {
+    const result = calculateInternalCompositeForUI({ listening: 500 });
     expect(result.compositeScore).toBe(500);
     expect(result.cefrLevel).toBe("C1");
     expect(result.distanceToC1).toBe(0);
@@ -230,10 +249,24 @@ describe("calculateInternalCompositeForUI", () => {
     expect(result.cefrLevel).toBeNull();
   });
 
-  it("returns zero for grammar-only (dropped) input", () => {
+  it("returns zero for grammar-only input (dropped)", () => {
     const result = calculateInternalCompositeForUI({ grammar: 500 });
     expect(result.compositeScore).toBe(0);
     expect(result.cefrLevel).toBeNull();
+  });
+
+  it("returns zero for writing-only input (dropped — scale conflict)", () => {
+    const result = calculateInternalCompositeForUI({ writing: 15 });
+    expect(result.compositeScore).toBe(0);
+    expect(result.cefrLevel).toBeNull();
+  });
+
+  it("ignores non-finite scores", () => {
+    const result = calculateInternalCompositeForUI({
+      listening: 500,
+      reading: NaN,
+    });
+    expect(result.compositeScore).toBe(500);
   });
 });
 
