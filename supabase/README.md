@@ -2,6 +2,8 @@
 
 Step-by-step guide to deploy the Companion app's Supabase backend.
 
+> **Edge Function deploys are automated via [.github/workflows/deploy.yml](../.github/workflows/deploy.yml) on push to `main`** (story 9-9). The CLI commands in this guide are for the first-time bootstrap and for local development. After the initial deploy, a push that touches `supabase/functions/**` runs `supabase functions deploy <name>` for each function automatically. SQL migrations stay manual via `supabase db push` until story 16-6 lands the rollback playbook — the deploy workflow surfaces a `::warning::` annotation as a reminder.
+
 ## Prerequisites
 
 - [Supabase CLI](https://supabase.com/docs/guides/cli) installed (`brew install supabase/tap/supabase`)

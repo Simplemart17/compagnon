@@ -1,0 +1,95 @@
+name: Deploy
+
+# Auto-deploys Edge Functions on push to main when supabase/functions/** changes.
+# Manual trigger available for force-deploys (e.g., redeploying after a secret
+# rotation, or recovering from a partial deploy).
+#
+# SQL migrations are deliberately NOT auto-applied — until story 16-6 lands the
+# rollback playbook, a forward-only migration that breaks production has no
+# recovery path. The notify-migration-pending job emits a GitHub annotation
+# reminding the operator to run `supabase db push` manually.
+#
+# Required GitHub secrets (see runbooks/submit-and-deploy.md):
+#   - SUPABASE_ACCESS_TOKEN  (supabase.com/dashboard/account/tokens)
+#   - SUPABASE_PROJECT_REF   (project ref slug from your Supabase dashboard URL)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+      - 'supabase/migrations/**'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force redeploy all functions even if no changes'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-edge-functions-production
+  cancel-in-progress: false
+
+jobs:
+  # The `paths:` filter on the `on.push` trigger gates this job correctly for push
+  # events; we deliberately do NOT add a redundant `if:` based on
+  # `github.event.commits.*.modified` because that array is empty on force-pushes
+  # and silently truncated to ~300 entries on large squash-merges (P1 review).
+  # Ungated here, manual `workflow_dispatch` invocations always run.
+  deploy-edge-functions:
+    name: Deploy Edge Functions to production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      - name: Deploy functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          # Loop with explicit failure aggregation so a mid-loop failure surfaces
+          # which functions still ride the old revision (P2 review). `--project-ref`
+          # is passed redundantly as a defense against a partially-successful
+          # `supabase link` writing the wrong ref (P10 review).
+          failed=()
+          succeeded=()
+          for fn in ai-proxy realtime-session pronunciation-assess account-delete notification-register send-notifications; do
+            if supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF"; then
+              succeeded+=("$fn")
+            else
+              failed+=("$fn")
+            fi
+          done
+          echo "::notice title=Deployed::${succeeded[*]}"
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error title=Partial deploy::Failed: ${failed[*]} — these functions still run the previous revision."
+            exit 1
+          fi
+
+  notify-migration-pending:
+    name: Warn on un-applied migrations
+    runs-on: ubuntu-latest
+    # Includes `removed` for symmetry — reverting a migration via deletion
+    # should still surface the warning (P17 review).
+    if: |
+      github.event_name == 'push' && (
+        contains(toJSON(github.event.commits.*.modified), 'supabase/migrations/') ||
+        contains(toJSON(github.event.commits.*.added), 'supabase/migrations/') ||
+        contains(toJSON(github.event.commits.*.removed), 'supabase/migrations/')
+      )
+    steps:
+      - name: Annotate
+        run: |
+          echo "::warning title=Manual migration required::A push to main touched supabase/migrations/. Run 'supabase db push' against production manually. Auto-apply is gated on Epic 16.6 (migration rollback playbook)."
