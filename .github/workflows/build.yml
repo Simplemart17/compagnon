@@ -43,6 +43,13 @@ jobs:
         run: npm ci
 
       - name: EAS Build
+        env:
+          # Bundled into the JS at build time; without these the app crashes at
+          # boot trying to construct a Supabase client with URL(""). Same
+          # secrets are reused by .github/workflows/ota-update.yml.
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
         run: |
           eas build \
             --profile ${{ github.event.inputs.profile || 'preview' }} \

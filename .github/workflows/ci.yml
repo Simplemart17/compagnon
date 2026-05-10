@@ -53,6 +53,49 @@ jobs:
           fi
           echo "✓ No Sentry DSN URL in source files"
 
+      - name: Submit credentials leak guard
+        run: |
+          # Story 9-9: keep Apple/Google submit credentials out of git.
+          # Even non-secret IDs (Apple Team ID, ASC App ID) live in EAS env
+          # vars, not source — guards against the regression where eas.json
+          # shipped with literal placeholders for months.
+          MATCHED=0
+          # The [_] character class obfuscates the regex source so grep does
+          # not match its own pattern when scanning this very workflow file.
+          if grep -rE 'YOUR_APPLE[_](ID|TEAM[_]ID)|YOUR_APP[_]STORE[_]CONNECT[_]APP[_]ID' \
+              --include='*.json' --include='*.ts' --include='*.tsx' --include='*.js' \
+              --include='*.yml' --include='*.yaml' \
+              --exclude-dir=node_modules --exclude-dir=.git . ; then
+            echo "::error::Submit credential placeholder strings found in source. Move values to EAS env vars (see runbooks/submit-and-deploy.md)."
+            MATCHED=1
+          fi
+          # Apple Team IDs are 10-char alphanumeric. Convention is uppercase
+          # but eas.json's schema does not enforce case — `-i` makes the guard
+          # also catch lowercase variants (P15 review). Includes `*.md` so a
+          # real ID accidentally pasted into a tracked doc as an "example"
+          # is caught (P9 review). Excludes the runbook directory because
+          # the runbook deliberately uses placeholder examples like
+          # `<10-char-team-id>` which wouldn't match anyway, but the carve-out
+          # documents the policy.
+          if grep -riE '"appleTeamId"\s*:\s*"[A-Z0-9]{10}"' \
+              --include='*.json' --include='*.md' \
+              --exclude-dir=node_modules --exclude-dir=.git \
+              --exclude-dir=_bmad-output . ; then
+            echo "::error::Literal Apple Team ID found in source. Use \$EXPO_APPLE_TEAM_ID env reference."
+            MATCHED=1
+          fi
+          # ASC App IDs are 10-digit numeric. Same `--include='*.md'` extension
+          # as the Team ID check (P9 review).
+          if grep -rE '"ascAppId"\s*:\s*"[0-9]{10}"' \
+              --include='*.json' --include='*.md' \
+              --exclude-dir=node_modules --exclude-dir=.git \
+              --exclude-dir=_bmad-output . ; then
+            echo "::error::Literal ASC App ID found in source. Use \$EXPO_ASC_APP_ID env reference."
+            MATCHED=1
+          fi
+          [ "$MATCHED" -eq 0 ] || exit 1
+          echo "✓ No submit credentials in source files"
+
       - name: Validate SQL migrations
         run: |
           # Ensure all migration files parse as valid SQL (basic syntax check)

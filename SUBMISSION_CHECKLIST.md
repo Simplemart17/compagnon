@@ -3,6 +3,8 @@
 Work through this list top-to-bottom before submitting to either store.
 Check off each item as you complete it.
 
+> **Most of the build / submit / Edge Function deploy mechanics are now automated.** Story 9-9 wired the substrate; the operator-side provisioning and verification steps live in [\_bmad-output/planning-artifacts/runbooks/submit-and-deploy.md](_bmad-output/planning-artifacts/runbooks/submit-and-deploy.md). This checklist now focuses on the parts that still require manual action: store-side metadata, legal hosting, and the one-time external-account setup.
+
 ---
 
 ## 1. Backend Setup
@@ -10,7 +12,7 @@ Check off each item as you complete it.
 - [ ] Create a Supabase project at supabase.com
 - [ ] Enable the `vector` extension (Database → Extensions)
 - [ ] Run `supabase link --project-ref YOUR_PROJECT_REF`
-- [ ] Run `supabase db push` to apply both migrations
+- [ ] Run `supabase db push` to apply all migrations (manual until Epic 16.6 lands the rollback playbook — `.github/workflows/deploy.yml` only auto-deploys Edge Functions, not migrations)
 - [ ] Set Edge Function secrets:
   ```bash
   supabase secrets set \
@@ -18,12 +20,7 @@ Check off each item as you complete it.
     AZURE_SPEECH_KEY=... \
     AZURE_SPEECH_REGION=westeurope
   ```
-- [ ] Deploy all three Edge Functions:
-  ```bash
-  supabase functions deploy ai-proxy
-  supabase functions deploy realtime-session
-  supabase functions deploy pronunciation-assess
-  ```
+- [ ] First-time only: `supabase functions deploy ai-proxy realtime-session pronunciation-assess account-delete notification-register send-notifications`. After this, push to `main` triggers `.github/workflows/deploy.yml` automatically when `supabase/functions/**` changes.
 - [ ] Verify Edge Functions respond (see `supabase/README.md`)
 - [ ] Create a reviewer test account in Supabase Auth dashboard
 
@@ -86,6 +83,7 @@ Check off each item as you complete it.
 - [ ] Complete the age rating questionnaire (expected: 4+)
 - [ ] Add a review test account in App Store Connect → Users and Access
 - [ ] Add review notes (copy from `store/ios-metadata.md`)
+- [ ] **Submit credentials provisioning** — generate the App Store Connect API key and run the `eas env:create` / `eas secret:create` commands per [runbooks/submit-and-deploy.md §2.1](_bmad-output/planning-artifacts/runbooks/submit-and-deploy.md#21-eas--apple-submit-credentials). `eas.json` no longer contains `appleId` / `ascAppId` / `appleTeamId` literals — they are read from `$EXPO_*` env vars at submit time.
 
 ---
 
@@ -93,12 +91,13 @@ Check off each item as you complete it.
 
 - [ ] Create a Google Play Console account ($25 one-time) at play.google.com/console
 - [ ] Create a new app for `com.companion.app`
-- [ ] Upload a signed AAB (from EAS production build)
+- [ ] Upload a signed AAB (from EAS production build) — the first AAB upload is manual via Play Console; subsequent uploads use `gh workflow run "EAS Submit" -f platform=android` per [runbooks/submit-and-deploy.md §4.2](_bmad-output/planning-artifacts/runbooks/submit-and-deploy.md#42-android--play-internal-track).
 - [ ] Prepare screenshots and feature graphic (see `store/android-metadata.md`)
 - [ ] Complete the content rating questionnaire (expected: Everyone)
 - [ ] Complete the Data Safety section (see `store/android-metadata.md`)
 - [ ] Set Privacy Policy URL to `https://companion.app/privacy`
 - [ ] Add short and full descriptions (copy from `store/android-metadata.md`)
+- [ ] **Service-account JSON provisioning** — generate at Cloud Console + Play Console (per [runbooks/submit-and-deploy.md §1 row 6](_bmad-output/planning-artifacts/runbooks/submit-and-deploy.md#1-prerequisites)) and upload as the EAS file secret `EXPO_GOOGLE_SERVICE_ACCOUNT_KEY` per §2.2 of the same runbook. The local `google-service-account.json` is `.gitignore`'d.
 
 ---
 

