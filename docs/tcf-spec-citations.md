@@ -90,10 +90,11 @@ Code values vs publisher-derived expectations (§3.1).
 
 ## 7. PRD claims (`_bmad-output/planning-artifacts/prd.md`)
 
-| Code location | Value                                                          | tcf-spec-source.md anchor                         | Status                                                                                                               |
-| ------------- | -------------------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `prd.md:113`  | "TCF mock tests (76 questions, 3 sections, progressive A1-C2)" | §1 — TCF Canada is 78 mandatory items, 4 sections | 🟡 DEFERRED — TCF Tout Public language; PRD file is not on main today (PR #55 stranded). Edit lands in follow-up PR. |
-| `prd.md:235`  | "TCF question counts (29/29/18) and scoring bands match"       | §1 — TCF Canada is 39/39/3-tasks/3-tasks          | 🟡 DEFERRED — TCF Tout Public language; PRD file is not on main today (PR #55 stranded). Edit lands in follow-up PR. |
+| Code location | Value                                                                                                                                          | tcf-spec-source.md anchor                         | Status                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------- |
+| `prd.md:113`  | "TCF mock tests aligned to TCF Canada — 78 mandatory items across 4 sections (39 listening + 39 reading + 3 writing tasks + 3 speaking tasks)" | §1 — TCF Canada is 78 mandatory items, 4 sections | ✓ Verified 2026-05-10 — closed by Story 10-1 pedagogy follow-up |
+| `prd.md:235`  | "TCF Canada section composition (Listening 39q/35min, Reading 39q/60min, Writing 3 tasks/60min, Speaking 3 tasks/12min)"                       | §1 — TCF Canada is 39/39/3-tasks/3-tasks          | ✓ Verified 2026-05-10 — closed by Story 10-1 pedagogy follow-up |
+| `prd.md:496`  | "Users can take full mock tests aligned to TCF Canada (78 mandatory items across 4 sections)" (FR28)                                           | §1 — TCF Canada is 78 mandatory items, 4 sections | ✓ Verified 2026-05-10 — closed by Story 10-1 pedagogy follow-up |
 
 ---
 

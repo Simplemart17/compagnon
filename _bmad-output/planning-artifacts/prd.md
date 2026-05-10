@@ -110,7 +110,7 @@ The core insight: the biggest barrier to TCF success for self-learners isn't acc
 - Structured exercises: listening, reading, writing, grammar (AI-generated, CEFR-calibrated)
 - Pronunciation assessment (Azure Speech, phoneme-level)
 - Dictation exercises with word-by-word comparison
-- TCF mock tests (76 questions, 3 sections, progressive A1-C2 difficulty)
+- TCF mock tests aligned to TCF Canada — 78 mandatory items across 4 sections (39 listening + 39 reading + 3 writing tasks + 3 speaking tasks), progressive A1-C2 difficulty within each section. See docs/tcf-spec-source.md.
 - SM-2 spaced repetition vocabulary with offline support
 - Companion memory (pgvector RAG) and error pattern tracking
 - Skill progress, streaks, daily activity tracking, CEFR auto-promotion
@@ -232,7 +232,7 @@ See **Project Scoping & Phased Development** for detailed phased breakdown with 
 
 - **AI Content Validation:** All AI-generated French content passes structural validation (MCQ: exactly 4 options, 1 correct). Exercise generation uses temperature 0.4.
 - **Linguistic Review:** AI-generated prompts reviewed for grammatical accuracy, CEFR calibration, and natural French usage. Known issues tracked and corrected in prompt builders.
-- **CEFR Alignment:** Exercise difficulty, vocabulary frequency, and grammatical structures align with published CEFR descriptors. TCF question counts (29/29/18) and scoring bands match official exam specifications.
+- **CEFR Alignment:** Exercise difficulty, vocabulary frequency, and grammatical structures align with published CEFR descriptors. TCF Canada section composition (Listening 39q/35min, Reading 39q/60min, Writing 3 tasks/60min, Speaking 3 tasks/12min) and scoring bands match France Éducation International specifications. See docs/tcf-spec-source.md.
 - **Content Moderation:** AI conversation responses remain educational, appropriate, and on-topic. System prompts enforce pedagogical boundaries.
 
 ### Technical Constraints
@@ -493,7 +493,7 @@ Sequencing depends on user feedback and metrics from Phases 2-3.
 
 ### TCF Mock Tests
 
-- **FR28:** Users can take full mock tests (76 questions, 3 sections, A1-C2 progressive difficulty)
+- **FR28:** Users can take full mock tests aligned to TCF Canada (78 mandatory items across 4 sections: 39 listening + 39 reading + 3 writing tasks + 3 speaking tasks; A1-C2 progressive difficulty within each section)
 - **FR29:** Users can take individual section tests
 - **FR30:** Users can view results with per-section CEFR breakdown and TCF 0-699 score
 - **FR31:** Users can resume interrupted mock tests
