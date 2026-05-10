@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Companion — Design Direction Mockups</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #e8e8e8; color: #1a1a1a; }
+
+  .page-header { text-align: center; padding: 40px 20px 10px; }
+  .page-header h1 { font-size: 26px; font-weight: 700; }
+  .page-header p { font-size: 14px; color: #666; margin-top: 4px; }
+
+  .section { max-width: 960px; margin: 0 auto; padding: 30px 20px; }
+  .section-header { text-align: center; margin-bottom: 24px; }
+  .section-header h2 { font-size: 20px; font-weight: 700; color: #1E3A5F; margin-bottom: 4px; }
+  .section-header p { font-size: 13px; color: #888; }
+  .section-divider { border: none; border-top: 2px solid #ddd; margin: 10px auto; max-width: 960px; }
+
+  .compare { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+  .variant { flex: 1; min-width: 300px; max-width: 420px; }
+  .variant-label { text-align: center; margin-bottom: 10px; }
+  .variant-label h3 { font-size: 15px; font-weight: 700; color: #1E3A5F; }
+  .variant-label p { font-size: 11px; color: #999; }
+  .variant-tag { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 10px; font-weight: 700; margin-top: 4px; }
+
+  .phone { width: 100%; border-radius: 28px; overflow: hidden; box-shadow: 0 6px 24px rgba(0,0,0,0.12); border: 5px solid #1a1a1a; background: #F5F5F0; }
+
+  /* Shared */
+  .status-bar { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; padding: 8px 16px 0; color: #999; }
+  .tab-bar { display: flex; padding: 6px 0; border-top: 1px solid #E5E5E5; background: #F5F5F0; }
+  .tab-bar .ti { flex: 1; text-align: center; padding: 4px 0; }
+  .tab-bar .ti .ico { font-size: 16px; }
+  .tab-bar .ti .txt { font-size: 8px; font-weight: 600; margin-top: 1px; }
+  .tab-bar .ti.act { color: #1E3A5F; }
+  .tab-bar .ti:not(.act) { color: #bbb; }
+
+  /* ===== HOME SCREENS ===== */
+  .home { padding: 14px 16px; min-height: 480px; }
+  .greeting h3 { font-size: 20px; font-weight: 800; color: #1E3A5F; }
+  .greeting .sub { font-size: 12px; color: #999; margin-top: 2px; }
+  .hero { border-radius: 16px; padding: 16px; color: white; margin-top: 12px; }
+  .hero h4 { font-size: 15px; font-weight: 700; }
+  .hero .desc { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+  .hero .cta { display: inline-block; margin-top: 10px; padding: 7px 18px; border-radius: 10px; font-size: 12px; font-weight: 700; background: #F5A623; color: #1a1a1a; }
+
+  .stats-row { display: flex; gap: 8px; margin-top: 12px; }
+  .stat { flex: 1; border-radius: 10px; padding: 10px 6px; text-align: center; }
+  .stat .n { font-size: 18px; font-weight: 800; }
+  .stat .l { font-size: 9px; font-weight: 600; margin-top: 1px; }
+
+  .sec-title { font-size: 14px; font-weight: 700; color: #1E3A5F; margin-top: 14px; margin-bottom: 8px; }
+  .skill-row { display: flex; gap: 6px; }
+  .sk { flex: 1; border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 10px; font-weight: 600; }
+
+  /* Briefing card */
+  .briefing { border-radius: 12px; padding: 12px; margin-top: 12px; border-left: 3px solid; }
+  .briefing p { font-size: 11px; line-height: 1.5; color: #444; }
+  .briefing strong { font-weight: 700; }
+
+  /* Quick action row */
+  .actions-row { display: flex; gap: 8px; margin-top: 10px; }
+  .action-card { flex: 1; border-radius: 10px; padding: 10px 6px; text-align: center; }
+  .action-card .emoji { font-size: 20px; }
+  .action-card .atxt { font-size: 9px; font-weight: 600; margin-top: 4px; }
+
+  /* Companion message */
+  .companion-msg { border-radius: 12px; padding: 12px; margin-top: 12px; display: flex; gap: 10px; align-items: flex-start; }
+  .companion-msg .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .companion-msg .msg-body { flex: 1; }
+  .companion-msg .msg-body .name { font-size: 10px; font-weight: 700; margin-bottom: 2px; }
+  .companion-msg .msg-body .text { font-size: 11px; line-height: 1.5; color: #444; }
+
+  /* Today plan */
+  .today-plan { margin-top: 12px; }
+  .plan-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; margin-bottom: 6px; }
+  .plan-item .pi-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .plan-item .pi-body { flex: 1; }
+  .plan-item .pi-title { font-size: 12px; font-weight: 600; }
+  .plan-item .pi-sub { font-size: 10px; color: #888; }
+  .plan-item .pi-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+
+  /* Error mastery */
+  .error-card { border-radius: 10px; padding: 10px 12px; margin-top: 8px; }
+  .error-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .error-header .eh-title { font-size: 12px; font-weight: 700; }
+  .error-header .eh-count { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+  .error-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(0,0,0,0.05); }
+  .error-item:first-of-type { border-top: none; }
+  .error-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .error-text { font-size: 11px; flex: 1; }
+  .error-status { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+
+  /* ===== CONVERSATION SCREENS ===== */
+  .convo { display: flex; flex-direction: column; min-height: 500px; }
+  .convo-h { padding: 12px 16px; display: flex; align-items: center; gap: 10px; color: white; }
+  .convo-h .back { font-size: 16px; }
+  .convo-h h4 { font-size: 14px; font-weight: 700; flex: 1; }
+  .convo-h .timer { font-size: 11px; opacity: 0.6; }
+
+  .transcript { flex: 1; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 82%; padding: 9px 12px; border-radius: 12px; font-size: 12px; line-height: 1.4; }
+  .msg.ai { align-self: flex-start; border-bottom-left-radius: 3px; }
+  .msg.user { align-self: flex-end; border-bottom-right-radius: 3px; }
+  .msg .role { font-size: 9px; font-weight: 700; margin-bottom: 2px; opacity: 0.6; }
+
+  .corr { padding: 7px 10px; border-radius: 7px; font-size: 10px; margin-top: 4px; max-width: 82%; }
+  .corr .cat { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .corr .fix { display: flex; align-items: center; gap: 4px; }
+  .corr .wrong { text-decoration: line-through; opacity: 0.5; }
+  .corr .right { font-weight: 700; }
+
+  .wave-area { padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .waveform { display: flex; gap: 3px; align-items: center; height: 32px; }
+  .waveform .bar { width: 4px; border-radius: 2px; background: #F5A623; animation: wave 1s ease-in-out infinite; }
+  .waveform .bar:nth-child(1) { height: 10px; animation-delay: 0s; }
+  .waveform .bar:nth-child(2) { height: 16px; animation-delay: 0.1s; }
+  .waveform .bar:nth-child(3) { height: 24px; animation-delay: 0.2s; }
+  .waveform .bar:nth-child(4) { height: 30px; animation-delay: 0.15s; }
+  .waveform .bar:nth-child(5) { height: 24px; animation-delay: 0.25s; }
+  .waveform .bar:nth-child(6) { height: 16px; animation-delay: 0.05s; }
+  .waveform .bar:nth-child(7) { height: 10px; animation-delay: 0.2s; }
+  @keyframes wave { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+
+  .end-btn { padding: 8px 28px; border-radius: 18px; border: none; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+  /* Inline correction variant */
+  .inline-corr { background: rgba(245,166,35,0.15); border-left: 2px solid #F5A623; padding: 6px 10px; border-radius: 0 7px 7px 0; margin-top: 4px; font-size: 10px; max-width: 82%; }
+  .inline-corr .ic-cat { color: #F5A623; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+  .inline-corr .ic-text { color: rgba(255,255,255,0.85); margin-top: 2px; }
+
+  /* Processing indicator */
+  .processing { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; align-self: flex-start; font-size: 10px; }
+  .processing .dots { display: flex; gap: 3px; }
+  .processing .dot { width: 5px; height: 5px; border-radius: 50%; animation: pulse 1.2s ease-in-out infinite; }
+  .processing .dot:nth-child(2) { animation-delay: 0.2s; }
+  .processing .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+  /* ===== FEEDBACK SCREENS ===== */
+  .feedback { min-height: 500px; padding-bottom: 10px; }
+  .fb-header { padding: 16px; text-align: center; }
+  .fb-header h4 { font-size: 16px; font-weight: 700; color: #1E3A5F; }
+  .fb-header .fb-sub { font-size: 11px; color: #888; margin-top: 2px; }
+
+  .score-ring { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 10px auto; border: 3px solid; }
+  .score-ring .sv { font-size: 26px; font-weight: 800; }
+  .score-ring .su { font-size: 10px; font-weight: 600; }
+
+  .fb-ratings { display: flex; gap: 8px; padding: 0 16px; margin: 12px 0; }
+  .fb-r { flex: 1; border-radius: 10px; padding: 10px; text-align: center; }
+  .fb-r .rv { font-size: 18px; font-weight: 800; }
+  .fb-r .rl { font-size: 9px; font-weight: 600; margin-top: 1px; }
+  .fb-r .rb { height: 3px; border-radius: 2px; margin-top: 5px; overflow: hidden; }
+  .fb-r .rf { height: 100%; border-radius: 2px; }
+
+  .fb-sec { padding: 0 16px; margin-bottom: 10px; }
+  .fb-sec h5 { font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+  .fb-item { padding: 6px 10px; border-radius: 7px; font-size: 11px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+
+  .fb-actions { padding: 12px 16px; display: flex; gap: 8px; }
+  .fb-btn { flex: 1; padding: 10px; border-radius: 10px; text-align: center; font-size: 12px; font-weight: 700; border: none; cursor: pointer; }
+
+  /* Narrative progress bar */
+  .narrative { padding: 0 16px; margin: 12px 0; }
+  .narr-card { border-radius: 12px; padding: 12px; }
+  .narr-title { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+  .narr-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .narr-label { font-size: 10px; font-weight: 600; width: 60px; }
+  .narr-bar { flex: 1; height: 6px; border-radius: 3px; overflow: hidden; }
+  .narr-fill { height: 100%; border-radius: 3px; }
+  .narr-val { font-size: 10px; font-weight: 700; width: 30px; text-align: right; }
+
+  /* Session comparison */
+  .session-compare { padding: 0 16px; margin: 10px 0; }
+  .sc-card { border-radius: 10px; padding: 10px 12px; }
+  .sc-title { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+  .sc-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+  .sc-metric { font-size: 10px; color: #666; }
+  .sc-vals { display: flex; gap: 12px; align-items: center; }
+  .sc-old { font-size: 10px; color: #999; }
+  .sc-arrow { font-size: 8px; }
+  .sc-new { font-size: 11px; font-weight: 700; }
+
+  /* Milestone banner */
+  .milestone { margin: 10px 16px; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+  .milestone .m-icon { font-size: 22px; }
+  .milestone .m-body { flex: 1; }
+  .milestone .m-title { font-size: 12px; font-weight: 700; }
+  .milestone .m-sub { font-size: 10px; opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Companion — Design Direction Mockups</h1>
+  <p>Layout and interaction variations for three key screen areas</p>
+</div>
+
+<!-- ========== AREA 1: HOME SCREEN ========== -->
+<hr class="section-divider">
+<div class="section">
+  <div class="section-header">
+    <h2>Area 1: Home Screen Layout</h2>
+    <p>Current stats-grid vs. personalized daily briefing model</p>
+  </div>
+  <div class="compare">
+    <!-- Home A: Current -->
+    <div class="variant">
+      <div class="variant-label">
+        <h3>A: Current — Stats + Quick Actions</h3>
+        <p>Dashboard-style with stat cards and skill grid</p>
+        <span class="variant-tag" style="background:rgba(30,58,95,0.1);color:#1E3A5F">Current</span>
+      </div>
+      <div class="phone">
+        <div class="home">
+          <div class="status-bar"><span>9:41</span><span style="color:#1E3A5F">A2 Level</span></div>
+          <div class="greeting"><h3>Bonjour, Sofia!</h3><div class="sub">12 vocab cards due &middot; Streak: 14 days</div></div>
+          <div class="hero" style="background:linear-gradient(135deg,#1E3A5F,#152a45)">
+            <h4>Talk with Companion</h4>
+            <div class="desc">Start a new conversation</div>
+            <div class="cta">Start Conversation</div>
+          </div>
+          <div class="stats-row">
+            <div class="stat" style="background:rgba(30,58,95,0.06)"><div class="n" style="color:#1E3A5F">14</div><div class="l" style="color:#1E3A5F">Day Streak</div></div>
+            <div class="stat" style="background:rgba(245,166,35,0.08)"><div class="n" style="color:#d4910a">A2</div><div class="l" style="color:#d4910a">CEFR Level</div></div>
+            <div class="stat" style="background:rgba(52,199,89,0.08)"><div class="n" style="color:#34C759">78%</div><div class="l" style="color:#34C759">Avg Score</div></div>
+          </div>
+          <div class="sec-title">Practice Skills</div>
+          <div class="skill-row">
+            <div class="sk" style="background:rgba(90,127,191,0.1);color:#5A7FBF">Grammar</div>
+            <div class="sk" style="background:rgba(90,164,207,0.1);color:#5AA4CF">Listening</div>
+            <div class="sk" style="background:rgba(123,198,126,0.1);color:#5a9e5d">Reading</div>
+            <div class="sk" style="background:rgba(207,143,90,0.1);color:#CF8F5A">Writing</div>
+          </div>
+          <div class="sec-title">Quick Actions</div>
+          <div class="actions-row">
+            <div class="action-card" style="background:rgba(207,90,90,0.08)"><div class="emoji">&#x1F399;</div><div class="atxt" style="color:#CF5A5A">Pronunciation</div></div>
+            <div class="action-card" style="background:rgba(143,90,207,0.08)"><div class="emoji">&#x1F4DA;</div><div class="atxt" style="color:#8F5ACF">Vocabulary</div></div>
+            <div class="action-card" style="background:rgba(90,207,184,0.08)"><div class="emoji">&#x270D;&#xFE0F;</div><div class="atxt" style="color:#3aaa90">Dictation</div></div>
+            <div class="action-card" style="background:rgba(30,58,95,0.06)"><div class="emoji">&#x1F4DD;</div><div class="atxt" style="color:#1E3A5F">Mock Test</div></div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="ti act"><div class="ico">&#x1F3E0;</div><div class="txt">Home</div></div>
+          <div class="ti"><div class="ico">&#x1F4AC;</div><div class="txt">Talk</div></div>
+          <div class="ti"><div class="ico">&#x1F4DA;</div><div class="txt">Practice</div></div>
+          <div class="ti"><div class="ico">&#x1F4DD;</div><div class="txt">Mock Test</div></div>
+          <div class="ti"><div class="ico">&#x1F464;</div><div class="txt">Profile</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Home B: Daily Briefing -->
+    <div class="variant">
+      <div class="variant-label">
+        <h3>B: Companion Daily Briefing</h3>
+        <p>Companion-driven "here's your plan" with context</p>
+        <span class="variant-tag" style="background:rgba(245,166,35,0.15);color:#d4910a">Recommended</span>
+      </div>
+      <div class="phone">
+        <div class="home">
+          <div class="status-bar"><span>9:41</span><span style="color:#F5A623">&#x1F525; 14 day streak</span></div>
+          <div class="greeting"><h3>Bonjour, Sofia!</h3><div class="sub">A2 &rarr; B2 &middot; 20 min daily goal</div></div>
+          <div class="companion-msg" style="background:rgba(30,58,95,0.05)">
+            <div class="avatar" style="background:#1E3A5F;color:white">C</div>
+            <div class="msg-body">
+              <div class="name" style="color:#1E3A5F">Your Companion</div>
+              <div class="text">You have <strong>12 vocabulary cards</strong> due and your <strong>listening</strong> is your weakest skill this week. Last time we talked about your move to Montr&eacute;al!</div>
+            </div>
+          </div>
+          <div class="hero" style="background:linear-gradient(135deg,#1E3A5F,#152a45)">
+            <h4>Continue Our Conversation</h4>
+            <div class="desc">Pick up where we left off about Montr&eacute;al</div>
+            <div class="cta">Start Talking</div>
+          </div>
+          <div class="sec-title">Today's Plan</div>
+          <div class="today-plan">
+            <div class="plan-item" style="background:rgba(143,90,207,0.06)">
+              <div class="pi-icon" style="background:rgba(143,90,207,0.12);color:#8F5ACF">&#x1F4DA;</div>
+              <div class="pi-body"><div class="pi-title" style="color:#8F5ACF">Vocabulary Review</div><div class="pi-sub">12 cards due for review</div></div>
+              <div class="pi-badge" style="background:rgba(143,90,207,0.1);color:#8F5ACF">Due</div>
+            </div>
+            <div class="plan-item" style="background:rgba(90,164,207,0.06)">
+              <div class="pi-icon" style="background:rgba(90,164,207,0.12);color:#5AA4CF">&#x1F3A7;</div>
+              <div class="pi-body"><div class="pi-title" style="color:#5AA4CF">Listening Practice</div><div class="pi-sub">Your weakest skill &mdash; let's strengthen it</div></div>
+              <div class="pi-badge" style="background:rgba(245,166,35,0.1);color:#d4910a">Suggested</div>
+            </div>
+            <div class="plan-item" style="background:rgba(90,127,191,0.06)">
+              <div class="pi-icon" style="background:rgba(90,127,191,0.12);color:#5A7FBF">&#x1F4DD;</div>
+              <div class="pi-body"><div class="pi-title" style="color:#5A7FBF">Fix: de/du/des usage</div><div class="pi-sub">Recurring error &mdash; targeted drill ready</div></div>
+              <div class="pi-badge" style="background:rgba(255,59,48,0.1);color:#FF3B30">Error</div>
+            </div>
+          </div>
+          <div class="error-card" style="background:rgba(30,58,95,0.04)">
+            <div class="error-header">
+              <div class="eh-title" style="color:#1E3A5F">Error Patterns</div>
+              <div class="eh-count" style="background:rgba(52,199,89,0.1);color:#34C759">6/8 resolved</div>
+            </div>
+            <div class="error-item"><div class="error-dot" style="background:#34C759"></div><div class="error-text" style="color:#34C759">Pass&eacute; compos&eacute; agreement</div><div class="error-status" style="background:rgba(52,199,89,0.1);color:#34C759">Fixed</div></div>
+            <div class="error-item"><div class="error-dot" style="background:#FF3B30"></div><div class="error-text">de/du/des partitive articles</div><div class="error-status" style="background:rgba(255,59,48,0.1);color:#FF3B30">Active</div></div>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="ti act"><div class="ico">&#x1F3E0;</div><div class="txt">Home</div></div>
+          <div class="ti"><div class="ico">&#x1F4AC;</div><div class="txt">Talk</div></div>
+          <div class="ti"><div class="ico">&#x1F4DA;</div><div class="txt">Practice</div></div>
+          <div class="ti"><div class="ico">&#x1F4DD;</div><div class="txt">Mock Test</div></div>
+          <div class="ti"><div class="ico">&#x1F464;</div><div class="txt">Profile</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== AREA 2: CONVERSATION SCREEN ========== -->
+<hr class="section-divider">
+<div class="section">
+  <div class="section-header">
+    <h2>Area 2: Voice Conversation Screen</h2>
+    <p>Transcript density, correction placement, and processing state</p>
+  </div>
+  <div class="compare">
+    <!-- Convo A: Current - Transcript-heavy -->
+    <div class="variant">
+      <div class="variant-label">
+        <h3>A: Transcript-Focused</h3>
+        <p>Large transcript area, compact waveform at bottom</p>
+        <span class="variant-tag" style="background:rgba(30,58,95,0.1);color:#1E3A5F">Current</span>
+      </div>
+      <div class="phone" style="background:#0F1B2D">
+        <div class="convo">
+          <div class="convo-h"><span class="back">&larr;</span><h4>Discussing Montr&eacute;al</h4><span class="timer">3:42</span></div>
+          <div class="transcript">
+            <div class="msg ai" style="background:rgba(255,255,255,0.08);color:white"><div class="role">Compagnon</div>Bonjour Sofia! Comment va la pr&eacute;paration pour Montr&eacute;al? La derni&egrave;re fois, tu cherchais un appartement.</div>
+            <div class="msg user" style="background:#F5A623;color:#1a1a1a"><div class="role" style="color:rgba(0,0,0,0.4)">Vous</div>Oui! J'ai trouv&eacute; un appartement pr&egrave;s du centre-ville. Je suis tres contente!</div>
+            <div class="corr" style="background:rgba(90,127,191,0.2);color:rgba(255,255,255,0.85)">
+              <div class="cat" style="color:#8ab4f0">Grammar</div>
+              <div class="fix"><span class="wrong">tres</span> <span style="color:#8ab4f0">&rarr;</span> <span class="right" style="color:#8ab4f0">tr&egrave;s</span></div>
+            </div>
+            <div class="msg ai" style="background:rgba(255,255,255,0.08);color:white"><div class="role">Compagnon</div>C'est formidable! Dans quel quartier? Le Plateau ou peut-&ecirc;tre Villeray?</div>
+            <div class="msg user" style="background:#F5A623;color:#1a1a1a"><div class="role" style="color:rgba(0,0,0,0.4)">Vous</div>C'est dans le Plateau! Pres de la rue Saint-Denis.</div>
+            <div class="corr" style="background:rgba(90,127,191,0.2);color:rgba(255,255,255,0.85)">
+              <div class="cat" style="color:#8ab4f0">Grammar</div>
+              <div class="fix"><span class="wrong">Pres de</span> <span style="color:#8ab4f0">&rarr;</span> <span class="right" style="color:#8ab4f0">Pr&egrave;s de</span></div>
+            </div>
+          </div>
+          <div class="wave-area">
+            <div class="waveform"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+            <button class="end-btn" style="background:#FF3B30;color:white">End Conversation</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Convo B: Waveform-centered with processing -->
+    <div class="variant">
+      <div class="variant-label">
+        <h3>B: Waveform-Centered + Processing State</h3>
+        <p>Prominent waveform center stage, corrections as side notes, distinct processing state</p>
+        <span class="variant-tag" style="background:rgba(245,166,35,0.15);color:#d4910a">Recommended</span>
+      </div>
+      <div class="phone" style="background:#0F1B2D">
+        <div class="convo">
+          <div class="convo-h"><span class="back">&larr;</span><h4>Discussing Montr&eacute;al</h4><span class="timer">3:42</span></div>
+          <div class="transcript" style="flex:none;max-height:200px;overflow:hidden">
+            <div class="msg ai" style="background:rgba(255,255,255,0.08);color:white"><div class="role">Compagnon</div>C'est formidable! Dans quel quartier?</div>
+            <div class="msg user" style="background:#F5A623;color:#1a1a1a"><div class="role" style="color:rgba(0,0,0,0.4)">Vous</div>C'est dans le Plateau! Pres de la rue Saint-Denis.</div>
+            <div class="inline-corr">
+              <div class="ic-cat">Grammar &middot; Tap for details</div>
+              <div class="ic-text"><span style="text-decoration:line-through;opacity:0.5">Pres de</span> &rarr; <strong>Pr&egrave;s de</strong></div>
+            </div>
+          </div>
+          <!-- Processing state shown -->
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px">
+            <div style="text-align:center">
+              <div style="width:120px;height:120px;border-radius:50%;border:2px solid rgba(245,166,35,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto">
+                <div style="width:90px;height:90px;border-radius:50%;border:2px solid rgba(245,166,35,0.5);display:flex;align-items:center;justify-content:center">
+                  <div class="waveform" style="height:40px"><div class="bar" style="height:14px"></div><div class="bar" style="height:22px"></div><div class="bar" style="height:32px"></div><div class="bar" style="height:38px"></div><div class="bar" style="height:32px"></div><div class="bar" style="height:22px"></div><div class="bar" style="height:14px"></div></div>
+                </div>
+              </div>
+              <div style="color:rgba(255,255,255,0.5);font-size:11px;margin-top:10px;font-weight:500">Listening...</div>
+            </div>
+          </div>
+          <div style="padding:10px 16px;display:flex;justify-content:center">
+            <button class="end-btn" style="background:#FF3B30;color:white">End Conversation</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== AREA 3: FEEDBACK & PROGRESS ========== -->
+<hr class="section-divider">
+<div class="section">
+  <div class="section-header">
+    <h2>Area 3: Post-Conversation Feedback</h2>
+    <p>Score-focused vs. narrative progress story</p>
+  </div>
+  <div class="compare">
+    <!-- Feedback A: Score-focused -->
+    <div class="variant">
+      <div class="variant-label">
+        <h3>A: Score-Focused Debrief</h3>
+        <p>Ratings front and center, strengths/improvements list</p>
+        <span class="variant-tag" style="background:rgba(30,58,95,0.1);color:#1E3A5F">Current</span>
+      </div>
+      <div class="phone">
+        <div class="feedback">
+          <div class="fb-header"><h4>Conversation Complete</h4><div class="fb-sub">8 minutes &middot; 14 exchanges</div></div>
+          <div class="score-ring" style="border-color:#34C759"><div><div class="sv" style="color:#34C759">B1</div><div class="su" style="color:#34C759">Level</div></div></div>
+          <div class="fb-ratings">
+            <div class="fb-r" style="background:rgba(30,58,95,0.05)"><div class="rv" style="color:#1E3A5F">4/5</div><div class="rl" style="color:#1E3A5F">Fluency</div><div class="rb" style="background:rgba(30,58,95,0.1)"><div class="rf" style="width:80%;background:#1E3A5F"></div></div></div>
+            <div class="fb-r" style="background:rgba(245,166,35,0.05)"><div class="rv" style="color:#d4910a">3/5</div><div class="rl" style="color:#d4910a">Grammar</div><div class="rb" style="background:rgba(245,166,35,0.1)"><div class="rf" style="width:60%;background:#F5A623"></div></div></div>
+          </div>
+          <div class="fb-sec">
+            <h5 style="color:#34C759">Strengths</h5>
+            <div class="fb-item" style="background:rgba(52,199,89,0.05)"><span>&#10003;</span> Natural use of pass&eacute; compos&eacute;</div>
+            <div class="fb-item" style="background:rgba(52,199,89,0.05)"><span>&#10003;</span> Good vocabulary for housing topic</div>
+          </div>
+          <div class="fb-sec">
+            <h5 style="color:#FF3B30">To Improve</h5>
+            <div class="fb-item" style="background:rgba(255,59,48,0.05)"><span>&#9998;</span> Accent marks (tres &rarr; tr&egrave;s)</div>
+            <div class="fb-item" style="background:rgba(255,59,48,0.05)"><span>&#9998;</span> Preposition accuracy (pres &rarr; pr&egrave;s)</div>
+          </div>
+          <div class="fb-actions">
+            <div class="fb-btn" style="background:#1E3A5F;color:white">Practice Grammar</div>
+            <div class="fb-btn" style="background:rgba(30,58,95,0.08);color:#1E3A5F">Home</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback B: Narrative progress -->
+    <div class="variant">
+      <div class="variant-label">
+        <h3>B: Narrative Progress Story</h3>
+        <p>Session-over-session comparison, error mastery arc, milestone celebration</p>
+        <span class="variant-tag" style="background:rgba(245,166,35,0.15);color:#d4910a">Recommended</span>
+      </div>
+      <div class="phone">
+        <div class="feedback">
+          <div class="fb-header"><h4>Great Session, Sofia!</h4><div class="fb-sub">8 minutes &middot; 14 exchanges &middot; Montr&eacute;al apartment</div></div>
+
+          <div class="milestone" style="background:rgba(52,199,89,0.08)">
+            <div class="m-icon">&#x1F389;</div>
+            <div class="m-body">
+              <div class="m-title" style="color:#34C759">New Personal Best!</div>
+              <div class="m-sub" style="color:#2d9e4a">Your best fluency score yet: 4/5</div>
+            </div>
+          </div>
+
+          <div class="fb-ratings">
+            <div class="fb-r" style="background:rgba(30,58,95,0.05)"><div class="rv" style="color:#1E3A5F">4/5</div><div class="rl" style="color:#1E3A5F">Fluency</div><div class="rb" style="background:rgba(30,58,95,0.1)"><div class="rf" style="width:80%;background:#1E3A5F"></div></div></div>
+            <div class="fb-r" style="background:rgba(245,166,35,0.05)"><div class="rv" style="color:#d4910a">3/5</div><div class="rl" style="color:#d4910a">Grammar</div><div class="rb" style="background:rgba(245,166,35,0.1)"><div class="rf" style="width:60%;background:#F5A623"></div></div></div>
+          </div>
+
+          <div class="session-compare">
+            <div class="sc-card" style="background:rgba(30,58,95,0.04)">
+              <div class="sc-title" style="color:#1E3A5F">vs. Last Session</div>
+              <div class="sc-row"><span class="sc-metric">Fluency</span><div class="sc-vals"><span class="sc-old">3/5</span><span class="sc-arrow" style="color:#34C759">&uarr;</span><span class="sc-new" style="color:#34C759">4/5</span></div></div>
+              <div class="sc-row"><span class="sc-metric">Grammar</span><div class="sc-vals"><span class="sc-old">3/5</span><span class="sc-arrow" style="color:#888">=</span><span class="sc-new" style="color:#888">3/5</span></div></div>
+              <div class="sc-row"><span class="sc-metric">Duration</span><div class="sc-vals"><span class="sc-old">5 min</span><span class="sc-arrow" style="color:#34C759">&uarr;</span><span class="sc-new" style="color:#34C759">8 min</span></div></div>
+            </div>
+          </div>
+
+          <div class="fb-sec">
+            <h5 style="color:#1E3A5F">What We Noticed</h5>
+            <div class="fb-item" style="background:rgba(52,199,89,0.05)"><span style="color:#34C759">&#10003;</span> <span>Pass&eacute; compos&eacute; used correctly 4 times &mdash; <strong style="color:#34C759">pattern resolved!</strong></span></div>
+            <div class="fb-item" style="background:rgba(255,59,48,0.05)"><span style="color:#FF3B30">&#9998;</span> <span>Accent marks still need practice (2 instances today)</span></div>
+          </div>
+
+          <div class="fb-sec">
+            <h5 style="color:#1E3A5F">Your Error Journey</h5>
+            <div class="error-card" style="background:rgba(30,58,95,0.03);padding:8px 10px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span style="font-size:10px;font-weight:600;color:#1E3A5F">6 of 8 patterns resolved</span>
+                <span style="font-size:10px;font-weight:700;color:#34C759">75%</span>
+              </div>
+              <div style="height:6px;border-radius:3px;background:rgba(30,58,95,0.08);overflow:hidden">
+                <div style="width:75%;height:100%;background:#34C759;border-radius:3px"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="fb-actions">
+            <div class="fb-btn" style="background:#1E3A5F;color:white">Practice Accents</div>
+            <div class="fb-btn" style="background:rgba(30,58,95,0.08);color:#1E3A5F">Home</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center;padding:30px 20px;color:#888;font-size:12px">
+  Companion UX Design Directions &mdash; Generated 2026-03-24
+</div>
+
+</body>
+</html>
