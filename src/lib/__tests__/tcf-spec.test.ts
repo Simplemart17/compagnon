@@ -107,6 +107,33 @@ describe("TCF spec citations matrix completeness", () => {
     expect(matrix.length).toBeGreaterThan(2000); // sanity floor
   });
 
+  it("every per-task Writing word count in writing.ts has a dedicated matrix row (Story 10-3)", () => {
+    const matrix = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-citations.md"), "utf8");
+    // Each per-task row in the matrix carries a `prompts/writing.ts:<N>`
+    // anchor (where <N> is the source line number). The multi-task helper
+    // row (`writingTaskWordRange`) contains all three task identifiers on a
+    // single line but does NOT carry a `prompts/writing.ts:<digits>` anchor,
+    // so anchoring the regex on the line-numbered code-location guarantees
+    // each per-task assertion is satisfied by its own dedicated row.
+    for (const task of ["Task 1", "Task 2", "Task 3"]) {
+      const pattern = new RegExp(
+        `\\|[^\\n]*prompts/writing\\.ts:\\d+\`?\\s*${task}\\b[^\\n]*\\|`,
+        "i"
+      );
+      expect(matrix).toMatch(pattern);
+    }
+  });
+
+  it("citations matrix includes Story 10-3 helper + use-exercise.ts writing-flow rows", () => {
+    const matrix = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-citations.md"), "utf8");
+    const story103Rows = ["writingTaskWordRange", "use-exercise.ts"];
+    for (const constant of story103Rows) {
+      const escaped = constant.replace(/\./g, "\\.");
+      const rowPattern = new RegExp(`\\|[^\\n]*${escaped}[^\\n]*\\|`);
+      expect(matrix).toMatch(rowPattern);
+    }
+  });
+
   it("citations matrix includes Story 10-2 per-skill scoring rows", () => {
     const matrix = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-citations.md"), "utf8");
     const story102Constants = [
