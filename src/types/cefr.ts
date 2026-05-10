@@ -15,19 +15,30 @@ export type TCFSkill = "listening" | "reading" | "speaking" | "writing" | "gramm
 /**
  * Listening / Reading TCF score (0–699).
  *
- * Nominal `number` alias — TypeScript-flag-only protection. The publisher
- * scales Listening + Reading on 0–699 (CLB-relevant from 331/342 per
- * docs/tcf-spec-source.md §2.1).
+ * **Documentation-only naming convention** — this is a structural alias
+ * for `number`, NOT a nominal/branded type. TypeScript will not catch
+ * passing a `WritingSpeakingScore` (0–20) where a `TCFScore` (0–699) is
+ * expected, since both are `number`. The two aliases exist to make call
+ * sites self-documenting — confirm at the call site (or at the data
+ * source) which scale a value is on; the compiler cannot enforce it.
+ *
+ * The publisher scales Listening + Reading on 0–699 (CLB-relevant from
+ * 331/342 per docs/tcf-spec-source.md §2.1).
  */
 export type TCFScore = number;
 
 /**
  * Writing / Speaking score (0–20).
  *
- * Nominal `number` alias — TypeScript-flag-only protection. The publisher
- * scales Writing + Speaking on 0–20 (CLB-relevant from 4 per
- * docs/tcf-spec-source.md §2.1). Distinct from `TCFScore` so call sites
- * cannot accidentally mix the 0–699 and 0–20 scales.
+ * **Documentation-only naming convention** — see `TCFScore` JSDoc above.
+ * This is a structural alias for `number`; mixing with `TCFScore` will
+ * NOT produce a TypeScript error. Use the function-naming conventions
+ * (`rawPercentToWritingSpeakingScore`, `cefrLevelFromWritingSpeakingScore`)
+ * to signal scale at the call site, and verify input ranges by reading
+ * the function JSDoc when in doubt.
+ *
+ * The publisher scales Writing + Speaking on 0–20 (CLB-relevant from 4
+ * per docs/tcf-spec-source.md §2.1).
  */
 export type WritingSpeakingScore = number;
 

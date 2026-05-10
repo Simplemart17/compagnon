@@ -15,6 +15,24 @@ export const TCF = {
   VARIANT: "canada" as const,
   MIN_SCORE: 0,
   MAX_SCORE: 699,
+  /**
+   * UI rounding threshold for "distance to C1" hints (e.g., the
+   * mock-test results card and home-screen progress indicator).
+   *
+   * **NOT publisher-authoritative** — TCF Canada does not publish a
+   * verbatim TCF-score → CEFR-level table. The 500 round number comes
+   * from the third-party convention documented at
+   * docs/tcf-spec-source.md §2.3 and surfaced via
+   * src/types/cefr.ts CEFR_LEVELS.tcfScoreMin/Max for UI labeling. For
+   * IRCC / Express Entry math (CLB equivalency, promotion gates), use
+   * src/lib/ircc-bands.ts IRCC_CLB_BANDS instead, which is anchored to
+   * docs/tcf-spec-source.md §2.2 verbatim.
+   *
+   * Story 10-2 explicitly chose to keep this round number as a UI
+   * convenience (per docs/tcf-spec-citations.md §1 row marked
+   * "🟡 INTENTIONAL"); the broader IRCC-band-anchored promotion-gate
+   * migration is a deferred follow-up.
+   */
   C1_MIN: 500,
   LISTENING_QUESTIONS: 39,
   LISTENING_MINUTES: 35,
