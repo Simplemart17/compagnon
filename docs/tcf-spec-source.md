@@ -102,18 +102,20 @@ The publisher's English page states (verbatim):
 
 The codebase's per-CEFR word counts at [src/lib/prompts/listening.ts:71-101](../src/lib/prompts/listening.ts#L71) are **operator-derived heuristics**, not publisher-sourced. They are documented as such in `tcf-spec-citations.md`.
 
-For Epic 10.3 calibration, the **derived expectations** (cross-checked against Beacco/Porquier _Niveau A1 pour le français_ and standard CEFR pedagogy literature) are:
+For Epic 10.3 calibration, the **derived expectations** below are operator-derived heuristics cross-checked against Beacco/Porquier _Niveau A1 pour le français_ (Didier 2007) sample text lengths and the CEFR Companion Volume 2018 listening descriptors. They are NOT publisher-verbatim — Epic 10.3 should source the canonical numbers from the _Manuel du candidat TCF_ (operator-action TODO; see §10b) before locking these in.
 
-| CEFR | Expected listening passage length                             | Speech rate                     |
-| ---- | ------------------------------------------------------------- | ------------------------------- |
-| A1   | ≤ 30 words (audit P1-3 says 50 exits A1)                      | Slow, clearly articulated       |
-| A2   | 30–80 words                                                   | Slow to natural                 |
-| B1   | 80–150 words                                                  | Natural standard speech         |
-| B2   | 150–300 words                                                 | Natural, including TV/films     |
-| C1   | 200–500 words (extended speech, may be implicit-relationship) | Natural, including unstructured |
-| C2   | 250–600 words (any speech, even at fast native speed)         | Native speed                    |
+| CEFR | Expected listening passage length                                                       | Speech rate                     |
+| ---- | --------------------------------------------------------------------------------------- | ------------------------------- |
+| A1   | 30–80 words (≈ 20–60 sec of slow speech; Beacco _Niveau A1_ samples typically 60–100 w) | Slow, clearly articulated       |
+| A2   | 60–150 words                                                                            | Slow to natural                 |
+| B1   | 100–200 words                                                                           | Natural standard speech         |
+| B2   | 150–300 words                                                                           | Natural, including TV/films     |
+| C1   | 250–500 words (extended speech, may be implicit-relationship)                           | Natural, including unstructured |
+| C2   | 350–600 words (any speech, even at fast native speed)                                   | Native speed                    |
 
-Epic 10.3 will use these as the calibration target. Epic 10.4 will overlay vocabulary frequency caps.
+> **Note on overlapping bands:** the upper end of one level overlaps the lower end of the next. This is deliberate — **length alone is not the CEFR diagnostic**. Syntactic density, lexical frequency tier (§7), abstract/concrete ratio, implicitness (§8), and rhetorical complexity differentiate levels. The CEFR Companion Volume 2018 §3 listening descriptors (also reproduced in `cefr-self-assessment-grid-2026-05-10.md`) are the qualitative reference; length brackets above are a generation-time heuristic only. Audit P1-3's earlier "≤ 30 words at A1, 50 exits A1" claim was an unsourced rule of thumb — Beacco samples and Council of Europe descriptors support a wider 30–80 range at A1.
+
+Epic 10.3 will use these as the calibration starting point but should fetch the _Manuel du candidat TCF_ PDF before implementing prompt-builder changes. Epic 10.4 will overlay vocabulary frequency caps (§7).
 
 ### 3.2 Passage types observed in publisher samples
 
@@ -141,7 +143,7 @@ The codebase's `passageType` enum at [src/lib/prompts/listening.ts:40](../src/li
 
 **Audit P1-3** flagged: B2 too short (codebase: 200–300; widely cited target: 300–450), C1 too short (codebase: 300–400; widely cited target: 500–700).
 
-**Derived expectations for Epic 10.3 calibration:**
+**Derived expectations for Epic 10.3 calibration** (operator-derived heuristics; not publisher-verbatim — same caveat as §3.1):
 
 | CEFR | Expected reading passage length |
 | ---- | ------------------------------- |
@@ -151,6 +153,8 @@ The codebase's `passageType` enum at [src/lib/prompts/listening.ts:40](../src/li
 | B2   | 250–450 words                   |
 | C1   | 450–700 words                   |
 | C2   | 600–900+ words                  |
+
+> **Note on overlapping bands:** same as §3.1 — length is not the diagnostic; the CEFR Companion Volume 2018 reading descriptors (and `cefr-self-assessment-grid-2026-05-10.md`) drive level differentiation via syntactic complexity, vocabulary tier, abstract/concrete ratio, and rhetorical structure. The above is a generation-time heuristic only.
 
 ### 4.2 Passage types observed in publisher samples
 
@@ -174,6 +178,8 @@ Codebase's `type` enum at [src/lib/prompts/mock-test.ts:75](../src/lib/prompts/m
 | 1    | "minimum 60 mots / maximum 120 mots"  | **60–120**  |
 | 2    | "minimum 120 mots / maximum 150 mots" | **120–150** |
 | 3    | "minimum 120 mots / maximum 180 mots" | **120–180** |
+
+**These ranges are not advisory — they are enforcement thresholds.** See §5.3: a submission outside these word counts is automatically evaluated as "A1 non atteint" (below A1) regardless of content quality.
 
 **Codebase mismatch (audit P1-3):** [src/lib/prompts/writing.ts:85-99](../src/lib/prompts/writing.ts#L85) currently specifies Task 1: 50–80 words, Task 2: 120–150, Task 3: 250–300 (C1). **Tasks 1 and 3 are wrong** per the publisher. Owner: Epic 10.3.
 
@@ -219,7 +225,9 @@ For Epic 10.3 / 10.6 implementation: source the **Manuel du candidat TCF** PDF (
 
 **Total:** 12 minutes wall-clock (Task 2's 5:30 includes 2 min preparation; the publisher's "12 minutes (incl. 2 min preparation)" framing means the 2 min prep is a slice of Task 2, not added on top of the 12 min total). Confirmed against [src/lib/constants.ts:25](../src/lib/constants.ts#L25) `SPEAKING_MINUTES: 12`.
 
-**Story 9-8's `useAudioRecorder` durations** at [src/lib/prompts/speaking.ts](../src/lib/prompts/speaking.ts) (Task 1: 120s, Task 2: 330s, Task 3: 270s) sum to 720s = 12 min. Match the publisher exactly. **No Epic 10.6 delta on durations.**
+**Story 9-8's `useAudioRecorder` durations** at [src/lib/prompts/speaking.ts](../src/lib/prompts/speaking.ts) (Task 1: 120s, Task 2: 330s, Task 3: 270s) sum to 720s = 12 min. Match the publisher's wall-clock exactly. **No Epic 10.6 delta on total durations.**
+
+> **Epic 10.6 note on prep/speak distinction:** Task 2's 5:30 window decomposes into ~2 min preparation + ~3:30 active interaction (publisher: "5 minutes 30 dont 2 minutes de préparation"). Story 9-8's record-and-grade flow captures the full 5:30 wall-clock as a single audio segment, which is acceptable for prep-mode practice but **does not faithfully simulate the live exam** where the candidate is silent during prep and the examiner does not engage until prep ends. Epic 10.6's Realtime examiner role-play implementation must distinguish the two windows — e.g., a silent UI countdown for prep followed by the examiner-greeting trigger — and the rubric should not penalize silence during the prep window.
 
 ### 6.2 Evaluation criteria (paraphrase from publisher)
 
@@ -233,9 +241,17 @@ Candidates demonstrate the capacity to:
 
 ### 6.3 Per-criterion 0-20 rubric
 
-Per IRCC equivalency (Section 2.2), Speaking is scored on a 0-20 scale per skill. The 4-criterion convention (pronunciation/fluency, vocabulary, grammar, interaction) used by the codebase's `speakingTaskEvaluationSchema` ([src/lib/schemas/ai-responses.ts](../src/lib/schemas/ai-responses.ts)) is **derived from FEI examiner conventions but not published verbatim** by FEI on the public page. The codebase implements 0-20 per dimension × 4 dimensions = 0-80 sum × 1.25 = 0-100 overall (story 9-8).
+Per IRCC equivalency (Section 2.2), Speaking is scored on a 0-20 scale per skill.
 
-**Implication for Epic 10.6:** the 0-100 overall scale is internal-consistency-only. To map back to the IRCC 4-20 scale used for CLB equivalency, divide by 5. Story 9-8's `computeSpeakingComposite` produces 0-100; Epic 10.6 should add a 0-20 mapping function and use IT for `skill_progress` writes that are CLB-relevant. **Defer scaling change to Epic 10.2 (which owns scoring scale calibration).**
+**FEI publishes three criterion categories for Expression Orale** (per the public "Évaluation des épreuves du TCF" article on france-education-international.fr):
+
+1. **Linguistique** — étendue / maîtrise du lexique, correction grammaticale, aisance, prononciation, fluidité globale du discours
+2. **Pragmatique** — interaction, structuration du discours, cohérence et cohésion, développement thématique
+3. **Sociolinguistique** — adéquation à la situation de communication
+
+The 4-criterion convention (pronunciation/fluency, vocabulary, grammar, interaction) used by the codebase's `speakingTaskEvaluationSchema` ([src/lib/schemas/ai-responses.ts](../src/lib/schemas/ai-responses.ts)) **collapses linguistique + pragmatique into 4 dimensions and omits sociolinguistique entirely**. The exact per-criterion weighting within each category is not published verbatim by FEI on the public page (operator-fetch the _Manuel du candidat TCF_ for the full breakdown). The codebase implements 0-20 per dimension × 4 dimensions = 0-80 sum × 1.25 = 0-100 overall (story 9-8).
+
+**Implication for Epic 10.6:** the missing sociolinguistic criterion is an Epic 10.6 deliverable. Either (a) add a fifth `sociolinguisticScore` dimension to `speakingTaskEvaluationSchema` and update the prompt to assess "adéquation à la situation de communication" explicitly, or (b) document why sociolinguistic is intentionally omitted and update the rubric framing to acknowledge the gap. The 0-100 overall scale is internal-consistency-only; to map back to the IRCC 4-20 scale used for CLB equivalency, divide by 5. Story 9-8's `computeSpeakingComposite` produces 0-100; Epic 10.6 should add a 0-20 mapping function and use it for `skill_progress` writes that are CLB-relevant. **Defer scaling change to Epic 10.2 (which owns scoring scale calibration); defer sociolinguistic addition to Epic 10.6.**
 
 ### 6.4 Examiner format
 
@@ -249,18 +265,20 @@ Face-to-face individual exam (not collective). The codebase's record-and-grade f
 
 ### 7.2 Council of Europe + Beacco position
 
-The Conseil de l'Europe defers to per-language operationalizations published as the **Référentiel des contenus d'apprentissage du FLE (Beacco/Porquier series)**. These reference works define per-CEFR lexical inventories for French. The widely-accepted approximations (Council of Europe Companion Volume + Beacco):
+The Conseil de l'Europe defers to per-language operationalizations published as the **Référentiel des contenus d'apprentissage du FLE (Beacco/Porquier series)**. These reference works define per-CEFR lexical inventories for French.
 
-| CEFR | Approximate French lexical inventory             |
-| ---- | ------------------------------------------------ |
-| A1   | ~500 most-frequent words                         |
-| A2   | ~1000–1500 most-frequent words                   |
-| B1   | ~2000–3000 most-frequent words                   |
-| B2   | ~4000–5000 most-frequent words                   |
-| C1   | 5000+ including specialized lexicon              |
-| C2   | ~10000+ with literary/archaic/regional registers |
+> **⚠️ The numbers below are operator-derived rough caps, NOT Beacco-verbatim.** Beacco's actual per-volume "Inventaire général" sections give specific numbers that Epic 10.4 MUST source from the published volumes (Didier 2007–2011 series) before locking in prompt-builder caps. The values here are common rough rules of thumb that vary across pedagogy literature — using them as caps without verifying against a sourced Beacco edition risks under-targeting (A1 too narrow) or over-targeting (B2 too wide).
 
-**These are NOT verbatim from a single FEI source.** They are reference values published across multiple Council of Europe / Beacco volumes. Epic 10.4 should source the most current Beacco edition for the canonical word lists.
+| CEFR | Rough cap (operator-derived heuristic; verify against Beacco)  |
+| ---- | -------------------------------------------------------------- |
+| A1   | ~500–900 most-frequent words                                   |
+| A2   | ~1500–1800                                                     |
+| B1   | ~2500–3000                                                     |
+| B2   | ~5000+                                                         |
+| C1   | 5000+ including specialized lexicon (Beacco "Inventaire" tier) |
+| C2   | ~10000+ with literary/archaic/regional registers               |
+
+**Owner: Epic 10.4** must (a) acquire the Beacco _Niveau A1/A2/B1/B2 pour le français_ volumes (Didier), (b) extract the verbatim per-CEFR "Inventaire général" word counts and word lists, (c) replace the table above with sourced numbers + page citations, and (d) implement the prompt-builder caps using the actual word lists, not just a numeric cap.
 
 ### 7.3 Implication for the codebase
 
@@ -274,16 +292,20 @@ Per Le Bon Usage (Grevisse) and the Trésor de la langue française, _force est 
 
 ### 8.2 CEFR labels in French
 
-Standard CEFR-French conventions:
+**There is no single canonical French short-label per CEFR level.** Different French institutional sources use different conventions:
 
-- A1: "Élémentaire 1" or simply "Élémentaire"
-- A2: "Élémentaire 2" or "Élémentaire" (same descriptor as A1; level distinguished by number)
-- B1: "Intermédiaire 1" or "Intermédiaire"
-- B2: "Intermédiaire 2" or "Intermédiaire avancé" (the only level where "avancé" is the standard label)
-- C1: "Avancé 1" or "Avancé"
-- C2: "Avancé 2" or "Maîtrise"
+| Level | Service-Public.gouv.fr | Eduscol (Min. Éducation) | Beacco / Didier _Niveau X pour le français_ | Alliance Française (school convention) |
+| ----- | ---------------------- | ------------------------ | ------------------------------------------- | -------------------------------------- |
+| A1    | Élémentaire            | A1 (introductif)         | A1                                          | Élémentaire 1                          |
+| A2    | Élémentaire            | A2 (intermédiaire)       | A2                                          | Élémentaire 2                          |
+| B1    | Indépendant            | B1 (seuil)               | B1                                          | Intermédiaire 1                        |
+| B2    | Indépendant            | B2 (avancé)              | B2                                          | Intermédiaire 2                        |
+| C1    | Expérimenté            | C1 (autonome)            | C1                                          | Avancé 1                               |
+| C2    | Expérimenté            | C2 (maîtrise)            | C2                                          | Avancé 2                               |
 
-**Codebase mismatch:** [src/types/cefr.ts:33](../src/types/cefr.ts#L33) labels A2 as `nameFr: "Élémentaire avancé"` — non-standard. The standard A2 label is "Élémentaire 2" or "Élémentaire". "Élémentaire avancé" is sometimes informally used by language schools but is not Council-of-Europe canonical. **Owner: Epic 10.7.**
+The CEFR Companion Volume (2018) §3 also recognizes informal sub-levels A2.1 / A2.2 (= A2+), where A2+ is informally rendered "élémentaire avancé" in some FLE-pedagogy schools.
+
+**Codebase implications:** [src/types/cefr.ts:33](../src/types/cefr.ts#L33) labels A2 as `nameFr: "Élémentaire avancé"` — informal / non-canonical (not in the four institutional conventions above; closest match is "A2+" from the Companion Volume). For consistency, Epic 10.7 should pick **one** convention and apply it across all six levels. The Service-Public.gouv.fr 3-tier convention (Élémentaire / Indépendant / Expérimenté) is the simplest French-government-source-of-truth; Eduscol's CEFR-bracketed convention is the Ministry of Education default. **Owner: Epic 10.7** (decision: pick one, document in CLAUDE.md, apply to `nameFr` for all six levels).
 
 ### 8.3 Québécois variant
 
@@ -312,7 +334,7 @@ The pivot to Canada has implications well beyond story 9-1 / 10-1. Status update
 3. **Add Writing pipeline to mock test** — **DEFERRED to Epic 10.3** (per-level passage calibration owns Writing changes too) and/or a future Epic 10.6 sub-story. Section 5 documents the publisher's per-task word counts.
 4. ~~**Add Speaking pipeline to mock test**~~ **DONE — landed by story 9-8 on 2026-05-09** as a record-and-grade flow. See `app/(tabs)/mock-test/speaking.tsx` and `src/lib/prompts/speaking.ts`. Section 6 documents the publisher's spec; story 9-8 implementation aligns on durations + structure.
 5. **Fix `shippable-roadmap.md` P0-1 line** — **DONE — closed by story 10-1 (this story).** The audit's specific numbers were partially wrong; footnote added in `shippable-roadmap.md`. See [Citations Matrix](./tcf-spec-citations.md) for the cross-reference.
-6. **Update PRD** — **DEFERRED.** Story 10-1 surfaced the deltas in the citations matrix §7 (`prd.md:113` and `prd.md:235`) but the actual file edit is blocked: PR #55 (which would have committed the PRD to main) merged into the closed `feature/9-9-...` branch instead of main, so the PRD file is not on main today. The edit will land in a follow-up PR after PR #55's content is re-PR'd to main. Citations matrix §7 marks both rows 🟡 DEFERRED.
+6. **Update PRD** — **DONE.** PR #57 (re-PR of stranded PR #55) landed the PRD on main on 2026-05-10. Story 10-1's pedagogy follow-up patch round then updated lines 113 + 235 + 496 (FR28) from TCF Tout Public language to TCF Canada language. Citations matrix §7 reflects ✓ Verified.
 7. **Onboarding / placement test TCF readiness indicator** — **DEFERRED to Epic 10.5** (placement test prompt extraction).
 8. **`mock_tests.test_type` schema versioning** — **DEFERRED to Epic 17.1** (mock_tests questions normalization). Pre-pivot rows with `test_type = "full"` represent a 3-section run (TCF Tout Public era, 85 min, includes grammar); post-pivot rows represent a 2-section run (TCF Canada era, 95 min QCM-only). Migration to add `variant` column.
 
