@@ -24,8 +24,7 @@
 import { TCF } from "@/src/lib/constants";
 import { CACHE_KEYS, invalidateCache } from "@/src/lib/cache";
 import { captureError } from "@/src/lib/sentry";
-import { rawToTCFScore } from "@/src/lib/scoring";
-import { levelFromScore } from "@/src/types/cefr";
+import { cefrLevelFromWritingSpeakingScore } from "@/src/lib/scoring";
 import {
   checkCefrPromotion,
   incrementDailyActivity,
@@ -33,11 +32,15 @@ import {
   updateStreak,
 } from "@/src/lib/activity";
 import { supabase } from "@/src/lib/supabase";
-import type { CEFRLevel } from "@/src/types/cefr";
+import type { CEFRLevel, WritingSpeakingScore } from "@/src/types/cefr";
 import type { SpeakingTaskEvaluation } from "@/src/lib/schemas/ai-responses";
 import type { SpeakingTaskNumber, SpeakingTaskPromptResult } from "@/src/lib/prompts/speaking";
 
-import { computeSpeakingComposite, computeSpeakingTaskOverall } from "./speaking-scoring";
+import {
+  computeSpeakingComposite,
+  computeSpeakingScore0to20,
+  computeSpeakingTaskOverall,
+} from "./speaking-scoring";
 
 const TASK_NUMBERS: SpeakingTaskNumber[] = [1, 2, 3];
 
@@ -52,7 +55,13 @@ export interface PersistSpeakingMockTestParams {
 }
 
 export interface SpeakingMockTestResults {
-  totalScore: number;
+  /**
+   * Publisher-scale 0–20 Speaking score (Story 10-2). Pre-10-2 historical
+   * `mock_tests.total_score` rows for `test_type="speaking"` hold legacy
+   * 0–699 values from the deleted `rawToTCFScore` path; the discontinuity
+   * is documented and not backfilled (Epic 17.1 owns schema versioning).
+   */
+  totalScore: WritingSpeakingScore;
   cefrResult: CEFRLevel;
   compositeOverall: number;
   taskOveralls: [number, number, number];
@@ -78,8 +87,12 @@ export async function persistSpeakingMockTest(
     computeSpeakingTaskOverall(evaluations[3]),
   ];
   const compositeOverall = computeSpeakingComposite(taskOveralls);
-  const totalScore = rawToTCFScore(compositeOverall);
-  const cefrResult = levelFromScore(totalScore) ?? "A1";
+  // Story 10-2: Map the 0–100 internal composite (story 9-8) to the
+  // publisher's 0–20 Speaking scale via `computeSpeakingScore0to20`. Pre-10-2
+  // rows hold legacy 0–699 values from the deleted `rawToTCFScore` path —
+  // documented discontinuity (Epic 17.1 owns schema versioning).
+  const totalScore: WritingSpeakingScore = computeSpeakingScore0to20(taskOveralls);
+  const cefrResult = cefrLevelFromWritingSpeakingScore(totalScore) ?? "A1";
 
   const sectionScores = {
     speaking: {

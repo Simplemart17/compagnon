@@ -6,7 +6,11 @@
  * and `computeSpeakingComposite`.
  */
 
-import { computeSpeakingComposite, computeSpeakingTaskOverall } from "../speaking-scoring";
+import {
+  computeSpeakingComposite,
+  computeSpeakingScore0to20,
+  computeSpeakingTaskOverall,
+} from "../speaking-scoring";
 import type { SpeakingTaskEvaluation } from "../schemas/ai-responses";
 
 function evalOf(partial: Partial<SpeakingTaskEvaluation>): SpeakingTaskEvaluation {
@@ -150,5 +154,39 @@ describe("computeSpeakingComposite (story 9-8)", () => {
 
   it("composite treats negative inputs as 0", () => {
     expect(computeSpeakingComposite([-30, 60, 60])).toBe(40);
+  });
+});
+
+describe("computeSpeakingScore0to20 (story 10-2)", () => {
+  it("[100, 100, 100] → composite 100 → publisher 20", () => {
+    expect(computeSpeakingScore0to20([100, 100, 100])).toBe(20);
+  });
+
+  it("[0, 0, 0] → composite 0 → publisher 0", () => {
+    expect(computeSpeakingScore0to20([0, 0, 0])).toBe(0);
+  });
+
+  it("[80, 75, 70] → composite 75 → publisher 15 (CLB 9, C1)", () => {
+    expect(computeSpeakingScore0to20([80, 75, 70])).toBe(15);
+  });
+
+  it("[50, 50, 50] → composite 50 → publisher 10 (CLB 7 — Express Entry)", () => {
+    expect(computeSpeakingScore0to20([50, 50, 50])).toBe(10);
+  });
+
+  it("clamps individual inputs over 100 → final result still in [0, 20]", () => {
+    expect(computeSpeakingScore0to20([150, 150, 150])).toBe(20);
+  });
+
+  it("treats negative inputs as 0 → final result floors at 0", () => {
+    expect(computeSpeakingScore0to20([-10, 0, 0])).toBe(0);
+  });
+
+  it("rounds correctly: composite 81.67 (from 80/90/75) → 82/5 = 16.4 → 16", () => {
+    expect(computeSpeakingScore0to20([80, 90, 75])).toBe(16);
+  });
+
+  it("composite 5 → publisher 1 (just above CLB-1 floor)", () => {
+    expect(computeSpeakingScore0to20([5, 5, 5])).toBe(1);
   });
 });

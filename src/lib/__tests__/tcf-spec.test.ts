@@ -107,6 +107,22 @@ describe("TCF spec citations matrix completeness", () => {
     expect(matrix.length).toBeGreaterThan(2000); // sanity floor
   });
 
+  it("citations matrix includes Story 10-2 per-skill scoring rows", () => {
+    const matrix = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-citations.md"), "utf8");
+    const story102Constants = [
+      "rawPercentToListeningReadingScore",
+      "rawPercentToWritingSpeakingScore",
+      "IRCC_CLB_BANDS",
+      "SKILL_WEIGHTS_TCF_CANADA",
+    ];
+    // Each Story 10-2 value MUST appear in a Markdown table row (same
+    // `\|.*X.*\|` pattern used by the TCF.* constant check above).
+    for (const constant of story102Constants) {
+      const rowPattern = new RegExp(`\\|[^\\n]*${constant}[^\\n]*\\|`);
+      expect(matrix).toMatch(rowPattern);
+    }
+  });
+
   it("tcf-spec-source.md has all 11 expected sections", () => {
     const source = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-source.md"), "utf8");
     const expectedSections = [

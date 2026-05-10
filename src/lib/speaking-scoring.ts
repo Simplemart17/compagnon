@@ -83,3 +83,28 @@ export function computeSpeakingComposite(taskOveralls: [number, number, number])
   const t3 = clamp(taskOveralls[2], COMPOSITE_MAX);
   return Math.round((t1 + t2 + t3) / 3);
 }
+
+/**
+ * Map 3 task overalls (each on the internal 0–100 scale) to the publisher's
+ * 0–20 Speaking scale (Story 10-2).
+ *
+ * The publisher (per docs/tcf-spec-source.md §2.1) scores Expression Orale on
+ * 0–20; the internal 0–100 composite (story 9-8) is the sum-of-4-dimensions
+ * × 1.25 — so the inverse mapping is `composite / 5`. Equivalent to averaging
+ * the 4 dimensions directly, but routed through the existing 0–100 composite
+ * for continuity with story 9-8's task-overall computation.
+ *
+ * Each input is clamped to [0, 100]; the result is clamped to [0, 20] and
+ * rounded to the nearest integer.
+ *
+ * Used by `src/lib/speaking-mock-test-persist.ts` to persist
+ * `mock_tests.total_score` on the publisher scale for `test_type="speaking"`
+ * rows. Pre-10-2 historical rows hold legacy 0–699 values from the deleted
+ * `rawToTCFScore` path (the discontinuity is documented; Epic 17.1 owns
+ * eventual schema versioning).
+ */
+export function computeSpeakingScore0to20(taskOveralls: [number, number, number]): number {
+  const composite = computeSpeakingComposite(taskOveralls);
+  const publisherScore = composite / 5;
+  return Math.round(clamp(publisherScore, 20));
+}

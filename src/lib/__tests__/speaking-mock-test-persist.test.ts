@@ -294,4 +294,65 @@ describe("persistSpeakingMockTest (story 9-8)", () => {
     expect(result.cefrResult).toMatch(/^(A1|A2|B1|B2|C1|C2)$/);
     expect(result.taskOveralls).toHaveLength(3);
   });
+
+  // Story 10-2: persisted total_score is on the publisher's 0–20 scale.
+  it("persists total_score on publisher 0–20 scale (Story 10-2)", async () => {
+    let mockTestsInsertPayload: { total_score: number } | null = null;
+    const fromMock = jest.fn((table: string) => {
+      if (table === "mock_tests") {
+        return {
+          insert: jest.fn((payload: { total_score: number }) => {
+            mockTestsInsertPayload = payload;
+            return {
+              select: jest.fn(() => ({
+                single: jest.fn(async () => ({
+                  data: { id: "mock-test-uuid" },
+                  error: null,
+                })),
+              })),
+            };
+          }),
+        };
+      }
+      if (table === "mock_test_answers") {
+        return {
+          insert: jest.fn(async () => ({ error: null })),
+        };
+      }
+      throw new Error(`Unexpected supabase.from(${table})`);
+    });
+    (supabase as unknown as { from: jest.Mock }).from = fromMock;
+
+    const result = await persistSpeakingMockTest({
+      userId: "user-7",
+      cefrLevel: "B2",
+      prompts: PROMPTS,
+      transcripts: TRANSCRIPTS,
+      evaluations: EVALUATIONS,
+    });
+
+    expect(result.totalScore).toBeGreaterThanOrEqual(0);
+    expect(result.totalScore).toBeLessThanOrEqual(20);
+    expect(mockTestsInsertPayload).not.toBeNull();
+    expect(mockTestsInsertPayload!.total_score).toBeGreaterThanOrEqual(0);
+    expect(mockTestsInsertPayload!.total_score).toBeLessThanOrEqual(20);
+  });
+
+  // Story 10-2: known input → expected publisher score.
+  // EVALUATIONS task overalls are 80/75/70 → composite 75 → 75/5 = 15 (CLB 9).
+  it("maps EVALUATIONS (80/75/70) → composite 75 → publisher 15 → C1 (Story 10-2)", async () => {
+    setupSupabaseMock({});
+
+    const result = await persistSpeakingMockTest({
+      userId: "user-8",
+      cefrLevel: "C1",
+      prompts: PROMPTS,
+      transcripts: TRANSCRIPTS,
+      evaluations: EVALUATIONS,
+    });
+
+    expect(result.compositeOverall).toBe(75); // 0–100 internal composite
+    expect(result.totalScore).toBe(15); // 75 / 5 = 15 on the 0–20 publisher scale
+    expect(result.cefrResult).toBe("C1"); // 15 → CLB 9 → C1
+  });
 });
