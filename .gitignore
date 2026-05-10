@@ -74,3 +74,6 @@ docs/*
 # referenced from CLAUDE.md, src/lib/constants.ts, and tcf-spec.test.ts).
 !docs/tcf-spec-source.md
 !docs/tcf-spec-source.pdf
+# Story 10-1 — TCF Canada source snapshots used by tcf-spec-source.md citations.
+!docs/tcf-canada-snapshots/
+!docs/tcf-spec-citations.md
