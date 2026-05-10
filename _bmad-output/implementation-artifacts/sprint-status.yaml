@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-09 # story 9-9 done (Submit credentials & deploy substrate + 12 review patches)
+last_updated: 2026-05-09 # epic-9 retrospective done (partial — 9-9 in review at retro time)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -129,7 +129,7 @@ development_status:
   9-8-speaking-section-pipeline: done # 2026-05-09: implemented + 27 review patches (P1 critical: sanitizeMemoryContent truncated transcripts to 300 chars; P2/P3/P4 evaluation flow rewritten with Promise.allSettled + per-task retry + zero-eval skip + per-task -task-N tags); 324 tests passing; PR #47
   9-9-submit-credentials-deploy-substrate: done # 2026-05-09: implemented + 12 review patches (3 HIGH P1/P2/P3 + 5 MED + 3 LOW + I4 doc clarification); 324 tests passing; PR #48
   9-10-auth-cache-race-hardening: done # 2026-05-07: D1-D4 implemented + P1-P10 review patches; PR #44
-  epic-9-retrospective: optional
+  epic-9-retrospective: done # 2026-05-09: partial retro (9-9 was in review status); see epic-9-retro-2026-05-09.md
 
   # Epic 10: TCF Pedagogy Realignment (P0/P1)
   epic-10: backlog
