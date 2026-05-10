@@ -28,6 +28,7 @@ import {
   writingEvaluationSchema,
   writingPromptGenerationSchema,
   echoGenerationSchema,
+  speakingTaskEvaluationSchema,
 } from "../ai-responses";
 
 // ---------------------------------------------------------------------------
@@ -817,5 +818,78 @@ describe("schema constant lockstep — review patches (P8, P12)", () => {
     // direction breaks this test.
     const canonical = ["personal_fact", "preference", "topic_discussed", "milestone"];
     expect([...memoryTypeSchema.options].sort()).toEqual([...canonical].sort());
+  });
+});
+
+describe("speakingTaskEvaluationSchema (story 9-8)", () => {
+  function validSpeaking() {
+    return {
+      pronunciationFluencyScore: 16,
+      vocabularyScore: 14,
+      grammarScore: 15,
+      interactionScore: 18,
+      overallScore: 79,
+      estimatedCEFR: "B2" as const,
+      strengths: ["Bonne fluidité"],
+      improvements: ["Élargir le vocabulaire"],
+      corrections: "Quelques accords à surveiller",
+    };
+  }
+
+  it("Case 1: valid full payload parses", () => {
+    const result = speakingTaskEvaluationSchema.safeParse(validSpeaking());
+    expect(result.success).toBe(true);
+  });
+
+  it("Case 2: pronunciationFluencyScore: 25 rejected (too_big — official scale is 0-20)", () => {
+    const payload = { ...validSpeaking(), pronunciationFluencyScore: 25 };
+    const result = speakingTaskEvaluationSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.code === "too_big")).toBe(true);
+    }
+  });
+
+  it("Case 3: overallScore null accepted (nullable + optional, recompute path)", () => {
+    const payload = { ...validSpeaking(), overallScore: null };
+    const result = speakingTaskEvaluationSchema.safeParse(payload);
+    expect(result.success).toBe(true);
+  });
+
+  it("Case 3b: overallScore omitted entirely accepted (optional)", () => {
+    const payload: Record<string, unknown> = { ...validSpeaking() };
+    delete payload.overallScore;
+    const result = speakingTaskEvaluationSchema.safeParse(payload);
+    expect(result.success).toBe(true);
+  });
+
+  it("Case 4: empty strengths array rejected (min 1)", () => {
+    const payload = { ...validSpeaking(), strengths: [] };
+    const result = speakingTaskEvaluationSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+
+  it("Case 5: strengths with 6 entries rejected (max 5)", () => {
+    const payload = {
+      ...validSpeaking(),
+      strengths: ["a", "b", "c", "d", "e", "f"],
+    };
+    const result = speakingTaskEvaluationSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects negative dimension scores", () => {
+    const payload = { ...validSpeaking(), interactionScore: -1 };
+    const result = speakingTaskEvaluationSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+
+  it("estimatedCEFR is optional but rejects invalid CEFR values", () => {
+    const without = { ...validSpeaking() } as Record<string, unknown>;
+    delete without.estimatedCEFR;
+    expect(speakingTaskEvaluationSchema.safeParse(without).success).toBe(true);
+
+    const bad = { ...validSpeaking(), estimatedCEFR: "Z9" };
+    expect(speakingTaskEvaluationSchema.safeParse(bad).success).toBe(false);
   });
 });

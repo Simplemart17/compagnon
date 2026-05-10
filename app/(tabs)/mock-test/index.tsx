@@ -11,6 +11,7 @@ import Animated, {
 
 import { TCF } from "@/src/lib/constants";
 import { Colors, Shadows, skillTint } from "@/src/lib/design";
+import { SPEAKING_TASK_NUMBERS } from "@/src/lib/prompts/speaking";
 import { TCF_QCM_SECTIONS, roundToNearestFive } from "@/src/lib/tcf";
 
 // ---------------------------------------------------------------------------
@@ -186,6 +187,8 @@ interface SectionCardProps {
   accentColor: string;
   delay: number;
   onPress: () => void;
+  /** Unit label for the metaText count. Defaults to "questions". Speaking sets "tasks". */
+  unitLabel?: "questions" | "tasks";
 }
 
 function SectionCard({
@@ -197,6 +200,7 @@ function SectionCard({
   accentColor,
   delay,
   onPress,
+  unitLabel = "questions",
 }: SectionCardProps) {
   const opacity = useSharedValue(0);
   const translateX = useSharedValue(16);
@@ -214,7 +218,7 @@ function SectionCard({
   }));
 
   const metaParts: string[] = [];
-  if (questions !== null) metaParts.push(`${questions} questions`);
+  if (questions !== null) metaParts.push(`${questions} ${unitLabel}`);
   if (minutes !== null) metaParts.push(`${minutes} min`);
   const metaText = metaParts.join(" | ");
 
@@ -374,7 +378,7 @@ export default function MockTestScreen() {
           ))}
         </View>
 
-        {/* Production sections — bientôt disponibles */}
+        {/* Production sections — Speaking is live (story 9-8); Writing is Epic 10.6 */}
         <Text className="text-lg font-bold text-primary mx-5 mt-7 mb-3" accessibilityRole="header">
           Production écrite et orale
         </Text>
@@ -387,13 +391,16 @@ export default function MockTestScreen() {
             followUp="Epic 10"
             accentColor={Colors.skillWriting}
           />
-          <ComingSoonCard
+          <SectionCard
             emoji="🎤"
             nameFr="Expression Orale"
             nameSub="Speaking"
+            questions={SPEAKING_TASK_NUMBERS.length}
             minutes={TCF.SPEAKING_MINUTES}
-            followUp="Story 9-8"
             accentColor={Colors.skillPronunciation}
+            delay={SECTIONS.length * 80}
+            unitLabel="tasks"
+            onPress={() => router.push("/(tabs)/mock-test/speaking")}
           />
         </View>
       </ScrollView>
