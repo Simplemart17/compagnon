@@ -277,4 +277,31 @@ describe("evaluatePromotion does not consume the internal composite (Story 10-2)
     // Composite-style averages would diverge wildly (60 vs 51.6) yet promotion
     // decision is identical → confirms per-skill threshold semantics.
   });
+
+  it("rejects promotion at HIGH composite when only 2 skills pass; promotes at LOWER composite when 3 skills pass", () => {
+    // High composite (avg=82.4) but only 2 skills clear PASSING_SCORE=85.
+    // A composite-aware gate (avg ≥ 85? avg ≥ 80?) would over-trigger.
+    const highCompositeFewPassing: PromotionEvidence[] = [
+      { skill: "listening", score: 99, exercisesCompleted: 4 },
+      { skill: "reading", score: 99, exercisesCompleted: 4 },
+      { skill: "speaking", score: 84, exercisesCompleted: 2 }, // 1 below threshold
+      { skill: "writing", score: 70, exercisesCompleted: 1 }, // misses
+      { skill: "grammar", score: 60, exercisesCompleted: 1 }, // misses
+    ];
+    // Lower composite (avg=66) but 3 skills clear the threshold.
+    const lowCompositeManyPassing: PromotionEvidence[] = [
+      { skill: "listening", score: 85, exercisesCompleted: 4 },
+      { skill: "reading", score: 85, exercisesCompleted: 4 },
+      { skill: "speaking", score: 85, exercisesCompleted: 2 },
+      { skill: "writing", score: 40, exercisesCompleted: 1 },
+      { skill: "grammar", score: 35, exercisesCompleted: 1 },
+    ];
+    // Per-skill semantics: high-composite-but-few-passing FAILS,
+    // low-composite-with-3-passing SUCCEEDS — direct demonstration that
+    // the gate consults per-skill thresholds, not the composite.
+    expect(evaluatePromotion("A1", highCompositeFewPassing).promote).toBe(false);
+    expect(evaluatePromotion("A1", highCompositeFewPassing).reason).toBe("too-few-passing-skills");
+    expect(evaluatePromotion("A1", lowCompositeManyPassing).promote).toBe(true);
+    expect(evaluatePromotion("A1", lowCompositeManyPassing).reason).toBe("ok");
+  });
 });

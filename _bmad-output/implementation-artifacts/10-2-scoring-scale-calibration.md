@@ -1,6 +1,6 @@
 # Story 10.2: Scoring Scale Calibration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -513,5 +513,53 @@ claude-opus-4-7[1m]
 - `CLAUDE.md` (ADD TCF scoring pipeline architecture line)
 - `docs/tcf-spec-citations.md` (FLIP 3 ✗ DELTA rows → ✓ Verified; ADD 4 Story 10-2 rows; UPDATE TCF.C1_MIN to 🟡 INTENTIONAL; UPDATE §6 speakingTaskEvaluationSchema row to 🟡 PARTIAL)
 - `docs/tcf-spec-source.md` (UPDATE §10 follow-up #2 — DONE closed by Story 10-2)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (10-2: ready-for-dev → in-progress → review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (10-2: ready-for-dev → in-progress → review → done)
 - `_bmad-output/implementation-artifacts/10-2-scoring-scale-calibration.md` (this story file)
+- `src/lib/constants.ts` (ADD JSDoc to TCF.C1_MIN — review patch P11)
+
+---
+
+## Senior Developer Review (AI)
+
+**Review date:** 2026-05-10
+**Reviewers:** Blind Hunter (general adversarial) + Edge Case Hunter (project-aware) + Acceptance Auditor (spec-vs-impl)
+**Outcome:** Changes Requested → all 15 patch findings addressed → APPROVED
+
+### Triage outcome
+
+- **15 patch findings** — all addressed in this story branch (HIGH × 4, MED × 8, LOW × 3)
+- **5 defer findings** — pre-existing or out-of-scope (type-system protection, IRCC table boundary semantics, immutability, schema versioning)
+- **4 reject findings** — noise (W/S step-function distribution by design, -0 edge, 99.99→100 unreachable discontinuity, AC #6.1 spec premise was wrong)
+
+### Action Items (all resolved)
+
+- [x] **[HIGH] P1** Mixed-scale composite — `calculateInternalCompositeForUI` now scoped to Listening + Reading only (0–699 scale); Writing/Speaking/grammar silently dropped to avoid scale conflation. Test rewritten to pin the L/R-only contract; added `InternalComposite` interface with JSDoc on `distanceToC1` field.
+- [x] **[HIGH] P2** `cefrLevelFromWritingSpeakingScore` no longer returns null for valid CLB 1-3 — maps to "A1" instead. Persist code's `?? "A1"` is now a defensive guard for invalid inputs only.
+- [x] **[HIGH] P3** `WritingSpeakingScore` JSDoc softened to "documentation-only naming convention" — explicitly acknowledges TypeScript does NOT enforce scale separation.
+- [x] **[HIGH] P4** CLB 10-12 split: scores 16-17 → C1 (lower CLB 10), scores 18-20 → C2 (CLB 11-12). Operator-derived but more conservative than blanket → C2.
+- [x] **[MED] P5** Off-by-one boundaries fixed — `pickBand` helper uses `[lower, upper)` semantics for non-final bands; raw 35% now lands in CLB 4 (not CLB 1-3) deterministically.
+- [x] **[MED] P6** Added `formatWritingSpeakingScore(score)` returning `"X/20 (CEFR)"` parallel to `formatTCFScore`.
+- [x] **[MED] P7** Test docstring for `computeSpeakingScore0to20([80, 90, 75])` clarifies the internal composite-rounding step.
+- [x] **[MED] P8** `calculateSectionScore` `skill` parameter is now required (no default) — eliminates silent reading-as-listening misclassification.
+- [x] **[MED] P9** `LR_BAND_RAW_PERCENT_BOUNDARIES` JSDoc rewritten to document `[lower, upper)` semantics and CLB 7 starting at exactly 75%.
+- [x] **[MED] P10** Anchor pair counts: 12 L/R (was 8) + 9 W/S (was 8); added boundary-coverage anchors at 35, 50, 75, 93 (L/R) and 50 (W/S).
+- [x] **[MED] P11** Added JSDoc on `TCF.C1_MIN` in `src/lib/constants.ts` per the citations matrix dangling reference.
+- [x] **[MED] P12** Promotion regression test strengthened — added a HIGH-composite-FEW-passing vs LOW-composite-MANY-passing assertion that directly demonstrates per-skill semantics (would fail under any composite-aware gate).
+- [x] **[LOW] P13** Test comments at "0% → 0" no longer claim "below CLB 1 floor" (which contradicted the ircc-bands round-trip tests).
+- [x] **[LOW] P14** `distanceToC1` field JSDoc folded into the new `InternalComposite` interface (P1).
+- [x] **[LOW] P15** CLAUDE.md TCF-scoring-pipeline line moved to AFTER Deploy substrate (was before).
+
+### Deferred items (filed for follow-up)
+
+- **DEFER-1:** Listening vs Reading IRCC bands disagree on CLB for value 523 (by design per IRCC table). Type-level protection requires branded types.
+- **DEFER-2:** `cefrLevelFromWritingSpeakingScore` vs `levelFromScore` produce different labels for the same numeric value 15 (different scales). Also requires branded types.
+- **DEFER-3:** `IRCC_CLB_BANDS["1-3"].listening` floor of 0 is operator-derived (source uses "<331" semantic). Doc-only nuance.
+- **DEFER-4:** `IRCC_CLB_BANDS` could be `Object.freeze`'d for runtime immutability (`as const` already covers compile-time).
+- **DEFER-5:** Promotion engine migration to `IRCC_CLB_BANDS` thresholds (currently uses internal 0-100 `PASSING_SCORE = 85`).
+
+### Final verification
+
+- 460 tests passing (was 447 pre-patches, 329 pre-story)
+- All quality gates green: type-check, lint, format:check, npm test, check:colors
+- New files NOT gitignored (Epic 9 retro A1)
+- CI Sentry DSN + Submit credentials leak guards both pass

@@ -182,7 +182,9 @@ describe("computeSpeakingScore0to20 (story 10-2)", () => {
     expect(computeSpeakingScore0to20([-10, 0, 0])).toBe(0);
   });
 
-  it("rounds correctly: composite 81.67 (from 80/90/75) → 82/5 = 16.4 → 16", () => {
+  it("rounds correctly: [80, 90, 75] → composite 82 (rounded from 81.67) → 82/5 = 16.4 → 16", () => {
+    // computeSpeakingComposite rounds to 82 internally; computeSpeakingScore0to20
+    // then divides 82/5 = 16.4 → Math.round → 16.
     expect(computeSpeakingScore0to20([80, 90, 75])).toBe(16);
   });
 

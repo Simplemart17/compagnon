@@ -26,9 +26,10 @@ const LR_BAND_ORDER: CLBLevel[] = ["1-3", "4", "5", "6", "7", "8", "9", "10-12"]
 
 /**
  * Per-CLB anchor raw-% values that calibrate where the conversion places a
- * candidate. The boundaries are derived from the IRCC equivalency table:
- * a candidate at the top of CLB 7 is roughly at 75% raw correct on the QCM
- * (the EE threshold sits around mid-band).
+ * candidate. Boundaries use `[lower, upper)` semantics (see `pickBand`):
+ * a raw % at exactly an upper boundary (e.g., 75) lands in the next-higher
+ * CLB band, not the lower one. The Express-Entry threshold (CLB 7) starts
+ * at raw 75% under this convention.
  *
  * These are calibration anchors, not hard cutoffs — what matters for the
  * contract is that raw % X lands in the same CLB band a real candidate at
@@ -76,6 +77,26 @@ function interpolateInBand(
 }
 
 /**
+ * Find the CLB band a clamped raw % falls into.
+ *
+ * Uses [lower, upper) semantics for non-final bands so adjacent boundary
+ * endpoints (e.g., 35% in `[0, 35]` vs `[35, 50]`) deterministically
+ * land in the higher band. The final band ("10-12") uses [lower, upper]
+ * inclusive to capture 100% as the ceiling.
+ */
+function pickBand(clamped: number, boundaries: Record<CLBLevel, [number, number]>): CLBLevel {
+  for (let i = 0; i < LR_BAND_ORDER.length; i++) {
+    const level = LR_BAND_ORDER[i];
+    const [rMin, rMax] = boundaries[level];
+    const isFinal = i === LR_BAND_ORDER.length - 1;
+    const inUpper = isFinal ? clamped <= rMax : clamped < rMax;
+    if (clamped >= rMin && inUpper) return level;
+  }
+  // Unreachable for clamped in [0, 100], but TypeScript needs a return.
+  return "10-12";
+}
+
+/**
  * Convert a raw % (0–100) on a Listening or Reading QCM to a TCF score
  * (0–699) that lands inside the IRCC CLB band a candidate at that raw %
  * is expected to occupy.
@@ -85,6 +106,11 @@ function interpolateInBand(
  * function is monotonic non-decreasing in raw %, clamps to [0, 699], and
  * satisfies the round-trip property that raw% in a CLB band's raw range
  * produces a score in that CLB band's score range.
+ *
+ * Boundary semantics are `[lower, upper)` for non-final bands — exact
+ * boundary values (e.g., raw 35%) land in the higher band, eliminating
+ * the lower-band-wins discontinuity that ambiguous shared endpoints
+ * would otherwise create.
  */
 export function rawPercentToListeningReadingScore(
   rawPercent: number,
@@ -94,14 +120,10 @@ export function rawPercentToListeningReadingScore(
   if (clamped === 0) return 0;
   if (clamped === 100) return 699;
 
-  for (const level of LR_BAND_ORDER) {
-    const [rMin, rMax] = LR_BAND_RAW_PERCENT_BOUNDARIES[level];
-    if (clamped >= rMin && clamped <= rMax) {
-      const scoreBand = IRCC_CLB_BANDS.listeningReading[level][skill];
-      return Math.round(interpolateInBand(clamped, [rMin, rMax], scoreBand));
-    }
-  }
-  return 0;
+  const level = pickBand(clamped, LR_BAND_RAW_PERCENT_BOUNDARIES);
+  const rawBand = LR_BAND_RAW_PERCENT_BOUNDARIES[level];
+  const scoreBand = IRCC_CLB_BANDS.listeningReading[level][skill];
+  return Math.round(interpolateInBand(clamped, rawBand, scoreBand));
 }
 
 /**
@@ -119,14 +141,10 @@ export function rawPercentToWritingSpeakingScore(rawPercent: number): WritingSpe
   if (clamped === 0) return 0;
   if (clamped === 100) return 20;
 
-  for (const level of LR_BAND_ORDER) {
-    const [rMin, rMax] = WS_BAND_RAW_PERCENT_BOUNDARIES[level];
-    if (clamped >= rMin && clamped <= rMax) {
-      const scoreBand = IRCC_CLB_BANDS.writingSpeaking[level];
-      return Math.round(interpolateInBand(clamped, [rMin, rMax], scoreBand));
-    }
-  }
-  return 0;
+  const level = pickBand(clamped, WS_BAND_RAW_PERCENT_BOUNDARIES);
+  const rawBand = WS_BAND_RAW_PERCENT_BOUNDARIES[level];
+  const scoreBand = IRCC_CLB_BANDS.writingSpeaking[level];
+  return Math.round(interpolateInBand(clamped, rawBand, scoreBand));
 }
 
 /**
@@ -140,7 +158,7 @@ export function rawPercentToWritingSpeakingScore(rawPercent: number): WritingSpe
 export function calculateSectionScore(
   correctAnswers: number,
   totalQuestions: number,
-  skill: "listening" | "reading" = "listening"
+  skill: "listening" | "reading"
 ): { rawPercent: number; tcfScore: TCFScore; cefrLevel: CEFRLevel | null } {
   const rawPercent = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
   const tcfScore = rawPercentToListeningReadingScore(rawPercent, skill);
@@ -169,8 +187,33 @@ const SKILL_WEIGHTS_TCF_CANADA: Record<Exclude<TCFSkill, "grammar">, number> = {
 };
 
 /**
+ * Composite return shape.
+ *
+ * `distanceToC1` is the gap (in 0–699 TCF points) between the current
+ * composite and `TCF.C1_MIN` (UI round-number band per
+ * `src/types/cefr.ts CEFR_LEVELS`). It is a UX continuity feature — a
+ * "how far to the next milestone" hint shown on the home and mock-test
+ * landing cards. **Not** a publisher metric; the publisher does not
+ * produce a composite, and IRCC math uses `IRCC_CLB_BANDS`. Always `0`
+ * when the composite is at or above `TCF.C1_MIN`.
+ */
+export interface InternalComposite {
+  compositeScore: TCFScore;
+  cefrLevel: CEFRLevel | null;
+  /** UX continuity hint — gap to TCF.C1_MIN; not IRCC-equivalent. */
+  distanceToC1: number;
+}
+
+/**
  * Internal-display-only composite for UI elements like "Today's level
  * estimate" and the mock-test landing card's "distance to C1" hint.
+ *
+ * **Scope: Listening and Reading only (0–699 scale).** Writing and
+ * Speaking are on the publisher's 0–20 scale; mixing scales in a single
+ * average produces meaningless numbers. Pass only `listening` and/or
+ * `reading` scores; any other key (including `writing`, `speaking`,
+ * `grammar`) is silently dropped. Per-skill production-task scores are
+ * displayed individually elsewhere — they do not roll into a composite.
  *
  * **NOT IRCC-EQUIVALENT** — TCF Canada does not produce a composite;
  * Express Entry / IRCC scores are per-skill (see
@@ -180,24 +223,23 @@ const SKILL_WEIGHTS_TCF_CANADA: Record<Exclude<TCFSkill, "grammar">, number> = {
  *
  * Use `calculateSectionScore` for any user-facing TCF-equivalence claim.
  * This composite is a soft estimate for UX continuity only.
- *
- * Silently drops a `grammar` entry from `skillScores` because TCF Canada
- * has 4 sections, not 5 (operator decision per
- * `docs/tcf-spec-source.md §10` follow-up #1).
  */
-export function calculateInternalCompositeForUI(skillScores: Partial<Record<TCFSkill, TCFScore>>): {
-  compositeScore: TCFScore;
-  cefrLevel: CEFRLevel | null;
-  distanceToC1: number;
-} {
+export function calculateInternalCompositeForUI(
+  skillScores: Partial<Record<TCFSkill, TCFScore>>
+): InternalComposite {
+  // Only Listening and Reading share the 0–699 scale; Writing and Speaking
+  // are on 0–20 (publisher's production-task scale) and cannot be
+  // meaningfully averaged with L/R. Grammar is not part of TCF Canada
+  // (operator decision per `docs/tcf-spec-source.md §10` follow-up #1).
+  const COMPOSITE_SKILLS = ["listening", "reading"] as const;
+
   let totalWeight = 0;
   let weightedSum = 0;
 
-  for (const [skill, score] of Object.entries(skillScores)) {
-    if (skill === "grammar") continue;
-    const tcfSkill = skill as Exclude<TCFSkill, "grammar">;
-    const weight = SKILL_WEIGHTS_TCF_CANADA[tcfSkill];
-    if (weight === undefined) continue;
+  for (const skill of COMPOSITE_SKILLS) {
+    const score = skillScores[skill];
+    if (typeof score !== "number" || !Number.isFinite(score)) continue;
+    const weight = SKILL_WEIGHTS_TCF_CANADA[skill];
     weightedSum += score * weight;
     totalWeight += weight;
   }
@@ -247,10 +289,23 @@ export function isReadyForNextLevel(
   return { ready: allAboveThreshold, weakestSkill, strongestSkill };
 }
 
-/** Format a TCF score for display with level badge */
+/** Format a TCF score for display with level badge (0–699 scale; Listening/Reading). */
 export function formatTCFScore(score: TCFScore): string {
   const level = levelFromScore(score);
   return level ? `${score}/699 (${level})` : `${score}/699`;
+}
+
+/**
+ * Format a Writing/Speaking publisher score for display with CEFR badge
+ * (0–20 scale).
+ *
+ * Parallel to `formatTCFScore` for the production-task scale. Use this
+ * for any UI surface displaying a `WritingSpeakingScore` — passing a 0–20
+ * value to `formatTCFScore` would produce a misleading "X/699" string.
+ */
+export function formatWritingSpeakingScore(score: WritingSpeakingScore): string {
+  const level = cefrLevelFromWritingSpeakingScore(score);
+  return level ? `${score}/20 (${level})` : `${score}/20`;
 }
 
 /**
@@ -258,18 +313,32 @@ export function formatTCFScore(score: TCFScore): string {
  * CLB equivalency table.
  *
  * Used by the Speaking mock-test persistence path (and, post-Epic-10.6, by
- * the Writing pipeline). Returns null only for scores below CLB 4 (≤ 3),
- * which the publisher reports as "below CLB 4" with no CEFR equivalent.
+ * the Writing pipeline). Returns null only for non-finite or negative
+ * inputs (defensive guard); valid scores in [0, 20] always produce a
+ * CEFR label.
  *
- * Mapping follows the standard CLB ↔ CEFR alignment (e.g., CLB 7 = B2):
- *   CLB 1–3 → null    CLB 4 → A2    CLB 5–6 → B1
- *   CLB 7–8 → B2      CLB 9 → C1    CLB 10–12 → C2
+ * Mapping (operator-derived from the standard CLB↔CEFR alignment; the
+ * IRCC table groups CLB 10–12 as a single bucket so the C1/C2 split
+ * within that bucket is a conservative interpolation — score 16–17 is
+ * lower-band CLB 10 territory which most pedagogy sources align with C1,
+ * not C2):
+ *
+ *   CLB 1–3 → A1     CLB 4 → A2     CLB 5–6 → B1
+ *   CLB 7–8 → B2     CLB 9 + lower CLB 10 → C1     CLB 11–12 → C2
+ *
+ * Score 0 (silent submission) maps to A1 — the lowest CEFR level, since
+ * CEFR has no formal "below A1" tier and downstream code (e.g., the
+ * `mock_tests.cefr_result` column typed as `CEFRLevel`) requires a value
+ * from the A1–C2 union. The "Below A1" label used by the QCM mock-test
+ * path (`app/(tabs)/mock-test/[testId].tsx:567`) is a UI-display string;
+ * this helper returns a typed `CEFRLevel` for DB persistence.
  */
 export function cefrLevelFromWritingSpeakingScore(score: WritingSpeakingScore): CEFRLevel | null {
-  if (!Number.isFinite(score) || score <= 3) return null;
-  if (score <= 5) return "A2";
-  if (score <= 9) return "B1";
-  if (score <= 13) return "B2";
-  if (score <= 15) return "C1";
-  return "C2";
+  if (!Number.isFinite(score) || score < 0) return null;
+  if (score <= 3) return "A1"; // CLB 1–3 (publisher: "below CLB 4")
+  if (score <= 5) return "A2"; // CLB 4
+  if (score <= 9) return "B1"; // CLB 5–6
+  if (score <= 13) return "B2"; // CLB 7–8 (Express Entry threshold at CLB 7)
+  if (score <= 17) return "C1"; // CLB 9 + lower CLB 10–12 bucket
+  return "C2"; // upper CLB 10–12 (score 18–20)
 }
