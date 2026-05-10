@@ -25,6 +25,9 @@ expo-env.d.ts
 # only safe defense for this specific filename.
 google-service-account.json
 
+# Backup files (e.g., editor-generated foo.md.bak from accidental rename)
+*.bak
+
 # Metro
 .metro-health-check*
 
