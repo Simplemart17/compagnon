@@ -44,27 +44,27 @@ Every TCF Canada-derived value in the codebase MUST appear in this matrix with a
 
 Code values vs publisher-derived expectations (§3.1).
 
-| Code location                         | Value (codebase) | tcf-spec-source.md anchor     | Status                                                                             |
-| ------------------------------------- | ---------------- | ----------------------------- | ---------------------------------------------------------------------------------- |
-| `src/lib/prompts/listening.ts:71` A1  | 30–50 words      | §3.1 — derived: ≤ 30 words    | ✗ DELTA — A1 too long (audit P1-3: 50 words exits A1). **Owner: Epic 10.3 (P1-3)** |
-| `src/lib/prompts/listening.ts:77` A2  | 50–80 words      | §3.1 — derived: 30–80 words   | ✗ DELTA — A2 floor too high. **Owner: Epic 10.3**                                  |
-| `src/lib/prompts/listening.ts:83` B1  | 80–150 words     | §3.1 — derived: 80–150 words  | ✓ Verified — within tolerance                                                      |
-| `src/lib/prompts/listening.ts:89` B2  | 150–200 words    | §3.1 — derived: 150–300 words | ✗ DELTA — B2 ceiling too low. **Owner: Epic 10.3 (P1-3)**                          |
-| `src/lib/prompts/listening.ts:95` C1  | 200–300 words    | §3.1 — derived: 200–500 words | ✗ DELTA — C1 ceiling too low. **Owner: Epic 10.3 (P1-3)**                          |
-| `src/lib/prompts/listening.ts:101` C2 | 250–350 words    | §3.1 — derived: 250–600 words | ✗ DELTA — C2 ceiling too low. **Owner: Epic 10.3**                                 |
+| Code location                         | Value (codebase) | tcf-spec-source.md anchor     | Status                                                                                                                |
+| ------------------------------------- | ---------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/prompts/listening.ts:96` A1  | 30–80 words      | §3.1 — derived: 30–80 words   | ✓ Verified 2026-05-10 — Story 10-3 widened from 30–50 to publisher-derived 30–80 (audit P1-3 closed)                  |
+| `src/lib/prompts/listening.ts:102` A2 | 60–150 words     | §3.1 — derived: 60–150 words  | ✓ Verified 2026-05-10 — Story 10-3 raised from 50–80 to publisher-derived 60–150                                      |
+| `src/lib/prompts/listening.ts:108` B1 | 100–200 words    | §3.1 — derived: 100–200 words | ✓ Verified 2026-05-10 — Story 10-3 raised floor from 80–150 to 100–200 to align with widened A2 ceiling               |
+| `src/lib/prompts/listening.ts:114` B2 | 150–300 words    | §3.1 — derived: 150–300 words | ✓ Verified 2026-05-10 — Story 10-3 extended ceiling from 150–200 to publisher-derived 150–300 (audit P1-3 closed)     |
+| `src/lib/prompts/listening.ts:120` C1 | 250–500 words    | §3.1 — derived: 250–500 words | ✓ Verified 2026-05-10 — Story 10-3 extended both bounds from 200–300 to publisher-derived 250–500 (audit P1-3 closed) |
+| `src/lib/prompts/listening.ts:126` C2 | 350–600 words    | §3.1 — derived: 350–600 words | ✓ Verified 2026-05-10 — Story 10-3 extended both bounds from 250–350 to publisher-derived 350–600                     |
 
 ---
 
 ## 4. Per-CEFR Reading passage specs (`src/lib/prompts/reading.ts`)
 
-| Code location                      | Value (codebase) | tcf-spec-source.md anchor      | Status                                                               |
-| ---------------------------------- | ---------------- | ------------------------------ | -------------------------------------------------------------------- |
-| `src/lib/prompts/reading.ts:60` A1 | 30–60 words      | §4.1 — derived: 30–60 words    | ✓ Verified — match                                                   |
-| `src/lib/prompts/reading.ts:66` A2 | 60–120 words     | §4.1 — derived: 60–120 words   | ✓ Verified — match                                                   |
-| `src/lib/prompts/reading.ts:72` B1 | 120–200 words    | §4.1 — derived: 120–250 words  | ✗ DELTA — B1 ceiling slightly low. **Owner: Epic 10.3**              |
-| `src/lib/prompts/reading.ts:78` B2 | 200–300 words    | §4.1 — derived: 250–450 words  | ✗ DELTA — B2 way too short (audit P1-3). **Owner: Epic 10.3 (P1-3)** |
-| `src/lib/prompts/reading.ts:84` C1 | 300–400 words    | §4.1 — derived: 450–700 words  | ✗ DELTA — C1 way too short (audit P1-3). **Owner: Epic 10.3 (P1-3)** |
-| `src/lib/prompts/reading.ts:90` C2 | 350–500 words    | §4.1 — derived: 600–900+ words | ✗ DELTA — C2 too short. **Owner: Epic 10.3**                         |
+| Code location                       | Value (codebase) | tcf-spec-source.md anchor      | Status                                                                                                                |
+| ----------------------------------- | ---------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/prompts/reading.ts:80` A1  | 30–60 words      | §4.1 — derived: 30–60 words    | ✓ Verified 2026-05-10 — match (unchanged by Story 10-3)                                                               |
+| `src/lib/prompts/reading.ts:86` A2  | 60–120 words     | §4.1 — derived: 60–120 words   | ✓ Verified 2026-05-10 — match (unchanged by Story 10-3)                                                               |
+| `src/lib/prompts/reading.ts:92` B1  | 120–250 words    | §4.1 — derived: 120–250 words  | ✓ Verified 2026-05-10 — Story 10-3 extended ceiling from 120–200 to publisher-derived 120–250                         |
+| `src/lib/prompts/reading.ts:98` B2  | 250–450 words    | §4.1 — derived: 250–450 words  | ✓ Verified 2026-05-10 — Story 10-3 extended both bounds from 200–300 to publisher-derived 250–450 (audit P1-3 closed) |
+| `src/lib/prompts/reading.ts:104` C1 | 450–700 words    | §4.1 — derived: 450–700 words  | ✓ Verified 2026-05-10 — Story 10-3 extended both bounds from 300–400 to publisher-derived 450–700 (audit P1-3 closed) |
+| `src/lib/prompts/reading.ts:110` C2 | 600–900+ words   | §4.1 — derived: 600–900+ words | ✓ Verified 2026-05-10 — Story 10-3 extended both bounds from 350–500 to publisher-derived 600–900+                    |
 
 ---
 
@@ -72,11 +72,14 @@ Code values vs publisher-derived expectations (§3.1).
 
 **Source: §5.1 (publisher-authoritative, verbatim)**
 
-| Code location                          | Value (codebase)          | tcf-spec-source.md anchor      | Status                                                                                                               |
-| -------------------------------------- | ------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/prompts/writing.ts:85` Task 1 | 50–80 words               | §5.1 — verbatim: 60–120 words  | ✗ DELTA — code is significantly off (50–80 vs publisher 60–120). **Owner: Epic 10.3 (P1-3)**                         |
-| `src/lib/prompts/writing.ts:92` Task 2 | 120–150 words             | §5.1 — verbatim: 120–150 words | ✓ Verified — exact match                                                                                             |
-| `src/lib/prompts/writing.ts:99` Task 3 | 250–300 words (C1 target) | §5.1 — verbatim: 120–180 words | ✗ DELTA — code is wildly off (250–300 vs publisher 120–180; audit P1-3). **Owner: Epic 10.3 (P1-3) — HIGH priority** |
+| Code location                                           | Value (codebase)                                                                                                      | tcf-spec-source.md anchor                       | Status                                                                                                                                                          |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/prompts/writing.ts:133` Task 1                 | 60–120 words                                                                                                          | §5.1 — verbatim: 60–120 words                   | ✓ Verified 2026-05-10 — Story 10-3 corrected from 50–80 to publisher-verbatim 60–120 (audit P1-3 closed)                                                        |
+| `src/lib/prompts/writing.ts:140` Task 2                 | 120–150 words                                                                                                         | §5.1 — verbatim: 120–150 words                  | ✓ Verified 2026-05-10 — exact match (unchanged by Story 10-3)                                                                                                   |
+| `src/lib/prompts/writing.ts:147` Task 3                 | 120–180 words                                                                                                         | §5.1 — verbatim: 120–180 words                  | ✓ Verified 2026-05-10 — Story 10-3 corrected from 250–300 (C1 target) to publisher-verbatim 120–180 — uniform across all CEFR levels (audit P1-3 HIGH closed)   |
+| `src/lib/prompts/writing.ts` `writingTaskWordRange`     | helper returns Task 1 → {60,120}, Task 2 → {120,150}, Task 3 → {120,180}                                              | §5.1 — verbatim per-task ranges                 | ✓ Verified 2026-05-10 — Story 10-3 added single source of truth for per-task ranges; consumed by `TASK_EXPECTATIONS` + `src/hooks/use-exercise.ts` writing flow |
+| `src/hooks/use-exercise.ts` writing flow                | imports `writingTaskWordRange`; `WritingContent.{minWords,maxWords}` flows to UI at `app/(tabs)/practice/writing.tsx` | §5.1 — same publisher-verbatim ranges           | ✓ Verified 2026-05-10 — Story 10-3 collapsed pre-10-3 three-site lockstep risk via the helper                                                                   |
+| `src/lib/prompts/writing.ts` §5.3 disqualification rule | top-of-prompt block surfaces "A1 non atteint" rule for out-of-range submissions                                       | §5.3 — verbatim publisher disqualification rule | ✓ Verified 2026-05-10 — Story 10-3 added the §5.3 surface so the AI does not generate prompts demanding more text than the publisher allows                     |
 
 ---
 

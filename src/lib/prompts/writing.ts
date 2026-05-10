@@ -1,5 +1,54 @@
 import type { CEFRLevel } from "@/src/types/cefr";
 
+/**
+ * Per-task Writing word ranges sourced verbatim from
+ * `docs/tcf-spec-source.md §5.1` (publisher-verbatim, France Éducation
+ * International's TCF Canada landing page). Unlike listening/reading
+ * where the publisher does NOT publish per-CEFR word counts, these
+ * Writing ranges are **enforcement-grade per §5.3**: a submission
+ * outside the per-task range is automatically evaluated as
+ * "A1 non atteint" (below A1) regardless of content quality.
+ *
+ * **Do NOT vary these ranges by CEFR level.** The publisher does not
+ * publish a per-level carve-out; all candidates write to the same
+ * per-task targets. The legacy "200+ words (250-300 for C1 target)"
+ * framing on Task 3 was a pre-10-3 invention.
+ *
+ * Citations matrix rows live in `docs/tcf-spec-citations.md §5`.
+ */
+
+/**
+ * Single source of truth for per-task Writing word ranges per
+ * `docs/tcf-spec-source.md §5.1`. Imported by `src/hooks/use-exercise.ts`
+ * writing flow + by `TASK_EXPECTATIONS` below. Centralising here
+ * eliminates the lockstep-update risk that pre-10-3 carried (three
+ * sites each holding their own copy of the ranges).
+ *
+ * - Task 1: 60–120 words (verbatim FR: "minimum 60 mots / maximum 120 mots")
+ * - Task 2: 120–150 words (verbatim FR: "minimum 120 mots / maximum 150 mots")
+ * - Task 3: 120–180 words (verbatim FR: "minimum 120 mots / maximum 180 mots")
+ */
+export function writingTaskWordRange(taskNumber: 1 | 2 | 3): { min: number; max: number } {
+  switch (taskNumber) {
+    case 1:
+      return { min: 60, max: 120 };
+    case 2:
+      return { min: 120, max: 150 };
+    case 3:
+      return { min: 120, max: 180 };
+    default:
+      // TypeScript narrows to never here, but at runtime callers can still
+      // pass a deserialised DB value or a deep-link param that escaped
+      // narrowing. Throw loudly instead of returning undefined and letting
+      // a downstream destructure (`const { min, max } = writingTaskWordRange(x)`)
+      // crash with a non-diagnostic `TypeError: Cannot destructure property
+      // 'min' of 'undefined'`.
+      throw new Error(
+        `writingTaskWordRange: unsupported taskNumber "${taskNumber as unknown as string}" (expected 1, 2, or 3)`
+      );
+  }
+}
+
 /** Build the system prompt for writing evaluation */
 export function buildWritingEvaluatorPrompt(params: {
   cefrLevel: CEFRLevel;
@@ -8,9 +57,26 @@ export function buildWritingEvaluatorPrompt(params: {
 }): string {
   const { cefrLevel, taskNumber, prompt: writingPrompt } = params;
 
-  const taskExpectations = TASK_EXPECTATIONS[taskNumber];
+  const taskExpectations = buildTaskExpectations(taskNumber);
+
+  // §5.3 enforcement block is templated from `writingTaskWordRange` so the
+  // helper remains the single source of truth — a future range change in
+  // the helper propagates to this block automatically. Renders as:
+  //   - Task 1: 60-120 words (publisher-verbatim, §5.1)
+  //   - Task 2: 120-150 words (publisher-verbatim, §5.1)
+  //   - Task 3: 120-180 words (publisher-verbatim, §5.1)
+  const enforcementBullets = ([1, 2, 3] as const)
+    .map((t) => {
+      const { min, max } = writingTaskWordRange(t);
+      return `- Task ${t}: ${min}-${max} words (publisher-verbatim, §5.1)`;
+    })
+    .join("\n");
 
   return `You are an expert TCF (Test de Connaissance du Français) writing examiner. You evaluate written French with precision and provide constructive feedback calibrated to CEFR level ${cefrLevel}.
+
+## Publisher Word Count Enforcement (§5.3)
+Per France Éducation International's published rule (docs/tcf-spec-source.md §5.3): a Writing submission whose word count falls outside the per-task range below is automatically evaluated as "A1 non atteint" (below A1) regardless of content quality. Do NOT generate writing prompts that implicitly demand more text than the per-task range allows; the prompt's complexity must be addressable within the verbatim publisher range. The ranges are uniform across all CEFR levels — there is no per-level carve-out.
+${enforcementBullets}
 
 ## Evaluation Task
 - TCF Expression Écrite Task ${taskNumber}
@@ -79,26 +145,35 @@ ${taskExpectations}
 }`;
 }
 
-const TASK_EXPECTATIONS: Record<1 | 2 | 3, string> = {
-  1: `
+// Per-task expectations pull the word range from `writingTaskWordRange`
+// (single source of truth per §5.1). A future change to the helper
+// propagates here automatically — no two-site drift. The qualitative
+// content (types, register, focus) is task-specific and stays inline.
+function buildTaskExpectations(taskNumber: 1 | 2 | 3): string {
+  const { min, max } = writingTaskWordRange(taskNumber);
+  const wordCountLine = `${min}-${max} words (publisher-verbatim §5.1; out-of-range → "A1 non atteint")`;
+  switch (taskNumber) {
+    case 1:
+      return `
 ## Task 1 Expectations
-- Short message: 50-80 words
+- Short message: ${wordCountLine}
 - Types: describe something, invite someone, make a request, leave a message
 - Register: semi-formal to informal depending on context
-- Focus: clarity, basic cohesion, appropriate greeting/closing`,
-
-  2: `
+- Focus: clarity, basic cohesion, appropriate greeting/closing`;
+    case 2:
+      return `
 ## Task 2 Expectations
-- Article or formal letter: 120-150 words
+- Article or formal letter: ${wordCountLine}
 - Types: argue a position, compare options, explain a situation, write for a publication
 - Register: formal
-- Focus: argumentation structure, connectors, vocabulary precision`,
-
-  3: `
+- Focus: argumentation structure, connectors, vocabulary precision`;
+    case 3:
+      return `
 ## Task 3 Expectations
-- Essay or synthesis: 200+ words (250-300 for C1 target)
+- Essay or synthesis: ${wordCountLine}
 - Types: analyze a complex topic, synthesize multiple viewpoints, persuasive essay
 - Register: academic/formal
 - Focus: sophisticated argumentation, nuanced vocabulary, complex sentence structures, strong thesis
-- C1 requirement: must demonstrate ability to express complex ideas with precision`,
-};
+- At any CEFR target, Task 3 word count is ${min}-${max} words per publisher §5.1; complexity is judged by argumentation depth + lexical sophistication, not by length`;
+  }
+}

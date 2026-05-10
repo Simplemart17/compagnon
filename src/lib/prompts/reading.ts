@@ -1,5 +1,22 @@
 import type { CEFRLevel } from "@/src/types/cefr";
 
+/**
+ * Per-CEFR reading passage word ranges anchored to
+ * `docs/tcf-spec-source.md §4.1` (operator-derived heuristics
+ * cross-checked against the publisher's TCF samples + Council of Europe
+ * 2018 Companion Volume reading descriptors). The publisher
+ * (France Éducation International) does NOT publish per-CEFR
+ * passage word counts — these are generation-time heuristics only.
+ *
+ * **Bands deliberately overlap.** Same caveat as listening.ts — length
+ * is not the CEFR diagnostic; syntactic complexity + vocabulary tier
+ * (§7) + abstract/concrete ratio + rhetorical structure differentiate
+ * levels. Story 10-3 roughly doubled B2 / C1 ceilings to address audit
+ * P1-3 ("B2 way too short, C1 way too short").
+ *
+ * Citations matrix rows live in `docs/tcf-spec-citations.md §4`.
+ */
+
 /** Build prompt to generate a reading exercise */
 export function buildReadingExercisePrompt(params: {
   cefrLevel: CEFRLevel;
@@ -56,6 +73,9 @@ Example: "l'apanage" → "C'est quelque chose qui appartient uniquement à une p
 }`;
 }
 
+// Per-CEFR passage word ranges anchored to docs/tcf-spec-source.md §4.1
+// (operator-derived heuristics; bands deliberately overlap — see top-of-file
+// JSDoc). Story 10-3 extended B1/B2/C1/C2 ranges to address audit P1-3.
 const LEVEL_CONTENT: Record<CEFRLevel, string> = {
   A1: `- Very short texts (30-60 words)
 - Types: signs, simple menus, postcards, short messages, ID forms
@@ -69,25 +89,25 @@ const LEVEL_CONTENT: Record<CEFRLevel, string> = {
 - Questions test comprehension of main ideas and specific details
 - Some simple inference`,
 
-  B1: `- Medium texts (120-200 words)
+  B1: `- Medium texts (120-250 words)
 - Types: newspaper articles, formal emails, blog posts, instructions, brochures
 - All common tenses, varied vocabulary
 - Questions test understanding of opinions, cause/effect, sequence
 - Moderate inference required`,
 
-  B2: `- Longer texts (200-300 words)
+  B2: `- Longer texts (250-450 words)
 - Types: opinion pieces, professional correspondence, reviews, reports
 - Complex grammar, abstract vocabulary
 - Questions test understanding of argumentation, implicit meaning, tone
 - Requires distinguishing fact from opinion`,
 
-  C1: `- Long texts (300-400 words)
+  C1: `- Long texts (450-700 words)
 - Types: academic articles, literary excerpts, editorials, policy documents
 - Sophisticated language, specialized vocabulary
 - Questions test nuanced comprehension, rhetorical analysis, synthesis
 - Requires understanding subtle distinctions and authorial intent`,
 
-  C2: `- Extended texts (350-500 words)
+  C2: `- Extended texts (600-900+ words)
 - Types: literary criticism, philosophical essays, legal texts, satirical writing
 - Full range of registers and styles
 - Questions test mastery-level comprehension: subtext, cultural references, stylistic analysis

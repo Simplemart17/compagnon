@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-10 # story 10-2 done (Scoring scale calibration — 15 review patches applied; 460 tests passing)
+last_updated: 2026-05-10 # story 10-3 done (per-level passage / sentence calibration — 8 review patches applied; 501 tests passing; PR #61)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -135,7 +135,7 @@ development_status:
   epic-10: in-progress
   10-1-authoritative-tcf-spec-sourcing: done # 2026-05-10: implemented + 12 review patches (3 HIGH P1/P2/P3 + 5 MED + 4 LOW; 4 rejected); 329 tests passing; PR #56
   10-2-scoring-scale-calibration: done
-  10-3-per-level-passage-sentence-calibration: backlog
+  10-3-per-level-passage-sentence-calibration: done # 2026-05-10: implemented + 8 review patches (1 HIGH P1 + 2 MED P2/P3 + 5 LOW P4-P8); 501 tests passing; PR #61
   10-4-vocabulary-frequency-caps: backlog
   10-5-placement-test-prompt-extraction: backlog
   10-6-speaking-rubric-scoring-pipeline: backlog

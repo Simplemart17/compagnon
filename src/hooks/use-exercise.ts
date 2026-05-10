@@ -21,7 +21,7 @@ import { chatCompletionJSON, generateSpeech } from "@/src/lib/openai";
 import { buildListeningExercisePrompt } from "@/src/lib/prompts/listening";
 import { buildReadingExercisePrompt } from "@/src/lib/prompts/reading";
 import { buildGrammarExercisePrompt } from "@/src/lib/prompts/grammar";
-import { buildWritingEvaluatorPrompt } from "@/src/lib/prompts/writing";
+import { buildWritingEvaluatorPrompt, writingTaskWordRange } from "@/src/lib/prompts/writing";
 import {
   listeningExerciseSchema,
   readingExerciseSchema,
@@ -185,25 +185,33 @@ export function useExercise(): UseExerciseReturn {
           case "writing": {
             // For writing, we generate a prompt rather than MCQs
             const cefrIdx = CEFR_ORDER.indexOf(cefrLevel);
-            const taskNumber =
+            const taskNumber: 1 | 2 | 3 =
               cefrIdx <= CEFR_ORDER.indexOf("A2") ? 1 : cefrIdx <= CEFR_ORDER.indexOf("B2") ? 2 : 3;
-            const minWords = taskNumber === 1 ? 50 : taskNumber === 2 ? 120 : 200;
-            const maxWords = taskNumber === 1 ? 80 : taskNumber === 2 ? 150 : 300;
+            // Per docs/tcf-spec-source.md §5.1 (publisher-verbatim) — single
+            // source of truth lives in src/lib/prompts/writing.ts so this hook
+            // and the writing.ts TASK_EXPECTATIONS block cannot drift.
+            const { min: minWords, max: maxWords } = writingTaskWordRange(taskNumber);
 
             const writingPrompt: WritingContent = {
               prompt: "", // Will be filled by AI
-              taskNumber: taskNumber as 1 | 2 | 3,
+              taskNumber,
               minWords,
               maxWords,
             };
 
             // Generate a writing prompt
+            const taskTypeDescription =
+              taskNumber === 1
+                ? `Short message (${minWords}-${maxWords} words)`
+                : taskNumber === 2
+                  ? `Article/letter (${minWords}-${maxWords} words)`
+                  : `Essay/synthesis (${minWords}-${maxWords} words)`;
             const result = await chatCompletionJSON(
               [
                 {
                   role: "system",
                   content: `Generate a French writing exercise prompt for CEFR level ${cefrLevel}.
-Task type: ${taskNumber === 1 ? "Short message (50-80 words)" : taskNumber === 2 ? "Article/letter (120-150 words)" : "Essay/synthesis (200+ words)"}
+Task type: ${taskTypeDescription}
 Return JSON: { "prompt": "the writing task in French", "context": "brief context in English for the student" }`,
                 },
               ],
