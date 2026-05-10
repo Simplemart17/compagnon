@@ -66,7 +66,59 @@ const RECORDING_OPTIONS: RecordingOptions = {
   },
 };
 
-export function useAudioRecorder(): UseAudioRecorderReturn {
+/**
+ * Low-bitrate AAC profile for the speaking mock-test (story 9-8).
+ *
+ * The speaking test records up to 5.5 minutes per task; the default LinearPCM
+ * profile would produce ~10.5 MB raw, exceeding the `ai-proxy` 5 MB cap on
+ * audio bodies (`supabase/functions/ai-proxy/index.ts:47`). 32 kbit AAC at
+ * 16 kHz mono yields ~4 KB/sec → 5.5 min ≈ 1.3 MB, safely under the cap.
+ *
+ * Speech intelligibility at 32 kbit is well within Whisper's documented
+ * tolerance — pronunciation/fluency grading is unaffected. This profile MUST
+ * be used by the speaking screen and SHOULD NOT be used elsewhere (the
+ * existing pronunciation/conversation surfaces benefit from the higher-quality
+ * default for phoneme-level Azure assessment).
+ */
+export const RECORDING_OPTIONS_LOW_BITRATE: RecordingOptions = {
+  extension: ".m4a",
+  sampleRate: 16000,
+  numberOfChannels: 1,
+  bitRate: 32000,
+  isMeteringEnabled: false,
+  android: {
+    extension: ".m4a",
+    outputFormat: "mpeg4",
+    audioEncoder: "aac",
+    sampleRate: 16000,
+  },
+  ios: {
+    outputFormat: IOSOutputFormat.MPEG4AAC,
+    audioQuality: AudioQuality.MEDIUM,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {
+    mimeType: "audio/mp4",
+    bitsPerSecond: 32000,
+  },
+};
+
+/**
+ * Audio-recorder hook.
+ *
+ * @param options Optional `RecordingOptions`. Defaults to the high-quality
+ *   `RECORDING_OPTIONS` profile (16 kHz / 16-bit / mono LinearPCM on iOS,
+ *   AAC on Android) suitable for pronunciation assessment and conversation
+ *   audio. Callers that need a different profile (e.g. `RECORDING_OPTIONS_LOW_BITRATE`
+ *   for the speaking mock-test) MUST pass a STABLE reference — a module-level
+ *   constant or a `useMemo`-ed object. Passing a fresh inline object literal
+ *   per render (`useAudioRecorder({ ... })`) tears down and recreates the
+ *   underlying expo-audio recorder on every render, which loses recording
+ *   state and may drop in-flight audio. Story 9-8 review patch P13.
+ */
+export function useAudioRecorder(options?: RecordingOptions): UseAudioRecorderReturn {
   const [state, setState] = useState<AudioRecorderState>({
     isRecording: false,
     hasPermission: null,
@@ -74,7 +126,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     error: null,
   });
 
-  const recorder = useExpoAudioRecorder(RECORDING_OPTIONS);
+  const recorder = useExpoAudioRecorder(options ?? RECORDING_OPTIONS);
   // useAudioRecorderState polls the recorder for isRecording and durationMillis,
   // which are on RecorderState — not the event-based RecordingStatus type.
   const recorderState = useAudioRecorderState(recorder, 100);

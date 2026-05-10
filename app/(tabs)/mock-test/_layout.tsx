@@ -13,6 +13,7 @@ export default function MockTestLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="speaking" options={{ title: "Speaking Test", headerShown: false }} />
       <Stack.Screen name="[testId]" options={{ title: "Test in Progress", headerShown: false }} />
       <Stack.Screen name="results" options={{ title: "Results" }} />
     </Stack>
