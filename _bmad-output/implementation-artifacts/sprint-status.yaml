@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-09 # story 9-9 done (Submit credentials & deploy substrate + 12 review patches)
+last_updated: 2026-05-10 # story 10-1 review (Authoritative TCF spec sourcing); 329 tests; epic-10 → in-progress
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -132,8 +132,8 @@ development_status:
   epic-9-retrospective: optional
 
   # Epic 10: TCF Pedagogy Realignment (P0/P1)
-  epic-10: backlog
-  10-1-authoritative-tcf-spec-sourcing: backlog
+  epic-10: in-progress
+  10-1-authoritative-tcf-spec-sourcing: review
   10-2-scoring-scale-calibration: backlog
   10-3-per-level-passage-sentence-calibration: backlog
   10-4-vocabulary-frequency-caps: backlog
