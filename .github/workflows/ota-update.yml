@@ -69,18 +69,42 @@ jobs:
         run: npm test
 
       - name: Publish OTA update
+        id: publish
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          # The @sentry/react-native/expo config plugin auto-uploads source maps
+          # when SENTRY_AUTH_TOKEN is in the env at `eas update` time. No
+          # separate sentry-cli step required — running it would double-upload.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          CHANNEL: ${{ github.event.inputs.channel }}
+          PLATFORM: ${{ github.event.inputs.platform }}
+          MESSAGE: ${{ github.event.inputs.message }}
         run: |
+          # Tee the output so the next step can grep for the Sentry upload
+          # success line — guards against the silent no-op when
+          # SENTRY_AUTH_TOKEN is set but invalid (P8 review).
           eas update \
-            --channel ${{ github.event.inputs.channel }} \
-            --platform ${{ github.event.inputs.platform }} \
-            --message "${{ github.event.inputs.message }}" \
-            --non-interactive
+            --channel "$CHANNEL" \
+            --platform "$PLATFORM" \
+            --message "$MESSAGE" \
+            --non-interactive 2>&1 | tee /tmp/eas-update.log
+          # Preserve eas update's exit code through the pipe.
+          exit ${PIPESTATUS[0]}
 
-      # NOTE: Sentry source-map upload is gated on Epic 9.3 (remove DSN from app.json,
-      # add SENTRY_AUTH_TOKEN secret, configure beforeSend scrubber). Without it,
-      # production stack traces from OTA-shipped code will be minified.
-      # Once Epic 9.3 lands, add a `npx sentry-expo-upload-sourcemaps` step here.
+      - name: Verify Sentry source-map upload
+        # Skipped if the publish step failed — no point checking for source
+        # maps if no bundle shipped.
+        if: success()
+        run: |
+          # The @sentry/react-native/expo plugin emits an "uploaded" line on
+          # success and a "skipped" / "warning" line on no-op. We require the
+          # success line; otherwise production stack traces from this OTA
+          # will be minified and undebuggable (P8 review).
+          if grep -qiE 'sentry.*(release artifacts|source maps).*upload(ed)? successfully' /tmp/eas-update.log; then
+            echo "✓ Sentry source maps uploaded"
+          else
+            echo "::error title=Sentry source maps not uploaded::SENTRY_AUTH_TOKEN may be invalid, revoked, or wrong-scope. Production crashes from this OTA will be minified. Check token at sentry.io/settings/account/api/auth-tokens (needs project:write + project:releases on the companion project)."
+            exit 1
+          fi

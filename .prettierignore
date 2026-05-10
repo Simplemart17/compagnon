@@ -3,3 +3,11 @@ node_modules/
 dist/
 supabase/functions/
 *.lock
+
+# Operator artifacts (story files, epics, runbooks, retros). Prior to story
+# 9-9 these were ignored by `_bmad*` in .gitignore, which Prettier's default
+# behavior also respected. Story 9-9 narrowed the gitignore so new story files
+# aren't silently dropped, but the markdown body of these documents is
+# operator-authored prose with intentional table alignment and is not subject
+# to source-code formatting rules.
+_bmad-output/
