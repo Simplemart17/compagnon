@@ -4,7 +4,9 @@ import type { CEFRLevel } from "@/src/types/cefr";
 /**
  * Sections of the TCF Canada exam that are generated as multiple-choice
  * questionnaires. Writing and Speaking are mandatory in TCF Canada too but
- * use separate (non-MCQ) production-task pipelines (Epic 10 + story 9-8).
+ * use separate (non-MCQ) production-task pipelines:
+ *   - Speaking — see `app/(tabs)/mock-test/speaking.tsx` (story 9-8 landed)
+ *   - Writing — Epic 10.6
  */
 export type MockTestQcmSection = "listening" | "reading";
 
