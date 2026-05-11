@@ -1,6 +1,28 @@
 # Story 10.11: Phase-2 Speaking Rubric — Replace 5-Dimension Proxy with Full 9-Criterion Publisher Breakdown
 
-Status: backlog
+Status: rejected
+
+---
+
+## 🚨 STORY REJECTED 2026-05-11 — §6.3 prediction not supported by publisher
+
+The operator downloaded the _Manuel du candidat TCF_ PDF on 2026-05-11; verbatim Expression Orale rubric transcription at [`docs/tcf-canada-snapshots/manuel-candidat-tcf-2026-05-11.md`](docs/tcf-canada-snapshots/manuel-candidat-tcf-2026-05-11.md). The snapshot proves the §6.3 prediction wrong: **the candidate-facing Manuel does NOT publish a 9-sub-criterion breakdown.** It publishes only the 3-category rubric (`linguistique` / `pragmatique` / `sociolinguistique`) + a holistic per-task A1-non-atteint → C2 rating + a 2-evaluator double-blind correction process + an undisclosed "règle de calcul" combining 6 ratings into a final 0-20 score.
+
+Story 10-6's 5-dimension proxy schema is therefore **more granular than the publisher's actual rubric**, not less. Extending to 9 sub-criteria (the original premise of this story) would invent finer granularity than the publisher itself uses — that is not a Phase-2 improvement, it is a digression from publisher fidelity.
+
+**This story is REJECTED as-drafted.** The genuine Phase-2 improvement available from the Manuel snapshot is being filed as **Story 10-11b** with the actionable scope:
+
+1. **Optional addition** of a per-task `estimatedCEFRPerTask: CEFRLevel` field to `speakingTaskEvaluationSchema` matching the publisher's actual holistic per-task output (alongside the existing 5-dim numeric scores).
+2. **JSDoc note on `computeSpeakingTaskOverall` / `computeSpeakingComposite`** acknowledging that the publisher's combination rule for 6 evaluator-task ratings → 1 final 0-20 score is undisclosed; the per-dim × `RUBRIC_TO_COMPOSITE` + 3-task-equal-average approximation is the best public-information estimate.
+3. **Cross-check the grille d'interprétation** (snapshot §3) against `src/lib/ircc-bands.ts` `IRCC_CLB_BANDS` — confirm alignment between the Manuel's 0-20 → CEFR mapping and the IRCC CLB equivalency table.
+
+See [`docs/tcf-canada-snapshots/manuel-candidat-tcf-2026-05-11.md`](docs/tcf-canada-snapshots/manuel-candidat-tcf-2026-05-11.md) §5 (Cross-Project Implications table) for the full action list.
+
+The rest of this file is preserved for archival reference — it documents the (now-corrected) `§6.3` prediction that the snapshot retired.
+
+---
+
+Status: ~~backlog~~ rejected (see above)
 
 **Phase-2 follow-up story. ARTIFACT-BLOCKED.** Filed by Epic 10 retrospective (`epic-10-retro-2026-05-10.md` action item B7). Closes `docs/tcf-spec-source.md §6.3` Phase-2 commitment + `§10b item #2` operator-action. This story **cannot start** until the operator downloads the _Manuel du candidat TCF_ PDF from france-education-international.fr (free download, but requires manual operator action — Story 10-1 documented that WebFetch did not return the PDF content reliably).
 

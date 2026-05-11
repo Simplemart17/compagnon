@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-10 # epic-10 retrospective done (epic-10-retro-2026-05-10.md); Epic 10 fully closed; Epic 11 next
+last_updated: 2026-05-11 # 10-11 rejected — Manuel snapshot proves §6.3 9-criterion prediction wrong (publisher uses 3-category + holistic per-task A1-non-atteint→C2 rating); Story 10-11b to be filed for actionable Phase-2 scope; §10b item #1 operator-action DONE
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -144,7 +144,7 @@ development_status:
   # Phase-2 follow-ups (filed by epic-10 retro 2026-05-10 action items B5/B6/B7). Each closes a §10b operator-action.
   10-9-realtime-examiner-roleplay: backlog # Phase-2 (scope-blocked, NOT artifact-blocked): Realtime examiner role-play for Speaking — §6.1 prep-window UI + §6.4 examiner-format live session; closes §10 follow-up #10
   10-10-phase2-vocab-beacco: backlog # Phase-2 (ARTIFACT-BLOCKED, ~€120-180): replace heuristic vocab caps with Beacco-verbatim word lists (Didier 2007-2011); closes §10b item #5 + §10 follow-up #9
-  10-11-phase2-speaking-9-criterion: backlog # Phase-2 (ARTIFACT-BLOCKED, free PDF): replace 5-dim speaking proxy with publisher's 9-sub-criterion rubric from Manuel du candidat TCF; closes §10b item #2 + §10 follow-up #4 (9-criterion sub-row)
+  10-11-phase2-speaking-9-criterion: rejected # 2026-05-11: operator downloaded Manuel PDF; snapshot at docs/tcf-canada-snapshots/manuel-candidat-tcf-2026-05-11.md proves §6.3 prediction wrong — publisher publishes 3 categories + holistic per-task A1-non-atteint → C2 rating, NOT 9 sub-criteria. Story 10-6's 5-dim proxy is MORE granular than publisher. Future Story 10-11b will file the genuine Phase-2 scope (optional per-task estimatedCEFRPerTask field + JSDoc on undisclosed combination rule).
   epic-10-retrospective: done # 2026-05-10: retro complete (8 stories, 68+ review patches, +572 net tests 322→894, 16+ citations matrix rows flipped ✓, 0 prod regressions); see epic-10-retro-2026-05-10.md
 
   # Epic 11: AI Robustness & Cost Discipline (P1)
