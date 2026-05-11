@@ -1,6 +1,6 @@
 # Story 10.4: Vocabulary Frequency Caps
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
