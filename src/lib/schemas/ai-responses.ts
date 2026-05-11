@@ -457,6 +457,60 @@ export const speakingTaskEvaluationSchema = z.object({
   corrections: z.string().max(2000).optional(),
 });
 
+/**
+ * `report_correction` Realtime tool-call arguments. Used by `useRealtimeVoice`
+ * `handleFunctionCall` to validate the model's tool invocation payload before
+ * pushing the correction into the per-turn pending-corrections buffer.
+ *
+ * Story 11-1 — replaces the Story 9-5 / 10-7 `parseCorrections` regex bridge
+ * with structured tool-call ingestion. The schema mirrors `Correction` at
+ * `src/types/conversation.ts` — `category` is the same 4-literal union
+ * (`"grammar" | "pronunciation" | "vocabulary" | "register"`); the three
+ * string fields are non-empty.
+ *
+ * Validation runs via `schema.safeParse(JSON.parse(args))` inside the
+ * tool-call handler. The Realtime path does NOT route through
+ * `chatCompletionJSON`, so there is no Story 9-7 retry loop — on parse
+ * failure the handler returns "Invalid correction shape; correction not
+ * recorded." so the model can self-correct on a subsequent invocation,
+ * and a Sentry breadcrumb fires with `feature: "realtime-report-correction"`
+ * + the Zod issue code.
+ *
+ * `correctionCategorySchema` is exported separately so future surfaces
+ * (the `note_error_pattern` handler's existing inline `enum: [...]`
+ * literal) could consume it as a single source of truth in a future
+ * hardening story.
+ */
+export const correctionCategorySchema = z.enum([
+  "grammar",
+  "pronunciation",
+  "vocabulary",
+  "register",
+]);
+
+/**
+ * Per-field length caps protect against a runaway model spamming arbitrarily
+ * large strings into `pendingToolCorrectionsRef` (and thence into
+ * `conversation_messages.corrections` JSONB). The caps match the publisher's
+ * expected utterance lengths for TCF Canada (single short clauses for
+ * `original` / `corrected`, 1–2 sentences for `explanation`) with comfortable
+ * headroom. Story 11-1 review patch P10.
+ */
+export const REPORT_CORRECTION_MAX_LENGTH = {
+  original: 500,
+  corrected: 500,
+  explanation: 1000,
+} as const;
+
+export const reportCorrectionArgsSchema = z.object({
+  original: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.original),
+  corrected: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.corrected),
+  explanation: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation),
+  category: correctionCategorySchema,
+});
+
+export type ReportCorrectionArgs = z.infer<typeof reportCorrectionArgsSchema>;
+
 // ---------------------------------------------------------------------------
 // Placement test — the highest-stakes call with the most polymorphic AI shape
 // ---------------------------------------------------------------------------
@@ -702,5 +756,6 @@ export type ErrorPatternBatchInferred = z.infer<typeof errorPatternBatchSchema>;
 export type MockTestSectionResponse = z.infer<typeof mockTestSectionSchema>;
 export type PronunciationSentenceInferred = z.infer<typeof pronunciationSentenceSchema>;
 export type SpeakingTaskEvaluation = z.infer<typeof speakingTaskEvaluationSchema>;
+export type CorrectionCategoryInferred = z.infer<typeof correctionCategorySchema>;
 export type PlacementQuestionInferred = z.infer<typeof placementQuestionSchema>;
 export type PlacementTestResponse = z.infer<typeof placementTestSchema>;

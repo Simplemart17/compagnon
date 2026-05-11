@@ -28,21 +28,10 @@ import {
   type TranscriptEntry,
 } from "../realtime-transcript";
 
-/** Mirrors the regex in `useRealtimeVoice.parseCorrections` for case 14. */
-function parseCorrectionsForTest(text: string): Correction[] {
-  const corrections: Correction[] = [];
-  const pattern = /"([^"]+)"\s*→\s*"([^"]+)"\s*\(([^)]+)\)/g;
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(text)) !== null) {
-    corrections.push({
-      original: match[1],
-      corrected: match[2],
-      explanation: match[3],
-      category: "grammar",
-    });
-  }
-  return corrections;
-}
+// Story 11-1: `parseCorrectionsForTest` mirror function (Case 14) is
+// deleted with the production regex. The dedup contract this suite
+// covers is the `appendIfNew` keying + FIFO eviction + dedup-set
+// invariants — orthogonal to how corrections are extracted upstream.
 
 const noCorrections = (_text: string): Correction[] => [];
 
@@ -204,29 +193,45 @@ describe("appendIfNew (story 9-5)", () => {
     expect(onDedup).toHaveBeenCalledWith("i1");
   });
 
-  it("Case 14 — corrections are extracted exactly once per AI turn", () => {
+  // Story 11-1: the pre-11-1 Case 14 verified the parseCorrections regex
+  // contract. The production regex is deleted; the callback's role is now
+  // to drain a per-turn buffer. The new Case 14 verifies the dedup contract
+  // continues to invoke `parseCorrections` exactly once per unique key —
+  // protecting against a future refactor that accidentally double-invokes
+  // the callback (which would silently drain the buffer twice, producing
+  // zero corrections on the second call because the buffer is now empty).
+  // Review patch P5 (MED).
+  it("Case 14 — parseCorrections is invoked exactly once per unique key", () => {
     const input = emptyAppendInput();
-    const text =
-      'Tu as bien fait. "je suis aller" → "je suis allé" (past participle agreement) Continue!';
+    const parseCorrectionsSpy = jest.fn(() => [] as Correction[]);
 
-    const first = appendIfNew(input, "i1", text, {
-      parseCorrections: parseCorrectionsForTest,
-    });
+    // First .done for a new key — callback fires.
+    const first = appendIfNew(input, "i1", "Bonjour!", { parseCorrections: parseCorrectionsSpy });
     expect(first.appended).toBe(true);
-    expect(first.corrections).toHaveLength(1);
-    expect(first.corrections[0].original).toBe("je suis aller");
-    expect(first.corrections[0].corrected).toBe("je suis allé");
-    expect(first.transcript[0].corrections).toHaveLength(1);
+    expect(parseCorrectionsSpy).toHaveBeenCalledTimes(1);
 
-    // Replaying the same event must not double-count.
+    // Replay of the same key — dedup blocks the append AND the callback.
+    // A future refactor that calls parseCorrections before the dedup check
+    // would burn a drain on a stale event and lose real corrections on the
+    // next unique key.
     const second = appendIfNew(
       { ...input, transcript: first.transcript, corrections: first.corrections },
       "i1",
-      text,
-      { parseCorrections: parseCorrectionsForTest }
+      "Bonjour!",
+      { parseCorrections: parseCorrectionsSpy }
     );
     expect(second.appended).toBe(false);
-    expect(second.corrections).toHaveLength(1);
+    expect(parseCorrectionsSpy).toHaveBeenCalledTimes(1); // unchanged
+
+    // Distinct key — callback fires exactly one MORE time.
+    const third = appendIfNew(
+      { ...input, transcript: first.transcript, corrections: first.corrections },
+      "i2",
+      "Salut!",
+      { parseCorrections: parseCorrectionsSpy }
+    );
+    expect(third.appended).toBe(true);
+    expect(parseCorrectionsSpy).toHaveBeenCalledTimes(2);
   });
 
   it("Case 15 — empty payload is a no-op (no append, no key consumed)", () => {

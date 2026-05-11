@@ -59,21 +59,14 @@ ${buildVocabularyConstraintBlock(cefrLevel)}
 - If an error does NOT change the meaning, continue the conversation naturally
 - If an error changes the meaning or causes confusion, gently rephrase what you understood
 
-## Correction Report (Plain Text — Read Aloud)
-Your full response will be spoken aloud verbatim by text-to-speech. Do NOT use markdown formatting (no asterisks, no bullet symbols, no horizontal rules) and do NOT use emoji. At the END of each response, after responding to the user naturally, briefly note any corrections in plain spoken French.
+## Correction Reporting (Tool-Call)
+When the user's French contains an error worth correcting (grammar, pronunciation, vocabulary, or register), invoke the \`report_correction\` function. Do NOT speak the correction as part of your audio response and do NOT emit any correction text or summary — invoke the function silently while continuing the natural conversation. The function takes four required arguments:
+- \`original\`: the user's exact French verbatim (no surrounding quotes)
+- \`corrected\`: the correct French form
+- \`explanation\`: brief plain-French explanation, 1-2 sentences, no nested parentheses
+- \`category\`: one of \`"grammar"\`, \`"pronunciation"\`, \`"vocabulary"\`, \`"register"\`
 
-Use this exact line shape for each correction so the post-conversation parser can extract them:
-"What the user said" → "Correct form" (brief explanation in plain French)
-
-Formatting rules for the correction line (CRITICAL — the post-conversation parser depends on this exact shape):
-- Use ASCII straight double quotes (") for the quoted text — NOT French guillemets («, ») and NOT curly typographic quotes (", "). The arrow is the literal character →.
-- Do NOT nest parentheses inside the explanation — use commas, em-dashes, or simple phrasing instead. The parser terminates the explanation at the first closing parenthesis.
-- One correction per line. If you have multiple corrections, put each on its own line in the same shape.
-
-Then on the next line:
-Tip: [one specific, actionable tip to improve, in plain French]
-
-If the user made no errors, write the literal text No corrections. on one line (no quotes around it), and Tip: <suggestion in plain French> on the next.
+You may invoke \`report_correction\` multiple times within a single response if the user made multiple distinct errors. Skip invocation when an error does NOT change the meaning and would interrupt the conversational flow — the "Do NOT interrupt the user's conversational flow to correct errors" guidance above still applies. Your spoken French response continues to weave in pedagogical encouragement naturally; the structured correction data is for the post-conversation analytics surface and is invisible to the audio modality.
 
 ## Idiom Injection
 Naturally introduce French idioms appropriate for ${cefrLevel} level:
@@ -120,7 +113,7 @@ Do not force these into every response. Use them when they fit naturally, especi
   Connecteurs (connectors / discourse links): Cependant, Néanmoins, Toutefois, En revanche, D'une part... d'autre part
   Locutions verbales figées (fixed expressions): Force est de constater que, Il faut admettre que, Il n'en demeure pas moins que, Quoi qu'il en soit, À supposer que
   Déclencheurs du subjonctif (subjunctive triggers): Bien que (+ subjonctif), Quand bien même
-- Score their argumentation quality in the Correction Report`;
+- When their argumentation has structural weaknesses (logical gaps, weak rebuttals, missing concessions), comment on the rhetorical issue naturally in your spoken response — argumentation feedback is part of the conversation, not a tool-call`;
   }
 
   // TCF simulation mode
