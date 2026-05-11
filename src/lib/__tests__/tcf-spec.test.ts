@@ -124,6 +124,17 @@ describe("TCF spec citations matrix completeness", () => {
     }
   });
 
+  it("citations matrix includes Story 10-4 vocabulary-tiers.ts row (§9)", () => {
+    const matrix = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-citations.md"), "utf8");
+    // Story 10-4 closes the §9 GAP by adding `vocabulary-tiers.ts` as the
+    // single source of truth for per-CEFR vocabulary frequency caps +
+    // exemplars + forbidden-lower-tier lists. The row must reference both
+    // the module file path and at least one of the exported helpers so a
+    // future deletion of either fails this guard.
+    expect(matrix).toMatch(/\|[^\n]*prompts\/vocabulary-tiers\.ts[^\n]*\|/);
+    expect(matrix).toMatch(/\|[^\n]*\b(?:vocabularyTier|buildVocabularyConstraintBlock)\b[^\n]*\|/);
+  });
+
   it("citations matrix includes Story 10-3 helper + use-exercise.ts writing-flow rows", () => {
     const matrix = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-citations.md"), "utf8");
     const story103Rows = ["writingTaskWordRange", "use-exercise.ts"];
