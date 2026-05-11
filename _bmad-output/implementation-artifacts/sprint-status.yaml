@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-10 # story 10-6 done (speaking rubric — sociolinguistic 5th dim — 6 review patches; 732 tests passing; PR #64; §6.3 closed; §6 citations row ✓; §10 follow-up #10 Realtime deferral)
+last_updated: 2026-05-10 # story 10-7 review (linguistic accuracy pass — P2-1 emoji + P2-2 force-est-de-constater + Élémentaire avancé + Québécois drop; 4 ✗ DELTA rows in citations §8 → ✓ Verified; +86 net tests, 818 total)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -139,7 +139,7 @@ development_status:
   10-4-vocabulary-frequency-caps: done # 2026-05-10: implemented + 9 review patches (3 HIGH P1/P2/P3 + 5 MED P4/P5/P7/P8/P9 + 1 LOW P15); 639 tests passing; PR #62
   10-5-placement-test-prompt-extraction: done # 2026-05-10: implemented + 14 review patches (10 MED P1/P2/P3/P4/P7/P8/P10/P11/P12 + 4 LOW P5/P6/P9/P13/P14); 677 tests passing; PR #63
   10-6-speaking-rubric-scoring-pipeline: done # 2026-05-10: implemented + 6 review patches (2 HIGH P1/P2 + 2 MED P3/P4 + 2 LOW P5/P6); 732 tests passing; PR #64
-  10-7-linguistic-accuracy-pass: backlog
+  10-7-linguistic-accuracy-pass: review # 2026-05-10: implemented (Correction Report plain-text rewrite + debate-mode 3-category discourse-markers split + Alliance Française nameFr + Québécois drop + writing.ts/placement.ts force-est-de-constater reclassification); 818 tests passing; 4 ✗ DELTA rows in citations §8 → ✓ Verified
   10-8-anti-cheat-frequency-anti-repetition: backlog
   epic-10-retrospective: optional
 
