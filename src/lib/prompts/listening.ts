@@ -31,11 +31,38 @@ import type { CEFRLevel } from "@/src/types/cefr";
 export function buildListeningExercisePrompt(params: {
   cefrLevel: CEFRLevel;
   exerciseCount?: number;
-  dialect?: "metropolitan" | "quebecois" | "african";
+  /**
+   * French dialect / accent for the listening passage.
+   *
+   * **Québécois deferred to v2 (Story 10-7 / audit decision D5).**
+   * The pre-10-7 `"quebecois"` arm contained linguistic errors per
+   * `docs/tcf-spec-source.md §8.3` (the OQLF Banque de dépannage
+   * linguistique flagged `'chez nous'` as non-Québécois; the `'tu' → 'tsu'`
+   * affrication needed IPA tagging it didn't have). Per audit decision
+   * D5 (`shippable-roadmap.md §6`), the Québécois variant is **dropped
+   * in v1** and **reintroduced in v2 with native-speaker review**
+   * (OQLF Banque de dépannage linguistique conformance + accurate IPA
+   * tagging for /t/ → [ts] affrication + real Québécois lexical markers:
+   * `icitte`, `pantoute`, `astheure`, `piasse`, `char`, `magasiner`).
+   */
+  dialect?: "metropolitan" | "african";
   topic?: string;
 }): string {
   const { cefrLevel, exerciseCount = 5, dialect = "metropolitan", topic } = params;
 
+  // Story 10-7 review-patch P6 (Edge Case Hunter ECH2): the
+  // `DIALECT_GUIDANCE` map was typed `Record<string, string>` and a
+  // bypassed-TS-narrowing call (e.g., a deserialised DB row with a
+  // pre-10-7 `dialect: "quebecois"` value, or a future caller passing
+  // a non-literal string) would silently produce `undefined` rendered
+  // as `(undefined)` in the prompt body. Throw at runtime if the key
+  // is absent — mirrors the `writingTaskWordRange` defensive throw
+  // pattern (Story 10-3).
+  if (!(dialect in DIALECT_GUIDANCE)) {
+    throw new Error(
+      `buildListeningExercisePrompt: unsupported dialect "${dialect as string}" (expected "metropolitan" or "african"; Québécois deferred to v2 per audit decision D5)`
+    );
+  }
   const dialectGuidance = DIALECT_GUIDANCE[dialect];
   const levelContent = LEVEL_CONTENT[cefrLevel];
 
@@ -88,10 +115,19 @@ ${cefrLevel === "C1" || cefrLevel === "C2" ? "- Write for NATIVE speed — natur
 }`;
 }
 
-const DIALECT_GUIDANCE: Record<string, string> = {
+/**
+ * Story 10-7 / audit D5: the `quebecois` arm was removed. v2
+ * reintroduction requires native-speaker review per
+ * `docs/tcf-spec-source.md §8.3`.
+ *
+ * Review-patch P6: keys are pinned to the literal narrowed union
+ * (`"metropolitan" | "african"`), and `buildListeningExercisePrompt`
+ * throws if a runtime value escapes TS narrowing. Together these
+ * make a stray `"quebecois"` value fail loudly at the boundary
+ * instead of silently emitting `(undefined)` into the system prompt.
+ */
+const DIALECT_GUIDANCE: Record<"metropolitan" | "african", string> = {
   metropolitan: "Standard Parisian/metropolitan French. Clear pronunciation, standard grammar.",
-  quebecois:
-    "Québécois French. Include typical features: 'tu' pronounced 'tsu', 'chez nous', 'icitte', informal contractions. Keep vocabulary comprehensible.",
   african:
     "West African French (e.g., Senegalese, Ivorian). Slightly different rhythm, some local expressions. Formal register tends to be very correct.",
 };

@@ -73,13 +73,33 @@ export function buildWritingEvaluatorPrompt(params: {
     })
     .join("\n");
 
-  // Story 10-4 review patch P3: filter the "Expected connectors by level"
-  // block by the user's target CEFR so an A1 evaluator does not see
-  // aspirational C1-C2 connector references that the new Vocabulary
-  // Constraint block (above) explicitly forbids at A1. Without this
-  // filter the AI sees both "Forbidden at A1: force est de constater"
-  // and "C1-C2 expected: force est de constater" — direct contradiction
-  // (Edge Case Hunter Finding 1).
+  // Story 10-4 review patch P3: filter the "Expected discourse markers
+  // (connectors + fixed expressions) by level" block by the user's
+  // target CEFR so an A1 evaluator does not see aspirational C1-C2
+  // references that the new Vocabulary Constraint block (above)
+  // explicitly forbids at A1. Without this filter the AI sees both
+  // "Forbidden at A1: force est de constater" and "C1-C2 expected:
+  // force est de constater" — direct contradiction (Edge Case Hunter
+  // Finding 1).
+  //
+  // Story 10-7 / docs/tcf-spec-source.md §8.1: the section header
+  // renders as "Expected discourse markers (connectors + fixed
+  // expressions)" (not "Expected connectors"). "Force est de constater"
+  // is a locution verbale figée per Le Bon Usage / Trésor de la langue
+  // française, NOT a connector — the rebranded framing acknowledges the
+  // mixed nature of the upper-register C1-C2 row without losing items.
+  // The per-level filter from Story 10-4 still applies and is not
+  // regressed.
+  //
+  // Review-patch P10 (Edge Case Hunter ECH5): the pre-patch C1-C2 row
+  // was a flat comma-separated list that mixed actual connectors
+  // (néanmoins, toutefois, en l'occurrence) with locutions verbales
+  // figées (force est de constater, il n'en demeure pas moins,
+  // quoi qu'il en soit). The header re-brand alone was cosmetic — the
+  // AI consumed the items as peers. Split the C1-C2 row into two
+  // sub-rows mirroring the conversation.ts debate-mode 3-category
+  // structure (Story 10-7 AC #2) so the AI receives the same
+  // classification signal here as in conversation.ts.
   const connectorRows: string[] = [];
   if (cefrLevel === "A1" || cefrLevel === "A2") {
     connectorRows.push("  A1-A2: et, mais, parce que, alors, aussi");
@@ -89,13 +109,18 @@ export function buildWritingEvaluatorPrompt(params: {
       "  B1-B2: cependant, en effet, par conséquent, d'une part...d'autre part, en revanche"
     );
   } else {
-    // C1, C2 — show all three rows (full upper register expected)
+    // C1, C2 — show all three rows (full upper register expected),
+    // with C1-C2 split into Connecteurs vs Locutions verbales figées
+    // sub-rows per §8.1 (locutions verbales figées are fixed
+    // expressions, not connectors — same classification used by
+    // `conversation.ts` debate-mode block).
     connectorRows.push("  A1-A2: et, mais, parce que, alors, aussi");
     connectorRows.push(
       "  B1-B2: cependant, en effet, par conséquent, d'une part...d'autre part, en revanche"
     );
+    connectorRows.push("  C1-C2 connecteurs: néanmoins, toutefois, en l'occurrence");
     connectorRows.push(
-      "  C1-C2: néanmoins, toutefois, force est de constater, il n'en demeure pas moins, en l'occurrence, quoi qu'il en soit"
+      "  C1-C2 locutions verbales figées: force est de constater, il n'en demeure pas moins, quoi qu'il en soit"
     );
   }
   const expectedConnectorsBlock = connectorRows.join("\n");
@@ -125,7 +150,7 @@ ${buildVocabularyConstraintBlock(cefrLevel)}
 
 ### 2. Cohesion & Coherence (0-25)
 - CRITICAL FOR C1: Correct use of Connecteurs Logiques (transition words)
-- Expected connectors by level (Story 10-4 review patch P3 — filtered to user's target level + below; aspirational tiers omitted to avoid contradiction with the Vocabulary Constraint block above):
+- Expected discourse markers (connectors + fixed expressions) by level (Story 10-4 review patch P3 — filtered to user's target level + below; aspirational tiers omitted to avoid contradiction with the Vocabulary Constraint block above):
 ${expectedConnectorsBlock}
 - Logical flow between sentences and paragraphs
 - Clear introduction, development, and conclusion structure

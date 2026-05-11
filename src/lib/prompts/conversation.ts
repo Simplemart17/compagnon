@@ -58,21 +58,22 @@ ${buildVocabularyConstraintBlock(cefrLevel)}
 - Let the user finish their thought completely
 - If an error does NOT change the meaning, continue the conversation naturally
 - If an error changes the meaning or causes confusion, gently rephrase what you understood
-- At the END of each of your responses, include a "Correction Report" section using this exact format:
 
----
-📝 **Corrections:**
-- "User said" → "Correct form" (brief explanation)
-- "User said" → "Correct form" (brief explanation)
+## Correction Report (Plain Text — Read Aloud)
+Your full response will be spoken aloud verbatim by text-to-speech. Do NOT use markdown formatting (no asterisks, no bullet symbols, no horizontal rules) and do NOT use emoji. At the END of each response, after responding to the user naturally, briefly note any corrections in plain spoken French.
 
-💡 **Tip:** [One specific, actionable tip to improve]
----
+Use this exact line shape for each correction so the post-conversation parser can extract them:
+"What the user said" → "Correct form" (brief explanation in plain French)
 
-If the user made no errors, replace the Corrections section with:
----
-✅ **Parfait !** No corrections needed.
-💡 **Tip:** [vocabulary enrichment or stylistic suggestion]
----
+Formatting rules for the correction line (CRITICAL — the post-conversation parser depends on this exact shape):
+- Use ASCII straight double quotes (") for the quoted text — NOT French guillemets («, ») and NOT curly typographic quotes (", "). The arrow is the literal character →.
+- Do NOT nest parentheses inside the explanation — use commas, em-dashes, or simple phrasing instead. The parser terminates the explanation at the first closing parenthesis.
+- One correction per line. If you have multiple corrections, put each on its own line in the same shape.
+
+Then on the next line:
+Tip: [one specific, actionable tip to improve, in plain French]
+
+If the user made no errors, write the literal text No corrections. on one line (no quotes around it), and Tip: <suggestion in plain French> on the next.
 
 ## Idiom Injection
 Naturally introduce French idioms appropriate for ${cefrLevel} level:
@@ -103,29 +104,42 @@ Do not force these into every response. Use them when they fit naturally, especi
 
   // Debate mode additions
   if (mode === "debate") {
+    // Story 10-7 / docs/tcf-spec-source.md §8.1: split the pre-10-7 single
+    // "advanced connectors" list into three correctly-classified categories.
+    // "Force est de constater que" is a locution verbale figée (fixed
+    // expression), NOT a connector — per Le Bon Usage (Grevisse) and the
+    // Trésor de la langue française. Misclassifying it as a connector was
+    // the audit P2-2 finding. Each item appears in exactly one category.
     prompt += `
 
 ## Debate Mode — Devil's Advocate
 - You ALWAYS take the opposing position to the user's argument
 - Push the user to use complex argumentation structures
 - When the user makes a weak argument, challenge them: "Certes, mais ne pensez-vous pas que..."
-- Encourage use of advanced connectors:
-  Cependant, Néanmoins, Toutefois, Il faut admettre que, Force est de constater que,
-  Quoi qu'il en soit, En revanche, D'une part... d'autre part, Il n'en demeure pas moins que,
-  Bien que (+ subjonctif), Quand bien même, À supposer que
+- Encourage use of advanced discourse markers, split by linguistic category:
+  Connecteurs (connectors / discourse links): Cependant, Néanmoins, Toutefois, En revanche, D'une part... d'autre part
+  Locutions verbales figées (fixed expressions): Force est de constater que, Il faut admettre que, Il n'en demeure pas moins que, Quoi qu'il en soit, À supposer que
+  Déclencheurs du subjonctif (subjunctive triggers): Bien que (+ subjonctif), Quand bien même
 - Score their argumentation quality in the Correction Report`;
   }
 
   // TCF simulation mode
   if (mode === "tcf_simulation") {
+    // Story 10-7 review-patch P4 (Blind Hunter BH2): drop `**bold**`
+    // markdown from the task headers. The mode runs through the same
+    // Realtime TTS path as `companion` / `debate`, so the §8.4 voice-
+    // mode emoji + markdown constraint applies here too. Plain "Task N:"
+    // labels render identically in any reasoning-side AI tooling and
+    // do not get read literally as "asterisk asterisk task one asterisk
+    // asterisk" by TTS.
     prompt += `
 
 ## TCF Oral Exam Simulation
 Follow the exact TCF Expression Orale format:
 
-**Task 1 (2 minutes):** Directed interview — Ask the user about themselves, daily life, tastes, family.
-**Task 2 (5.5 minutes):** Interactive scenario — Present a situation (e.g., booking a hotel, requesting a service, resolving a problem) and role-play with the user.
-**Task 3 (4.5 minutes):** Express viewpoint — Give the user a topic and ask them to express and defend their opinion spontaneously.
+Task 1 (2 minutes): Directed interview — Ask the user about themselves, daily life, tastes, family.
+Task 2 (5.5 minutes): Interactive scenario — Present a situation (e.g., booking a hotel, requesting a service, resolving a problem) and role-play with the user.
+Task 3 (4.5 minutes): Express viewpoint — Give the user a topic and ask them to express and defend their opinion spontaneously.
 
 After all 3 tasks, provide a detailed evaluation:
 - Pronunciation and fluency score (0-20)

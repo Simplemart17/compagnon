@@ -65,12 +65,28 @@ export interface CEFRLevelInfo {
  * third-party tables (per docs/tcf-spec-source.md §2.3). The publisher
  * (France Éducation International) does not publish a verbatim
  * TCF-score → CEFR-level table on its landing page.
+ *
+ * **`nameFr` convention (Story 10-7 / docs/tcf-spec-source.md §8.2).**
+ * The French short labels follow the **Alliance Française school
+ * convention** uniformly across all six levels: Élémentaire 1 / 2,
+ * Intermédiaire 1 / 2, Avancé 1 / 2. §8.2 lists four institutional
+ * conventions (Service-Public.gouv.fr 3-tier, Eduscol CEFR-bracketed,
+ * Beacco/Didier bare codes, Alliance Française school convention) and
+ * directs Epic 10.7 to pick one and apply it uniformly. Alliance
+ * Française was chosen because it (a) preserves the existing 3-family
+ * structure (Élémentaire / Intermédiaire / Avancé), (b) uses a natural
+ * "1" / "2" sub-level distinguisher between A1↔A2, B1↔B2, C1↔C2, and
+ * (c) is familiar to French-as-a-foreign-language students. The
+ * pre-10-7 `nameFr: "Élémentaire avancé"` for A2 was non-canonical
+ * (closest match was the CEFR Companion Volume's informal A2+) and
+ * `nameFr: "Maîtrise"` for C2 mixed in an Eduscol parenthetical
+ * descriptor — both replaced for convention-uniformity.
  */
 export const CEFR_LEVELS: Record<CEFRLevel, CEFRLevelInfo> = {
   A1: {
     level: "A1",
     name: "Beginner",
-    nameFr: "Élémentaire",
+    nameFr: "Élémentaire 1",
     description: "Can understand and use basic everyday expressions.",
     tcfScoreMin: 100,
     tcfScoreMax: 199,
@@ -78,7 +94,7 @@ export const CEFR_LEVELS: Record<CEFRLevel, CEFRLevelInfo> = {
   A2: {
     level: "A2",
     name: "Elementary",
-    nameFr: "Élémentaire avancé",
+    nameFr: "Élémentaire 2",
     description: "Can understand sentences about familiar topics and communicate in simple tasks.",
     tcfScoreMin: 200,
     tcfScoreMax: 299,
@@ -86,7 +102,7 @@ export const CEFR_LEVELS: Record<CEFRLevel, CEFRLevelInfo> = {
   B1: {
     level: "B1",
     name: "Intermediate",
-    nameFr: "Intermédiaire",
+    nameFr: "Intermédiaire 1",
     description: "Can deal with most travel situations and describe experiences.",
     tcfScoreMin: 300,
     tcfScoreMax: 399,
@@ -94,7 +110,7 @@ export const CEFR_LEVELS: Record<CEFRLevel, CEFRLevelInfo> = {
   B2: {
     level: "B2",
     name: "Upper Intermediate",
-    nameFr: "Intermédiaire avancé",
+    nameFr: "Intermédiaire 2",
     description: "Can interact fluently and express viewpoints on a wide range of topics.",
     tcfScoreMin: 400,
     tcfScoreMax: 499,
@@ -102,7 +118,7 @@ export const CEFR_LEVELS: Record<CEFRLevel, CEFRLevelInfo> = {
   C1: {
     level: "C1",
     name: "Advanced",
-    nameFr: "Avancé",
+    nameFr: "Avancé 1",
     description: "Can use language flexibly for academic, professional, and social purposes.",
     tcfScoreMin: 500,
     tcfScoreMax: 599,
@@ -110,7 +126,7 @@ export const CEFR_LEVELS: Record<CEFRLevel, CEFRLevelInfo> = {
   C2: {
     level: "C2",
     name: "Mastery",
-    nameFr: "Maîtrise",
+    nameFr: "Avancé 2",
     description: "Can understand virtually everything and express with precision.",
     tcfScoreMin: 600,
     tcfScoreMax: 699,
