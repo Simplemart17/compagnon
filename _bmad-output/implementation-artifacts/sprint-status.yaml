@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-11 # 10-11 rejected — Manuel snapshot proves §6.3 9-criterion prediction wrong (publisher uses 3-category + holistic per-task A1-non-atteint→C2 rating); Story 10-11b to be filed for actionable Phase-2 scope; §10b item #1 operator-action DONE
+last_updated: 2026-05-11 # 11-1 review-round-2 complete; round 1: 15 patches (3 HIGH + 7 MED + 5 LOW); round 2: 5 patches reviewing the round-1 patches (1 HIGH P16 widen-inflight-gate-for-tool-only-turns + 2 MED P17 setState-snapshot + P18 mergeOrphanCorrections-pure-helper-with-coverage + 2 LOW P19 MAX_PENDING_CORRECTIONS-pinned-to-20 + P20 standardized-Rejected-shape); 955 tests passing (+61 across the whole story); status → review (post-round-2-patches)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -148,8 +148,8 @@ development_status:
   epic-10-retrospective: done # 2026-05-10: retro complete (8 stories, 68+ review patches, +572 net tests 322→894, 16+ citations matrix rows flipped ✓, 0 prod regressions); see epic-10-retro-2026-05-10.md
 
   # Epic 11: AI Robustness & Cost Discipline (P1)
-  epic-11: backlog
-  11-1-correction-protocol-tool-calls: backlog
+  epic-11: in-progress
+  11-1-correction-protocol-tool-calls: review # 2026-05-11: implementation complete on feature/11-1-correction-protocol-tool-calls; +51 net tests (894→945); P1-6 + P2-1 closed architecturally; citations matrix §8 row 4 flipped to ✓ Verified
   11-2-realtime-reconnect-barge-in: backlog
   11-3-edge-function-upstream-timeouts: backlog
   11-4-replace-rate-limit-upstash: backlog
