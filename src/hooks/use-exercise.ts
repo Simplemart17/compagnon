@@ -17,6 +17,13 @@ import {
   incrementDailyActivity,
   checkCefrPromotion,
 } from "@/src/lib/activity";
+import {
+  MIN_FRESH_QUESTIONS_PER_SKILL,
+  extractExerciseHashes,
+  runMcqDedupPipeline,
+  runWritingDedupPipeline,
+} from "@/src/lib/exercise-dedup";
+import { getSeenHashes } from "@/src/lib/exercise-dedup-db";
 import { chatCompletionJSON, generateSpeech } from "@/src/lib/openai";
 import { buildListeningExercisePrompt } from "@/src/lib/prompts/listening";
 import { buildReadingExercisePrompt } from "@/src/lib/prompts/reading";
@@ -42,6 +49,20 @@ export interface GeneratedExercise {
   audioBase64?: string;
   writingPrompt?: WritingContent;
   wordExplanations?: Record<string, string>;
+  /**
+   * Story 10-8 review-patch P1 (ECH3): set to `true` when the writing
+   * dedup pipeline exhausted both attempts and accepted a duplicate
+   * prompt. `persistExercise` reads this and persists `question_stem_hashes: []`
+   * so the seen-set is NOT poisoned with the duplicate hash again
+   * (otherwise prolific writing users could get permanently stuck on
+   * the same recycled prompts until the look-back window scrolls off).
+   *
+   * For MCQ skills, the exhaustion fallback uses the unfiltered original
+   * (which may include partially-fresh content) so this flag is not set
+   * — MCQ exhaustion does NOT seed-poison because the persisted hashes
+   * include the original (still-novel-relative-to-newer-seen) stems.
+   */
+  dedupExhausted?: boolean;
 }
 
 export interface ExerciseState {
@@ -112,17 +133,41 @@ export function useExercise(): UseExerciseReturn {
         currentQuestionIndex: 0,
       }));
 
+      // Story 10-8: fetch the user's seen question-stem hashes for the
+      // current (skill, cefrLevel) tuple. On Supabase failure this
+      // returns an empty set + breadcrumb so generation proceeds
+      // unfiltered (never block the user — Story 9-10 pattern).
+      const userId = useAuthStore.getState().user?.id;
+      const seenHashes = userId ? await getSeenHashes(userId, skill, cefrLevel) : new Set<string>();
+
       try {
         let exercise: GeneratedExercise;
 
         switch (skill) {
           case "listening": {
             const prompt = buildListeningExercisePrompt({ cefrLevel, dialect: "metropolitan" });
-            const result = await chatCompletionJSON(
-              [{ role: "system", content: prompt }],
-              listeningExerciseSchema,
-              { temperature: 0.4, feature: "exercise-listening" }
+            // Story 10-8: run the MCQ dedup pipeline — generate → filter →
+            // retry-once-on-too-few-fresh → fall-back-on-exhaustion.
+            const pipelineOutput = await runMcqDedupPipeline(
+              ({ temperature, isRetry }) =>
+                chatCompletionJSON([{ role: "system", content: prompt }], listeningExerciseSchema, {
+                  temperature,
+                  feature: isRetry ? "exercise-listening-retry" : "exercise-listening",
+                }),
+              seenHashes,
+              MIN_FRESH_QUESTIONS_PER_SKILL.listening
             );
+            const { result, filtered, retries, exhausted } = pipelineOutput;
+            if (exhausted) {
+              captureError(new Error("exercise-dedup-exhausted"), "exercise-dedup-exhausted", {
+                skill,
+                cefrLevel,
+                generatedCount: result.questions.length,
+                filteredCount: filtered.length,
+                seenCount: seenHashes.size,
+                retries,
+              });
+            }
 
             // Generate TTS audio for the passage
             let audioBase64: string | undefined;
@@ -137,7 +182,7 @@ export function useExercise(): UseExerciseReturn {
 
             exercise = {
               skill: "listening",
-              questions: result.questions.map((q) => ({
+              questions: filtered.map((q) => ({
                 ...q,
                 passage: result.passage,
               })),
@@ -149,15 +194,30 @@ export function useExercise(): UseExerciseReturn {
 
           case "reading": {
             const prompt = buildReadingExercisePrompt({ cefrLevel });
-            const result = await chatCompletionJSON(
-              [{ role: "system", content: prompt }],
-              readingExerciseSchema,
-              { temperature: 0.4, feature: "exercise-reading" }
+            const pipelineOutput = await runMcqDedupPipeline(
+              ({ temperature, isRetry }) =>
+                chatCompletionJSON([{ role: "system", content: prompt }], readingExerciseSchema, {
+                  temperature,
+                  feature: isRetry ? "exercise-reading-retry" : "exercise-reading",
+                }),
+              seenHashes,
+              MIN_FRESH_QUESTIONS_PER_SKILL.reading
             );
+            const { result, filtered, retries, exhausted } = pipelineOutput;
+            if (exhausted) {
+              captureError(new Error("exercise-dedup-exhausted"), "exercise-dedup-exhausted", {
+                skill,
+                cefrLevel,
+                generatedCount: result.questions.length,
+                filteredCount: filtered.length,
+                seenCount: seenHashes.size,
+                retries,
+              });
+            }
 
             exercise = {
               skill: "reading",
-              questions: result.questions.map((q) => ({
+              questions: filtered.map((q) => ({
                 ...q,
                 passage: result.passage,
               })),
@@ -169,15 +229,30 @@ export function useExercise(): UseExerciseReturn {
 
           case "grammar": {
             const prompt = buildGrammarExercisePrompt({ cefrLevel });
-            const result = await chatCompletionJSON(
-              [{ role: "system", content: prompt }],
-              grammarExerciseSchema,
-              { temperature: 0.4, feature: "exercise-grammar" }
+            const pipelineOutput = await runMcqDedupPipeline(
+              ({ temperature, isRetry }) =>
+                chatCompletionJSON([{ role: "system", content: prompt }], grammarExerciseSchema, {
+                  temperature,
+                  feature: isRetry ? "exercise-grammar-retry" : "exercise-grammar",
+                }),
+              seenHashes,
+              MIN_FRESH_QUESTIONS_PER_SKILL.grammar
             );
+            const { result, filtered, retries, exhausted } = pipelineOutput;
+            if (exhausted) {
+              captureError(new Error("exercise-dedup-exhausted"), "exercise-dedup-exhausted", {
+                skill,
+                cefrLevel,
+                generatedCount: result.questions.length,
+                filteredCount: filtered.length,
+                seenCount: seenHashes.size,
+                retries,
+              });
+            }
 
             exercise = {
               skill: "grammar",
-              questions: result.questions,
+              questions: filtered,
             };
             break;
           }
@@ -206,18 +281,35 @@ export function useExercise(): UseExerciseReturn {
                 : taskNumber === 2
                   ? `Article/letter (${minWords}-${maxWords} words)`
                   : `Essay/synthesis (${minWords}-${maxWords} words)`;
-            const result = await chatCompletionJSON(
-              [
-                {
-                  role: "system",
-                  content: `Generate a French writing exercise prompt for CEFR level ${cefrLevel}.
+            const writingPromptSystemPrompt = `Generate a French writing exercise prompt for CEFR level ${cefrLevel}.
 Task type: ${taskTypeDescription}
-Return JSON: { "prompt": "the writing task in French", "context": "brief context in English for the student" }`,
-                },
-              ],
-              writingPromptGenerationSchema,
-              { temperature: 0.4, feature: "exercise-writing-prompt" }
+Return JSON: { "prompt": "the writing task in French", "context": "brief context in English for the student" }`;
+
+            // Story 10-8: run the writing dedup pipeline — generate → if
+            // seen, regenerate once → fall-back-on-still-seen.
+            const writingPipelineOutput = await runWritingDedupPipeline(
+              ({ temperature, isRetry }) =>
+                chatCompletionJSON(
+                  [{ role: "system", content: writingPromptSystemPrompt }],
+                  writingPromptGenerationSchema,
+                  {
+                    temperature,
+                    feature: isRetry ? "exercise-writing-prompt-retry" : "exercise-writing-prompt",
+                  }
+                ),
+              seenHashes
             );
+            const { result, retries, exhausted } = writingPipelineOutput;
+            if (exhausted) {
+              captureError(new Error("exercise-dedup-exhausted"), "exercise-dedup-exhausted", {
+                skill,
+                cefrLevel,
+                generatedCount: 1,
+                filteredCount: 0,
+                seenCount: seenHashes.size,
+                retries,
+              });
+            }
 
             writingPrompt.prompt = result.prompt;
             writingPrompt.context = result.context;
@@ -226,6 +318,9 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
               skill: "writing",
               questions: [],
               writingPrompt,
+              // Review-patch P1 (ECH3): on exhausted writing, do NOT
+              // poison the seen-set by re-adding the duplicate hash.
+              dedupExhausted: exhausted,
             };
             break;
           }
@@ -268,6 +363,21 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
         const current = stateRef.current;
         // Use a stable completed_at so offline queue replay is deterministic
         const completedAt = new Date().toISOString();
+        // Story 10-8: include question-stem hashes so the next
+        // generateExercise call for this user can fetch + filter them
+        // via `getSeenHashes`. Pre-10-8 rows persist NULL (forward-only).
+        //
+        // Review-patch P1 (ECH3): when the writing pipeline exhausted
+        // both attempts and accepted a duplicate prompt, persist an
+        // EMPTY array so the seen-set is not re-poisoned with the
+        // already-seen hash. Otherwise prolific writing users could
+        // get permanently stuck on the same recycled prompts until
+        // the look-back window scrolls off (100 completed exercises
+        // at the same skill+CEFR — possibly weeks).
+        const questionStemHashes =
+          current.exercise && !current.exercise.dedupExhausted
+            ? extractExerciseHashes(current.exercise)
+            : [];
         const exerciseData = {
           user_id: userId,
           skill,
@@ -279,6 +389,7 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
           score,
           completed: true,
           completed_at: completedAt,
+          question_stem_hashes: questionStemHashes,
         };
 
         // 1. Save exercise record
