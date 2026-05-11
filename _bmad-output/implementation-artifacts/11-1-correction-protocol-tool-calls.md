@@ -1,6 +1,6 @@
 # Story 11.1: Correction Protocol via Realtime Tool-Calls — Replace `parseCorrections` Regex with `report_correction` Function-Call
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
