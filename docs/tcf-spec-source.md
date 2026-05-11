@@ -282,7 +282,7 @@ The Conseil de l'Europe defers to per-language operationalizations published as 
 
 ### 7.3 Implication for the codebase
 
-**The codebase has zero vocabulary frequency caps in prompts today** (audit P1-4). Epic 10.4 will use the Beacco-derived word lists to add explicit "do not exceed level" constraints to prompt builders.
+Post-Epic-10.4 (Phase 1, 2026-05-10): all CEFR-aware prompt builders in `src/lib/prompts/` carry a Vocabulary Constraint block sourced from [`src/lib/prompts/vocabulary-tiers.ts`](../src/lib/prompts/vocabulary-tiers.ts). The block surfaces (a) a numeric word-form cap per §7.2 heuristic table (A1 ~700 / A2 ~1700 / B1 ~2800 / B2 ~5000 / C1 ~7500 / C2 ~10000), (b) a 10-20-word exemplar list per level (Wiktionary CC-BY-SA + DGLF), and (c) a forbidden-lower-tier list (e.g., A1 must not contain `cependant`, `néanmoins`, `force est de constater` per §8.1; B1 must not contain `force est de constater`; C1+ no forbidden list — full upper register expected). The Beacco-verbatim word-list replacement (operator-action per §10b item #5) is **deferred to a Phase-2 follow-up sub-story** when the operator delivers the Beacco _Niveau A1/A2/B1/B2 pour le français_ volumes (Didier 2007–2011).
 
 ## 8. Linguistic accuracy reference
 
@@ -337,6 +337,7 @@ The pivot to Canada has implications well beyond story 9-1 / 10-1. Status update
 6. **Update PRD** — **DONE.** PR #57 (re-PR of stranded PR #55) landed the PRD on main on 2026-05-10. Story 10-1's pedagogy follow-up patch round then updated lines 113 + 235 + 496 (FR28) from TCF Tout Public language to TCF Canada language. Citations matrix §7 reflects ✓ Verified.
 7. **Onboarding / placement test TCF readiness indicator** — **DEFERRED to Epic 10.5** (placement test prompt extraction).
 8. **`mock_tests.test_type` schema versioning** — **DEFERRED to Epic 17.1** (mock_tests questions normalization). Pre-pivot rows with `test_type = "full"` represent a 3-section run (TCF Tout Public era, 85 min, includes grammar); post-pivot rows represent a 2-section run (TCF Canada era, 95 min QCM-only). Migration to add `variant` column.
+9. **Vocabulary frequency caps in prompts** — **PARTIAL — closed for the heuristic-tier scope by Story 10-4 on 2026-05-10** ([`src/lib/prompts/vocabulary-tiers.ts`](../src/lib/prompts/vocabulary-tiers.ts) ships per-CEFR caps + curated exemplars + forbidden-lower-tier lists; integrated into all 8 CEFR-aware prompt builders). Beacco-verbatim replacement remains **DEFERRED to a Phase-2 sub-story** when operator delivers the Beacco volumes (see §10b item #5).
 
 ## 10b. Pending operator actions (surfaced from snapshots)
 
@@ -346,6 +347,7 @@ Operator-driven follow-ups that the dev agent cannot complete via WebFetch but t
 2. **Manually download "TCF TP / TCF CANADA / TCF QUÉBEC — Exemple d'épreuves d'expression orale"** PDF (1.54 MB) from the publisher samples page → save under `docs/tcf-canada-snapshots/expression-orale-samples.pdf`. Required by Epic 10.6 Speaking rubric deepening.
 3. **Manually download "TCF TP / TCF CANADA / TCF QUÉBEC — Exemple d'épreuves d'expression écrite"** PDF (1.9 MB) from the same page → save under `docs/tcf-canada-snapshots/expression-ecrite-samples.pdf`. Required by Epic 10.3 Writing per-task calibration.
 4. **Manually verify the IRCC CLB equivalency table** at https://www.canada.ca/en/immigration-refugees-citizenship/corporate/publications-manuals/operational-bulletins-manuals/standard-requirements/language-requirements/test-equivalency-charts.html and update [`docs/tcf-canada-snapshots/ircc-clb-equivalency-2026-05-10.md`](./tcf-canada-snapshots/ircc-clb-equivalency-2026-05-10.md) if any row diverges from the third-party-transcribed table; recompute SHA-256.
+5. **Acquire Beacco _Niveau A1/A2/B1/B2 pour le français_ volumes** (Didier 2007–2011, ~€30–€45 per volume × 4 volumes = ~€120–€180 total). Extract verbatim "Inventaire général" word counts and word lists per level → file Phase-2 follow-up sub-story (or new Epic 10.X) to replace [`src/lib/prompts/vocabulary-tiers.ts`](../src/lib/prompts/vocabulary-tiers.ts) heuristic caps + curated exemplars with publisher-grade data + page citations. Required by Phase-2 closure of audit P1-4. Story 10-4 (Phase 1) ships heuristic-tier caps in the meantime.
 
 These items unblock Epic 10.3 / 10.6 partially. Until done, those stories will document the gap rather than implement against publisher-verbatim numbers.
 
