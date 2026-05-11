@@ -416,15 +416,24 @@ export const pronunciationSentenceSchema = z.object({
  * 0.3 (low creativity — assessment must be reproducible; the same transcript
  * should grade similarly across calls).
  *
- * Story 9-8.
+ * Story 9-8 (initial 4-dimension shape).
+ * Story 10-6 (added 5th `sociolinguisticScore` dimension to close the
+ * publisher 3-category gap per `docs/tcf-spec-source.md §6.3`:
+ * Linguistique + Pragmatique + **Sociolinguistique** — adéquation à la
+ * situation de communication).
  *
  * Each dimension is on the official TCF Expression Orale 0-20 scale.
  * `overallScore` is on the 0-100 display scale used elsewhere in the app
- * (= sum of the 4 dimensions × 1.25). It is `nullable + optional` because
+ * (= sum of the 5 dimensions × 1.0). It is `nullable + optional` because
  * the consumer recomputes deterministically when the model omits it; failing
  * the parse over a missing overall would trigger a wasted retry per the 9-7
  * contract. This mirrors the `translationEvaluationSchema.overallScore`
  * pattern (story 9-7 review P11).
+ *
+ * `sociolinguisticScore` is **required** (not optional) so a legacy 4-dim
+ * AI response fails Zod parse and triggers Story 9-7's retry path. Making
+ * it optional would silently accept the legacy shape and over-report scores
+ * by skipping the 5th publisher category.
  *
  * `strengths` / `improvements` are bounded `min(1).max(5)` for the same
  * reason as `conversationFeedbackSchema` — the home-screen card cannot crash
@@ -435,6 +444,9 @@ export const speakingTaskEvaluationSchema = z.object({
   vocabularyScore: z.number().min(0).max(20),
   grammarScore: z.number().min(0).max(20),
   interactionScore: z.number().min(0).max(20),
+  // Story 10-6: 5th publisher category (Sociolinguistique — adéquation à la
+  // situation de communication). Required, not optional — see schema JSDoc.
+  sociolinguisticScore: z.number().min(0).max(20),
   overallScore: z.number().min(0).max(100).nullable().optional(),
   estimatedCEFR: cefrLevelSchema.optional(),
   strengths: z.array(z.string().min(1)).min(1).max(5),

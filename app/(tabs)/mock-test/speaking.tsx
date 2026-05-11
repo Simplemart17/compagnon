@@ -89,6 +89,9 @@ function synthesizeZeroEvaluation(): SpeakingTaskEvaluation {
     vocabularyScore: 0,
     grammarScore: 0,
     interactionScore: 0,
+    // Story 10-6: Sociolinguistique added as the 5th publisher category.
+    // A skipped task gets 0 on every dimension including this one.
+    sociolinguisticScore: 0,
     overallScore: 0,
     strengths: ["—"],
     improvements: ["No response was recorded for this task."],
