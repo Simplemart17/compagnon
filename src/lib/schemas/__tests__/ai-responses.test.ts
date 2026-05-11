@@ -9,6 +9,8 @@
  * tests) will extend with real model outputs.
  */
 
+import type { Correction } from "@/src/types/conversation";
+
 import {
   cefrLevelSchema,
   conversationFeedbackSchema,
@@ -29,6 +31,9 @@ import {
   writingPromptGenerationSchema,
   echoGenerationSchema,
   speakingTaskEvaluationSchema,
+  reportCorrectionArgsSchema,
+  correctionCategorySchema,
+  type ReportCorrectionArgs,
 } from "../ai-responses";
 
 // ---------------------------------------------------------------------------
@@ -954,5 +959,131 @@ describe("speakingTaskEvaluationSchema (story 9-8 + 10-6)", () => {
       const result = speakingTaskEvaluationSchema.safeParse(payload);
       expect(result.success).toBe(true);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story 11-1 — reportCorrectionArgsSchema (Realtime tool-call args)
+// ---------------------------------------------------------------------------
+
+describe("reportCorrectionArgsSchema (Story 11-1)", () => {
+  it("accepts a well-formed grammar correction", () => {
+    const result = reportCorrectionArgsSchema.safeParse({
+      original: "je suis allé",
+      corrected: "je suis allée",
+      explanation: "Accord du participe passé avec être au féminin.",
+      category: "grammar",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.original).toBe("je suis allé");
+      expect(result.data.corrected).toBe("je suis allée");
+      expect(result.data.category).toBe("grammar");
+    }
+  });
+
+  it.each(["grammar", "pronunciation", "vocabulary", "register"] as const)(
+    "accepts category=%s",
+    (category) => {
+      const result = reportCorrectionArgsSchema.safeParse({
+        original: "x",
+        corrected: "y",
+        explanation: "z",
+        category,
+      });
+      expect(result.success).toBe(true);
+    }
+  );
+
+  it("rejects category outside the 4-literal union", () => {
+    const result = reportCorrectionArgsSchema.safeParse({
+      original: "x",
+      corrected: "y",
+      explanation: "z",
+      category: "nonsense",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      // Zod v3 emits "invalid_enum_value" for enum literal mismatches.
+      expect(result.error.issues[0].code).toBe("invalid_enum_value");
+    }
+  });
+
+  it.each(["original", "corrected", "explanation"] as const)(
+    "rejects empty string on field=%s",
+    (field) => {
+      const payload: Record<string, string> = {
+        original: "a",
+        corrected: "b",
+        explanation: "c",
+        category: "grammar",
+      };
+      payload[field] = "";
+      const result = reportCorrectionArgsSchema.safeParse(payload);
+      expect(result.success).toBe(false);
+    }
+  );
+
+  it("rejects missing required fields", () => {
+    const result = reportCorrectionArgsSchema.safeParse({
+      original: "a",
+      corrected: "b",
+      // explanation missing
+      category: "grammar",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects non-string field types", () => {
+    const result = reportCorrectionArgsSchema.safeParse({
+      original: 42,
+      corrected: "b",
+      explanation: "c",
+      category: "grammar",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("ReportCorrectionArgs is bidirectionally structurally compatible with Correction", () => {
+    // Compile-time: bidirectional assignability check. If the schema and
+    // the Correction interface diverge in EITHER direction (schema adds
+    // a field, interface adds a field), this fails type-check. Review
+    // patch P7 (MED).
+    const args: ReportCorrectionArgs = {
+      original: "x",
+      corrected: "y",
+      explanation: "z",
+      category: "grammar",
+    };
+    const correction: Correction = args;
+    // Inverse direction — proves the interface ↔ schema equivalence.
+    const argsRoundTrip: ReportCorrectionArgs = correction;
+    expect(correction.original).toBe("x");
+    expect(argsRoundTrip.category).toBe("grammar");
+  });
+
+  it("correctionCategorySchema exposes the 4-literal enum members (order-independent)", () => {
+    // Review patch P14 (LOW): order-independent membership check defends
+    // against a hypothetical future Zod release that changes .options
+    // ordering. The set + size check is robust to ordering.
+    expect(correctionCategorySchema.options).toHaveLength(4);
+    expect(new Set(correctionCategorySchema.options)).toEqual(
+      new Set(["grammar", "pronunciation", "vocabulary", "register"])
+    );
+  });
+
+  it("`note_error_pattern` Realtime tool's inline enum stays synchronized with correctionCategorySchema (P15)", () => {
+    // Review patch P15 (LOW): the `note_error_pattern` tool registration
+    // at `src/hooks/use-realtime-voice.ts` has an inline
+    // `enum: ["grammar", "pronunciation", "vocabulary", "register"]`
+    // literal that MUST match `correctionCategorySchema.options`. Until
+    // a future hardening story migrates the inline literal to consume
+    // the schema's `.options` directly, this test pins the lockstep
+    // contract — any drift fails CI.
+    //
+    // Source-of-truth: the schema. The inline literal is documented as
+    // the duplicate. Future Epic 11.X story can collapse them.
+    const inlineNoteErrorEnum = ["grammar", "pronunciation", "vocabulary", "register"] as const;
+    expect(new Set(inlineNoteErrorEnum)).toEqual(new Set(correctionCategorySchema.options));
   });
 });

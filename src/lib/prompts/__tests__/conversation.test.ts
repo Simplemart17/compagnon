@@ -25,10 +25,10 @@ jest.mock("@/src/lib/memory", () => ({
 const ALL_LEVELS: CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 const ALL_MODES: ConversationMode[] = ["companion", "debate", "tcf_simulation"];
 
-// `parseCorrections` regex at src/hooks/use-realtime-voice.ts:155 — mirrored
-// here. Story 10-7 preserves this contract; the new plain-text Correction
-// Report must still be regex-extractable.
-const PARSE_CORRECTIONS_REGEX = /"([^"]+)"\s*→\s*"([^"]+)"\s*\(([^)]+)\)/g;
+// Story 11-1 supersedes Story 10-7's regex bridge — the production
+// `parseCorrections` regex is deleted (corrections now arrive via the
+// `report_correction` Realtime tool-call). The mirror constant + its
+// consumer cases are deleted; the regex no longer has a contract to verify.
 
 // Emoji-guard regex (review-patch P3 / Blind Hunter BH3 + Edge Case Hunter
 // ECH6): the original two-range pattern (`\u{1F300}-\u{1FAFF}` + `\u{1F600}-
@@ -44,7 +44,7 @@ const EMOJI_GUARD = /\p{Extended_Pictographic}/u;
 const EMOJI_RANGE_SYMBOLS = /[\u{1F300}-\u{1FAFF}]/u;
 const EMOJI_RANGE_FACES = /[\u{1F600}-\u{1F64F}]/u;
 
-describe("buildConversationPrompt — Story 10-7 voice-mode emoji + markdown drop (§8.4)", () => {
+describe("buildConversationPrompt — voice-mode emoji + markdown drop (§8.4; Story 10-7 + Story 11-1)", () => {
   describe.each(ALL_LEVELS)("CEFR level %s", (cefrLevel) => {
     it.each(ALL_MODES)("mode %s — rendered prompt contains no emoji", (mode) => {
       const prompt = buildConversationPrompt({
@@ -59,27 +59,24 @@ describe("buildConversationPrompt — Story 10-7 voice-mode emoji + markdown dro
     });
 
     it.each(ALL_MODES)(
-      "mode %s — Correction Report block contains no `---` horizontal rules",
+      "mode %s — Correction Reporting block contains no `---` horizontal rules",
       (mode) => {
         const prompt = buildConversationPrompt({
           cefrLevel,
           mode,
           topic: "voyages",
         });
-        // Scope the assertion to the Correction Report block — `---` may
+        // Scope the assertion to the Correction Reporting block — `---` may
         // legitimately appear in YAML frontmatter or other markdown
         // separators elsewhere; the §8.4 failure mode is specifically
-        // the Correction Report block instructing the model to emit
+        // a Correction-Report-shaped block instructing the model to emit
         // `---` rules that TTS reads as "dash dash dash."
         //
-        // Review-patch P2 (Blind Hunter BH1): the prior regex used
-        // `(?=^## |$)` with the `m` flag, which matched end-of-line
-        // (not end-of-string) and combined with lazy `[\s\S]*?` captured
-        // only the header line. JavaScript regex does not support `\Z`;
-        // anchor on the explicit `\n## ` boundary or end-of-string
-        // instead. The sanity check on block length defends against a
-        // future regression that reduces the block to its header alone.
-        const startIdx = prompt.indexOf("## Correction Report (Plain Text — Read Aloud)");
+        // Story 11-1 anchor: the block header changed from
+        // "## Correction Report (Plain Text — Read Aloud)" (Story 10-7
+        // bridge) to "## Correction Reporting (Tool-Call)" (Story 11-1
+        // architectural successor).
+        const startIdx = prompt.indexOf("## Correction Reporting (Tool-Call)");
         expect(startIdx).toBeGreaterThanOrEqual(0);
         const tail = prompt.slice(startIdx + 1); // skip the opening `#` so the next-section search finds the FOLLOWING `## `
         const nextSectionIdx = tail.indexOf("\n## ");
@@ -93,7 +90,7 @@ describe("buildConversationPrompt — Story 10-7 voice-mode emoji + markdown dro
     );
 
     it.each(ALL_MODES)(
-      "mode %s — Correction Report block contains no `📝` / `💡` / `✅` emoji literals",
+      "mode %s — rendered prompt contains no `📝` / `💡` / `✅` emoji literals",
       (mode) => {
         const prompt = buildConversationPrompt({
           cefrLevel,
@@ -105,58 +102,6 @@ describe("buildConversationPrompt — Story 10-7 voice-mode emoji + markdown dro
         expect(prompt).not.toContain("✅");
       }
     );
-  });
-
-  it("Correction Report instructs the model that responses are read aloud", () => {
-    const prompt = buildConversationPrompt({
-      cefrLevel: "B1",
-      mode: "companion",
-      topic: "voyages",
-    });
-    expect(prompt).toContain("## Correction Report (Plain Text — Read Aloud)");
-    expect(prompt).toContain("text-to-speech");
-    expect(prompt).toContain("Do NOT use markdown formatting");
-    expect(prompt).toContain("do NOT use emoji");
-  });
-
-  it("parseCorrections regex (use-realtime-voice.ts:155) still matches the new plain-text format", () => {
-    // Construct a sample model response that mirrors what the new prompt
-    // instructs the model to emit. The regex must extract exactly one
-    // match with the expected capture groups — this is the load-bearing
-    // contract Story 10-7 preserves while Epic 11.1 designs the
-    // tool-call successor.
-    const sampleModelResponse =
-      'Bonjour ! C\'est une bonne question. "je suis allé" → "je suis allée" (feminine agreement)\nTip: review past participle agreement with être verbs.';
-    const re = new RegExp(PARSE_CORRECTIONS_REGEX.source, PARSE_CORRECTIONS_REGEX.flags);
-    const match = re.exec(sampleModelResponse);
-    expect(match).not.toBeNull();
-    expect(match?.[1]).toBe("je suis allé");
-    expect(match?.[2]).toBe("je suis allée");
-    expect(match?.[3]).toBe("feminine agreement");
-  });
-
-  it("parseCorrections regex matches multiple corrections in a single response", () => {
-    const sampleModelResponse =
-      'Tu as dit "je vais à la magasin" → "je vais au magasin" (au = à + le) et aussi "j\'ai 20 ans vieux" → "j\'ai 20 ans" (vieux is redundant).\nTip: drop the redundant adjective when stating age.';
-    const re = new RegExp(PARSE_CORRECTIONS_REGEX.source, PARSE_CORRECTIONS_REGEX.flags);
-    const matches: RegExpExecArray[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(sampleModelResponse)) !== null) matches.push(m);
-    expect(matches).toHaveLength(2);
-    expect(matches[0][1]).toBe("je vais à la magasin");
-    expect(matches[1][1]).toBe("j'ai 20 ans vieux");
-  });
-
-  it("renders the plain-text `No corrections.` instruction for the empty-error path", () => {
-    const prompt = buildConversationPrompt({
-      cefrLevel: "B1",
-      mode: "companion",
-      topic: "voyages",
-    });
-    expect(prompt).toContain("No corrections.");
-    // Negative: the pre-10-7 `✅ **Parfait !** No corrections needed.`
-    // string is gone (emoji + markdown stripped).
-    expect(prompt).not.toContain("Parfait !** No corrections");
   });
 });
 
@@ -243,5 +188,118 @@ describe("buildConversationPrompt — Story 9-4 wrapper invariants preserved (re
     });
     expect(prompt).toContain("<USER_WEAK_AREAS>");
     expect(prompt).toContain("</USER_WEAK_AREAS>");
+  });
+});
+
+describe("buildConversationPrompt — Story 11-1 tool-call Correction Reporting (§8.4 architectural)", () => {
+  it.each(ALL_LEVELS)("%s — contains the new tool-call block header + arguments", (cefrLevel) => {
+    const prompt = buildConversationPrompt({
+      cefrLevel,
+      mode: "companion",
+      topic: "voyages",
+    });
+    expect(prompt).toContain("## Correction Reporting (Tool-Call)");
+    expect(prompt).toContain("invoke the `report_correction` function");
+    expect(prompt).toContain("`category`");
+    // Each of the four required-arg names is mentioned by name
+    expect(prompt).toContain("`original`");
+    expect(prompt).toContain("`corrected`");
+    expect(prompt).toContain("`explanation`");
+    // Each of the four enum categories appears
+    expect(prompt).toContain(`"grammar"`);
+    expect(prompt).toContain(`"pronunciation"`);
+    expect(prompt).toContain(`"vocabulary"`);
+    expect(prompt).toContain(`"register"`);
+  });
+
+  it.each(ALL_MODES)("mode %s — drops the legacy Correction Report block", (mode) => {
+    const prompt = buildConversationPrompt({ cefrLevel: "B1", mode, topic: "voyages" });
+    expect(prompt).not.toContain("## Correction Report (Plain Text — Read Aloud)");
+    expect(prompt).not.toContain('"User said" → "Correct form"');
+    // Review patch P11 (LOW): scope the negative assertions to the
+    // Correction Reporting block so a future patch reintroducing
+    // "No corrections." or "Tip: [..." in some other prompt section
+    // (e.g., a different mode's narrative) doesn't trigger a false positive.
+    // The pre-11-1 failure mode was a directive at the prompt level; that
+    // is what we're guarding against.
+    expect(prompt).not.toMatch(/^No corrections\.$/m);
+    expect(prompt).not.toMatch(/^Tip: \[/m);
+  });
+
+  it.each(ALL_MODES)(
+    "mode %s — does NOT contain the legacy parser-format ASCII-quote instructions",
+    (mode) => {
+      const prompt = buildConversationPrompt({ cefrLevel: "B1", mode, topic: "voyages" });
+      // The pre-11-1 prompt contained a "CRITICAL — the post-conversation
+      // parser depends on this exact shape" sub-block; gone post-11-1.
+      expect(prompt).not.toContain("the post-conversation parser depends on this exact shape");
+      expect(prompt).not.toContain("Use ASCII straight double quotes");
+    }
+  );
+
+  it.each(ALL_MODES)("mode %s — instructs the model to invoke silently (no audio leak)", (mode) => {
+    const prompt = buildConversationPrompt({ cefrLevel: "B1", mode, topic: "voyages" });
+    expect(prompt).toContain("invoke the function silently");
+    expect(prompt).toContain("invisible to the audio modality");
+  });
+
+  it("permits multiple invocations per turn (assertion scoped to the Correction Reporting block)", () => {
+    // Review patch P11 (LOW): scope the assertion to the
+    // `## Correction Reporting (Tool-Call)` block so a future prompt
+    // section that mentions "multiple times within a single response"
+    // in a different context (e.g., idiom usage) doesn't cause a false
+    // positive.
+    const prompt = buildConversationPrompt({
+      cefrLevel: "B1",
+      mode: "companion",
+      topic: "voyages",
+    });
+    const startIdx = prompt.indexOf("## Correction Reporting (Tool-Call)");
+    expect(startIdx).toBeGreaterThanOrEqual(0);
+    const tail = prompt.slice(startIdx + 1);
+    const nextSectionIdx = tail.indexOf("\n## ");
+    const block =
+      nextSectionIdx >= 0
+        ? prompt.slice(startIdx, startIdx + 1 + nextSectionIdx)
+        : prompt.slice(startIdx);
+    expect(block).toMatch(/multiple times within a single response/);
+  });
+
+  it("Story 10-7 debate-mode 3-category split is preserved", () => {
+    const prompt = buildConversationPrompt({
+      cefrLevel: "B2",
+      mode: "debate",
+      topic: "politique",
+    });
+    expect(prompt).toContain(
+      "Connecteurs (connectors / discourse links): Cependant, Néanmoins, Toutefois, En revanche, D'une part... d'autre part"
+    );
+    expect(prompt).toContain(
+      "Locutions verbales figées (fixed expressions): Force est de constater que"
+    );
+    expect(prompt).toContain(
+      "Déclencheurs du subjonctif (subjunctive triggers): Bien que (+ subjonctif), Quand bien même"
+    );
+  });
+
+  it("Story 10-7 debate-mode 'Score in the Correction Report' stale anchor is gone", () => {
+    const prompt = buildConversationPrompt({
+      cefrLevel: "B2",
+      mode: "debate",
+      topic: "politique",
+    });
+    // The pre-11-1 wording referenced the deleted Correction Report block.
+    expect(prompt).not.toContain("Score their argumentation quality in the Correction Report");
+  });
+
+  it("Story 10-7 tcf_simulation plain-text task headers are preserved", () => {
+    const prompt = buildConversationPrompt({
+      cefrLevel: "C1",
+      mode: "tcf_simulation",
+      topic: "préparation",
+    });
+    expect(prompt).toContain("Task 1 (2 minutes):");
+    expect(prompt).toContain("Task 2 (5.5 minutes):");
+    expect(prompt).toContain("Task 3 (4.5 minutes):");
   });
 });
