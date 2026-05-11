@@ -14,7 +14,17 @@
  * same defense-in-depth pattern as story 9-4 ([prompts/conversation.ts]).
  */
 
+import { buildVocabularyConstraintBlock } from "@/src/lib/prompts/vocabulary-tiers";
 import type { CEFRLevel } from "@/src/types/cefr";
+
+/**
+ * Vocabulary tiers per CEFR are surfaced via
+ * `src/lib/prompts/vocabulary-tiers.ts` `buildVocabularyConstraintBlock`
+ * (Story 10-4 / `docs/tcf-spec-source.md §7.2`). Integrated into
+ * `buildSpeakingEvaluatorPrompt` only — `buildSpeakingTaskPrompt`
+ * returns user-facing UI chrome (English instruction + French topic),
+ * not an AI prompt, so vocab tiers are not relevant there.
+ */
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -418,6 +428,8 @@ export function buildSpeakingEvaluatorPrompt(params: {
 - User's target level: ${cefrLevel}
 - Task instruction the user received: "${taskInstruction}"
 - Rubric focus for this task: ${focus}
+
+${buildVocabularyConstraintBlock(cefrLevel)}
 
 ## Evaluation Rubric — Score Each Dimension 0-20 (TCF Expression Orale official scale)
 
