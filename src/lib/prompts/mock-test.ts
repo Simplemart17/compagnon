@@ -1,9 +1,16 @@
 import { TCF } from "@/src/lib/constants";
+import { buildAggregatedVocabularyConstraintTable } from "@/src/lib/prompts/vocabulary-tiers";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 /**
  * TCF Canada mock-test prompt builder. Generates a single-section
  * QCM (Listening or Reading) spanning A1–C2 difficulty.
+ *
+ * Vocabulary tiers per CEFR are surfaced via
+ * `src/lib/prompts/vocabulary-tiers.ts` `buildAggregatedVocabularyConstraintTable`
+ * (Story 10-4 / `docs/tcf-spec-source.md §7.2`). Aggregated table
+ * (one row per CEFR level) because mock-test passages span A1–C2 and
+ * a single-level block would mis-calibrate.
  *
  * Per-passage word-count guidance (the AI infers passage length from
  * difficulty + section): see `docs/tcf-spec-source.md §3.1` (listening,
@@ -64,6 +71,8 @@ TCF Canada uses progressive difficulty. Questions MUST span the entire A1-to-C2 
 - Questions ${Math.floor(count * 0.85) + 1}-${count}: C1-C2 level (mastery)
 
 ${sectionConfig.instructions}
+
+${buildAggregatedVocabularyConstraintTable()}
 
 ## Scoring
 Binary correct/incorrect — 1 point per right answer. The total raw correctness count is converted downstream to the TCF 0-699 scale by src/lib/scoring.ts rawPercentToListeningReadingScore (IRCC CLB-anchored, Story 10-2); do NOT emit a score yourself.

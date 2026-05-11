@@ -1,4 +1,11 @@
+import { buildVocabularyConstraintBlock } from "@/src/lib/prompts/vocabulary-tiers";
 import type { CEFRLevel } from "@/src/types/cefr";
+
+/**
+ * Vocabulary tiers per CEFR are surfaced via
+ * `src/lib/prompts/vocabulary-tiers.ts` `buildVocabularyConstraintBlock`
+ * (Story 10-4 / `docs/tcf-spec-source.md §7.2`).
+ */
 
 const ECHO_LEVEL_GUIDANCE: Record<CEFRLevel, string> = {
   A1: `- Simple present tense only (être, avoir, aller, regular -er verbs)
@@ -53,6 +60,8 @@ export function buildEchoPracticePrompt(params: {
 
 ## Level-Specific Guidance
 ${guidance}
+
+${buildVocabularyConstraintBlock(cefrLevel)}
 
 ## Sentence Requirements
 - Every sentence MUST be natural spoken French suitable for oral repetition

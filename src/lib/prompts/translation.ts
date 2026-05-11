@@ -1,4 +1,11 @@
+import { buildVocabularyConstraintBlock } from "@/src/lib/prompts/vocabulary-tiers";
 import type { CEFRLevel } from "@/src/types/cefr";
+
+/**
+ * Vocabulary tiers per CEFR are surfaced via
+ * `src/lib/prompts/vocabulary-tiers.ts` `buildVocabularyConstraintBlock`
+ * (Story 10-4 / `docs/tcf-spec-source.md §7.2`).
+ */
 
 const LEVEL_GUIDANCE: Record<CEFRLevel, string> = {
   A1: `- Present tense only (être, avoir, aller, regular -er verbs)
@@ -59,6 +66,8 @@ export function buildTranslationPrompt(params: {
 ## Level-Specific Guidance
 ${guidance}
 
+${buildVocabularyConstraintBlock(cefrLevel)}
+
 ## Sentence Requirements
 - Every "source" sentence MUST be natural spoken French
 - The "target" MUST be a valid French paraphrase using different vocabulary and structures
@@ -92,6 +101,8 @@ ${guidance}
 
 ## Level-Specific Guidance
 ${guidance}
+
+${buildVocabularyConstraintBlock(cefrLevel)}
 
 ## Sentence Requirements
 - Every "source" sentence MUST be in English
@@ -146,6 +157,8 @@ Evaluate whether the French output accurately conveys the English meaning.`;
 
 ## Evaluation Mode
 ${modeInstructions}
+
+${buildVocabularyConstraintBlock(cefrLevel)}
 
 ## Scoring Dimensions
 
