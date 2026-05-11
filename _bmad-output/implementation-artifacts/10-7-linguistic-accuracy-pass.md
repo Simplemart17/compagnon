@@ -1,6 +1,6 @@
 # Story 10.7: Linguistic Accuracy Pass — Drop Emoji from Voice Mode, Fix "Force est de constater" Misclassification, Drop "Élémentaire avancé", Drop Québécois Prompt
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
