@@ -38,13 +38,55 @@ interface AnimatedMessageProps {
   showSideNoteCorrections?: boolean;
 }
 
-/** Strip the Correction Report section from AI text for clean display */
+/**
+ * Strip the Correction Report section from AI text for clean display in
+ * chat bubbles. The Correction Report is rendered separately via
+ * `CorrectionBubble` side-notes; showing it inline duplicates the content.
+ *
+ * Pre-Story-10-7: the Correction Report was preceded by a `---\n`
+ * horizontal-rule divider, so the stripper anchored on that. Story 10-7
+ * removed the `---` rules from the prompt (§8.4 emoji + markdown drop)
+ * so the AI now emits the Correction Report as plain-text lines with
+ * the `"User said" → "Correct form" (explanation)` shape followed by a
+ * `Tip:` line. We anchor on whichever of these new sentinels appears
+ * first:
+ *   - a `"..." → "..." (...)` correction line (the regex shape that
+ *     `parseCorrections` at `use-realtime-voice.ts:155` extracts)
+ *   - a leading `No corrections.` line (the empty-error branch)
+ *   - a leading `Tip:` line (the trailing tip when no correction line
+ *     precedes it)
+ *
+ * Falls back to the legacy `---\n` divider so historic / in-flight
+ * pre-10-7 conversation messages still strip correctly.
+ */
 function getDisplayText(text: string): string {
-  const dividerIndex = text.indexOf("---\n");
-  if (dividerIndex > 0) {
-    return text.substring(0, dividerIndex).trim();
+  // Story 10-7 sentinels — find the first occurrence of any of them.
+  const sentinels: number[] = [];
+  // Correction-line shape: match the start of a `"X" → "Y" (Z)` line.
+  const correctionLineMatch = text.match(/(^|\n)"[^"]+"\s*→\s*"[^"]+"\s*\(/);
+  if (correctionLineMatch && correctionLineMatch.index !== undefined) {
+    sentinels.push(correctionLineMatch.index + correctionLineMatch[1].length);
   }
-  return text;
+  // No-corrections sentinel on its own line
+  const noCorrectionsIdx = text.search(/(^|\n)No corrections\./);
+  if (noCorrectionsIdx >= 0) {
+    sentinels.push(noCorrectionsIdx === 0 ? 0 : noCorrectionsIdx + 1);
+  }
+  // Tip: sentinel on its own line
+  const tipIdx = text.search(/(^|\n)Tip:\s/);
+  if (tipIdx >= 0) {
+    sentinels.push(tipIdx === 0 ? 0 : tipIdx + 1);
+  }
+  // Legacy pre-10-7 `---\n` divider — keeps historic messages strippable.
+  const legacyDividerIdx = text.indexOf("---\n");
+  if (legacyDividerIdx > 0) {
+    sentinels.push(legacyDividerIdx);
+  }
+
+  if (sentinels.length === 0) return text;
+  const cut = Math.min(...sentinels);
+  if (cut <= 0) return text;
+  return text.substring(0, cut).trimEnd();
 }
 
 const AnimatedMessage = React.memo(function AnimatedMessage({
