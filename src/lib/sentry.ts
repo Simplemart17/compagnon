@@ -44,6 +44,11 @@ export const SENTRY_EXTRAS_ALLOWLIST: ReadonlySet<string> = new Set([
   // Diagnostic counters / cache identifiers — short primitives.
   "key",
   "attempt",
+  // 10-8 exercise dedup telemetry — small bounded integers; safe under length rule.
+  "generatedCount",
+  "filteredCount",
+  "seenCount",
+  "retries",
 ]);
 
 /**

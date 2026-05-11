@@ -37,6 +37,7 @@
  *     `.done` event) and on `response.done` (catch-all for cancelled responses).
  */
 
+import { hashText } from "@/src/lib/text-hash";
 import type { Correction } from "@/src/types/conversation";
 
 /**
@@ -88,19 +89,10 @@ export interface AppendResult {
   entry?: TranscriptEntry;
 }
 
-/**
- * djb2 hash over Unicode code points. Iterating with `for...of` walks code
- * points (not UTF-16 code units), so emoji and other surrogate-pair text are
- * handled cleanly. The result is a short base-36 string with no embedded
- * free-text — safe to pass through Sentry breadcrumb data.
- */
-function hashText(text: string): string {
-  let hash = 5381;
-  for (const ch of text) {
-    hash = ((hash << 5) + hash + (ch.codePointAt(0) ?? 0)) >>> 0;
-  }
-  return hash.toString(36);
-}
+// Story 10-8 review: `hashText` extracted to `src/lib/text-hash.ts` so the
+// exercise-dedup pipeline and the realtime-transcript fallback-key path
+// share one djb2 implementation. Story 10-2 "delete don't alias" — the
+// private function is deleted, not legacy-aliased; consumers re-import.
 
 /**
  * Append one AI-turn `TranscriptEntry`, applying dedup keyed by `key`.
