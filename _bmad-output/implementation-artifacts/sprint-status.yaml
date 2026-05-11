@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-10 # story 10-5 done (placement test prompt extraction — 14 review patches; 677 tests passing; PR #63; §9 extended to 9 builders; §10 follow-up #7 closed)
+last_updated: 2026-05-10 # story 10-6 review (speaking rubric — sociolinguistic 5th dim — 715 tests passing, +38 net; §6.3 closed; §6 citations row ✓; new §10 follow-up #10 Realtime deferral)
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -138,7 +138,7 @@ development_status:
   10-3-per-level-passage-sentence-calibration: done # 2026-05-10: implemented + 8 review patches (1 HIGH P1 + 2 MED P2/P3 + 5 LOW P4-P8); 501 tests passing; PR #61
   10-4-vocabulary-frequency-caps: done # 2026-05-10: implemented + 9 review patches (3 HIGH P1/P2/P3 + 5 MED P4/P5/P7/P8/P9 + 1 LOW P15); 639 tests passing; PR #62
   10-5-placement-test-prompt-extraction: done # 2026-05-10: implemented + 14 review patches (10 MED P1/P2/P3/P4/P7/P8/P10/P11/P12 + 4 LOW P5/P6/P9/P13/P14); 677 tests passing; PR #63
-  10-6-speaking-rubric-scoring-pipeline: backlog
+  10-6-speaking-rubric-scoring-pipeline: review
   10-7-linguistic-accuracy-pass: backlog
   10-8-anti-cheat-frequency-anti-repetition: backlog
   epic-10-retrospective: optional
