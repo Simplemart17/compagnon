@@ -1,7 +1,12 @@
 /**
  * Pure scoring helpers for the TCF Canada Expression Orale mock test.
  *
- * Story 9-8.
+ * Story 9-8 (initial 4-dimension scoring).
+ * Story 10-6 (extended to 5 dimensions — added Sociolinguistique per
+ * `docs/tcf-spec-source.md §6.3` publisher categorization; the
+ * `RUBRIC_TO_COMPOSITE` constant updates from `1.25` (4-dim) to `1.0` (5-dim)
+ * because `100 / (5 × 20) = 1.0`. `computeSpeakingComposite` and
+ * `computeSpeakingScore0to20` are dimension-agnostic and unchanged.)
  *
  * Lives in its own file (not in `scoring.ts`) because `scoring.ts` carries an
  * explicit "do not edit in story 9-1 / Epic 10.2" guard around `SKILL_WEIGHTS`.
@@ -17,8 +22,13 @@ const DIMENSION_MAX = 20;
 /** Composite display scale (0-100) used elsewhere in the app. */
 const COMPOSITE_MAX = 100;
 
-/** 4 dimensions × 1.25 = 100 (mapping 0-80 rubric sum to 0-100 display). */
-const RUBRIC_TO_COMPOSITE = COMPOSITE_MAX / (4 * DIMENSION_MAX);
+/**
+ * Story 10-6: 5 dimensions × 1.0 = 100 (mapping 0-100 rubric sum to 0-100
+ * display). Was `1.25` pre-10-6 (4 dimensions × 1.25 = 100). The derived form
+ * `COMPOSITE_MAX / (5 * DIMENSION_MAX)` is the single source of truth so a
+ * future dimension change is a single-edit.
+ */
+export const RUBRIC_TO_COMPOSITE = COMPOSITE_MAX / (5 * DIMENSION_MAX);
 
 /** Clamp a numeric input to [0, max]; non-finite values become 0. */
 function clamp(value: number, max: number): number {
@@ -33,12 +43,19 @@ function clamp(value: number, max: number): number {
  *
  * Prefers the model's `overallScore` when present and within [0, 100];
  * otherwise recomputes deterministically as
- * `(pronunciationFluency + vocabulary + grammar + interaction) × 1.25`.
+ * `(pronunciationFluency + vocabulary + grammar + interaction + sociolinguistic) × 1.0`.
+ *
+ * Story 10-6: 5 dimensions × 1.0 (was 4 × 1.25 pre-10-6). The recompute path
+ * now factors in `sociolinguisticScore` per `docs/tcf-spec-source.md §6.3`
+ * publisher categorization.
  *
  * Each dimension is clamped to [0, 20] before recompute, so an out-of-range
  * model emission does not skew the result. (Out-of-range dimensions fail Zod
  * parsing in `chatCompletionJSON` per story 9-7, so they should not normally
  * reach this helper, but the clamp keeps the function safe in isolation.)
+ * Non-finite `sociolinguisticScore` (e.g. undefined at runtime due to an
+ * upstream cast bypass) clamps to 0, so a malformed input degrades gracefully
+ * rather than NaN-propagating through the composite.
  *
  * Returns an integer (rounded). Returns 0 if every input is missing/invalid.
  */
@@ -57,8 +74,9 @@ export function computeSpeakingTaskOverall(scores: SpeakingTaskEvaluation): numb
   const vocab = clamp(scores.vocabularyScore, DIMENSION_MAX);
   const grammar = clamp(scores.grammarScore, DIMENSION_MAX);
   const interact = clamp(scores.interactionScore, DIMENSION_MAX);
+  const socio = clamp(scores.sociolinguisticScore, DIMENSION_MAX);
 
-  const composite = (pron + vocab + grammar + interact) * RUBRIC_TO_COMPOSITE;
+  const composite = (pron + vocab + grammar + interact + socio) * RUBRIC_TO_COMPOSITE;
   return Math.round(clamp(composite, COMPOSITE_MAX));
 }
 
@@ -89,10 +107,13 @@ export function computeSpeakingComposite(taskOveralls: [number, number, number])
  * 0–20 Speaking scale (Story 10-2).
  *
  * The publisher (per docs/tcf-spec-source.md §2.1) scores Expression Orale on
- * 0–20; the internal 0–100 composite (story 9-8) is the sum-of-4-dimensions
- * × 1.25 — so the inverse mapping is `composite / 5`. Equivalent to averaging
- * the 4 dimensions directly, but routed through the existing 0–100 composite
- * for continuity with story 9-8's task-overall computation.
+ * 0–20; the internal 0–100 composite is `sum-of-N-dimensions × RUBRIC_TO_COMPOSITE`,
+ * where post-Story-10-6 N = 5 and the constant = 1.0 (pre-10-6: N = 4, constant
+ * = 1.25). Either way the composite lands on 0–100, so the inverse mapping is
+ * `composite / 5` — dimension-agnostic, which is why this function did NOT
+ * need to change across the 4→5 rubric extension. Review patch P6 (Acceptance
+ * Auditor AA1): updated this JSDoc from "sum-of-4-dimensions × 1.25" to the
+ * dimension-agnostic phrasing so the doc no longer drifts behind the code.
  *
  * Each input is clamped to [0, 100]; the result is clamped to [0, 20] and
  * rounded to the nearest integer.

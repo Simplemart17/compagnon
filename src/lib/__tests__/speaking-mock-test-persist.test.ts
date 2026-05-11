@@ -55,6 +55,12 @@ const originalSupabaseFrom = supabase.from;
 
 interface MockSupabaseHandle {
   insertMock: jest.Mock;
+  // Review patch P1 (Edge Case Hunter ECH1+ECH3): expose the
+  // mock_tests insert payload so tests can assert on the persisted JSONB
+  // blob — specifically `section_scores.speaking.task{1,2,3}.sociolinguistic`,
+  // which Story 10-6 must write but was originally missed at
+  // `buildTaskScoreEntry` in `speaking-mock-test-persist.ts`.
+  mockTestsInsertMock: jest.Mock;
   selectMock: jest.Mock;
   singleMock: jest.Mock;
   fromMock: jest.Mock;
@@ -73,13 +79,17 @@ function setupSupabaseMock(opts: {
   const singleMock = jest.fn(async () => mockTestsInsert);
   const selectMock = jest.fn(() => ({ single: singleMock }));
   const insertMock = jest.fn();
+  const mockTestsInsertMock = jest.fn();
   const fromMock = jest.fn();
 
   // Mock supabase.from(table) to return the right insert chain per table.
   fromMock.mockImplementation((table: string) => {
     if (table === "mock_tests") {
       return {
-        insert: jest.fn(() => ({ select: selectMock })),
+        insert: jest.fn((row: unknown) => {
+          mockTestsInsertMock(row);
+          return { select: selectMock };
+        }),
       };
     }
     if (table === "mock_test_answers") {
@@ -94,7 +104,7 @@ function setupSupabaseMock(opts: {
   });
 
   (supabase as unknown as { from: jest.Mock }).from = fromMock;
-  return { insertMock, selectMock, singleMock, fromMock };
+  return { insertMock, mockTestsInsertMock, selectMock, singleMock, fromMock };
 }
 
 function evalOf(partial: Partial<SpeakingTaskEvaluation>): SpeakingTaskEvaluation {
@@ -103,6 +113,8 @@ function evalOf(partial: Partial<SpeakingTaskEvaluation>): SpeakingTaskEvaluatio
     vocabularyScore: 14,
     grammarScore: 15,
     interactionScore: 18,
+    // Story 10-6: Sociolinguistique 5th publisher category required.
+    sociolinguisticScore: 16,
     overallScore: 79,
     strengths: ["ok"],
     improvements: ["ok"],
@@ -354,5 +366,71 @@ describe("persistSpeakingMockTest (story 9-8)", () => {
     expect(result.compositeOverall).toBe(75); // 0–100 internal composite
     expect(result.totalScore).toBe(15); // 75 / 5 = 15 on the 0–20 publisher scale
     expect(result.cefrResult).toBe("C1"); // 15 → CLB 9 → C1
+  });
+
+  // Review patch P1 (Edge Case Hunter ECH1 + ECH3): regression guard for the
+  // 5th publisher category being persisted into the JSONB blob. Without this
+  // assertion, a future patch that drops `sociolinguistic` from
+  // `buildTaskScoreEntry` would silently revert the §6 citations-matrix
+  // promise ("post-10-6 rows hold 5 dimensions"). The blob structure isn't
+  // typed at the persist boundary (it's `Record<string, unknown>` JSONB), so
+  // only an explicit assertion catches the drop.
+  it("Story 10-6 — section_scores.speaking.task{1,2,3} JSONB includes the sociolinguistic dimension", async () => {
+    const { mockTestsInsertMock } = setupSupabaseMock({});
+
+    await persistSpeakingMockTest({
+      userId: "user-socio",
+      cefrLevel: "B1",
+      prompts: PROMPTS,
+      transcripts: TRANSCRIPTS,
+      evaluations: {
+        // Pick distinct per-task sociolinguistic values so the assertion
+        // catches a future bug that wires them up to the wrong task index.
+        1: evalOf({ sociolinguisticScore: 12, overallScore: null }),
+        2: evalOf({ sociolinguisticScore: 14, overallScore: null }),
+        3: evalOf({ sociolinguisticScore: 17, overallScore: null }),
+      },
+    });
+
+    expect(mockTestsInsertMock).toHaveBeenCalledTimes(1);
+    const insertedRow = mockTestsInsertMock.mock.calls[0][0] as {
+      section_scores: {
+        speaking: {
+          task1: { sociolinguistic: number };
+          task2: { sociolinguistic: number };
+          task3: { sociolinguistic: number };
+        };
+      };
+    };
+
+    expect(insertedRow.section_scores.speaking.task1.sociolinguistic).toBe(12);
+    expect(insertedRow.section_scores.speaking.task2.sociolinguistic).toBe(14);
+    expect(insertedRow.section_scores.speaking.task3.sociolinguistic).toBe(17);
+  });
+
+  it("Story 10-6 — section_scores.speaking.task1 still carries the four pre-10-6 dimensions alongside sociolinguistic", async () => {
+    // Defense-in-depth: a future patch could add `sociolinguistic` while
+    // accidentally dropping one of the four pre-existing dimension keys.
+    // Pin the full key set so the JSONB shape contract is regression-tested.
+    const { mockTestsInsertMock } = setupSupabaseMock({});
+
+    await persistSpeakingMockTest({
+      userId: "user-socio2",
+      cefrLevel: "B2",
+      prompts: PROMPTS,
+      transcripts: TRANSCRIPTS,
+      evaluations: EVALUATIONS,
+    });
+
+    const insertedRow = mockTestsInsertMock.mock.calls[0][0] as {
+      section_scores: { speaking: { task1: Record<string, unknown> } };
+    };
+    const task1 = insertedRow.section_scores.speaking.task1;
+    expect(task1).toHaveProperty("pronunciationFluency");
+    expect(task1).toHaveProperty("vocabulary");
+    expect(task1).toHaveProperty("grammar");
+    expect(task1).toHaveProperty("interaction");
+    expect(task1).toHaveProperty("sociolinguistic");
+    expect(task1).toHaveProperty("overall");
   });
 });

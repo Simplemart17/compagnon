@@ -222,11 +222,21 @@ function buildTaskScoreEntry(evaluation: SpeakingTaskEvaluation, overall: number
   // recap card) can render the qualitative feedback the model already
   // produced. Without this the user records 12 minutes of audio for an
   // evaluation that gets reduced to a single number.
+  //
+  // Story 10-6 review patch P1 (Edge Case Hunter ECH1 + ECH3): persist the
+  // 5th publisher category (`sociolinguistic`) into the JSONB blob alongside
+  // the four pre-10-6 dimensions. Without this the CLAUDE.md architecture
+  // line + citations matrix §6 claim "post-10-6 rows hold 5 dimensions" but
+  // the persisted blob would only hold 4 — a silent contract violation.
+  // Pre-10-6 historical rows lack the key (forward-only schema growth);
+  // results-screen consumers must tolerate `sociolinguistic === undefined`
+  // for legacy reads.
   return {
     pronunciationFluency: Math.round(evaluation.pronunciationFluencyScore),
     vocabulary: Math.round(evaluation.vocabularyScore),
     grammar: Math.round(evaluation.grammarScore),
     interaction: Math.round(evaluation.interactionScore),
+    sociolinguistic: Math.round(evaluation.sociolinguisticScore),
     overall,
     estimatedCEFR: evaluation.estimatedCEFR ?? null,
     strengths: evaluation.strengths,
