@@ -32,6 +32,7 @@ import { buildConversationPrompt } from "../conversation";
 import { buildEchoPracticePrompt } from "../echo";
 import { buildListeningExercisePrompt } from "../listening";
 import { buildMockTestPrompt } from "../mock-test";
+import { buildPlacementTestPrompt } from "../placement";
 import { buildReadingExercisePrompt } from "../reading";
 import { buildSpeakingEvaluatorPrompt } from "../speaking";
 import { buildTranslationEvaluationPrompt, buildTranslationPrompt } from "../translation";
@@ -182,6 +183,25 @@ describe("buildMockTestPrompt — aggregated Vocabulary Constraints integration 
   );
 });
 
+describe("buildPlacementTestPrompt — aggregated Vocabulary Constraints integration (Story 10-5)", () => {
+  // Like mock-test, the placement test spans A1-C2 in a single AI call
+  // (one 15-question test stretching from A1:1-3 to C2:15-15), so it
+  // uses the same aggregated-table renderer rather than a per-level
+  // block. Per-level surface check on the single nullary builder.
+  it.each(ALL_LEVELS)("%s row: aggregated table surfaces the per-level cap line", (level) => {
+    const prompt = buildPlacementTestPrompt();
+    const tier = vocabularyTier(level);
+    expect(prompt).toContain(`- ${level}: ≤ ${tier.approxWordCap}`);
+  });
+
+  it("renders the shared aggregated-table header + §7.2 citation + Beacco caveat", () => {
+    const prompt = buildPlacementTestPrompt();
+    expect(prompt).toContain("## Vocabulary Constraints by CEFR Level");
+    expect(prompt).toContain("docs/tcf-spec-source.md §7.2");
+    expect(prompt).toContain("NOT Beacco-verbatim");
+  });
+});
+
 describe("Story 10-4 review patch P9 — cross-check existing per-level guidance vs forbidden tokens", () => {
   // Edge Case Hunter Finding 3: the new vocab block forbids tokens like
   // `force est de constater` at A1-B2, but existing per-level guidance
@@ -259,6 +279,58 @@ describe("Story 10-4 review patch P9 — cross-check existing per-level guidance
   // owned by Epic 10.7 (linguistic accuracy pass) per the story's
   // Anti-pattern Prevention rules. Including conversation.ts here would
   // turn a known-out-of-scope item into a 10-4 blocker.
+
+  // Story 10-5: placement.ts joins the cross-check as the 5th builder.
+  // Because the placement prompt aggregates A1-C2 in a single document
+  // (the C1 competencies row legitimately names `force est de constater`
+  // as a C1 nuanced-connector example — that's pedagogically correct,
+  // not drift), the substring-strip approach used for the per-level
+  // builders cannot be applied at the whole-prompt level. Instead we
+  // extract each level's guidance row (Competencies + Distractors
+  // lines) and assert THAT row does not contain any token forbidden at
+  // THAT level. This is the regression invariant we actually want: a
+  // future patch that adds `force est de constater` to the A1
+  // competencies row would fail this test.
+  function extractPlacementLevelGuidance(prompt: string, level: CEFRLevel): string {
+    // Review patch P3 (Blind Hunter B1): tolerate any leading whitespace
+    // before the `- ` bullet, not just two spaces. A Prettier setting
+    // change or template-literal reflow would otherwise silently break
+    // the regex.
+    // Review patch P6 (Blind Hunter B9): no `^`/`$` anchors in the
+    // pattern, so the multiline `m` flag was inert. Dropped.
+    const headerRegex = new RegExp(
+      // Match either "Questions X-Y: LEVEL level (N questions)" or
+      // "Question X: LEVEL level (1 question)", followed by 1-3
+      // indented "  - Competencies/Distractors" bullet lines.
+      `(?:Questions \\d+(?:-\\d+)?|Question \\d+): ${level} level \\([^)]+\\)\\n((?:[ \\t]+- [^\\n]+\\n?){1,3})`
+    );
+    const match = prompt.match(headerRegex);
+    return match ? match[1] : "";
+  }
+
+  it.each(ALL_LEVELS)(
+    "%s placement prompt: per-level guidance row does not contain any forbidden token",
+    (level) => {
+      const prompt = buildPlacementTestPrompt();
+      const guidance = extractPlacementLevelGuidance(prompt, level);
+      // Sanity: the regex must actually have matched. If the row format
+      // ever changes, this assertion fires before the forbidden-token
+      // check runs and the test fails loudly with a useful message.
+      expect(guidance.length).toBeGreaterThan(0);
+      const forbidden = vocabularyTier(level).forbiddenLowerTier;
+      // Review patch P7 (Blind Hunter B10): word-bounded match instead
+      // of a raw `not.toContain(token)`. Substring checking is fragile:
+      // a future allowed phrase that incidentally contains a forbidden
+      // lexeme as a substring would false-positive. We assemble a
+      // regex of the form `(?<![A-Za-zÀ-ÿ'])TOKEN(?![A-Za-zÀ-ÿ'])` per
+      // token, escaping regex meta-characters first.
+      for (const token of forbidden) {
+        const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const wordBounded = new RegExp(`(?<![A-Za-zÀ-ÿ'])${escaped}(?![A-Za-zÀ-ÿ'])`, "i");
+        expect(guidance).not.toMatch(wordBounded);
+      }
+    }
+  );
 });
 
 describe("Story 10-4 forbidden-token surfacing (regression guard)", () => {

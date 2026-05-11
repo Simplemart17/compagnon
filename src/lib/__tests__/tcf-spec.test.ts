@@ -135,6 +135,29 @@ describe("TCF spec citations matrix completeness", () => {
     expect(matrix).toMatch(/\|[^\n]*\b(?:vocabularyTier|buildVocabularyConstraintBlock)\b[^\n]*\|/);
   });
 
+  it("citations matrix includes Story 10-5 placement.ts row (§9 integration surface)", () => {
+    const matrix = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-citations.md"), "utf8");
+    // Story 10-5 extends the §9 Vocabulary Constraint integration row
+    // from 8 builders to 9 by adding `placement` to the list.
+    // Review patch P10 (Blind Hunter B16): word-bounded `placement`
+    // match instead of `placement(?:\.ts|\})` which previously
+    // required `placement` to be the last item in the brace expansion.
+    // A future cleanup that re-orders the brace expansion (e.g.,
+    // alphabetical) would have silently failed the prior regex.
+    expect(matrix).toMatch(/\|[^\n]*\bplacement\b[^\n]*\|/);
+  });
+
+  it("source-of-truth §10 follow-up #7 records Story 10-5 closure", () => {
+    const source = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-source.md"), "utf8");
+    // Story 10-5 closes §10 follow-up #7 (was DEFERRED to Epic 10.5).
+    // Review patch P9 (Blind Hunter B15): assert on a single follow-up
+    // #7 line by matching the canonical `7. **... — **DONE — closed by
+    // Story 10-5` shape directly. The prior `/follow-up #7[^]*?Story 10-5/`
+    // lazy-quantifier regex could span the entire document and match a
+    // far-distant "Story 10-5" reference (e.g., a separate §10 follow-up).
+    expect(source).toMatch(/^7\.\s+\*\*[^*\n]*\*\*\s*—\s*\*\*DONE[^*]*Story 10-5/m);
+  });
+
   it("citations matrix includes Story 10-3 helper + use-exercise.ts writing-flow rows", () => {
     const matrix = readFileSync(join(REPO_ROOT, "docs", "tcf-spec-citations.md"), "utf8");
     const story103Rows = ["writingTaskWordRange", "use-exercise.ts"];
