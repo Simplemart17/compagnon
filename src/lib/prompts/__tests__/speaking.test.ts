@@ -182,8 +182,132 @@ describe("buildSpeakingEvaluatorPrompt (story 9-8)", () => {
     expect(prompt).toContain("vocabularyScore");
     expect(prompt).toContain("grammarScore");
     expect(prompt).toContain("interactionScore");
+    // Story 10-6: 5th publisher category required in the JSON contract.
+    expect(prompt).toContain("sociolinguisticScore");
     expect(prompt).toContain("overallScore");
     expect(prompt).toContain("strengths");
     expect(prompt).toContain("improvements");
   });
+});
+
+describe("buildSpeakingEvaluatorPrompt — Sociolinguistic 5th dimension (story 10-6)", () => {
+  // Story 10-6 adds the 5th publisher category to the rubric. Tests parameterize
+  // over all 6 CEFR levels × all 3 task numbers (18 cases) so a future refactor
+  // that conditionally suppresses the section at any (level, task) pair fails
+  // the build before merge.
+  const ALL_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+  const ALL_TASKS = [1, 2, 3] as const;
+  const MATRIX = ALL_LEVELS.flatMap((level) => ALL_TASKS.map((t) => [level, t] as const));
+
+  it.each(MATRIX)(
+    "%s task %i: prompt renders the Sociolinguistic rubric section + JSON field",
+    (level, taskNumber) => {
+      const prompt = buildSpeakingEvaluatorPrompt({
+        cefrLevel: level,
+        taskNumber,
+        taskInstruction: "Test instruction.",
+        transcript: "Test transcript.",
+      });
+      // Section 5 header — pinned verbatim from the prompt source.
+      expect(prompt).toContain("### 5. Sociolinguistic Appropriateness (0-20)");
+      // Publisher reference — the §6.3 citation tying back to the source-of-truth.
+      expect(prompt).toContain("adéquation à la situation de communication");
+      expect(prompt).toContain("docs/tcf-spec-source.md §6.3");
+      // JSON field — schema-shape match.
+      expect(prompt).toContain('"sociolinguisticScore": <0-20>');
+      // Composite formula — 5-dimension × 1.0 (NOT × 1.25).
+      expect(prompt).toContain(
+        "(pronunciationFluencyScore + vocabularyScore + grammarScore + interactionScore + sociolinguisticScore) × 1.0"
+      );
+    }
+  );
+
+  it("evaluator prompt does NOT contain the legacy 4-dimension × 1.25 multiplier (regression guard)", () => {
+    // Negative assertion: a future patch that reverts to 4-dim × 1.25 would
+    // fail this test. Same defensive pattern as Story 10-5's "top-N is NOT
+    // in the placement prompt" guard.
+    //
+    // Review patch P3 (Blind Hunter BH8): widen the multiplier-character
+    // class from `×` (U+00D7) alone to also catch ASCII variants `*` and
+    // `x` / `X` (case-insensitive). A future editor that normalizes the
+    // multiplication sign to ASCII would otherwise slip the legacy
+    // multiplier back into the prompt without tripping the guard.
+    const prompt = buildSpeakingEvaluatorPrompt({
+      cefrLevel: "B2",
+      taskNumber: 1,
+      taskInstruction: "Test.",
+      transcript: "Test.",
+    });
+    expect(prompt).not.toMatch(/[×*x]\s*1\.25/i);
+    // Also assert the 0-80 rubric-sum wording is gone (was the 4-dim phrasing).
+    expect(prompt).not.toContain("0-80 rubric sum");
+  });
+
+  it("evaluator prompt mentions the 0-100 rubric sum (5 dimensions × 0-20) wording", () => {
+    const prompt = buildSpeakingEvaluatorPrompt({
+      cefrLevel: "B2",
+      taskNumber: 1,
+      taskInstruction: "Test.",
+      transcript: "Test.",
+    });
+    expect(prompt).toContain("0-100 rubric sum (5 dimensions × 0-20 each)");
+  });
+});
+
+describe("buildSpeakingEvaluatorPrompt — Task 2 prep-window note (story 10-6 partial §6.1 closure)", () => {
+  // Story 10-6 adds a conditional one-line instruction telling the AI not to
+  // penalize transcript LENGTH during Task 2 (the publisher's 2-minute prep
+  // window can consume up to 2/5.5 of the recording without producing any
+  // transcribed audio). Only fires for `taskNumber === 2`. Full Realtime UI
+  // gating is deferred to a separate Epic 10.X follow-up.
+  //
+  // Review patch P5 (Blind Hunter BH17): parameterize across all 6 CEFR
+  // levels so a future bug that conditions the prep note on
+  // `taskNumber === 2 && cefrLevel === "B1"` (or any other level-coupled
+  // narrowing) fails the build. Pre-patch the test only exercised B1.
+  const ALL_LEVELS_FOR_PREP = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+
+  it.each(ALL_LEVELS_FOR_PREP)(
+    "%s task 2: prompt includes the prep-window do-not-penalize-on-length instruction",
+    (level) => {
+      const prompt = buildSpeakingEvaluatorPrompt({
+        cefrLevel: level,
+        taskNumber: 2,
+        taskInstruction: "Test.",
+        transcript: "Test.",
+      });
+      expect(prompt).toContain("Task 2 Preparation-Window Note");
+      expect(prompt).toContain("5 minutes 30 dont 2 minutes de préparation");
+      // Case-insensitive match — review patch P2 rewrote the sentence to start
+      // with capital "Do NOT penalize" (post-period), but a future re-edit
+      // shouldn't trip the test on cosmetic capitalization.
+      expect(prompt).toMatch(/do NOT penalize/i);
+    }
+  );
+
+  it.each(ALL_LEVELS_FOR_PREP)(
+    "%s task 1: prompt does NOT include the prep-window note",
+    (level) => {
+      const prompt = buildSpeakingEvaluatorPrompt({
+        cefrLevel: level,
+        taskNumber: 1,
+        taskInstruction: "Test.",
+        transcript: "Test.",
+      });
+      expect(prompt).not.toContain("Task 2 Preparation-Window Note");
+    }
+  );
+
+  it.each(ALL_LEVELS_FOR_PREP)(
+    "%s task 3: prompt does NOT include the prep-window note",
+    (level) => {
+      const prompt = buildSpeakingEvaluatorPrompt({
+        cefrLevel: level,
+        taskNumber: 3,
+        taskInstruction: "Test.",
+        transcript: "Test.",
+      });
+      expect(prompt).not.toContain("Task 2 Preparation-Window Note");
+    }
+  );
 });

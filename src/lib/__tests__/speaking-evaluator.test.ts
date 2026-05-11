@@ -50,6 +50,10 @@ function evalOf(partial: Partial<SpeakingTaskEvaluation> = {}): SpeakingTaskEval
     vocabularyScore: 14,
     grammarScore: 15,
     interactionScore: 18,
+    // Story 10-6: Sociolinguistique (5th publisher category per §6.3) is
+    // required. A representative B2-level score (~16/20) for realistic fixture
+    // behavior; individual cases override via `partial`.
+    sociolinguisticScore: 16,
     overallScore: 79,
     strengths: ["ok"],
     improvements: ["ok"],

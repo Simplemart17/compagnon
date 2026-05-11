@@ -821,13 +821,18 @@ describe("schema constant lockstep — review patches (P8, P12)", () => {
   });
 });
 
-describe("speakingTaskEvaluationSchema (story 9-8)", () => {
+describe("speakingTaskEvaluationSchema (story 9-8 + 10-6)", () => {
   function validSpeaking() {
     return {
       pronunciationFluencyScore: 16,
       vocabularyScore: 14,
       grammarScore: 15,
       interactionScore: 18,
+      // Story 10-6: 5th publisher category (Sociolinguistique per §6.3) is
+      // required (NOT optional) — a legacy 4-dim AI response must fail Zod
+      // parse so the Story 9-7 retry path triggers. See dedicated "story 10-6"
+      // sub-describe below for the missing-field / boundary cases.
+      sociolinguisticScore: 16,
       overallScore: 79,
       estimatedCEFR: "B2" as const,
       strengths: ["Bonne fluidité"],
@@ -891,5 +896,63 @@ describe("speakingTaskEvaluationSchema (story 9-8)", () => {
 
     const bad = { ...validSpeaking(), estimatedCEFR: "Z9" };
     expect(speakingTaskEvaluationSchema.safeParse(bad).success).toBe(false);
+  });
+
+  // ---- Story 10-6: 5th publisher category (Sociolinguistique) ----
+  describe("Story 10-6 — sociolinguisticScore is required (NOT optional)", () => {
+    it("5-dim payload with sociolinguisticScore parses successfully", () => {
+      // Positive baseline: validSpeaking() already includes the new field
+      // (post-10-6 fixture). This case pins that contract.
+      const payload = validSpeaking();
+      const result = speakingTaskEvaluationSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.sociolinguisticScore).toBe(16);
+      }
+    });
+
+    it("4-dim legacy payload (missing sociolinguisticScore) fails parse with the specific Zod issue path", () => {
+      // Story 9-7 contract: a missing required field triggers retry. The
+      // issue path MUST name `sociolinguisticScore` so Sentry telemetry
+      // surfaces the specific drift, not just "some field missing".
+      const payload: Record<string, unknown> = { ...validSpeaking() };
+      delete payload.sociolinguisticScore;
+      const result = speakingTaskEvaluationSchema.safeParse(payload);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const paths = result.error.issues.map((i) => i.path.join("."));
+        expect(paths).toContain("sociolinguisticScore");
+      }
+    });
+
+    it("sociolinguisticScore = -1 rejected (below the 0-20 official scale)", () => {
+      const payload = { ...validSpeaking(), sociolinguisticScore: -1 };
+      const result = speakingTaskEvaluationSchema.safeParse(payload);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((i) => i.code === "too_small")).toBe(true);
+      }
+    });
+
+    it("sociolinguisticScore = 21 rejected (above the 0-20 official scale)", () => {
+      const payload = { ...validSpeaking(), sociolinguisticScore: 21 };
+      const result = speakingTaskEvaluationSchema.safeParse(payload);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((i) => i.code === "too_big")).toBe(true);
+      }
+    });
+
+    it("sociolinguisticScore = 0 accepted (boundary low)", () => {
+      const payload = { ...validSpeaking(), sociolinguisticScore: 0 };
+      const result = speakingTaskEvaluationSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+    });
+
+    it("sociolinguisticScore = 20 accepted (boundary high)", () => {
+      const payload = { ...validSpeaking(), sociolinguisticScore: 20 };
+      const result = speakingTaskEvaluationSchema.safeParse(payload);
+      expect(result.success).toBe(true);
+    });
   });
 });
