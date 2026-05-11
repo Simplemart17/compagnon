@@ -1,6 +1,6 @@
 # Story 10.6: Speaking Rubric & Scoring Pipeline — Add Sociolinguistic 5th Dimension
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
