@@ -43,21 +43,34 @@ interface AnimatedMessageProps {
  * chat bubbles. The Correction Report is rendered separately via
  * `CorrectionBubble` side-notes; showing it inline duplicates the content.
  *
- * Pre-Story-10-7: the Correction Report was preceded by a `---\n`
- * horizontal-rule divider, so the stripper anchored on that. Story 10-7
- * removed the `---` rules from the prompt (§8.4 emoji + markdown drop)
- * so the AI now emits the Correction Report as plain-text lines with
- * the `"User said" → "Correct form" (explanation)` shape followed by a
- * `Tip:` line. We anchor on whichever of these new sentinels appears
- * first:
- *   - a `"..." → "..." (...)` correction line (the regex shape that
- *     `parseCorrections` at `use-realtime-voice.ts:155` extracts)
+ * Post-Story-11-1: corrections arrive via the `report_correction` Realtime
+ * tool-call (Story 11-1) instead of being embedded as text. New post-11-1
+ * assistant turns will never trigger any of the sentinels below — the
+ * model has no instruction to emit a Correction Report text block in its
+ * audio response. The sentinel-based stripper is retained ONLY for:
+ *   - In-flight pre-11-1 conversations rendered before the prompt update
+ *     fully propagates (rare during the deploy window).
+ *   - Historical conversation messages stored in `conversation_messages`
+ *     before Story 11-1 shipped (rendered via the conversation history
+ *     screen at `app/(tabs)/conversation/history.tsx`).
+ *
+ * The strip logic is therefore a forward-compat / backward-compat shim,
+ * not a load-bearing parser.
+ *
+ * Pre-Story-10-7 history: the Correction Report was preceded by a `---\n`
+ * horizontal-rule divider. Story 10-7 removed the `---` rules from the
+ * prompt (§8.4 emoji + markdown drop); the AI then emitted the Correction
+ * Report as plain-text lines with the `"User said" → "Correct form"
+ * (explanation)` shape followed by a `Tip:` line. We anchor on whichever
+ * of these legacy sentinels appears first:
+ *   - a `"..." → "..." (...)` correction line (the shape the deleted
+ *     pre-11-1 `parseCorrections` regex used to extract)
  *   - a leading `No corrections.` line (the empty-error branch)
  *   - a leading `Tip:` line (the trailing tip when no correction line
  *     precedes it)
  *
- * Falls back to the legacy `---\n` divider so historic / in-flight
- * pre-10-7 conversation messages still strip correctly.
+ * Falls back to the pre-10-7 `---\n` divider for the oldest stored
+ * transcripts.
  */
 function getDisplayText(text: string): string {
   // Story 10-7 sentinels — find the first occurrence of any of them.

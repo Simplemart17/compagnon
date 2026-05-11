@@ -7,7 +7,7 @@
  * - Receives and plays AI audio responses
  * - Manages transcript, corrections, and conversation state
  * - Persists conversations and vocabulary to Supabase
- * - Handles AI function calls (save_vocabulary, note_error_pattern)
+ * - Handles AI function calls (save_vocabulary, note_error_pattern, report_correction)
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -24,6 +24,13 @@ import {
 import { buildConversationPrompt } from "@/src/lib/prompts/conversation";
 import { chatCompletionJSON } from "@/src/lib/openai";
 import { conversationFeedbackSchema } from "@/src/lib/schemas/ai-responses";
+import {
+  drainPendingCorrections,
+  MAX_PENDING_CORRECTIONS,
+  mergeOrphanCorrections,
+  processReportCorrectionCall,
+} from "@/src/lib/realtime-corrections";
+import { computeSpeakingScore } from "@/src/lib/speaking-score";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
 import { extractAndStoreMemories } from "@/src/lib/memory";
@@ -134,41 +141,61 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
   const inflightItemIdRef = useRef<string | null>(null);
   /** Monotonic counter for user-side TranscriptEntry ids; collision-free across same-millisecond bursts. */
   const userTurnCounterRef = useRef(0);
+  /**
+   * Corrections accumulated during the current AI turn via `report_correction`
+   * tool-calls. Drained by the `parseCorrections` callback when `appendIfNew`
+   * consumes the terminal `response.output_audio_transcript.done`. Also
+   * cleared on `response.done` and on `case "error"` so an orphaned tool-call
+   * without a terminating transcript cannot leak into the next turn.
+   * Story 11-1.
+   */
+  const pendingToolCorrectionsRef = useRef<Correction[]>([]);
+  /**
+   * Tracks the broad AI-response window: set true when the user's turn ends
+   * (`speech_stopped` — the AI is about to / is responding) and cleared on
+   * `response.done` or `case "error"`. Used by the `report_correction`
+   * handler's P1 inflight gate to accept legitimate tool-calls that fire
+   * BEFORE the first audio delta (which is what sets `inflightItemIdRef`).
+   *
+   * Story 11-1 review-round-2 patch P16: the original P1 gate used only
+   * `inflightItemIdRef.current !== null`, which is set by the first
+   * audio-transcript delta. A tool-only turn (model invokes
+   * `report_correction` with no audible response) or a tool-then-audio
+   * ordering would have inflightItemIdRef still null at the tool-call
+   * moment — the original gate dropped these as "outside turn." The
+   * widened gate accepts any tool-call during the response window.
+   */
+  const responseInFlightRef = useRef(false);
 
   // Audio recording via expo-audio-stream (full-duplex PCM streaming)
   const subscriptionRef = useRef<EventSubscription | null>(null);
   const turnIdRef = useRef(0);
 
-  /** Infer correction category from explanation text using keyword matching */
-  const inferCategory = useCallback((explanation: string): Correction["category"] => {
-    const lower = explanation.toLowerCase();
-    if (/pronunciation|accent|phonetic/.test(lower)) return "pronunciation";
-    if (/vocabulary|word choice|lexical/.test(lower)) return "vocabulary";
-    if (/register|formal|informal|tone/.test(lower)) return "register";
-    return "grammar";
+  /**
+   * Drain the per-turn `report_correction` tool-call buffer.
+   *
+   * Story 11-1 — replaces the pre-11-1 regex parser
+   * (`/"([^"]+)"\s*→\s*"([^"]+)"\s*\(([^)]+)\)/g`) and the keyword-matching
+   * `inferCategory` heuristic. Both are deleted (Story 10-2 "delete don't
+   * alias" pattern). Corrections now arrive structurally via the
+   * `report_correction` tool-call; the model classifies `category` directly.
+   *
+   * Called by `appendIfNew` (`src/lib/realtime-transcript.ts`) when the
+   * terminal `response.output_audio_transcript.done` fires for an AI turn.
+   * The `AppendOptions.parseCorrections: (text: string) => Correction[]`
+   * signature is preserved per Story 9-5 contract; the pure helper module
+   * is NOT touched. The `text` parameter is intentionally unused.
+   *
+   * An earlier draft emitted a `level: "info"` breadcrumb on every empty
+   * drain — rejected during review because typical 5–10 min conversations
+   * have 15–30 user turns, most of which produce no corrections, which
+   * would flood Sentry with low-signal noise. The presence-of-corrections
+   * signal is reachable via the tool-call invocation handler's existing
+   * breadcrumbs; absence-of-corrections is uninteresting in isolation.
+   */
+  const parseCorrections = useCallback((_text: string): Correction[] => {
+    return drainPendingCorrections(pendingToolCorrectionsRef.current);
   }, []);
-
-  /** Parse corrections from AI's text */
-  const parseCorrections = useCallback(
-    (text: string): Correction[] => {
-      const corrections: Correction[] = [];
-      const correctionPattern = /"([^"]+)"\s*→\s*"([^"]+)"\s*\(([^)]+)\)/g;
-      let match: RegExpExecArray | null;
-
-      while ((match = correctionPattern.exec(text)) !== null) {
-        const explanation = match[3];
-        corrections.push({
-          original: match[1],
-          corrected: match[2],
-          explanation,
-          category: inferCategory(explanation),
-        });
-      }
-
-      return corrections;
-    },
-    [inferCategory]
-  );
 
   /** Start microphone recording and stream PCM audio to WebSocket */
   const startAudioStreaming = useCallback(async () => {
@@ -254,6 +281,74 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           }
           await trackError(user.id, parsed.error_type, parsed.description);
           sessionRef.current?.sendFunctionResult(callId, "Error pattern noted.");
+        } else if (name === "report_correction") {
+          // Story 11-1 — structured tool-call replaces the legacy
+          // `parseCorrections` regex bridge. Pure helper at
+          // `src/lib/realtime-corrections.ts` owns the safeParse +
+          // result-string contract; the hook owns the buffer + breadcrumb
+          // + sendFunctionResult side effects.
+          //
+          // Review patch P1 (HIGH; widened by P16 in review-round-2): gate
+          // the push on an in-flight AI turn to defend against tool-calls
+          // that land AFTER `response.done` (theoretically possible per
+          // the GA API). Without the gate, a late tool-call would pollute
+          // the NEXT turn's correction set. The widened gate accepts a
+          // tool-call when EITHER `responseInFlightRef.current` is true
+          // (the broad response window from `speech_stopped` to
+          // `response.done`) OR `inflightItemIdRef.current` is non-null
+          // (set on the first audio-transcript delta). The original
+          // `inflightItemIdRef`-only gate over-rejected legitimate
+          // tool-only turns where the model invokes `report_correction`
+          // before any audio delta fires.
+          if (!responseInFlightRef.current && inflightItemIdRef.current === null) {
+            addBreadcrumb({
+              category: "realtime",
+              level: "warning",
+              message: "report_correction outside in-flight turn dropped",
+              data: { feature: "realtime-report-correction" },
+            });
+            sessionRef.current?.sendFunctionResult(
+              callId,
+              "Rejected: outside-turn. Tool-call arrived outside the AI response window; correction not recorded."
+            );
+            return;
+          }
+          // Review patch P9 (MED): cap the buffer to defend against a
+          // runaway model spamming the tool. Per-turn upper bound is
+          // `MAX_PENDING_CORRECTIONS` (20); a single AI turn rarely
+          // exceeds 3-4 corrections. Review-round-2 patch P20: rejection
+          // message shape standardized across the three rejection paths
+          // (outside-turn / buffer-full / invalid-shape) — each starts
+          // with `"Rejected: <reason>."` so the model can pattern-match
+          // and self-correct in a uniform way.
+          if (pendingToolCorrectionsRef.current.length >= MAX_PENDING_CORRECTIONS) {
+            addBreadcrumb({
+              category: "realtime",
+              level: "warning",
+              message: "report_correction buffer cap reached",
+              data: { feature: "realtime-report-correction" },
+            });
+            sessionRef.current?.sendFunctionResult(
+              callId,
+              "Rejected: buffer-full. Reached MAX_PENDING_CORRECTIONS for this turn; correction not recorded. Skip further invocations until the next turn."
+            );
+            return;
+          }
+          const callResult = processReportCorrectionCall(parsed);
+          if (callResult.outcome === "invalid") {
+            addBreadcrumb({
+              category: "ai",
+              level: "warning",
+              message: "report_correction args parse failed",
+              data: {
+                feature: "realtime-report-correction",
+                code: callResult.issueCode,
+              },
+            });
+          } else {
+            pendingToolCorrectionsRef.current.push(callResult.correction);
+          }
+          sessionRef.current?.sendFunctionResult(callId, callResult.resultMessage);
         } else {
           sessionRef.current?.sendFunctionResult(callId, "Unknown function.");
         }
@@ -342,6 +437,11 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           break;
 
         case "input_audio_buffer.speech_stopped":
+          // Story 11-1 review-round-2 patch P16: the AI's response window
+          // opens here (user finished speaking → AI starts processing).
+          // P1 inflight gate uses this so a tool-only response (no audio)
+          // can still record corrections.
+          responseInFlightRef.current = true;
           setState((s) => ({ ...s, isSpeaking: false, isProcessing: true }));
           break;
 
@@ -442,12 +542,51 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
 
         case "response.done":
           // Safety reset: clear processing if response completes without audio.
+          // Story 11-1 review patch P2 (HIGH): if the turn ends without a
+          // terminal `response.output_audio_transcript.done` event firing
+          // (e.g., the model invoked `report_correction` but produced no
+          // audible response, or the transcript event was suppressed by
+          // an upstream defect), the buffered corrections would be silently
+          // discarded. Drain them into `correctionsRef.current` instead so
+          // the post-conversation pipeline (`extractErrorsFromCorrections`
+          // + speaking-score formula) still sees them. The breadcrumb fires
+          // only when the buffer is non-empty (the actual signal worth
+          // tracking).
+          {
+            // Review-round-2 patch P18: orphan-drain merge extracted to
+            // the pure helper `mergeOrphanCorrections` for testability.
+            // Mutates the buffer (drained empty) and returns a new
+            // conversation list + breadcrumb-fire signal.
+            const merged = mergeOrphanCorrections(
+              correctionsRef.current,
+              pendingToolCorrectionsRef.current
+            );
+            if (merged.shouldBreadcrumb) {
+              correctionsRef.current = merged.conversation;
+              // Review-round-2 patch P17 (MED): pass a snapshot spread of
+              // the ref so React's render reads a stable array, not a live
+              // alias that could be mutated again before the render commits.
+              setState((s) => ({ ...s, allCorrections: [...correctionsRef.current] }));
+              addBreadcrumb({
+                category: "realtime",
+                level: "warning",
+                message: "Orphan tool corrections drained at response.done",
+                data: { category: "report_correction" },
+              });
+            }
+          }
           // Also drop any in-flight delta accumulator so a cancelled or
           // tool-only turn cannot leak its pending text into the prefix of
           // the next turn (whose first delta would otherwise concatenate
           // onto the leftover via `acceptDelta`'s adopt path).
           inflightItemIdRef.current = null;
           currentAiTextRef.current = "";
+          // Review-round-2 patch P16: close the response window so any
+          // late-arriving `report_correction` tool-call is rejected by
+          // the P1 gate (cleared AFTER the orphan-drain above so the
+          // drain's correctionsRef merge captures any pending tool-call
+          // results emitted by the same response).
+          responseInFlightRef.current = false;
           setState((s) => ({ ...s, isProcessing: false, pendingAiText: "" }));
           break;
 
@@ -459,6 +598,41 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           // resumed without a full `start()`.
           inflightItemIdRef.current = null;
           currentAiTextRef.current = "";
+          // Review-round-2 patch P16: close the response window on error
+          // so late tool-calls fall to the P1 rejection path. The orphan-
+          // drain below preserves any in-buffer corrections from before
+          // the error.
+          responseInFlightRef.current = false;
+          // Story 11-1 review patch P3 (HIGH): on `connection_lost` the
+          // `end()` path persists the conversation including
+          // `correctionsRef.current`. If we silently cleared the pending
+          // tool-correction buffer here, validated corrections from
+          // successful tool-calls that landed BEFORE the error would be
+          // lost from the persisted record (and from `extractErrorsFromCorrections`
+          // + the speaking-score formula). Drain into `correctionsRef.current`
+          // first so the persisted snapshot is complete; breadcrumb when
+          // non-empty so operators have visibility. The breadcrumb here
+          // is distinct from `captureError(event.error, "realtime-voice-error")`
+          // at the top of this case — the captureError is for the API
+          // failure; this breadcrumb is for the data-preservation event.
+          {
+            // Review-round-2 patch P18: orphan-drain merge extracted to
+            // the pure helper `mergeOrphanCorrections` for testability.
+            const merged = mergeOrphanCorrections(
+              correctionsRef.current,
+              pendingToolCorrectionsRef.current
+            );
+            if (merged.shouldBreadcrumb) {
+              correctionsRef.current = merged.conversation;
+              setState((s) => ({ ...s, allCorrections: [...correctionsRef.current] }));
+              addBreadcrumb({
+                category: "realtime",
+                level: "warning",
+                message: "Orphan tool corrections drained at error",
+                data: { category: "report_correction" },
+              });
+            }
+          }
           if (event.error.code === "connection_lost") {
             // Mark disconnected immediately, then clean up & persist
             setState((s) => ({
@@ -604,14 +778,16 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           );
         }
 
-        // 4. Update skill progress for speaking (with score based on corrections ratio)
-        // Caps penalty at 30% per correction-to-utterance ratio, with minimum score of 20
+        // 4. Update skill progress for speaking (with score based on corrections ratio).
+        // Formula extracted to `src/lib/speaking-score.ts` for testability +
+        // future-tuning baseline. Caps penalty at 30% per correction-to-utterance
+        // ratio, with minimum score of 20 and a 70 default for zero-utterance
+        // sessions. Story 11-1 — INPUT accuracy improved (corrections now from
+        // `report_correction` tool-call, not the deleted regex); the formula
+        // itself is unchanged.
         const totalEntries = transcriptRef.current.filter((e) => e.role === "user").length;
         const correctedEntries = correctionsRef.current.length;
-        const speakingScore =
-          totalEntries > 0
-            ? Math.max(20, Math.round(100 - (correctedEntries / Math.max(totalEntries, 1)) * 30))
-            : 70; // Default if no user entries
+        const speakingScore = computeSpeakingScore(totalEntries, correctedEntries);
         await updateSkillProgress(user.id, "speaking", cefrLevel, speakingScore, minutesPracticed);
 
         // 5. Increment daily activity
@@ -682,6 +858,8 @@ Return JSON: {
     processedResponseItemsRef.current = new Set();
     inflightItemIdRef.current = null;
     userTurnCounterRef.current = 0;
+    pendingToolCorrectionsRef.current = [];
+    responseInFlightRef.current = false;
 
     setState({
       status: "connecting",
@@ -752,6 +930,36 @@ Return JSON: {
                 description: { type: "string", description: "Description of the error pattern" },
               },
               required: ["error_type", "description"],
+            },
+          },
+          {
+            type: "function",
+            name: "report_correction",
+            description:
+              "Report a French-language correction the user needs. Invoke this whenever the user's French contains a grammar / pronunciation / vocabulary / register error worth correcting. Do NOT emit corrections as text in your audio response — invoke this function instead. The function is silent (your audio response is unaffected). Multiple invocations per turn are allowed (one per distinct error).",
+            parameters: {
+              type: "object",
+              properties: {
+                original: {
+                  type: "string",
+                  description: "The exact French the user said, verbatim (no quotes around it).",
+                },
+                corrected: {
+                  type: "string",
+                  description: "The correct French form.",
+                },
+                explanation: {
+                  type: "string",
+                  description:
+                    "Brief plain-French explanation of why the correction applies. Avoid nested parentheses. 1-2 sentences.",
+                },
+                category: {
+                  type: "string",
+                  enum: ["grammar", "pronunciation", "vocabulary", "register"],
+                  description: "The error category. Pick the single best fit.",
+                },
+              },
+              required: ["original", "corrected", "explanation", "category"],
             },
           },
         ],
