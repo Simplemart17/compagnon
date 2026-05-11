@@ -240,3 +240,51 @@ describe("Story 10-5 call-site regression guards (review patches P8 + P12)", () 
     expect(callSite).toMatch(/role:\s*"system"\s*,\s*content:\s*buildPlacementTestPrompt\(\)/);
   });
 });
+
+describe("buildPlacementTestPrompt — Force est de constater fixed-expression reclassification (Story 10-7 / §8.1)", () => {
+  it("C1 competencies row labels 'force est de constater que' as a fixed expression", () => {
+    const prompt = buildPlacementTestPrompt();
+    expect(prompt).toContain("force est de constater que [fixed expression]");
+  });
+
+  it("C1 competencies row no longer uses 'nuanced connector usage' framing", () => {
+    const prompt = buildPlacementTestPrompt();
+    expect(prompt).not.toContain("nuanced connector usage");
+  });
+
+  it("C1 competencies row uses 'nuanced connectors and fixed expressions' framing", () => {
+    const prompt = buildPlacementTestPrompt();
+    expect(prompt).toContain("nuanced connectors and fixed expressions");
+  });
+
+  it("orthographic fixes — accents on 'passé simple' and 'en dépit de' (C1 row)", () => {
+    const prompt = buildPlacementTestPrompt();
+    expect(prompt).toContain("passé simple");
+    expect(prompt).toContain("en dépit de");
+    // Negative: the pre-10-7 unaccented forms are gone
+    expect(prompt).not.toContain("passe simple recognition");
+    expect(prompt).not.toContain("en depit de");
+  });
+
+  it("review-patch P7 — accents added to A1/A2/B1/B2 competencies (être, passé composé, allé, où)", () => {
+    const prompt = buildPlacementTestPrompt();
+    // A1 row
+    expect(prompt).toContain("être/avoir/aller");
+    // A2 row
+    expect(prompt).toContain("passé composé with avoir and être");
+    expect(prompt).toContain("j'ai allé vs je suis allé");
+    // B1 row
+    expect(prompt).toContain("imparfait vs passé composé");
+    expect(prompt).toContain("qui/que/dont/où");
+    // Negative: the pre-patch unaccented forms are gone
+    expect(prompt).not.toContain("etre/avoir/aller");
+    expect(prompt).not.toContain("passe compose with avoir and etre");
+    expect(prompt).not.toContain("j'ai alle vs je suis alle");
+    expect(prompt).not.toContain("qui/que/dont/ou,");
+  });
+
+  it("C1 competencies row marks 'quoique' and 'en dépit de' as connectors", () => {
+    const prompt = buildPlacementTestPrompt();
+    expect(prompt).toContain("quoique, en dépit de [connector]");
+  });
+});

@@ -100,23 +100,31 @@ export const TOTAL_PLACEMENT_QUESTIONS: number = PLACEMENT_LEVEL_RANGES.reduce(
  * the single source for vocabulary frequency.
  */
 const LEVEL_COMPETENCIES: Record<CEFRLevel, { competencies: string; distractors: string }> = {
+  // Story 10-7 review-patch P7 (Blind Hunter BH5): added missing accents
+  // throughout the A1-B2 competency / distractor strings (être, passé,
+  // composé, allé, où). These are linguistic-accuracy fixes in the same
+  // vein as the C1 row's `passé simple` / `en dépit de` fix from AC #5,
+  // applied uniformly per §8.2's "match the publisher orthography"
+  // theme. The AI consumes these strings as guidance for question
+  // generation; unaccented French inside the prompt risks the AI
+  // emitting unaccented French in generated questions.
   A1: {
     competencies:
-      "definite/indefinite articles, present tense of etre/avoir/aller, basic greetings and politeness, cardinal numbers, gender agreement",
+      "definite/indefinite articles, present tense of être/avoir/aller, basic greetings and politeness, cardinal numbers, gender agreement",
     distractors:
       "common beginner confusions (le/la/les mix-ups, je suis/j'ai confusion, tu/vous errors)",
   },
   A2: {
     competencies:
-      "passe compose with avoir and etre (auxiliary choice), direct/indirect object pronouns, near future (aller + infinitive), prepositions of place",
+      "passé composé with avoir and être (auxiliary choice), direct/indirect object pronouns, near future (aller + infinitive), prepositions of place",
     distractors:
-      "passe compose auxiliary errors (j'ai alle vs je suis alle), pronoun placement errors, gender/number agreement mistakes",
+      "passé composé auxiliary errors (j'ai allé vs je suis allé), pronoun placement errors, gender/number agreement mistakes",
   },
   B1: {
     competencies:
-      "imparfait vs passe compose, relative pronouns (qui/que/dont/ou), conditional present, basic subjunctive after il faut que",
+      "imparfait vs passé composé, relative pronouns (qui/que/dont/où), conditional present, basic subjunctive after il faut que",
     distractors:
-      "imparfait/passe compose confusion in context, wrong relative pronoun choice, conditional/future mix-ups",
+      "imparfait/passé composé confusion in context, wrong relative pronoun choice, conditional/future mix-ups",
   },
   B2: {
     competencies:
@@ -126,7 +134,7 @@ const LEVEL_COMPETENCIES: Record<CEFRLevel, { competencies: string; distractors:
   },
   C1: {
     competencies:
-      "literary tenses (passe simple recognition), advanced syntax (mise en relief, inversion), nuanced connector usage (quoique, en depit de, force est de constater)",
+      "literary tenses (passé simple recognition), advanced syntax (mise en relief, inversion), nuanced connectors and fixed expressions (quoique, en dépit de [connector]; force est de constater que [fixed expression])",
     distractors:
       "near-synonyms with subtle meaning differences, formal vs literary register confusion",
   },
