@@ -1,3 +1,4 @@
+import { buildVocabularyConstraintBlock } from "@/src/lib/prompts/vocabulary-tiers";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 /**
@@ -14,7 +15,11 @@ import type { CEFRLevel } from "@/src/types/cefr";
  * levels. Story 10-3 roughly doubled B2 / C1 ceilings to address audit
  * P1-3 ("B2 way too short, C1 way too short").
  *
- * Citations matrix rows live in `docs/tcf-spec-citations.md §4`.
+ * Vocabulary tiers per CEFR are surfaced via
+ * `src/lib/prompts/vocabulary-tiers.ts` `buildVocabularyConstraintBlock`
+ * (Story 10-4 / `docs/tcf-spec-source.md §7.2`).
+ *
+ * Citations matrix rows live in `docs/tcf-spec-citations.md §4` + §9.
  */
 
 /** Build prompt to generate a reading exercise */
@@ -38,6 +43,8 @@ ${topic ? `- Topic: ${topic}` : "- Topic: choose an engaging topic for this leve
 
 ## Content Guidelines for ${cefrLevel}
 ${levelContent}
+
+${buildVocabularyConstraintBlock(cefrLevel)}
 
 ## Word Explanation Format
 For each difficult word in the passage, provide an explanation IN SIMPLE FRENCH (not English translation). This is for the "Click-to-Explain" immersive feature.

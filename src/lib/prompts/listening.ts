@@ -1,3 +1,4 @@
+import { buildVocabularyConstraintBlock } from "@/src/lib/prompts/vocabulary-tiers";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 /**
@@ -19,7 +20,11 @@ import type { CEFRLevel } from "@/src/types/cefr";
  * P1-3 caps (which were too narrow at A1 / B2 / C1 / C2) to match
  * Beacco samples.
  *
- * Citations matrix rows live in `docs/tcf-spec-citations.md §3`.
+ * Vocabulary tiers per CEFR are surfaced via
+ * `src/lib/prompts/vocabulary-tiers.ts` `buildVocabularyConstraintBlock`
+ * (Story 10-4 / `docs/tcf-spec-source.md §7.2`).
+ *
+ * Citations matrix rows live in `docs/tcf-spec-citations.md §3` + §9.
  */
 
 /** Build prompt to generate a listening exercise */
@@ -44,6 +49,8 @@ ${topic ? `- Topic: ${topic}` : "- Topic: choose an appropriate topic for this l
 
 ## Content Guidelines for ${cefrLevel}
 ${levelContent}
+
+${buildVocabularyConstraintBlock(cefrLevel)}
 
 ## Exercise Format
 Generate a complete listening exercise with:

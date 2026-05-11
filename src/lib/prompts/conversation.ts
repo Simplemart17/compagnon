@@ -1,9 +1,16 @@
 // SECURITY: any user-derived strings injected into the system prompt must be
 // routed through sanitizeMemoryContent and wrapped in the <USER_FACTS> /
 // <USER_WEAK_AREAS> delimiter pattern. See story 9-4 (memory.ts).
+//
+// Vocabulary tiers per CEFR are surfaced via
+// `src/lib/prompts/vocabulary-tiers.ts` `buildVocabularyConstraintBlock`
+// (Story 10-4 / `docs/tcf-spec-source.md §7.2`). The block is built from
+// constant-time module exports — no user input flows in, so the Story 9-4
+// defense holds without additional sanitisation.
+import { sanitizeMemoryContent } from "@/src/lib/memory";
+import { buildVocabularyConstraintBlock } from "@/src/lib/prompts/vocabulary-tiers";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { ConversationMode } from "@/src/types/conversation";
-import { sanitizeMemoryContent } from "@/src/lib/memory";
 
 /**
  * Cap the count of user-derived items rendered into the system prompt.
@@ -43,6 +50,8 @@ export function buildConversationPrompt(params: {
 
 ## Language Adaptation for ${cefrLevel}
 ${levelGuidance}
+
+${buildVocabularyConstraintBlock(cefrLevel)}
 
 ## Correction Behavior — CRITICAL
 - Do NOT interrupt the user's conversational flow to correct errors
