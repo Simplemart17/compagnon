@@ -1,6 +1,6 @@
 # Story 11.3: Edge Function Upstream Timeouts — `AbortSignal.timeout()` on Every OpenAI/Azure Fetch
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
