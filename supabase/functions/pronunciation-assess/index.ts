@@ -7,7 +7,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
-import { errorResponse, parseUpstreamError } from "../_shared/errors.ts";
+import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
+import {
+  DEFAULT_UPSTREAM_TIMEOUT_MS,
+  fetchWithTimeout,
+  isUpstreamTimeoutError,
+} from "../_shared/fetch-with-timeout.ts";
 
 const AZURE_SPEECH_KEY = Deno.env.get("AZURE_SPEECH_KEY");
 const AZURE_SPEECH_REGION = Deno.env.get("AZURE_SPEECH_REGION") ?? "westeurope";
@@ -107,19 +112,29 @@ Deno.serve(async (req: Request) => {
 
     const endpoint = `https://${AZURE_SPEECH_REGION}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1`;
 
-    const azureResponse = await fetch(
-      `${endpoint}?language=fr-FR&format=detailed`,
-      {
-        method: "POST",
-        headers: {
-          "Ocp-Apim-Subscription-Key": AZURE_SPEECH_KEY,
-          "Content-Type": "audio/wav; codecs=audio/pcm; samplerate=16000",
-          "Pronunciation-Assessment": pronunciationHeader,
-          Accept: "application/json",
+    let azureResponse: Response;
+    try {
+      azureResponse = await fetchWithTimeout(
+        "azure-pronunciation",
+        `${endpoint}?language=fr-FR&format=detailed`,
+        {
+          method: "POST",
+          headers: {
+            "Ocp-Apim-Subscription-Key": AZURE_SPEECH_KEY,
+            "Content-Type": "audio/wav; codecs=audio/pcm; samplerate=16000",
+            "Pronunciation-Assessment": pronunciationHeader,
+            Accept: "application/json",
+          },
+          body: bytes.buffer,
         },
-        body: bytes.buffer,
+        DEFAULT_UPSTREAM_TIMEOUT_MS
+      );
+    } catch (err) {
+      if (isUpstreamTimeoutError(err)) {
+        return timeoutResponse(corsHeaders, { upstream: err.upstream, timeoutMs: err.timeoutMs });
       }
-    );
+      throw err;
+    }
 
     if (!azureResponse.ok) {
       const upstreamMessage = await parseUpstreamError(azureResponse);

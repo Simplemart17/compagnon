@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-11 # 11-2 review complete; 8 review patches applied (4 HIGH old-ws-onclose-race + sync-isAiSpeakingRef + don't-stop-audio + start-guards-reconnecting; 4 MED ws.onopen-disconnect-check + sendRaw-drop-breadcrumb + suppress-benign-server-errors + clear-currentAiTextRef-on-barge-in); 977 tests passing (+22 net 955→977); status remains review post-patches
+last_updated: 2026-05-12 # 11-3 done — PR #69 opened from feature/11-3-edge-function-upstream-timeouts; 991 tests passing; closes audit P1-9
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -151,7 +151,7 @@ development_status:
   epic-11: in-progress
   11-1-correction-protocol-tool-calls: done # 2026-05-11: implemented + 20 review patches across 2 adversarial review rounds (round 1: 3 HIGH P1/P2/P3 race-on-late-call + orphan-drain-on-response.done + connection_lost-drain; 7 MED P4-P10 contract-drift JSDoc + Case 14 replacement + issue-path in result message + bidirectional Correction-compat + short ack to break echo loop + buffer cap + schema max-length; 5 LOW P11-P15 scoped negative assertions + tightened issueCode type + pinned invalid_type code + doc count fix + enum-sync lockstep test; round 2: 1 HIGH P16 widen-inflight-gate-for-tool-only-turns + 2 MED P17 setState-snapshot + P18 mergeOrphanCorrections-pure-helper-with-coverage + 2 LOW P19 MAX_PENDING_CORRECTIONS-pinned-to-20 + P20 standardized-Rejected-shape); 955 tests passing (+61 net 894→955); PR #67; closes audit P1-6 + P2-1 architecturally; first Epic 11 story closed
   11-2-realtime-reconnect-barge-in: review # 2026-05-11: review-round-1 complete (8 patches applied: 4 HIGH P21/P22/P24/P25 detach-old-ws-handlers + sync isAiSpeakingRef + don't-stop-audio-on-reconnect + start-guards-reconnecting; 4 MED P26/P27/P28/P30 ws.onopen-disconnect-check + sendRaw-drop-breadcrumb + suppress-benign-barge-in-race-errors + clear-currentAiTextRef-on-barge-in); +22 net tests (955→977); P1-7 closed architecturally
-  11-3-edge-function-upstream-timeouts: backlog
+  11-3-edge-function-upstream-timeouts: done # 2026-05-12: review-round-1 complete (12 patches applied) + PR #69 opened; +6 net tests (985→991); closes audit P1-9
   11-4-replace-rate-limit-upstash: backlog
   11-5-cost-discipline-pass: backlog
   11-6-embedding-based-error-tracker-dedupe: backlog
