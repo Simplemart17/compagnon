@@ -282,6 +282,29 @@ describe("mergeOrphanCorrections (Story 11-1 P18)", () => {
     // The input `conversation` array is unchanged; the new array is in result.
     expect(conversation).toEqual(conversationSnapshot);
   });
+
+  it("Story 11-2 reconnect-start: preserves tool-call data across cross-session boundary", () => {
+    // Story 11-2 adds a third cross-session boundary where mergeOrphanCorrections
+    // is invoked (alongside response.done + case "error" from Story 11-1).
+    // When the WebSocket drops mid-turn and auto-reconnects, the per-turn
+    // pendingToolCorrectionsRef has corrections from BEFORE the disconnect
+    // that must be preserved into correctionsRef so the post-conversation
+    // pipeline (extractErrorsFromCorrections + speaking-score) still sees
+    // them. The new realtime.reconnecting event handler calls this helper.
+    const conversation: Correction[] = [VALID_GRAMMAR_ARGS]; // prior turn's corrections
+    const pendingBuffer: Correction[] = [VALID_VOCAB_ARGS, VALID_PRONUNCIATION_ARGS]; // current turn's, mid-drain at disconnect
+    const merged = mergeOrphanCorrections(conversation, pendingBuffer);
+    expect(merged.conversation).toHaveLength(3);
+    expect(merged.shouldBreadcrumb).toBe(true);
+    // Buffer is empty — the reconnect's new WebSocket session starts fresh.
+    expect(pendingBuffer).toEqual([]);
+    // Categories preserved across the cross-session boundary.
+    expect(merged.conversation.map((c) => c.category)).toEqual([
+      "grammar",
+      "vocabulary",
+      "pronunciation",
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------

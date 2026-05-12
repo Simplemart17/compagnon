@@ -30,6 +30,7 @@ import {
   mergeOrphanCorrections,
   processReportCorrectionCall,
 } from "@/src/lib/realtime-corrections";
+import { computeBargeInDirective } from "@/src/lib/realtime-barge-in";
 import { computeSpeakingScore } from "@/src/lib/speaking-score";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
@@ -52,7 +53,10 @@ import type { ConversationFeedback, ConversationMode, Correction } from "@/src/t
 export type { TranscriptEntry };
 
 export interface ConversationState {
-  status: "idle" | "connecting" | "connected" | "error" | "disconnected" | "ended";
+  // Story 11-2: added `"reconnecting"` to signal the auto-reconnect window
+  // between an unexpected WebSocket close and the next successful open.
+  // The UI can render a "Reconnecting..." banner during this state.
+  status: "idle" | "connecting" | "connected" | "reconnecting" | "error" | "disconnected" | "ended";
   isSpeaking: boolean;
   isAiSpeaking: boolean;
   isProcessing: boolean;
@@ -166,6 +170,38 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
    * widened gate accepts any tool-call during the response window.
    */
   const responseInFlightRef = useRef(false);
+  /**
+   * `Date.now()` captured when the FIRST `response.output_audio.delta`
+   * fires for the current response. Used by the Story 11-2 barge-in
+   * pure helper to compute `audio_end_ms = Date.now() - aiSpeakingStartedAtMs`
+   * for the `conversation.item.truncate` event. Cleared on:
+   *   - `response.output_audio.done` (turn naturally completed)
+   *   - `response.done` (turn ended)
+   *   - `case "error"` (turn cancelled)
+   *   - barge-in fire (response cancelled by user interrupt)
+   *   - reconnect-start (cross-session boundary)
+   *   - `start()` (next conversation)
+   */
+  const aiSpeakingStartedAtMsRef = useRef<number | null>(null);
+  /**
+   * Mirror of `state.isAiSpeaking` for handler-time access inside the
+   * `useCallback`-captured `handleEvent`. The capture's stale closure
+   * would otherwise miss state updates between renders. Same pattern
+   * as the existing `statusRef` for `state.status`. Story 11-2.
+   *
+   * Review-round-2 patch P22 (HIGH): the render-time mirror has a
+   * narrow stale window — if a `speech_started` event fires BETWEEN
+   * the `response.output_audio.delta` handler's setState enqueue and
+   * React's render commit, this ref still reads `false` even though
+   * state.isAiSpeaking will be `true` on the next commit. Defense:
+   * the audio-delta handler ALSO sets this ref synchronously
+   * (`isAiSpeakingRef.current = true`) at event-time so the next
+   * speech_started reads the up-to-date value regardless of render
+   * timing. Same pattern for `response.output_audio.done` (→ false)
+   * and the barge-in branch (→ false).
+   */
+  const isAiSpeakingRef = useRef(false);
+  isAiSpeakingRef.current = state.isAiSpeaking;
 
   // Audio recording via expo-audio-stream (full-duplex PCM streaming)
   const subscriptionRef = useRef<EventSubscription | null>(null);
@@ -432,9 +468,89 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           setState((s) => ({ ...s, status: "connected" }));
           break;
 
-        case "input_audio_buffer.speech_started":
-          setState((s) => ({ ...s, isSpeaking: true }));
+        case "input_audio_buffer.speech_started": {
+          // Story 11-2 barge-in: if the user starts speaking WHILE the AI
+          // is already playing audio (i.e., interrupted mid-sentence), the
+          // WebSocket modality of the OpenAI Realtime API requires the
+          // client to (1) stop local playback, (2) send response.cancel to
+          // halt server-side response generation, (3) send
+          // conversation.item.truncate to synchronize the server's
+          // transcript with what was actually played. Pure helper at
+          // src/lib/realtime-barge-in.ts decides the directive; this
+          // branch dispatches the side effects.
+          const directive = computeBargeInDirective(
+            {
+              isAiSpeaking: isAiSpeakingRef.current,
+              inflightItemId: inflightItemIdRef.current,
+              aiSpeakingStartedAtMs: aiSpeakingStartedAtMsRef.current,
+            },
+            Date.now()
+          );
+          if (directive.shouldCancelResponse) {
+            // 1. Stop local playback immediately.
+            void ExpoPlayAudioStream.stopSound();
+            // 2. Tell the server to cancel the in-flight response.
+            sessionRef.current?.sendRaw({ type: "response.cancel" });
+            // 3. Synchronize server-side transcript with what was actually
+            // played (only if we have both item_id + audio_end_ms; otherwise
+            // breadcrumb the missing data).
+            if (
+              directive.shouldTruncate &&
+              directive.itemId !== null &&
+              directive.audioEndMs !== null
+            ) {
+              sessionRef.current?.sendRaw({
+                type: "conversation.item.truncate",
+                item_id: directive.itemId,
+                content_index: 0,
+                audio_end_ms: directive.audioEndMs,
+              });
+              addBreadcrumb({
+                category: "realtime",
+                level: "info",
+                message: "Barge-in: response cancelled + transcript truncated",
+                data: { feature: "realtime-barge-in" },
+              });
+            } else {
+              addBreadcrumb({
+                category: "realtime",
+                level: "warning",
+                message:
+                  "Barge-in: response cancelled without truncate (missing item_id or start time)",
+                data: { feature: "realtime-barge-in" },
+              });
+            }
+            // Reset AI-speaking refs since the response is over.
+            aiSpeakingStartedAtMsRef.current = null;
+            inflightItemIdRef.current = null;
+            // Review-round-2 patch P22 (HIGH): synchronous ref update so
+            // a back-to-back speech_started (rapid double-interrupt) on
+            // the same turn correctly reads `isAiSpeakingRef.current === false`.
+            isAiSpeakingRef.current = false;
+            // Review-round-2 patch P30 (MED): on barge-in, the server
+            // truncates the assistant message to what was actually played
+            // (`audio_end_ms`). The local hook's `currentAiTextRef` may
+            // hold transcript text the user never heard (deltas arrived
+            // faster than playback). Clear the streaming text accumulator
+            // so the next AI turn doesn't accidentally prefix with stale
+            // unplayed text via `acceptDelta`'s adopt path. The final
+            // assistant transcript entry for this turn still arrives via
+            // the (cancelled) `response.output_audio_transcript.done`
+            // event, but the cancelled-turn's text is best-effort: the
+            // server's transcript reflects only the played portion.
+            currentAiTextRef.current = "";
+            setState((s) => ({
+              ...s,
+              isSpeaking: true,
+              isAiSpeaking: false,
+              pendingAiText: "",
+            }));
+          } else {
+            // No AI response to interrupt — existing pre-11-2 behavior.
+            setState((s) => ({ ...s, isSpeaking: true }));
+          }
           break;
+        }
 
         case "input_audio_buffer.speech_stopped":
           // Story 11-1 review-round-2 patch P16: the AI's response window
@@ -450,12 +566,30 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           // Stream each audio chunk immediately for low-latency playback
           const turnId = `turn_${turnIdRef.current}`;
           void ExpoPlayAudioStream.playSound(event.delta, turnId, "pcm_s16le");
+          // Story 11-2 barge-in: capture the AI-speaking start time on
+          // the first delta of a turn so the barge-in path can compute
+          // audio_end_ms correctly. `Date.now()` is non-monotonic; the
+          // pure helper at src/lib/realtime-barge-in.ts clamps the
+          // resulting value to non-negative (clock-skew defense).
+          if (aiSpeakingStartedAtMsRef.current === null) {
+            aiSpeakingStartedAtMsRef.current = Date.now();
+          }
+          // Review-round-2 patch P22 (HIGH): set isAiSpeakingRef
+          // synchronously alongside setState so a `speech_started` event
+          // firing before React commits still reads the up-to-date value
+          // and the barge-in branch fires correctly.
+          isAiSpeakingRef.current = true;
           setState((s) => ({ ...s, isAiSpeaking: true, isProcessing: false }));
           break;
         }
 
         case "response.output_audio.done":
           turnIdRef.current++;
+          // Story 11-2: reset AI-speaking start time on natural turn end
+          // so the next turn's first audio delta sets a fresh timestamp.
+          aiSpeakingStartedAtMsRef.current = null;
+          // Review-round-2 patch P22 (HIGH): synchronous ref update.
+          isAiSpeakingRef.current = false;
           setState((s) => ({ ...s, isAiSpeaking: false }));
           break;
 
@@ -587,10 +721,37 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           // drain's correctionsRef merge captures any pending tool-call
           // results emitted by the same response).
           responseInFlightRef.current = false;
+          // Story 11-2: reset AI-speaking start time so the next turn's
+          // first audio delta sets a fresh timestamp.
+          aiSpeakingStartedAtMsRef.current = null;
           setState((s) => ({ ...s, isProcessing: false, pendingAiText: "" }));
           break;
 
         case "error":
+          // Review-round-2 patch P28 (MED): suppress known-benign server
+          // error codes that Story 11-2's barge-in path can legitimately
+          // trigger. `no_response_to_cancel` fires when `response.cancel`
+          // races against a server-side natural end-of-turn (the user
+          // barged in right as the AI finished); the conversation should
+          // continue uninterrupted. `truncate_*` codes fire when
+          // `conversation.item.truncate` is sent for an item the server
+          // already advanced past (timing race); similarly benign. Per
+          // OpenAI docs: "It's safe to call response.cancel even if no
+          // response is in progress; an error will be returned and the
+          // session will remain unaffected."
+          if (
+            event.error.code === "no_response_to_cancel" ||
+            event.error.code === "invalid_truncate_audio" ||
+            event.error.code === "item_not_found"
+          ) {
+            addBreadcrumb({
+              category: "realtime",
+              level: "info",
+              message: "Benign barge-in race suppressed",
+              data: { feature: "realtime-barge-in", code: event.error.code },
+            });
+            break;
+          }
           captureError(event.error, "realtime-voice-error");
           // Drop any in-flight delta accumulator on every error path so a
           // mid-stream failure (rate limit, transient API error) cannot leak
@@ -603,6 +764,8 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           // drain below preserves any in-buffer corrections from before
           // the error.
           responseInFlightRef.current = false;
+          // Story 11-2: reset AI-speaking start time on error.
+          aiSpeakingStartedAtMsRef.current = null;
           // Story 11-1 review patch P3 (HIGH): on `connection_lost` the
           // `end()` path persists the conversation including
           // `correctionsRef.current`. If we silently cleared the pending
@@ -655,6 +818,72 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
               pendingAiText: "",
             }));
           }
+          break;
+
+        case "realtime.reconnecting": {
+          // Story 11-2: WebSocket dropped unexpectedly; RealtimeSession
+          // is attempting an auto-reconnect. Drain the Story 11-1
+          // pending tool-correction buffer into correctionsRef BEFORE
+          // the cross-session boundary so any in-flight tool-call data
+          // from before the disconnect is preserved into the post-
+          // conversation pipeline (mirrors the Story 11-1 P2/P3 orphan-
+          // drain pattern at response.done + case "error").
+          {
+            const merged = mergeOrphanCorrections(
+              correctionsRef.current,
+              pendingToolCorrectionsRef.current
+            );
+            if (merged.shouldBreadcrumb) {
+              correctionsRef.current = merged.conversation;
+              setState((s) => ({ ...s, allCorrections: [...correctionsRef.current] }));
+              addBreadcrumb({
+                category: "realtime",
+                level: "warning",
+                message: "Orphan tool corrections drained at reconnect-start",
+                data: { category: "report_correction" },
+              });
+            }
+          }
+          // Reset per-turn refs — the new WebSocket session has no in-
+          // flight response when it opens. The hook's transcriptRef +
+          // correctionsRef + duration timer + conversationIdRef ARE
+          // preserved (cross-session boundary; same local conversation).
+          inflightItemIdRef.current = null;
+          responseInFlightRef.current = false;
+          currentAiTextRef.current = "";
+          aiSpeakingStartedAtMsRef.current = null;
+          // Review-round-2 patch P22 (HIGH): synchronous ref update on
+          // reconnect-start so the cross-session boundary is clean.
+          isAiSpeakingRef.current = false;
+          setState((s) => ({
+            ...s,
+            status: "reconnecting",
+            isAiSpeaking: false,
+            isProcessing: false,
+            pendingAiText: "",
+          }));
+          // Review-round-2 patch P24 (HIGH): do NOT stop the audio
+          // subscription on reconnect-start. The mic subscription's
+          // `onAudioStream` callback at startAudioStreaming() gates on
+          // `sessionRef.current?.isConnected` — during reconnect
+          // (isConnected: false), incoming mic bytes are silently dropped;
+          // after reconnect (isConnected: true on the new ws), the same
+          // subscription resumes feeding bytes to the new WebSocket
+          // through `sessionRef.current.appendAudio` which routes to the
+          // session's current `this.ws`. Stopping + restarting the audio
+          // stream introduced a stop-start window where mid-utterance
+          // bytes were silently dropped (BH#11 UX regression). Keep the
+          // subscription alive for the entire reconnect window; the
+          // gating gives us the right semantics for free.
+          break;
+        }
+
+        case "realtime.reconnected":
+          // Story 11-2: WebSocket re-established + configureSession()
+          // replayed. Resume normal operation. Audio subscription was
+          // never stopped (P24); it auto-resumes via the `isConnected`
+          // gate inside `onAudioStream`.
+          setState((s) => ({ ...s, status: "connected", error: null }));
           break;
       }
     },
@@ -845,7 +1074,22 @@ Return JSON: {
   /** Start the voice conversation */
   const start = useCallback(async (): Promise<void> => {
     // Guard against concurrent invocations
-    if (statusRef.current === "connecting" || statusRef.current === "connected") return;
+    // Review-round-2 patch P25 (HIGH): also guard against `start()` being
+    // called while a reconnect is in progress. Without the guard, the
+    // pending reconnect's setTimeout would fire after a fresh `start()`
+    // had already reset the session, racing on `sessionRef` / refs and
+    // consuming an Edge Function call for the stale reconnect target.
+    // The `RealtimeSession.disconnect()` path (called by `end()` →
+    // sessionRef.disconnect → onclose) already clears `reconnectTimeoutId`,
+    // so a clean `end() → start()` sequence is safe. This guard catches
+    // the racier flow where `start()` is called directly without `end()`.
+    if (
+      statusRef.current === "connecting" ||
+      statusRef.current === "connected" ||
+      statusRef.current === "reconnecting"
+    ) {
+      return;
+    }
 
     // Reset ALL refs and state so retries start clean
     transcriptRef.current = [];
@@ -860,6 +1104,7 @@ Return JSON: {
     userTurnCounterRef.current = 0;
     pendingToolCorrectionsRef.current = [];
     responseInFlightRef.current = false;
+    aiSpeakingStartedAtMsRef.current = null;
 
     setState({
       status: "connecting",

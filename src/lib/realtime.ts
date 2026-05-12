@@ -17,9 +17,10 @@
  * the regression suite in `src/lib/__tests__/realtime-dedup.test.ts`.
  */
 
-import { captureError } from "./sentry";
+import { addBreadcrumb, captureError } from "./sentry";
 import { requireNetwork } from "./network";
 import { supabase } from "./supabase";
+import { shouldReconnect, type CloseReason } from "./realtime-reconnect";
 
 const REALTIME_URL = "wss://api.openai.com/v1/realtime";
 const MODEL = "gpt-realtime";
@@ -90,7 +91,18 @@ export type RealtimeEvent =
       name: string;
       arguments: string;
     }
-  | { type: "error"; error: { message: string; code: string } };
+  | { type: "error"; error: { message: string; code: string } }
+  // Story 11-2: emitted by `RealtimeSession` when an unexpected post-open
+  // close triggers a reconnect attempt. The hook reacts by setting
+  // `state.status: "reconnecting"`, draining the Story 11-1 pending
+  // tool-correction buffer into `correctionsRef`, and stopping the prior
+  // audio subscription.
+  | { type: "realtime.reconnecting"; attempt: number }
+  // Story 11-2: emitted by `RealtimeSession` when a reconnect attempt
+  // successfully re-establishes the WebSocket + replays `configureSession()`.
+  // The hook reacts by setting `state.status: "connected"` and re-starting
+  // audio streaming for the new WebSocket.
+  | { type: "realtime.reconnected" };
 
 export interface RealtimeConfig {
   systemPrompt: string;
@@ -127,6 +139,25 @@ export class RealtimeSession {
   private _isConnected = false;
   private config: RealtimeConfig;
 
+  // Story 11-2: reconnect lifecycle state.
+  //
+  // `reconnectAttempts` counts COMPLETED attempts since the last successful
+  // connect (or since `start()` time). Reset to 0 on each successful
+  // reconnect.
+  //
+  // `reconnectTimeoutId` holds the pending setTimeout handle for the next
+  // attempt; cleared in `disconnect()` to prevent a stale attempt firing
+  // after the user has navigated away.
+  //
+  // `intentionallyDisconnected` is set true by `disconnect({ reason: "user" })`
+  // BEFORE the WebSocket close fires, so the onclose handler can branch
+  // off the reconnect path. Reset to false at the start of each
+  // `establishConnection()`.
+  private reconnectAttempts = 0;
+  private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private intentionallyDisconnected = false;
+  private wasConnected = false;
+
   constructor(config: RealtimeConfig) {
     this.config = config;
   }
@@ -141,8 +172,52 @@ export class RealtimeSession {
     return () => this.eventHandlers.delete(handler);
   }
 
-  /** Connect to the Realtime API using an ephemeral token */
+  /**
+   * Connect to the Realtime API using an ephemeral token.
+   *
+   * Resets the reconnect state on entry (so a prior session's exhausted
+   * attempt count doesn't leak into a fresh `start()` call) and delegates
+   * to `establishConnection()` for the actual WebSocket setup. Reconnect
+   * attempts internally call `establishConnection()` directly (NOT through
+   * `connect()`) so they don't reset the per-disconnect attempt counter.
+   */
   async connect(): Promise<void> {
+    this.reconnectAttempts = 0;
+    this.intentionallyDisconnected = false;
+    this.wasConnected = false;
+    await this.establishConnection();
+  }
+
+  /**
+   * Establish a new WebSocket connection using an ephemeral token. Shared
+   * code path between the initial `connect()` and the per-attempt
+   * `attemptReconnect()`. Story 11-2.
+   *
+   * Review-round-2 patch P21 (HIGH): before assigning a new WebSocket to
+   * `this.ws`, detach the old socket's event handlers so a queued late
+   * `onclose` event from the stale socket cannot trigger a second
+   * reconnect chain after a successful reconnect-end. The old socket is
+   * also explicitly closed (no-op if already closed) so GC can reclaim it.
+   */
+  private async establishConnection(): Promise<void> {
+    // Detach handlers from the prior WebSocket (if any). Calling .close()
+    // on an already-closed socket is a no-op; calling on a still-open
+    // socket fires onclose synchronously but we've already nulled the
+    // handlers so the close is silent. Both cases prevent the late-fire
+    // race documented in the JSDoc above.
+    if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onclose = null;
+      this.ws.onerror = null;
+      this.ws.onmessage = null;
+      try {
+        this.ws.close();
+      } catch {
+        // Ignore — closing an already-closed socket may throw on some
+        // platforms; not actionable.
+      }
+      this.ws = null;
+    }
     // Check network before attempting connection
     await requireNetwork();
 
@@ -215,7 +290,30 @@ export class RealtimeSession {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
+        // Review-round-2 patch P26 (MED): defense-in-depth check for the
+        // disconnect-during-reconnect-await race. If the user called
+        // `disconnect({reason:"user"})` between the establishConnection
+        // start and the new ws's open, close the new socket immediately
+        // WITHOUT running configureSession (which would consume an OpenAI
+        // Realtime session billed to the operator). The post-await check
+        // in attemptReconnect ALSO handles this race; this is the earlier
+        // gate that fires before the server-side session is initialized.
+        if (this.intentionallyDisconnected) {
+          try {
+            this.ws?.close();
+          } catch {
+            // ignore
+          }
+          this.ws = null;
+          // Don't resolve the connect promise — the attempt was aborted;
+          // the post-await check in attemptReconnect handles cleanup.
+          return;
+        }
         this._isConnected = true;
+        // Story 11-2: track that we reached the open state at least once,
+        // so the onclose handler can distinguish pre-open closes (existing
+        // reject path) from post-open closes (potential reconnect candidate).
+        this.wasConnected = true;
         this.configureSession();
         resolve();
       };
@@ -243,16 +341,44 @@ export class RealtimeSession {
       this.ws.onclose = () => {
         this._isConnected = false;
         if (!settled) {
+          // Pre-open close — existing reject path. NO reconnect: the
+          // caller's `connect()` Promise rejects and the UI handles it.
           settled = true;
           clearTimeout(timeout);
           reject(new Error("Connection closed unexpectedly"));
-        } else {
-          // Connection dropped after initial open — notify listeners
+          return;
+        }
+        // Post-open close. Story 11-2: consult the reconnect-decision
+        // helper before falling through to the terminal connection_lost
+        // emission.
+        const closeReason: CloseReason = this.intentionallyDisconnected ? "user" : "unknown";
+        const decision = shouldReconnect(closeReason, this.wasConnected, this.reconnectAttempts);
+        if (!decision.reconnect) {
+          if (this.intentionallyDisconnected) {
+            // User-triggered close (`disconnect({ reason: "user" })`); NO
+            // event emitted — `end()` already handles the teardown.
+            return;
+          }
+          // Exhausted attempts OR pre-open path that somehow reached
+          // post-settled — emit the terminal connection_lost (existing path).
           this.emit({
             type: "error",
             error: { message: "Connection lost. Please try again.", code: "connection_lost" },
           });
+          return;
         }
+        // Schedule the next reconnect attempt.
+        addBreadcrumb({
+          category: "realtime",
+          level: "info",
+          message: "Realtime reconnect attempt",
+          data: { feature: "realtime-reconnect", attempt: decision.attempt },
+        });
+        this.emit({ type: "realtime.reconnecting", attempt: decision.attempt });
+        this.reconnectTimeoutId = setTimeout(() => {
+          this.reconnectTimeoutId = null;
+          void this.attemptReconnect();
+        }, decision.delayMs);
       };
     });
   }
@@ -356,14 +482,142 @@ export class RealtimeSession {
     this.send({ type: "response.create" });
   }
 
-  /** Disconnect from the Realtime API */
-  disconnect(): void {
+  /**
+   * Disconnect from the Realtime API.
+   *
+   * Story 11-2: accepts an optional `{ reason }` discriminator so the
+   * onclose handler can distinguish intentional disconnects (skip
+   * reconnect) from unexpected closes (trigger reconnect). Defaults to
+   * `{ reason: "user" }` for backwards-compat with all existing callers.
+   *
+   * Clears any pending reconnect-timeout BEFORE closing the WebSocket so a
+   * stale attempt doesn't fire after the user has navigated away.
+   */
+  disconnect(opts: { reason?: "user" | "reconnect" } = { reason: "user" }): void {
+    this.intentionallyDisconnected = opts.reason === "user";
+    if (this.reconnectTimeoutId !== null) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
     this._isConnected = false;
     this.eventHandlers.clear();
+  }
+
+  /**
+   * Attempt to re-establish the WebSocket after an unexpected close.
+   * Story 11-2. Called from the onclose handler via `setTimeout(_, delayMs)`.
+   *
+   * Increments the attempt counter, runs `establishConnection()` (which
+   * fetches a fresh ephemeral token + opens a new WebSocket + re-sends
+   * `configureSession()` via the existing `ws.onopen`), and on success
+   * emits `realtime.reconnected` + resets the counter. On failure the
+   * new connection's own `onclose` runs the reconnect-decision helper
+   * again with the incremented counter — natural backoff loop.
+   */
+  private async attemptReconnect(): Promise<void> {
+    // Defense: if the user called `end()` / `disconnect({reason:"user"})`
+    // between the setTimeout schedule and the actual attempt firing, bail
+    // out without consuming a slot or burning an Edge Function call.
+    if (this.intentionallyDisconnected) {
+      return;
+    }
+    this.reconnectAttempts++;
+    try {
+      await this.establishConnection();
+      // Defense (post-await race): if the user disconnected DURING the
+      // establishConnection await (refreshSession + Edge Function call
+      // are both async-await — non-trivial latency), the new WebSocket
+      // is alive but the user has navigated away. Close it immediately
+      // so we don't consume an OpenAI session unnecessarily.
+      if (this.intentionallyDisconnected) {
+        if (this.ws) {
+          this.ws.close();
+          this.ws = null;
+        }
+        this._isConnected = false;
+        return;
+      }
+      // Successful reconnect — reset the per-disconnect attempt counter
+      // so a SECOND unexpected close later in the same session starts
+      // fresh from `RECONNECT_BACKOFF_MS[0]`.
+      this.reconnectAttempts = 0;
+      this.emit({ type: "realtime.reconnected" });
+      addBreadcrumb({
+        category: "realtime",
+        level: "info",
+        message: "Realtime reconnected",
+        data: { feature: "realtime-reconnect" },
+      });
+    } catch (err) {
+      captureError(err, "realtime-reconnect");
+      // If `establishConnection` threw BEFORE opening a WebSocket (e.g.,
+      // requireNetwork rejected, refreshSession rejected, the Edge
+      // Function returned an error), no `ws.onclose` will fire to drive
+      // the next backoff cycle. Schedule the next attempt manually here
+      // so the backoff loop progresses even on pre-WebSocket failures.
+      // If a WebSocket WAS opened then failed (post-open close), the
+      // ws.onclose handler already scheduled the next attempt and this
+      // path is a no-op (reconnectTimeoutId is already non-null).
+      if (this.intentionallyDisconnected) {
+        // User-initiated cancel between attempts — bail out.
+        return;
+      }
+      if (this.reconnectTimeoutId !== null) {
+        // ws.onclose already scheduled the next attempt — don't double-schedule.
+        return;
+      }
+      const decision = shouldReconnect("unknown", this.wasConnected, this.reconnectAttempts);
+      if (!decision.reconnect) {
+        this.emit({
+          type: "error",
+          error: { message: "Connection lost. Please try again.", code: "connection_lost" },
+        });
+        return;
+      }
+      addBreadcrumb({
+        category: "realtime",
+        level: "info",
+        message: "Realtime reconnect attempt",
+        data: { feature: "realtime-reconnect", attempt: decision.attempt },
+      });
+      this.emit({ type: "realtime.reconnecting", attempt: decision.attempt });
+      this.reconnectTimeoutId = setTimeout(() => {
+        this.reconnectTimeoutId = null;
+        void this.attemptReconnect();
+      }, decision.delayMs);
+    }
+  }
+
+  /**
+   * Send a raw client event to the Realtime API.
+   *
+   * Story 11-2 — public surface for events that don't have typed wrappers
+   * (e.g., `response.cancel`, `conversation.item.truncate` — Story 11-2
+   * needs both for barge-in; neither was added by Stories 1-X / 11-1).
+   * Use the typed methods (`sendText` / `appendAudio` / `commitAudio` /
+   * `clearAudioBuffer` / `sendFunctionResult` / `disconnect`) when one
+   * fits; reserve `sendRaw` for one-off events.
+   *
+   * Review-round-2 patch P27 (MED): if the WebSocket is not OPEN at send
+   * time (e.g., barge-in concurrent with a network blip → ws.readyState ===
+   * CLOSING), `send()` silently no-ops. Surface this via a Sentry breadcrumb
+   * so operators have visibility into dropped barge-in / one-off events.
+   */
+  sendRaw(event: Record<string, unknown>): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) {
+      addBreadcrumb({
+        category: "realtime",
+        level: "warning",
+        message: "sendRaw dropped (WebSocket not OPEN)",
+        data: { feature: "realtime-sendraw-dropped" },
+      });
+      return;
+    }
+    this.send(event);
   }
 
   private send(data: Record<string, unknown>): void {
