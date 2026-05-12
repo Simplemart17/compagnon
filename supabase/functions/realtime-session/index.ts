@@ -9,7 +9,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
-import { errorResponse, parseUpstreamError } from "../_shared/errors.ts";
+import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
+import {
+  DEFAULT_UPSTREAM_TIMEOUT_MS,
+  fetchWithTimeout,
+  isUpstreamTimeoutError,
+} from "../_shared/fetch-with-timeout.ts";
 
 const ALLOWED_REALTIME_MODELS = ["gpt-realtime", "gpt-realtime-mini", "gpt-4o-realtime-preview", "gpt-4o-mini-realtime-preview"];
 
@@ -82,22 +87,35 @@ Deno.serve(async (req: Request) => {
       : "gpt-realtime";
     const voice = (body.voice as string) ?? "coral";
 
-    const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        session: {
-          type: "realtime",
-          model,
-          audio: {
-            output: { voice },
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(
+        "openai-realtime-token",
+        "https://api.openai.com/v1/realtime/client_secrets",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            session: {
+              type: "realtime",
+              model,
+              audio: {
+                output: { voice },
+              },
+            },
+          }),
         },
-      }),
-    });
+        DEFAULT_UPSTREAM_TIMEOUT_MS
+      );
+    } catch (err) {
+      if (isUpstreamTimeoutError(err)) {
+        return timeoutResponse(corsHeaders, { upstream: err.upstream, timeoutMs: err.timeoutMs });
+      }
+      throw err;
+    }
 
     if (!response.ok) {
       const upstreamMessage = await parseUpstreamError(response);

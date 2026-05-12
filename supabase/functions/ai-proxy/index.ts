@@ -8,7 +8,14 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
-import { errorResponse, parseUpstreamError } from "../_shared/errors.ts";
+import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
+import {
+  DEFAULT_UPSTREAM_TIMEOUT_MS,
+  WHISPER_UPSTREAM_TIMEOUT_MS,
+  fetchWithTimeout,
+  isUpstreamTimeoutError,
+  withTimeout,
+} from "../_shared/fetch-with-timeout.ts";
 
 const ALLOWED_MODELS = ["gpt-4o", "gpt-4o-mini"];
 
@@ -121,22 +128,34 @@ Deno.serve(async (req: Request) => {
         }
         // Validate model against allowlist — default to gpt-4o if not allowed
         const chatModel = ALLOWED_MODELS.includes(params.model) ? params.model : "gpt-4o";
-        openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: chatModel,
-            messages: params.messages,
-            temperature: params.temperature ?? 0.7,
-            max_completion_tokens: params.maxTokens ?? 2048,
-            response_format: params.responseFormat
-              ? { type: params.responseFormat }
-              : undefined,
-          }),
-        });
+        try {
+          openaiResponse = await fetchWithTimeout(
+            "openai-chat",
+            "https://api.openai.com/v1/chat/completions",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: chatModel,
+                messages: params.messages,
+                temperature: params.temperature ?? 0.7,
+                max_completion_tokens: params.maxTokens ?? 2048,
+                response_format: params.responseFormat
+                  ? { type: params.responseFormat }
+                  : undefined,
+              }),
+            },
+            DEFAULT_UPSTREAM_TIMEOUT_MS
+          );
+        } catch (err) {
+          if (isUpstreamTimeoutError(err)) {
+            return timeoutResponse(corsHeaders, { upstream: err.upstream, timeoutMs: err.timeoutMs });
+          }
+          throw err;
+        }
         break;
       }
 
@@ -160,27 +179,51 @@ Deno.serve(async (req: Request) => {
 
         const ssml = `<speak version="1.0" xml:lang="fr-FR"><voice name="${azureVoice}"><prosody rate="${rate}">${escapeXml(params.input)}</prosody></voice></speak>`;
 
-        const azureTtsResponse = await fetch(
-          `https://${AZURE_SPEECH_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
-          {
-            method: "POST",
-            headers: {
-              "Ocp-Apim-Subscription-Key": AZURE_SPEECH_KEY,
-              "Content-Type": "application/ssml+xml",
-              "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
-              "User-Agent": "companion-app",
+        let azureTtsResponse: Response;
+        try {
+          azureTtsResponse = await fetchWithTimeout(
+            "azure-tts",
+            `https://${AZURE_SPEECH_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
+            {
+              method: "POST",
+              headers: {
+                "Ocp-Apim-Subscription-Key": AZURE_SPEECH_KEY,
+                "Content-Type": "application/ssml+xml",
+                "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+                "User-Agent": "companion-app",
+              },
+              body: ssml,
             },
-            body: ssml,
+            DEFAULT_UPSTREAM_TIMEOUT_MS
+          );
+        } catch (err) {
+          if (isUpstreamTimeoutError(err)) {
+            return timeoutResponse(corsHeaders, { upstream: err.upstream, timeoutMs: err.timeoutMs });
           }
-        );
+          throw err;
+        }
 
         if (!azureTtsResponse.ok) {
           const upstreamMessage = await parseUpstreamError(azureTtsResponse);
           return errorResponse({ code: "UPSTREAM_ERROR", message: `Azure TTS error: ${upstreamMessage}`, status: azureTtsResponse.status, corsHeaders });
         }
 
-        // Return audio as binary
-        const audioBuffer = await azureTtsResponse.arrayBuffer();
+        // Return audio as binary. Wrap the arrayBuffer read with withTimeout
+        // so a slow body stream (Azure TTS audio can be ~200KB) can't wedge
+        // the isolate past the budget. Story 11-3 review patch P1.
+        let audioBuffer: ArrayBuffer;
+        try {
+          audioBuffer = await withTimeout(
+            "azure-tts-body",
+            azureTtsResponse.arrayBuffer(),
+            DEFAULT_UPSTREAM_TIMEOUT_MS
+          );
+        } catch (err) {
+          if (isUpstreamTimeoutError(err)) {
+            return timeoutResponse(corsHeaders, { upstream: err.upstream, timeoutMs: err.timeoutMs });
+          }
+          throw err;
+        }
         return new Response(audioBuffer, {
           headers: {
             ...corsHeaders,
@@ -195,17 +238,29 @@ Deno.serve(async (req: Request) => {
           return errorResponse({ code: "INVALID_PARAMS", message: "Missing 'input' for embedding", status: 400, corsHeaders });
         }
         // Hardcode embedding model — ignore any client-provided model
-        openaiResponse = await fetch("https://api.openai.com/v1/embeddings", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "text-embedding-3-small",
-            input: params.input,
-          }),
-        });
+        try {
+          openaiResponse = await fetchWithTimeout(
+            "openai-embedding",
+            "https://api.openai.com/v1/embeddings",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "text-embedding-3-small",
+                input: params.input,
+              }),
+            },
+            DEFAULT_UPSTREAM_TIMEOUT_MS
+          );
+        } catch (err) {
+          if (isUpstreamTimeoutError(err)) {
+            return timeoutResponse(corsHeaders, { upstream: err.upstream, timeoutMs: err.timeoutMs });
+          }
+          throw err;
+        }
         break;
       }
 
@@ -236,13 +291,25 @@ Deno.serve(async (req: Request) => {
         formData.append("language", (params.language as string) ?? "fr");
         formData.append("response_format", "json");
 
-        openaiResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-          },
-          body: formData,
-        });
+        try {
+          openaiResponse = await fetchWithTimeout(
+            "openai-whisper",
+            "https://api.openai.com/v1/audio/transcriptions",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${OPENAI_API_KEY}`,
+              },
+              body: formData,
+            },
+            WHISPER_UPSTREAM_TIMEOUT_MS
+          );
+        } catch (err) {
+          if (isUpstreamTimeoutError(err)) {
+            return timeoutResponse(corsHeaders, { upstream: err.upstream, timeoutMs: err.timeoutMs });
+          }
+          throw err;
+        }
 
         if (!openaiResponse.ok) {
           const upstreamMessage = await parseUpstreamError(openaiResponse);
