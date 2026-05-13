@@ -8,7 +8,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
-import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit-db.ts";
 import { errorResponse } from "../_shared/errors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -74,9 +74,11 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 3. Rate limiting
-    const { allowed, resetIn } = checkRateLimit(
+    // 3. Rate limiting — Postgres-backed counter via Story 11-4 (cross-isolate-correct).
+    const { allowed, resetIn } = await checkRateLimit(
+      supabase,
       user.id,
+      "notification-register",
       RATE_LIMIT.requests,
       RATE_LIMIT.windowSeconds,
     );
