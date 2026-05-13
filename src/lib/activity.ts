@@ -20,11 +20,6 @@ function isCEFRLevel(value: unknown): value is CEFRLevel {
   return typeof value === "string" && (CEFR_ORDER as readonly string[]).includes(value);
 }
 
-/** Return whichever of `a` and `b` is the higher CEFR level. */
-function maxLevel(a: CEFRLevel, b: CEFRLevel): CEFRLevel {
-  return CEFR_ORDER.indexOf(a) >= CEFR_ORDER.indexOf(b) ? a : b;
-}
-
 /** Clamp a numeric score into the canonical 0..100 range; non-finite values become 0. */
 function clampScore(score: number): number {
   if (!Number.isFinite(score)) return 0;
@@ -46,39 +41,32 @@ export function getLocalDateString(date?: Date): string {
 /**
  * Update the user's streak and last_active_date.
  *
- * Logic:
+ * Logic (Story 9-2; preserved server-side post-12-3):
  * - If last_active_date is today → do nothing (already counted)
  * - If last_active_date is yesterday → increment streak
  * - Otherwise → reset streak to 1
+ *
+ * Story 12-3: the SELECT-then-UPDATE pipeline is replaced by a single
+ * server-side `update_streak_atomic` RPC. The math runs inside Postgres
+ * under a row-level lock acquired by the UPDATE, so two concurrent callers
+ * (phone + web) serialize and the second observes the post-first state
+ * (no double-increment). Audit P1-18 closed architecturally.
+ *
+ * Fail-OPEN: RPC error routes through captureError + returns silently.
+ * Never block a fire-and-forget activity tick on tracking-pipeline failure.
  */
 export async function updateStreak(userId: string): Promise<void> {
   try {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("streak_days, last_active_date")
-      .eq("id", userId)
-      .single();
-
-    if (!profile) return;
-
     const today = getLocalDateString();
-    if (profile.last_active_date === today) return; // Already counted today
-
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = getLocalDateString(yesterday);
 
-    const newStreak =
-      profile.last_active_date === yesterdayStr ? (profile.streak_days ?? 0) + 1 : 1;
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        streak_days: newStreak,
-        last_active_date: today,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+    const { error } = await supabase.rpc("update_streak_atomic", {
+      p_user_id: userId,
+      p_today: today,
+      p_yesterday: yesterdayStr,
+    });
 
     if (error) {
       captureError(error, "update-streak");
@@ -97,11 +85,18 @@ export async function updateStreak(userId: string): Promise<void> {
  * subsequent promotions; never regresses an existing higher level (e.g.,
  * a B2 user reviewing A1 leaves the row's stored level at B2).
  *
- * TODO(epic-10-schema-hardening): The read-modify-write pattern below is
- * not atomic. Two concurrent calls for the same (user, skill) can clobber
- * each other's running-average update. Fix requires either an RPC with
- * `SELECT ... FOR UPDATE` or a Postgres function that does the running-avg
- * math server-side. Out of scope for story 9-2 (AC #5 forbids schema changes).
+ * Story 12-3: the SELECT-then-UPSERT pipeline is replaced by a single
+ * server-side `update_skill_progress_atomic` RPC. `INSERT ... ON CONFLICT
+ * (user_id, skill) DO UPDATE` acquires a row-level lock on conflict
+ * resolution, serializing concurrent writes; the running-average math +
+ * no-regress CEFR rule both run server-side inside one statement. The
+ * pre-12-3 `TODO(epic-10-schema-hardening)` debt is paid down here.
+ *
+ * Note: `clampScore` is still applied client-side as defense-in-depth so
+ * malformed scores are caught at the boundary; the SQL also clamps via
+ * GREATEST/LEAST as belt-and-braces.
+ *
+ * Fail-OPEN: RPC error routes through captureError + returns silently.
  */
 export async function updateSkillProgress(
   userId: string,
@@ -112,44 +107,20 @@ export async function updateSkillProgress(
 ): Promise<void> {
   try {
     const incomingScore = clampScore(score);
-    const { data: existing } = await supabase
-      .from("skill_progress")
-      .select("score, exercises_completed, total_time_minutes, cefr_level")
-      .eq("user_id", userId)
-      .eq("skill", skill)
-      .maybeSingle();
 
-    const prevCompleted = existing?.exercises_completed ?? 0;
-    const prevScore = clampScore(existing?.score ?? 0);
-    const prevTime = existing?.total_time_minutes ?? 0;
-
-    // Running average: ((prevScore * prevCount) + newScore) / (prevCount + 1)
-    const newAvgScore =
-      prevCompleted > 0
-        ? Math.round((prevScore * prevCompleted + incomingScore) / (prevCompleted + 1))
-        : incomingScore;
-
-    // No-regress rule: a row practiced at a higher level keeps that level
-    // even when the user does a lower-level review. `existing.cefr_level`
-    // has no DB CHECK constraint, so we validate it here before comparing.
-    const existingLevel = isCEFRLevel(existing?.cefr_level) ? existing.cefr_level : "A1";
-    const mergedLevel = maxLevel(existingLevel, cefrLevel);
-
-    const { error } = await supabase.from("skill_progress").upsert(
-      {
-        user_id: userId,
-        skill,
-        cefr_level: mergedLevel,
-        score: newAvgScore,
-        exercises_completed: prevCompleted + 1,
-        total_time_minutes: prevTime + timeMinutes,
-        last_practiced: new Date().toISOString(),
-      },
-      { onConflict: "user_id,skill" }
-    );
+    const { error } = await supabase.rpc("update_skill_progress_atomic", {
+      p_user_id: userId,
+      p_skill: skill,
+      p_cefr_level: cefrLevel,
+      p_incoming_score: incomingScore,
+      p_time_minutes: timeMinutes,
+    });
 
     if (error) {
-      captureError(error, "update-skill-progress", { skill, score, cefrLevel });
+      // Review-round-1 P12: pass `incomingScore` (clamped) not the raw
+      // `score` — the RPC saw the clamped value, so Sentry should mirror
+      // that for diagnostic fidelity on clamp-related errors.
+      captureError(error, "update-skill-progress", { skill, score: incomingScore, cefrLevel });
     }
   } catch (err) {
     captureError(err, "update-skill-progress", { skill, cefrLevel });
@@ -159,6 +130,13 @@ export async function updateSkillProgress(
 /**
  * Increment daily activity counters.
  * Adds to existing values rather than overwriting.
+ *
+ * Story 12-3: the SELECT-then-UPSERT pipeline is replaced by a single
+ * `increment_daily_activity_atomic` RPC. `INSERT ... ON CONFLICT
+ * (user_id, date) DO UPDATE SET x = daily_activity.x + EXCLUDED.x`
+ * serializes concurrent increments at the row lock; both deltas land.
+ *
+ * Fail-OPEN: RPC error routes through captureError + returns silently.
  */
 export async function incrementDailyActivity(
   userId: string,
@@ -171,25 +149,15 @@ export async function incrementDailyActivity(
 ): Promise<void> {
   try {
     const today = getLocalDateString();
-    const { data: existing } = await supabase
-      .from("daily_activity")
-      .select("minutes_practiced, exercises_completed, conversations_completed, words_learned")
-      .eq("user_id", userId)
-      .eq("date", today)
-      .maybeSingle();
 
-    const { error } = await supabase.from("daily_activity").upsert(
-      {
-        user_id: userId,
-        date: today,
-        minutes_practiced: (existing?.minutes_practiced ?? 0) + (fields.minutes ?? 0),
-        exercises_completed: (existing?.exercises_completed ?? 0) + (fields.exercises ?? 0),
-        conversations_completed:
-          (existing?.conversations_completed ?? 0) + (fields.conversations ?? 0),
-        words_learned: (existing?.words_learned ?? 0) + (fields.words ?? 0),
-      },
-      { onConflict: "user_id,date" }
-    );
+    const { error } = await supabase.rpc("increment_daily_activity_atomic", {
+      p_user_id: userId,
+      p_date: today,
+      p_minutes: fields.minutes ?? 0,
+      p_exercises: fields.exercises ?? 0,
+      p_conversations: fields.conversations ?? 0,
+      p_words: fields.words ?? 0,
+    });
 
     if (error) {
       captureError(error, "increment-daily-activity");
@@ -307,10 +275,17 @@ const lastSkippedBreadcrumb = new Map<string, string>();
  * One-step promotion only. C2 is terminal. See `evaluatePromotion` for the
  * pure decision helper exercised by activity.test.ts.
  *
- * TODO(epic-10-schema-hardening): Two concurrent invocations could both
- * promote (idempotent same-level write) or, in pathological timing, skip a
- * level. A row-level lock or `UPDATE ... WHERE current_cefr_level = $expected`
- * compare-and-swap would close this. Out of scope for story 9-2 (AC #5).
+ * Story 12-3: the final UPDATE step is replaced by a server-side
+ * `promote_cefr_level_atomic(p_user_id, p_expected_current_level, p_next_level)`
+ * RPC that performs a compare-and-swap UPDATE. The pre-step SELECT
+ * pipeline (SELECT current_cefr_level + SELECT skill_progress rows +
+ * `evaluatePromotion`) stays client-side because `evaluatePromotion` is a
+ * pure helper unit-tested by activity.test.ts (Story 9-2). Two concurrent
+ * promotion workers race: first wins (RPC returns TRUE), second observes a
+ * mismatch and the UPDATE no-ops (RPC returns FALSE); the FALSE path is
+ * silent because the next promotion check will re-evaluate from the
+ * post-promotion state. The pre-12-3 `TODO(epic-10-schema-hardening)`
+ * debt is paid down here.
  */
 export async function checkCefrPromotion(userId: string): Promise<void> {
   let currentLevel: CEFRLevel | null = null;
@@ -354,18 +329,36 @@ export async function checkCefrPromotion(userId: string): Promise<void> {
 
     if (decision.promote) {
       const nextLevel = CEFR_ORDER[currentIdx + 1];
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          current_cefr_level: nextLevel,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
+      // Story 12-3: compare-and-swap UPDATE via RPC. Returns TRUE if the
+      // swap landed, FALSE if a concurrent worker already promoted (in
+      // which case we breadcrumb but stay silent in error tier — the next
+      // promotion check will re-evaluate from the post-promotion state).
+      // Only true RPC errors (Postgres down, RLS denial, schema drift,
+      // post-12-3 missing-profile-row from P2) route through captureError.
+      const { data: swapped, error } = await supabase.rpc("promote_cefr_level_atomic", {
+        p_user_id: userId,
+        p_expected_current_level: currentLevel,
+        p_next_level: nextLevel,
+      });
 
       if (error) {
         captureError(error, "cefr-promotion", { fromLevel: currentLevel, toLevel: nextLevel });
+      } else if (swapped === false) {
+        // Review-round-1 P6: distinguish a real successful promotion from
+        // a CAS-mismatch (concurrent worker already promoted). Pre-patch
+        // both cases fell through to `lastSkippedBreadcrumb.delete(...)`,
+        // misclassifying the race as a successful promotion in observability.
+        // Emit an info-level breadcrumb so operators can see the race
+        // frequency. Do NOT clear the throttle — the user did not actually
+        // advance via this worker.
+        addBreadcrumb({
+          category: "cefr-promotion",
+          level: "info",
+          message: "cefr-promotion-raced (concurrent worker won the CAS)",
+          data: { fromLevel: currentLevel, toLevel: nextLevel },
+        });
       } else {
-        lastSkippedBreadcrumb.delete(userId); // promotion fired — reset throttle.
+        lastSkippedBreadcrumb.delete(userId); // real promotion fired — reset throttle.
       }
       return;
     }
