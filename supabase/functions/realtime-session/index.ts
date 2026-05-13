@@ -8,7 +8,13 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
-import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import {
+  checkDailyCostBudget,
+  checkRateLimit,
+  dailyCostCapResponse,
+  rateLimitResponse,
+} from "../_shared/rate-limit-db.ts";
+import { MODEL_RATES } from "../_shared/cost-table.ts";
 import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
 import {
   DEFAULT_UPSTREAM_TIMEOUT_MS,
@@ -62,9 +68,12 @@ Deno.serve(async (req: Request) => {
       return errorResponse({ code: "AUTH_INVALID", message: "Invalid or expired token", status: 401, corsHeaders });
     }
 
-    // Rate limiting — sessions are expensive, limit strictly
-    const { allowed, remaining, resetIn } = checkRateLimit(
+    // Rate limiting — sessions are expensive, limit strictly.
+    // Postgres-backed counter via Story 11-4 (cross-isolate-correct).
+    const { allowed, remaining, resetIn } = await checkRateLimit(
+      supabase,
       user.id,
+      "realtime-session",
       RATE_LIMIT.requests,
       RATE_LIMIT.windowSeconds
     );
@@ -86,6 +95,24 @@ Deno.serve(async (req: Request) => {
       ? body.model
       : "gpt-realtime";
     const voice = (body.voice as string) ?? "coral";
+
+    // Pre-check daily AI spend cap (Story 11-4). A Realtime session is the
+    // most expensive single call in the stack. Estimate pessimistically based
+    // on a 5-minute session at ~500 audio tokens/min × per-model rate.
+    // Mid-session token cost is NOT individually pre-checked (the session is
+    // already opened); a future hardening story can record in-session cost.
+    const realtimeModel = (typeof model === "string" ? model : "gpt-realtime");
+    const rate = MODEL_RATES[realtimeModel] ?? MODEL_RATES["gpt-realtime"];
+    const estimatedCents =
+      (2500 * rate.inputCentsPer1KTokens) / 1000 +
+      (2500 * rate.outputCentsPer1KTokens) / 1000;
+    const budgetCheck = await checkDailyCostBudget(supabase, user.id, estimatedCents);
+    if (!budgetCheck.allowed) {
+      return dailyCostCapResponse(corsHeaders, {
+        totalTodayCents: budgetCheck.totalTodayCents,
+        limitCents: budgetCheck.limitCents,
+      });
+    }
 
     let response: Response;
     try {

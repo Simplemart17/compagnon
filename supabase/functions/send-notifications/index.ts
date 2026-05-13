@@ -16,7 +16,11 @@ import type {
   ExpoPushTicket,
   ExpoPushReceipt,
 } from "https://esm.sh/expo-server-sdk";
-import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  CRON_SENTINEL_USER_ID,
+} from "../_shared/rate-limit-db.ts";
 import { errorResponse } from "../_shared/errors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -92,8 +96,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 3. Rate limiting — use "cron" as the key since this is server-to-server
-    const { allowed, resetIn } = checkRateLimit(
+    // 3. Create admin Supabase client (bypasses RLS for cross-user queries).
+    //    Created here (before the rate-limit check) because Story 11-4's
+    //    Postgres-backed rate-limit RPC needs a Supabase client to invoke.
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // 4. Rate limiting — server-to-server with sentinel user_id + "cron" key.
+    //    Postgres-backed counter via Story 11-4 (cross-isolate-correct).
+    const { allowed, resetIn } = await checkRateLimit(
+      supabaseAdmin,
+      CRON_SENTINEL_USER_ID,
       "cron",
       RATE_LIMIT.requests,
       RATE_LIMIT.windowSeconds,
@@ -101,11 +115,6 @@ Deno.serve(async (req: Request) => {
     if (!allowed) {
       return rateLimitResponse(corsHeaders, resetIn);
     }
-
-    // 4. Create admin Supabase client (bypasses RLS for cross-user queries)
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
 
     const expo = new Expo();
 

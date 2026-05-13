@@ -6,7 +6,14 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
-import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import {
+  checkDailyCostBudget,
+  checkRateLimit,
+  dailyCostCapResponse,
+  rateLimitResponse,
+  recordDailyCost,
+} from "../_shared/rate-limit-db.ts";
+import { estimateAzureSpeechCostCents } from "../_shared/cost-table.ts";
 import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
 import {
   DEFAULT_UPSTREAM_TIMEOUT_MS,
@@ -59,9 +66,11 @@ Deno.serve(async (req: Request) => {
       return errorResponse({ code: "AUTH_INVALID", message: "Invalid or expired token", status: 401, corsHeaders });
     }
 
-    // Rate limiting
-    const { allowed, remaining, resetIn } = checkRateLimit(
+    // Rate limiting — Postgres-backed via Story 11-4 (cross-isolate-correct).
+    const { allowed, remaining, resetIn } = await checkRateLimit(
+      supabase,
       user.id,
+      "pronunciation",
       RATE_LIMIT.requests,
       RATE_LIMIT.windowSeconds
     );
@@ -98,6 +107,21 @@ Deno.serve(async (req: Request) => {
       }
     } catch {
       return errorResponse({ code: "INVALID_PARAMS", message: "Invalid base64 audio data", status: 400, corsHeaders });
+    }
+
+    // Estimate audio duration from PCM16 byte count (16kHz mono):
+    // 2 bytes/sample × 16000 samples/sec = 32000 bytes/sec → minutes = bytes / 32000 / 60.
+    // Pessimistic estimate (over-counts duration if encoding includes headers).
+    const estimatedAudioMinutes = bytes.byteLength / 32000 / 60;
+    const estimatedCents = estimateAzureSpeechCostCents(estimatedAudioMinutes);
+
+    // Pre-check daily AI spend cap (Story 11-4).
+    const budgetCheck = await checkDailyCostBudget(supabase, user.id, estimatedCents);
+    if (!budgetCheck.allowed) {
+      return dailyCostCapResponse(corsHeaders, {
+        totalTodayCents: budgetCheck.totalTodayCents,
+        limitCents: budgetCheck.limitCents,
+      });
     }
 
     const pronunciationConfig = {
@@ -142,6 +166,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const result = await azureResponse.json();
+
+    // Record actual cost to the daily ledger (Story 11-4 post-record).
+    // Best-effort; errors logged + swallowed.
+    await recordDailyCost(supabase, user.id, estimatedCents);
+
     return new Response(JSON.stringify(result), {
       headers: {
         ...corsHeaders,

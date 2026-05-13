@@ -7,7 +7,20 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
-import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit.ts";
+import {
+  checkDailyCostBudget,
+  checkRateLimit,
+  dailyCostCapResponse,
+  rateLimitResponse,
+  recordDailyCost,
+} from "../_shared/rate-limit-db.ts";
+import {
+  actualChatCostCents,
+  estimateChatCostCents,
+  estimateTtsCostCents,
+  estimateWhisperCostCents,
+  MODEL_RATES,
+} from "../_shared/cost-table.ts";
 import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
 import {
   DEFAULT_UPSTREAM_TIMEOUT_MS,
@@ -38,6 +51,22 @@ const DEFAULT_AZURE_VOICE = "denise";
 
 /** Max characters for a single TTS request (Azure soft limit ~10k) */
 const MAX_TTS_CHARS = 4000;
+
+/**
+ * Rough heuristic: OpenAI estimates ~4 characters per token for English/French.
+ * Used for pessimistic pre-flight cost estimation only; actual cost is
+ * recorded from the response usage object after the call succeeds.
+ */
+function estimateTokensFromMessages(messages: unknown[]): number {
+  let totalChars = 0;
+  for (const msg of messages) {
+    if (typeof msg === "object" && msg !== null) {
+      const content = (msg as { content?: unknown }).content;
+      if (typeof content === "string") totalChars += content.length;
+    }
+  }
+  return Math.ceil(totalChars / 4);
+}
 
 /** Escape characters that have special meaning inside SSML/XML */
 function escapeXml(input: string): string {
@@ -90,9 +119,14 @@ Deno.serve(async (req: Request) => {
       return errorResponse({ code: "AUTH_INVALID", message: "Invalid or expired token", status: 401, corsHeaders });
     }
 
-    // Rate limiting
-    const { allowed, remaining, resetIn } = checkRateLimit(
+    // Rate limiting — Postgres-backed via Story 11-4 (cross-isolate-correct).
+    // Single budget covers all ai-proxy actions (chat / tts / embedding / transcribe)
+    // matching pre-11-4 semantics. Per-action cost-cap pre/post is added inside
+    // each switch branch below.
+    const { allowed, remaining, resetIn } = await checkRateLimit(
+      supabase,
       user.id,
+      "ai-proxy",
       RATE_LIMIT.requests,
       RATE_LIMIT.windowSeconds
     );
@@ -128,6 +162,19 @@ Deno.serve(async (req: Request) => {
         }
         // Validate model against allowlist — default to gpt-4o if not allowed
         const chatModel = ALLOWED_MODELS.includes(params.model) ? params.model : "gpt-4o";
+
+        // Story 11-4 — pre-check daily AI spend cap (pessimistic estimate).
+        const chatInputTokens = estimateTokensFromMessages(params.messages);
+        const chatMaxOutput = (typeof params.maxTokens === "number" ? params.maxTokens : 2048);
+        const chatEstimate = estimateChatCostCents(chatModel, chatInputTokens, chatMaxOutput);
+        const chatBudget = await checkDailyCostBudget(supabase, user.id, chatEstimate);
+        if (!chatBudget.allowed) {
+          return dailyCostCapResponse(corsHeaders, {
+            totalTodayCents: chatBudget.totalTodayCents,
+            limitCents: chatBudget.limitCents,
+          });
+        }
+
         try {
           openaiResponse = await fetchWithTimeout(
             "openai-chat",
@@ -179,6 +226,17 @@ Deno.serve(async (req: Request) => {
 
         const ssml = `<speak version="1.0" xml:lang="fr-FR"><voice name="${azureVoice}"><prosody rate="${rate}">${escapeXml(params.input)}</prosody></voice></speak>`;
 
+        // Story 11-4 — pre-check daily AI spend cap. TTS is priced per
+        // input character: $16/1M chars → 0.0016¢/char.
+        const ttsEstimate = estimateTtsCostCents(params.input.length);
+        const ttsBudget = await checkDailyCostBudget(supabase, user.id, ttsEstimate);
+        if (!ttsBudget.allowed) {
+          return dailyCostCapResponse(corsHeaders, {
+            totalTodayCents: ttsBudget.totalTodayCents,
+            limitCents: ttsBudget.limitCents,
+          });
+        }
+
         let azureTtsResponse: Response;
         try {
           azureTtsResponse = await fetchWithTimeout(
@@ -224,6 +282,9 @@ Deno.serve(async (req: Request) => {
           }
           throw err;
         }
+        // Story 11-4 — post-record TTS cost (best-effort).
+        await recordDailyCost(supabase, user.id, ttsEstimate);
+
         return new Response(audioBuffer, {
           headers: {
             ...corsHeaders,
@@ -237,6 +298,20 @@ Deno.serve(async (req: Request) => {
         if (!params.input) {
           return errorResponse({ code: "INVALID_PARAMS", message: "Missing 'input' for embedding", status: 400, corsHeaders });
         }
+
+        // Story 11-4 — pre-check daily AI spend cap. Embeddings are cheap
+        // (0.002¢/1K tokens) but we still pre-check for the daily cap.
+        const embedInputStr = typeof params.input === "string" ? params.input : JSON.stringify(params.input);
+        const embedInputTokens = Math.ceil(embedInputStr.length / 4);
+        const embedEstimate = estimateChatCostCents("text-embedding-3-small", embedInputTokens, 0);
+        const embedBudget = await checkDailyCostBudget(supabase, user.id, embedEstimate);
+        if (!embedBudget.allowed) {
+          return dailyCostCapResponse(corsHeaders, {
+            totalTodayCents: embedBudget.totalTodayCents,
+            limitCents: embedBudget.limitCents,
+          });
+        }
+
         // Hardcode embedding model — ignore any client-provided model
         try {
           openaiResponse = await fetchWithTimeout(
@@ -281,6 +356,30 @@ Deno.serve(async (req: Request) => {
           return errorResponse({ code: "INVALID_PARAMS", message: "Invalid base64 audio data", status: 400, corsHeaders });
         }
 
+        // Story 11-4 — pre-check daily AI spend cap. Whisper is priced
+        // per audio minute. We don't know the audio duration without
+        // decoding it server-side, so we estimate from byte count using
+        // the densest common encoding (PCM16 16kHz mono = 1,920,000
+        // bytes/min, as used by `pronunciation-assess` and iOS WAV
+        // recordings) as the divisor — this UNDER-estimates duration for
+        // compressed formats (32 kbit AAC, Opus) but never OVER-denies
+        // legitimate users. Story 11-4 review patch P5: switched from
+        // 240,000 (32 kbit AAC) which was 8× over-estimating PCM16
+        // duration and locking out iOS users after a few uploads.
+        // Trade-off: AAC uploads are under-charged on the cap meter
+        // (post-record uses the same estimate); acceptable for v1, and
+        // Whisper's per-minute pricing is small enough that the slip is
+        // bounded.
+        const transcribeMinutes = audioBytes.byteLength / 1_920_000;
+        const transcribeEstimate = estimateWhisperCostCents(transcribeMinutes);
+        const transcribeBudget = await checkDailyCostBudget(supabase, user.id, transcribeEstimate);
+        if (!transcribeBudget.allowed) {
+          return dailyCostCapResponse(corsHeaders, {
+            totalTodayCents: transcribeBudget.totalTodayCents,
+            limitCents: transcribeBudget.limitCents,
+          });
+        }
+
         // Use generic octet-stream MIME — Whisper detects format from file headers
         // (iOS sends WAV, Android sends M4A/AAC)
         const audioBlob = new Blob([audioBytes], { type: "application/octet-stream" });
@@ -322,6 +421,9 @@ Deno.serve(async (req: Request) => {
           return errorResponse({ code: "UPSTREAM_ERROR", message: "Whisper returned no transcription text", status: 502, corsHeaders });
         }
 
+        // Story 11-4 — post-record Whisper cost (best-effort).
+        await recordDailyCost(supabase, user.id, transcribeEstimate);
+
         return new Response(JSON.stringify({ text: transcribedText }), {
           headers: {
             ...corsHeaders,
@@ -341,6 +443,26 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await openaiResponse.json();
+
+    // Story 11-4 — post-record actual cost from OpenAI's usage object for
+    // chat + embedding (the two switch branches that fall through here).
+    // TTS records inline (above) using the pessimistic input-char estimate
+    // since Azure TTS responses don't carry per-call usage tokens.
+    const usage = (data as { usage?: { prompt_tokens?: number; completion_tokens?: number } })?.usage;
+    if (usage?.prompt_tokens !== undefined) {
+      const model = (action === "embedding"
+        ? "text-embedding-3-small"
+        : ALLOWED_MODELS.includes(params.model)
+          ? params.model
+          : "gpt-4o");
+      const actualCents = actualChatCostCents(
+        model,
+        usage.prompt_tokens ?? 0,
+        usage.completion_tokens ?? 0
+      );
+      await recordDailyCost(supabase, user.id, actualCents);
+    }
+
     return new Response(JSON.stringify(data), {
       headers: {
         ...corsHeaders,
