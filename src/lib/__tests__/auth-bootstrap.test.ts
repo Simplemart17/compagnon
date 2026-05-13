@@ -36,13 +36,21 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   },
 }));
 
-// Capture the listener callback registered by bootstrapAuth so tests can
-// invoke it directly.
-let registeredCallback: ((event: AuthChangeEvent, session: Session | null) => void) | null = null;
+// Capture every listener callback registered by bootstrapAuth so tests can
+// invoke them directly. Review-round-1 P14: store all callbacks in an
+// array (not just the last one) so a future refactor that accidentally
+// subscribes twice — the exact bug Story 12-2 is preventing — fails the
+// `registeredCallbacks.length === 1` assertion in Case 1. Pre-patch the
+// scalar variable held only the last callback, so a double-subscribe
+// where only the last is invoked would have evaded detection.
+const registeredCallbacks: ((event: AuthChangeEvent, session: Session | null) => void)[] = [];
+function getRegisteredCallback() {
+  return registeredCallbacks[registeredCallbacks.length - 1] ?? null;
+}
 const mockUnsubscribe = jest.fn();
 const mockOnAuthStateChange = jest.fn(
   (cb: (event: AuthChangeEvent, session: Session | null) => void) => {
-    registeredCallback = cb;
+    registeredCallbacks.push(cb);
     return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
   }
 );
@@ -120,12 +128,23 @@ function resetStore() {
   });
 }
 
-beforeEach(() => {
-  __resetBootstrapForTests();
-  registeredCallback = null;
+beforeEach(async () => {
+  // P5: await reset so prior tests' fire-and-forget microtasks drain
+  // before the next test's mock state installs. Pre-patch, a sync reset
+  // left dangling Promise continuations that would mutate the next test's
+  // store + mock state invisibly.
+  await __resetBootstrapForTests();
+  registeredCallbacks.length = 0;
   mockOnAuthStateChange.mockClear();
   mockUnsubscribe.mockClear();
-  mockGetSession.mockClear();
+  // P13: mockReset + re-default so a previous test's `.mockResolvedValueOnce`
+  // override is fully purged. `mockClear` alone preserves the
+  // `mockResolvedValue` default, but `.mockResolvedValueOnce` once consumed
+  // would leave the next test's bootstrap inheriting whatever followed in
+  // the queue (typically undefined). Re-installing the default each time
+  // makes every test start from the same canonical no-session resolution.
+  mockGetSession.mockReset();
+  mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
   mockCacheWithFallback.mockClear();
   mockInvalidateCache.mockClear();
   mockFlushWriteQueue.mockClear();
@@ -135,8 +154,8 @@ beforeEach(() => {
   resetStore();
 });
 
-afterEach(() => {
-  __resetBootstrapForTests();
+afterEach(async () => {
+  await __resetBootstrapForTests();
 });
 
 describe("Story 12-2 bootstrap idempotence (the centerpiece architectural claim)", () => {
@@ -145,10 +164,15 @@ describe("Story 12-2 bootstrap idempotence (the centerpiece architectural claim)
     expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
   });
 
-  it("Case 2: two sequential bootstrapAuth() calls install only ONE subscription", () => {
+  it("Case 2: two sequential bootstrapAuth() calls install only ONE subscription (count + identity)", () => {
     bootstrapAuth();
     bootstrapAuth();
     expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
+    // Review-round-1 P14: also assert via the capture array. A future
+    // refactor that double-subscribes but only retains the last reference
+    // would pass `toHaveBeenCalledTimes(1)` via a sneaky mock chain but
+    // fail this length assertion.
+    expect(registeredCallbacks).toHaveLength(1);
   });
 
   it("Case 3: second bootstrapAuth() returns the SAME teardown closure (referential equality)", () => {
@@ -164,10 +188,10 @@ describe("Story 12-2 bootstrap idempotence (the centerpiece architectural claim)
     expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it("Case 5: __resetBootstrapForTests clears the singleton (next bootstrapAuth re-subscribes)", () => {
+  it("Case 5: __resetBootstrapForTests clears the singleton (next bootstrapAuth re-subscribes)", async () => {
     bootstrapAuth();
     expect(mockOnAuthStateChange).toHaveBeenCalledTimes(1);
-    __resetBootstrapForTests();
+    await __resetBootstrapForTests();
     bootstrapAuth();
     expect(mockOnAuthStateChange).toHaveBeenCalledTimes(2);
   });
@@ -176,12 +200,12 @@ describe("Story 12-2 bootstrap idempotence (the centerpiece architectural claim)
 describe("Story 9-6 per-event branching invariants preserved by the bootstrap listener", () => {
   beforeEach(() => {
     bootstrapAuth();
-    expect(registeredCallback).not.toBeNull();
+    expect(getRegisteredCallback()).not.toBeNull();
   });
 
   it("Case 6: INITIAL_SESSION with session → setSession + cacheWithFallback fires (loadProfile dispatch)", async () => {
     const session = makeSession("u1");
-    registeredCallback!("INITIAL_SESSION", session);
+    getRegisteredCallback()!("INITIAL_SESSION", session);
     expect(useAuthStore.getState().session?.user.id).toBe("u1");
     // loadProfile is dispatched via void; allow the microtask queue to drain.
     await Promise.resolve();
@@ -193,7 +217,7 @@ describe("Story 9-6 per-event branching invariants preserved by the bootstrap li
 
   it("Case 7: USER_UPDATED → invalidateCache fires AND loadProfile dispatched (flushQueue: false)", async () => {
     const session = makeSession("u2");
-    registeredCallback!("USER_UPDATED", session);
+    getRegisteredCallback()!("USER_UPDATED", session);
     await Promise.resolve();
     await Promise.resolve();
     expect(mockInvalidateCache).toHaveBeenCalledWith("u2", "profile");
@@ -210,7 +234,7 @@ describe("Story 9-6 per-event branching invariants preserved by the bootstrap li
       profileFetchFailed: true,
       isLoading: true,
     });
-    registeredCallback!("SIGNED_OUT", null);
+    getRegisteredCallback()!("SIGNED_OUT", null);
     expect(useAuthStore.getState().profile).toBeNull();
     expect(useAuthStore.getState().profileFetchFailed).toBe(false);
     expect(useAuthStore.getState().isLoading).toBe(false);
@@ -218,7 +242,7 @@ describe("Story 9-6 per-event branching invariants preserved by the bootstrap li
 
   it("Case 9: TOKEN_REFRESHED → setSession only, no loadProfile dispatch, no flushQueue", async () => {
     const session = makeSession("u3");
-    registeredCallback!("TOKEN_REFRESHED", session);
+    getRegisteredCallback()!("TOKEN_REFRESHED", session);
     expect(useAuthStore.getState().session?.user.id).toBe("u3");
     await Promise.resolve();
     await Promise.resolve();
@@ -228,15 +252,33 @@ describe("Story 9-6 per-event branching invariants preserved by the bootstrap li
 
   it("Case 10: PASSWORD_RECOVERY → session-only (no loadProfile, no flushQueue)", async () => {
     const session = makeSession("u4");
-    registeredCallback!("PASSWORD_RECOVERY", session);
+    getRegisteredCallback()!("PASSWORD_RECOVERY", session);
     await Promise.resolve();
     expect(mockCacheWithFallback).not.toHaveBeenCalled();
     expect(mockFlushWriteQueue).not.toHaveBeenCalled();
   });
 
+  // Review-round-1 P10: explicitly test MFA_CHALLENGE_VERIFIED dispatch
+  // through the bootstrap listener wiring. `auth-events.test.ts` covers
+  // the `decideAuthAction` helper for this event, but pre-patch the
+  // bootstrap test had no case that would fail if a future refactor
+  // accidentally dropped the `session-only` case from the listener body
+  // for MFA (e.g., adding a misplaced fall-through). The session update
+  // still fires, but no loadProfile / no flushQueue.
+  it("Case 10b: MFA_CHALLENGE_VERIFIED → session-only (no loadProfile, no flushQueue)", async () => {
+    const session = makeSession("u4b");
+    getRegisteredCallback()!("MFA_CHALLENGE_VERIFIED", session);
+    expect(useAuthStore.getState().session?.user.id).toBe("u4b");
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mockCacheWithFallback).not.toHaveBeenCalled();
+    expect(mockFlushWriteQueue).not.toHaveBeenCalled();
+    expect(mockInvalidateCache).not.toHaveBeenCalled();
+  });
+
   it("Case 11: null session on TOKEN_REFRESHED (non-SIGNED_OUT) → no-session breadcrumb, profile NOT destroyed", () => {
     useAuthStore.setState({ profile: { id: "u5" } as never });
-    registeredCallback!("TOKEN_REFRESHED", null);
+    getRegisteredCallback()!("TOKEN_REFRESHED", null);
     expect(useAuthStore.getState().profile).toEqual({ id: "u5" });
     expect(mockAddBreadcrumb).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -259,7 +301,7 @@ describe("Story 9-10 userId-guard + profileFetchFailed semantics preserved", () 
     // Set the store's current user to the SAME userId as the event so
     // applyProfileIfFresh returns "apply" → flag is set.
     useAuthStore.setState({ user: { id: "u-fresh" } as never });
-    registeredCallback!("SIGNED_IN", makeSession("u-fresh"));
+    getRegisteredCallback()!("SIGNED_IN", makeSession("u-fresh"));
     // Drain microtasks until catch + finally complete.
     await Promise.resolve();
     await Promise.resolve();
@@ -279,7 +321,7 @@ describe("Story 9-10 userId-guard + profileFetchFailed semantics preserved", () 
       throw new Error("unexpected DB error");
     });
     useAuthStore.setState({ user: { id: "u-stale" } as never, profileFetchFailed: false });
-    registeredCallback!("SIGNED_IN", makeSession("u-stale"));
+    getRegisteredCallback()!("SIGNED_IN", makeSession("u-stale"));
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();

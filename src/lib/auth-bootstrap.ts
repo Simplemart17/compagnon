@@ -23,10 +23,17 @@
  * the per-event branching helper; `applyProfileIfFresh` remains the
  * userId-guard. The cold-start `getSession()` call moves with the listener.
  *
- * The one-call guard is also defensive against React StrictMode double-mount
- * in dev (module load is cached per JS instance, but `bootstrapAuth()` may
- * still be invoked twice if a consumer accidentally calls it instead of
- * relying on the module-load top-level call).
+ * The one-call guard defends against the rare case of a consumer
+ * accidentally invoking `bootstrapAuth()` from a `useEffect` (instead of
+ * relying on the module-load top-level call). (Note: React StrictMode's
+ * double-mount only re-runs component bodies — never module top-level —
+ * so the guard does not protect against StrictMode per se; it protects
+ * against accidental re-invocation.) The guard is also wired into Metro
+ * Fast Refresh / HMR via `module.hot.dispose` so a hot-swap of this file
+ * in dev tears down the previous subscription before a fresh
+ * `bootstrapAuth()` call installs a new one — without the dispose hook,
+ * the stale subscription would survive Fast Refresh and accumulate
+ * monotonically (review-round-1 P4 patch).
  *
  * Public surface:
  * - `bootstrapAuth()` — idempotent install; returns teardown closure.
@@ -91,9 +98,32 @@ let bootstrapState: { teardown: () => void } | null = null;
  *
  * Idempotent — a second call returns the cached teardown without
  * re-subscribing. Safe to call from `app/_layout.tsx` module-load time.
+ *
+ * Review-round-1 patches applied:
+ * - **P1 (re-entrancy guard):** `bootstrapState` is set to a sentinel
+ *   BEFORE any side-effects so a re-entrant `bootstrapAuth()` call during
+ *   listener installation sees the in-progress state and returns the
+ *   shared teardown.
+ * - **P2 (cold-start race defense):** the `.then` safety-net checks both
+ *   the promise-resolved session AND the current store session before
+ *   clearing `isLoading` — a listener-installed session takes precedence.
+ * - **P4 (Metro HMR dispose):** `module.hot.dispose` tears down the
+ *   previous subscription on Fast Refresh so listeners don't accumulate.
+ * - **P6 (idempotent teardown):** the returned teardown is safe to call
+ *   multiple times — second call is a no-op, the captured subscription
+ *   reference is nullified after first invocation.
+ * - **P7 (try/catch on install):** a synchronous throw from
+ *   `onAuthStateChange` does not block app start; the error is captured
+ *   and the bootstrap degrades to a no-op teardown.
  */
 export function bootstrapAuth(): () => void {
   if (bootstrapState) return bootstrapState.teardown;
+
+  // P1: install a sentinel before side-effects so re-entrant calls during
+  // listener install see in-progress state. The teardown delegates to the
+  // real installer once it lands.
+  let installedTeardown: () => void = () => undefined;
+  bootstrapState = { teardown: () => installedTeardown() };
 
   // Cold-start: capture any AuthError surfaced through the resolved Promise
   // and protect against unhandled rejection on a corrupted SecureStore.
@@ -103,15 +133,19 @@ export function bootstrapAuth(): () => void {
   // (Supabase auth-js contract), so the listener installs the session
   // before this `.then` microtask resolves. Calling `setSession` here
   // would race with the listener and could overwrite a fresher session.
-  // The `setLoading(false)` no-session bail-out is kept as a safety net
-  // in case the listener fails to fire `INITIAL_SESSION` for any reason.
+  //
+  // P2: the safety-net `setLoading(false)` is gated on BOTH the
+  // promise-resolved session AND the current store session being empty.
+  // Pre-patch, a `getSession()` that resolved with `null` AFTER the
+  // listener installed a session (network blip / cache expiry) would
+  // prematurely clear loading while `loadProfile` was still in flight.
   void supabase.auth
     .getSession()
     .then(({ data: { session }, error }) => {
       if (error) {
         captureError(error, "auth-initial-session");
       }
-      if (!session) {
+      if (!session && !useAuthStore.getState().session) {
         useAuthStore.getState().setLoading(false);
       }
     })
@@ -120,48 +154,87 @@ export function bootstrapAuth(): () => void {
       useAuthStore.getState().setLoading(false);
     });
 
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange((event, session) => {
-    // Always update the session ref so JWT consumers see the freshest token.
-    useAuthStore.getState().setSession(session);
+  // P7: wrap `onAuthStateChange` in try/catch — a synchronous throw at
+  // module-load time would otherwise block app startup with no error UI.
+  // On throw, we capture and degrade to a no-op teardown so subsequent
+  // calls still return the cached teardown closure (idempotency preserved).
+  let subscription: { unsubscribe: () => void };
+  try {
+    const result = supabase.auth.onAuthStateChange((event, session) => {
+      // Always update the session ref so JWT consumers see the freshest token.
+      useAuthStore.getState().setSession(session);
 
-    const action = decideAuthAction(event, session as Session | null);
-    switch (action.kind) {
-      case "load-profile":
-        if (action.invalidateCache) {
-          void invalidateCache(action.userId, CACHE_KEYS.PROFILE);
-        }
-        void loadProfile(action.userId, { flushQueue: action.flushQueue });
-        return;
-      case "clear-profile":
-        useAuthStore.getState().setProfile(null);
-        // Story 9-10 (P5 from 9-10 review): also clear the failure flag so
-        // an auto-emitted `SIGNED_OUT` (token expiry / refresh failure /
-        // server-side revocation) — which bypasses `signOut()`'s `reset()`
-        // call — does not leave a stale `profileFetchFailed = true` into
-        // the next session.
-        useAuthStore.getState().setProfileFetchFailed(false);
-        useAuthStore.getState().setLoading(false);
-        return;
-      case "session-only":
-        // Token refreshes / password recovery / MFA verification — session
-        // ref already updated above; no profile fetch, no flush.
-        return;
-      case "no-session-warning":
-        // Null session arrived on a non-SIGNED_OUT event (rare refresh
-        // failure). Breadcrumb to Sentry but do NOT destroy local profile.
-        addBreadcrumb({
-          category: "auth",
-          level: "warning",
-          message: "Auth event arrived with null session",
-          data: { phase: action.phase },
-        });
-        return;
+      const action = decideAuthAction(event, session as Session | null);
+      switch (action.kind) {
+        case "load-profile":
+          if (action.invalidateCache) {
+            void invalidateCache(action.userId, CACHE_KEYS.PROFILE);
+          }
+          void loadProfile(action.userId, { flushQueue: action.flushQueue });
+          return;
+        case "clear-profile":
+          useAuthStore.getState().setProfile(null);
+          // Story 9-10 (P5 from 9-10 review): also clear the failure flag so
+          // an auto-emitted `SIGNED_OUT` (token expiry / refresh failure /
+          // server-side revocation) — which bypasses `signOut()`'s `reset()`
+          // call — does not leave a stale `profileFetchFailed = true` into
+          // the next session.
+          useAuthStore.getState().setProfileFetchFailed(false);
+          useAuthStore.getState().setLoading(false);
+          return;
+        case "session-only":
+          // Token refreshes / password recovery / MFA verification — session
+          // ref already updated above; no profile fetch, no flush.
+          return;
+        case "no-session-warning":
+          // Null session arrived on a non-SIGNED_OUT event (rare refresh
+          // failure). Breadcrumb to Sentry but do NOT destroy local profile.
+          addBreadcrumb({
+            category: "auth",
+            level: "warning",
+            message: "Auth event arrived with null session",
+            data: { phase: action.phase },
+          });
+          return;
+      }
+    });
+    subscription = result.data.subscription;
+  } catch (err) {
+    captureError(err, "auth-bootstrap-install");
+    // Degrade: installedTeardown stays as no-op; bootstrapState already
+    // installed so future bootstrapAuth() calls return the same teardown
+    // and do NOT retry the failing install.
+    return bootstrapState.teardown;
+  }
+
+  // P6: idempotent teardown + closure-staleness defense. After teardown,
+  // the captured `subscription` reference is nullified so a future
+  // `__resetBootstrapForTests` → new bootstrap → call-old-teardown path
+  // does not double-unsubscribe an already-dead subscription handle.
+  let alreadyTornDown = false;
+  let capturedSubscription: { unsubscribe: () => void } | null = subscription;
+  installedTeardown = () => {
+    if (alreadyTornDown) return;
+    alreadyTornDown = true;
+    capturedSubscription?.unsubscribe();
+    capturedSubscription = null;
+  };
+
+  // P4: Metro Fast Refresh / HMR — dispose the previous subscription before
+  // the module is hot-swapped, otherwise the old subscription accumulates
+  // alongside the new one on every file save in dev. Wrapped in try/catch
+  // because the `module.hot` global is not present in production / Jest /
+  // some test environments.
+  try {
+    type HotModule = { hot?: { dispose(cb: () => void): void } };
+    const m = typeof module !== "undefined" ? (module as unknown as HotModule) : undefined;
+    if (m?.hot && typeof m.hot.dispose === "function") {
+      m.hot.dispose(() => installedTeardown());
     }
-  });
+  } catch {
+    // No HMR support — skip silently.
+  }
 
-  bootstrapState = { teardown: () => subscription.unsubscribe() };
   return bootstrapState.teardown;
 }
 
@@ -329,8 +402,28 @@ export async function updateProfile(updates: Partial<UserProfile>) {
  * @internal — test-only. Resets the one-call guard so tests don't leak
  * subscriptions across test boundaries. Must NOT be called from production
  * code. Pattern matches Story 11-2's `_triggerStateChange` test helper.
+ *
+ * Review-round-1 patches applied:
+ * - **P5 (microtask drain):** async so the caller can `await` pending
+ *   microtasks from prior tests (e.g., `void loadProfile(...)` whose
+ *   `cacheWithFallback` resolves on the next microtask). Without the
+ *   drain, those continuations would execute AFTER reset but consume the
+ *   NEXT test's mock state — invisible inter-test pollution.
+ * - **P11 (runtime test-only guard):** throws if invoked outside a test
+ *   environment. The `@internal` JSDoc is advisory only; this runtime
+ *   guard makes accidental production invocation fail loudly.
  */
-export function __resetBootstrapForTests(): void {
+export async function __resetBootstrapForTests(): Promise<void> {
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "test") {
+    throw new Error(
+      "__resetBootstrapForTests must only be called from tests (NODE_ENV must be 'test')"
+    );
+  }
   bootstrapState?.teardown();
   bootstrapState = null;
+  // Drain pending microtasks from prior tests' fire-and-forget chains
+  // (loadProfile / getSession .then) so they complete before the next
+  // test's beforeEach installs fresh mock state.
+  await Promise.resolve();
+  await Promise.resolve();
 }

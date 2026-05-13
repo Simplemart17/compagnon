@@ -40,6 +40,12 @@ const mockSignOut = jest.fn(async () => ({ error: null }));
 const mockUpdateProfile = jest.fn(async () => ({ data: null, error: null }));
 const mockRetryProfileFetch = jest.fn(async () => undefined);
 
+// Review-round-1 P9: removed the dead `applyProfileIfFresh` mock — the
+// `useAuth` hook re-exports it from `auth-bootstrap` but never invokes it
+// (the production code path `loadProfile` calls the local definition
+// directly inside `auth-bootstrap.ts`, not via the import shim). A mocked
+// value here would never have been consumed; tests that need to assert
+// on the helper's behavior should import it from `auth-bootstrap` directly.
 jest.mock("@/src/lib/auth-bootstrap", () => ({
   bootstrapAuth: (...args: unknown[]) =>
     (mockBootstrapAuth as unknown as (...a: unknown[]) => unknown)(...args),
@@ -53,9 +59,6 @@ jest.mock("@/src/lib/auth-bootstrap", () => ({
     (mockUpdateProfile as unknown as (...a: unknown[]) => unknown)(...args),
   retryProfileFetch: (...args: unknown[]) =>
     (mockRetryProfileFetch as unknown as (...a: unknown[]) => unknown)(...args),
-  applyProfileIfFresh: jest.fn((a: string, b: string | undefined) =>
-    a === b ? "apply" : "drop-stale"
-  ),
 }));
 
 function resetStore() {

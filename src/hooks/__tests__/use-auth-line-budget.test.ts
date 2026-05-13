@@ -63,8 +63,14 @@ describe("Story 12-2 — use-auth.ts line-budget drift detector", () => {
   });
 
   it("Case 8: hook uses per-field selectors (useAuthStore((s) => s.X) pattern, not single destructure)", () => {
-    // At least 6 per-field selectors expected.
-    const matches = HOOK_CODE_ONLY.match(/useAuthStore\(\(s\)\s*=>\s*s\.[a-zA-Z]+\)/g) ?? [];
+    // Review-round-1 P8: tolerate optional type annotation on the
+    // parameter (e.g., `(s: AuthState) =>`) and a renamed param (`state`
+    // instead of `s`). The body still has to read a single property off
+    // the param, but the regex no longer breaks on benign typing changes.
+    const matches =
+      HOOK_CODE_ONLY.match(
+        /useAuthStore\(\((?:s|state)(?:\s*:\s*\w+)?\)\s*=>\s*\w+\.[a-zA-Z]+\)/g
+      ) ?? [];
     expect(matches.length).toBeGreaterThanOrEqual(6);
   });
 });
