@@ -1,6 +1,6 @@
 # Story 11.7: Prompt Truncation — Top-3 Memories + Top-3 Error Patterns + Max 80 Chars Each
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
