@@ -1,6 +1,6 @@
 # Story 12.2: Move Auth Subscription to One-Time Bootstrap + Convert `useAuth` to a Pure Consumer Hook
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -381,36 +381,85 @@ After this story:
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create `src/lib/auth-bootstrap.ts`** (AC #1)
-  - [ ] Migrate the listener + cold-start `getSession()` from `use-auth.ts`'s `useEffect` to the new module.
-  - [ ] Migrate `loadProfile` + `retryProfileFetch` + `signInWithEmail` + `signUpWithEmail` + `signOut` + `updateProfile`.
-  - [ ] Add `bootstrapState` one-call guard.
-  - [ ] Add `__resetBootstrapForTests` escape hatch.
+- [x] **Task 1: Create `src/lib/auth-bootstrap.ts`** (AC #1)
+  - [x] Migrate the listener + cold-start `getSession()` from `use-auth.ts`'s `useEffect` to the new module.
+  - [x] Migrate `loadProfile` + `retryProfileFetch` + `signInWithEmail` + `signUpWithEmail` + `signOut` + `updateProfile`.
+  - [x] Add `bootstrapState` one-call guard.
+  - [x] Add `__resetBootstrapForTests` escape hatch.
 
-- [ ] **Task 2: Rewrite `src/hooks/use-auth.ts` as a pure consumer hook** (AC #2)
-  - [ ] Delete the `useEffect` + all closures + listener install.
-  - [ ] Switch from single `useAuthStore()` destructure to 6 per-field selectors.
-  - [ ] Re-import the 5 action functions + `retryProfileFetch` from the bootstrap module.
-  - [ ] Preserve the public `UseAuthReturn` shape verbatim.
-  - [ ] Preserve the `applyProfileIfFresh` export (or move it to a dedicated module + update consumer test imports).
+- [x] **Task 2: Rewrite `src/hooks/use-auth.ts` as a pure consumer hook** (AC #2)
+  - [x] Delete the `useEffect` + all closures + listener install.
+  - [x] Switch from single `useAuthStore()` destructure to 6 per-field selectors.
+  - [x] Re-import the 5 action functions + `retryProfileFetch` from the bootstrap module.
+  - [x] Preserve the public `UseAuthReturn` shape verbatim.
+  - [x] Preserve the `applyProfileIfFresh` export (moved to bootstrap; re-exported from `use-auth.ts` so existing test import path stays valid).
 
-- [ ] **Task 3: Wire `bootstrapAuth()` into `app/_layout.tsx`** (AC #3)
-  - [ ] Add module-load-time `const teardownAuth = bootstrapAuth();` at top of file.
-  - [ ] Optionally register teardown on root-layout unmount.
+- [x] **Task 3: Wire `bootstrapAuth()` into `app/_layout.tsx`** (AC #3)
+  - [x] Add module-load-time `bootstrapAuth();` call after `Sentry.init()`.
+  - [x] Teardown registration intentionally omitted — module-load happens once per JS instance; the one-call guard handles re-call cases without consuming OpenAI sessions.
 
-- [ ] **Task 4: Tests** (AC #4)
-  - [ ] CREATE `src/lib/__tests__/auth-bootstrap.test.ts` (~12 cases).
-  - [ ] CREATE `src/hooks/__tests__/use-auth.test.tsx` (~6 cases via react-test-renderer).
-  - [ ] CREATE `src/hooks/__tests__/use-auth-line-budget.test.ts` (~6 drift-detector cases).
-  - [ ] Target test count: 1260 → ~1280.
+- [x] **Task 4: Tests** (AC #4)
+  - [x] CREATE `src/lib/__tests__/auth-bootstrap.test.ts` (17 cases — exceeded the ~12-case target).
+  - [x] CREATE `src/hooks/__tests__/use-auth.test.tsx` (6 cases via react-test-renderer).
+  - [x] CREATE `src/hooks/__tests__/use-auth-line-budget.test.ts` (8 cases — exceeded the ~6-case target).
+  - [x] Test count: 1260 → 1291 (+31; exceeded the ~1280 target by 11).
 
-- [ ] **Task 5: Update CLAUDE.md** (AC #5)
+- [x] **Task 5: Update CLAUDE.md** (AC #5)
 
-- [ ] **Task 6: Quality gates** (AC #Z)
-  - [ ] type-check / lint / format / test / colors all green.
-  - [ ] CI Sentry DSN + Submit credentials leak guards pass.
-  - [ ] `git status` shows the story file as untracked-but-not-ignored.
-  - [ ] `npx prettier --check` on the story file passes.
+- [x] **Task 6: Quality gates** (AC #Z)
+  - [x] type-check / lint / format / test / colors all green.
+  - [x] CI Sentry DSN + Submit credentials leak guards pass (no credential-shaped strings in new files).
+  - [x] `git status` shows the story file as tracked (committed in initial story-file commit on 12-1 branch).
+  - [x] `npx prettier --check` on the story file passes.
+
+## Dev Agent Record
+
+### Implementation Plan
+
+**Phase 1 — Bootstrap module creation.** Created `src/lib/auth-bootstrap.ts` (~260 lines) absorbing the listener install + cold-start `getSession()` + 5 static action methods + `applyProfileIfFresh` pure helper + `loadProfile` private helper + `__resetBootstrapForTests` test escape hatch. Module-level `let bootstrapState: { teardown: () => void } | null = null` provides the one-call guard. `applyProfileIfFresh` was moved here (not kept in `use-auth.ts`) to avoid circular import — `use-auth.ts` now re-exports it.
+
+**Phase 2 — Pure consumer hook.** Rewrote `src/hooks/use-auth.ts` from 359 → 70 lines (5.1× reduction; 12.5% under the 80-line spec budget). Hook body uses 6 per-field `useAuthStore((s) => s.X)` selectors; action methods are re-imported from `auth-bootstrap` and forwarded through the return shape. The hook re-exports `applyProfileIfFresh` + `ApplyProfileDecision` so the existing test import path at `src/lib/__tests__/auth-load-profile-stale.test.ts` (`import { applyProfileIfFresh } from "@/src/hooks/use-auth"`) stays valid without changes.
+
+**Phase 3 — Bootstrap wiring at `app/_layout.tsx`.** Added `import { bootstrapAuth } from "@/src/lib/auth-bootstrap"` + a top-level `bootstrapAuth();` call immediately after `Sentry.init(getSentryInitConfig())`. The call runs at JS bundle parse time, before `RootLayoutNav` ever renders — so the listener is installed before the first React commit. The teardown closure is intentionally not registered on a `useEffect` cleanup; module-load runs exactly once per JS instance, and the one-call guard defends against pathological re-call (Fast Refresh, OTA hot-swap).
+
+**Phase 4 — Tests.** Three new test files. (a) `src/lib/__tests__/auth-bootstrap.test.ts` — 17 cases covering bootstrap idempotence (Cases 1-5), Story 9-6 per-event branching invariants (Cases 6-11), Story 9-10 userId-guard semantics (Cases 12-13), `retryProfileFetch` shape (Cases 14-15), cold-start `getSession` contract (Cases 16-17). Uses Jest closure-wrap pattern for mock factory functions (`onAuthStateChange: (cb) => mockOnAuthStateChange(cb)`) to avoid the hoisting trap where mock vars are undefined at factory execution time. Case 13 simulates a mid-flight user-change race via `mockCacheWithFallback.mockImplementationOnce(async () => { useAuthStore.setState({ user: null }); throw new Error(...); })` so `applyProfileIfFresh` returns "drop-stale" and the flag is NOT set. (b) `src/hooks/__tests__/use-auth.test.tsx` — 6 hook-binding cases via `react-test-renderer` (`create` + `act` + `HookHost` consumer component, Story 12-1 P8 pattern): verifies hook does NOT call `bootstrapAuth` itself (architectural negative-guard), returns verbatim `UseAuthReturn` shape, action methods identity stable across renders, store state propagates, multiple consumers DO NOT install N listeners (the centerpiece architectural claim), action methods forward through to bootstrap-module imports. (c) `src/hooks/__tests__/use-auth-line-budget.test.ts` — 8 drift-detector cases reading `use-auth.ts` from disk + asserting line count ≤ 80 + line count > 30 floor + imports from `auth-bootstrap` + 4 negative-guards (no `useEffect` / no direct supabase import / no `onAuthStateChange` / no `getSession`) + per-field selector count ≥ 6. The negative-guards strip block + line comments (`HOOK_CODE_ONLY = HOOK_SOURCE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")`) so JSDoc that legitimately mentions pre-12-2 surfaces doesn't trip the guards.
+
+**Phase 5 — CLAUDE.md.** New 1-paragraph architecture line inserted after the Story 12-1 paragraph (CLAUDE.md:87) documenting the N-listener → 1-listener fan-out collapse, the bootstrap module + one-call guard, the pure-consumer hook refactor (359 → 70 lines), `applyProfileIfFresh` migration with re-export, Story 9-6 + 9-10 invariants preserved by construction, all 7 consumer call sites compile unchanged, Story 12-1 `RealtimeOrchestrator` direct store-read pattern unchanged, Sentry allowlist unchanged.
+
+**Phase 6 — Quality gates.** All 5 gates green: type-check (tsc --noEmit), lint (eslint --max-warnings 0 after one auto-fix pass for import ordering), format:check (prettier --check after one auto-fix pass for trailing blank lines), test (1291/1291 passing across 55 suites; +31 net from 12-2), check:colors (no hardcoded hex colors).
+
+### Completion Notes
+
+- **Listener-fan-out delta:** Pre-12-2 N-consumer fan-out → Post-12-2 single bootstrap subscriber. The architectural claim is pinned by `auth-bootstrap.test.ts` Cases 1-5 (idempotence) + `use-auth.test.tsx` Case 5 (3 hook mounts, 0 listener installs).
+- **`loadProfile` invocation-count delta:** A simulated `SIGNED_IN` event with the bootstrap-only listener triggers exactly ONE `cacheWithFallback` call (Case 6) and ONE `loadProfile` dispatch — pre-12-2 would have been N for N mounted consumers.
+- **`profileFetchFailed` flag race resolved:** Pre-12-2 listener A's failure could be overwritten by listener B's success. Post-12-2 a single listener → single write site (Cases 12-13).
+- **`useAuth()` per-render allocation drops to zero:** Pre-12-2 the hook closed over `loadProfile` / `retryProfileFetch` / `signInWithEmail` / `signUpWithEmail` / `signOut` / `updateProfile` + the `useEffect` callback (7 closures per render). Post-12-2 the action methods are module-level static imports — Case 3 in `use-auth.test.tsx` pins this via `.toBe` referential-equality assertion across renders.
+- **Story 9-6 + 9-10 invariants preserved by construction:** The listener body is the same `decideAuthAction`-switch with `load-profile` / `clear-profile` / `session-only` / `no-session-warning` cases (Cases 6-11). The `loadProfile` userId-guard + `profileFetchFailed` flag semantics are the same (Cases 12-13).
+- **Per-field selector idiom:** Pre-12-2 the hook destructured 8 fields from `useAuthStore()` — any field change re-rendered all consumers. Post-12-2 6 per-field selectors fire re-renders only on the consumed field change (Zustand idiom). Drift-detector Case 8 pins this via regex count.
+- **Test-only escape hatch:** `__resetBootstrapForTests()` clears the singleton + invokes the prior teardown (so cross-test subscription leakage cannot accumulate). `beforeEach` and `afterEach` both call it in `auth-bootstrap.test.ts`.
+- **Anti-circular import:** `applyProfileIfFresh` lives in `auth-bootstrap.ts` (where `loadProfile` consumes it); `use-auth.ts` re-exports it. If kept in `use-auth.ts`, `auth-bootstrap.ts` would have imported from the hook, and the hook would have imported actions from bootstrap — a cycle.
+
+### File List
+
+**Created:**
+
+- `src/lib/auth-bootstrap.ts` — 263 lines. Bootstrap module: `bootstrapAuth()` idempotent install, `applyProfileIfFresh` pure helper, `loadProfile` private helper, 5 static action methods, `retryProfileFetch` public retry, `__resetBootstrapForTests` test escape hatch.
+- `src/lib/__tests__/auth-bootstrap.test.ts` — 287 lines, 17 Jest cases.
+- `src/hooks/__tests__/use-auth.test.tsx` — 178 lines, 6 hook-binding cases via `react-test-renderer`.
+- `src/hooks/__tests__/use-auth-line-budget.test.ts` — 62 lines, 8 drift-detector cases.
+
+**Modified:**
+
+- `src/hooks/use-auth.ts` — 359 → 70 lines (5.1× reduction; 12.5% under 80-line spec budget). Now a pure consumer hook with 6 per-field selectors + re-export of action methods + `applyProfileIfFresh`.
+- `app/_layout.tsx` — added `import { bootstrapAuth } from "@/src/lib/auth-bootstrap"` + a module-load `bootstrapAuth();` call after `Sentry.init()`.
+- `CLAUDE.md` — added Story 12-2 architecture paragraph after the Story 12-1 paragraph.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — flipped 12-2 to `review` + updated `last_updated`.
+
+**Deleted (migrated into bootstrap):**
+
+- The `useEffect(() => { ... })` block + listener install + cold-start `getSession()` from `use-auth.ts` (~80 lines).
+- The inline `loadProfile` / `retryProfileFetch` / `signInWithEmail` / `signUpWithEmail` / `signOut` / `updateProfile` closures from `use-auth.ts` (~150 lines).
+- The `applyProfileIfFresh` definition (moved to bootstrap; re-exported from `use-auth.ts`).
 
 ## Dev Notes
 
@@ -459,6 +508,7 @@ After this story:
 
 ### Change Log
 
-| Date       | Change                                                                                                                                                                                                                                                                                |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-05-13 | Story 12-2 story file created; closes audit P0-7 deepening (auth listener installed per-consumer → installed once at bootstrap); spec target `useAuth.ts` becomes pure consumer hook (~40-60 lines); MEDIUM risk surface (~6-9 review patches anticipated per Epic 9/10/11/12 retro). |
+| Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-13 | Story 12-2 story file created; closes audit P0-7 deepening (auth listener installed per-consumer → installed once at bootstrap); spec target `useAuth.ts` becomes pure consumer hook (~40-60 lines); MEDIUM risk surface (~6-9 review patches anticipated per Epic 9/10/11/12 retro).                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2026-05-13 | Story 12-2 implementation complete. New `src/lib/auth-bootstrap.ts` (263 lines) absorbs listener + cold-start + 5 action methods + `applyProfileIfFresh` (moved to avoid circular import). `src/hooks/use-auth.ts` shrinks 359 → 70 lines (5.1× reduction; 12.5% under 80-line spec budget). `app/_layout.tsx` calls `bootstrapAuth()` at module-load time. 31 new Jest cases across 3 test files (17 + 6 + 8); test count 1260 → 1291 (+31; spec target was ~1280, beat by 11). All 5 quality gates green: type-check / lint / format / test / colors. Story 9-3 / 9-4 / 9-5 / 9-6 / 9-7 / 9-8 / 9-9 / 9-10 / 10-X / 11-X / 12-1 invariants preserved by construction. |

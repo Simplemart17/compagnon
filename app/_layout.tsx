@@ -8,6 +8,7 @@ import "react-native-reanimated";
 
 import "@/src/styles/global.css";
 import { useAuth } from "@/src/hooks/use-auth";
+import { bootstrapAuth } from "@/src/lib/auth-bootstrap";
 import {
   registerForPushNotifications,
   setupNotificationResponseListener,
@@ -41,6 +42,14 @@ Notifications.setNotificationHandler({
 // DSN is read from EXPO_PUBLIC_SENTRY_DSN; if absent, Sentry is a no-op.
 // Config is owned by src/lib/sentry.ts and snapshot-tested for privacy posture.
 Sentry.init(getSentryInitConfig());
+
+// Story 12-2: install the auth listener + cold-start getSession ONCE per app
+// lifetime at JS-bundle parse time, before any React render. Idempotent —
+// the bootstrap module's `bootstrapState` one-call guard ensures only one
+// `onAuthStateChange` subscription exists regardless of how many `useAuth()`
+// consumers mount. Pre-12-2 each consumer installed its own listener inside
+// `useEffect`. See `src/lib/auth-bootstrap.ts`.
+bootstrapAuth();
 
 function RootLayoutNav() {
   const { session, user, profile, isLoading, isOnboarded, profileFetchFailed, retryProfileFetch } =
