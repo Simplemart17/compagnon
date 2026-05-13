@@ -1087,3 +1087,117 @@ describe("reportCorrectionArgsSchema (Story 11-1)", () => {
     expect(new Set(inlineNoteErrorEnum)).toEqual(new Set(correctionCategorySchema.options));
   });
 });
+
+// ---------------------------------------------------------------------------
+// Story 11-5 — postConversationAnalysisSchema (consolidated post-conv output)
+// ---------------------------------------------------------------------------
+
+describe("postConversationAnalysisSchema (Story 11-5)", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { postConversationAnalysisSchema } = require("../ai-responses");
+
+  it("parses a well-formed combined object with all 3 sub-outputs", () => {
+    const result = postConversationAnalysisSchema.safeParse({
+      facts: [{ content: "Lives in Toronto", type: "personal_fact" }],
+      errorPatterns: [
+        {
+          original: "j'ai allé",
+          corrected: "je suis allé",
+          pattern: "être-verb passé composé requires être auxiliary",
+          category: "grammar",
+        },
+      ],
+      feedback: {
+        summary: "Solid B1 conversation.",
+        strengths: ["Good vocab range"],
+        improvements: ["Watch être/avoir"],
+        vocabularyUsed: 42,
+        fluencyRating: 4,
+        grammarRating: 3,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("defaults `facts` to [] when key is missing (partial-result tolerance)", () => {
+    const result = postConversationAnalysisSchema.safeParse({
+      errorPatterns: [],
+      feedback: undefined,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.facts).toEqual([]);
+    }
+  });
+
+  it("defaults `errorPatterns` to [] when key is missing (partial-result tolerance)", () => {
+    const result = postConversationAnalysisSchema.safeParse({
+      facts: [],
+      feedback: undefined,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.errorPatterns).toEqual([]);
+    }
+  });
+
+  it("allows `feedback: undefined` (transcript-too-short path)", () => {
+    const result = postConversationAnalysisSchema.safeParse({
+      facts: [],
+      errorPatterns: [],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.feedback).toBeUndefined();
+    }
+  });
+
+  it("accepts an empty object via all 3 defaults (model returned nothing)", () => {
+    const result = postConversationAnalysisSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.facts).toEqual([]);
+      expect(result.data.errorPatterns).toEqual([]);
+      expect(result.data.feedback).toBeUndefined();
+    }
+  });
+
+  it("rejects invalid `errorPatterns[].category` (must be one of the 4 enum values)", () => {
+    const result = postConversationAnalysisSchema.safeParse({
+      facts: [],
+      errorPatterns: [
+        {
+          original: "x",
+          corrected: "y",
+          pattern: "p",
+          category: "INVALID_CATEGORY",
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid `facts[].type` (must be one of the 4 memory types)", () => {
+    const result = postConversationAnalysisSchema.safeParse({
+      facts: [{ content: "x", type: "invalid_memory_type" }],
+      errorPatterns: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid feedback shape (e.g., fluencyRating out of 1-5 range)", () => {
+    const result = postConversationAnalysisSchema.safeParse({
+      facts: [],
+      errorPatterns: [],
+      feedback: {
+        summary: "s",
+        strengths: ["a"],
+        improvements: ["b"],
+        vocabularyUsed: 1,
+        fluencyRating: 99, // out of range
+        grammarRating: 3,
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+});

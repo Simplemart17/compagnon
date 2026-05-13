@@ -158,3 +158,33 @@ describe("cost-table math contract (mirror)", () => {
     expect(realtimeRate).toBeGreaterThanOrEqual(chatRate * 10);
   });
 });
+
+// ─── Story 11-5 review patch P10: Realtime MODEL constant cost-table pin ───
+// Reads the Realtime source from disk + the cost-table source from disk and
+// asserts that the MODEL constant has a corresponding MODEL_RATES entry.
+// Catches a future cost-table refresh that accidentally drops the entry
+// (silent regression: daily-cost-cap pre-check would fall through to the
+// gpt-4o fallback, under-estimating the actual session cost).
+describe("Story 11-5 review patch P10 — Realtime MODEL cost-table pin", () => {
+  it("the Realtime client MODEL constant has a corresponding MODEL_RATES entry in cost-table.ts", () => {
+    const realtimeSource = readFileSync(resolve(__dirname, "../realtime.ts"), "utf-8");
+    const match = realtimeSource.match(/const MODEL = "([^"]+)"/);
+    expect(match).not.toBeNull();
+    const modelConstant = match![1];
+
+    // Verify the cost-table source has a key matching the MODEL constant.
+    // Use the on-disk source so this test catches drift even if the
+    // Jest mirror is stale (the Jest mirror is documentation; the
+    // Deno source is the source of truth).
+    expect(COST_TABLE_SOURCE).toContain(`"${modelConstant}":`);
+  });
+
+  it("the current MODEL ('gpt-realtime-mini') has both input + output rates", () => {
+    // Belt-and-braces: the inline mirror is what the daily-cost-cap pre-check
+    // would consume at runtime. Verify the mirror has the entry the realtime
+    // path would actually look up.
+    expect(MODEL_RATES_MIRROR["gpt-realtime-mini"]).toBeDefined();
+    expect(MODEL_RATES_MIRROR["gpt-realtime-mini"].inputCentsPer1KTokens).toBeGreaterThan(0);
+    expect(MODEL_RATES_MIRROR["gpt-realtime-mini"].outputCentsPer1KTokens).toBeGreaterThan(0);
+  });
+});
