@@ -1,0 +1,1318 @@
+/**
+ * Realtime Voice Conversation Orchestrator
+ *
+ * Plain TypeScript class (NOT a React hook) that owns the full Realtime voice
+ * conversation lifecycle. The thin hook at `src/hooks/use-realtime-voice.ts`
+ * is now a pure React binding layer: lazily constructs an orchestrator,
+ * subscribes to state changes, returns the public surface.
+ *
+ * Story 12.1 / audit P1-17: decomposed from the pre-12-1 1,354-line "god hook"
+ * into this class + ≤ 250-line hook. The migration is a pure call-site
+ * relocation of business logic; every Story 9-X / 10-X / 11-X invariant is
+ * preserved by construction.
+ *
+ * The 14 responsibilities absorbed:
+ *   1. State management (16 fields formerly hook-level useRefs + a useState)
+ *   2. WebSocket connection lifecycle (start/end + Story 11-2 reconnect)
+ *   3. ExpoPlayAudioStream subscription management
+ *   4. handleEvent (12+ Realtime event types)
+ *   5. handleFunctionCall (Story 11-1 three tools: save_vocabulary,
+ *      note_error_pattern, report_correction)
+ *   6. appendAiTranscriptEntry + Story 9-5 dedup
+ *   7. Correction collection (correctionsRef + Story 11-1 pendingToolCorrections orphan buffer)
+ *   8. AI-speaking state tracking + Story 11-2 barge-in trigger timing
+ *   9. createConversationRecord (Supabase write)
+ *  10. persistConversation 8-step chain — Story 12-1 parallelizes into
+ *      Phase A (6-way Promise.allSettled) + Phase B (checkCefrPromotion)
+ *  11. Duration tracking
+ *  12. Inflight response tracking
+ *  13. Pending tool-corrections orphan buffer (Story 11-1 P2/P3)
+ *  14. Reconnect state coordination (Story 11-2)
+ *
+ * Public surface — observer pattern (mirrors Story 11-2's RealtimeSession):
+ *   - constructor(options)
+ *   - start(): Promise<void>
+ *   - sendText(text): void
+ *   - end(): void
+ *   - subscribe(cb): () => void  ← React hook subscribes here
+ *   - getState(): ConversationState
+ *   - dispose(): void  ← cleanup on hook unmount
+ */
+
+import { ExpoPlayAudioStream } from "@mykin-ai/expo-audio-stream";
+import type { EventSubscription } from "expo-modules-core";
+import type { User } from "@supabase/supabase-js";
+
+import { RealtimeSession, type RealtimeConfig, type RealtimeEvent } from "@/src/lib/realtime";
+import {
+  acceptDelta,
+  appendIfNew,
+  resolveTranscriptKey,
+  type TranscriptEntry,
+} from "@/src/lib/realtime-transcript";
+import { buildConversationPrompt } from "@/src/lib/prompts/conversation";
+import {
+  drainPendingCorrections,
+  MAX_PENDING_CORRECTIONS,
+  mergeOrphanCorrections,
+  processReportCorrectionCall,
+} from "@/src/lib/realtime-corrections";
+import { computeBargeInDirective } from "@/src/lib/realtime-barge-in";
+import { computeSpeakingScore } from "@/src/lib/speaking-score";
+import { supabase } from "@/src/lib/supabase";
+// Story 11-5: consolidated post-conversation analysis replaces the pre-11-5
+// 3-call pipeline. Non-Realtime flows (echo + translation) still use
+// `extractErrorsFromCorrections` directly.
+import {
+  extractPostConversationAnalysis,
+  persistPostConversationAnalysis,
+} from "@/src/lib/post-conversation-analysis";
+import { persistErrorPatterns, trackError } from "@/src/lib/error-tracker";
+import { addBreadcrumb, captureError } from "@/src/lib/sentry";
+import { isOnline } from "@/src/lib/network";
+import { enqueueWrite } from "@/src/lib/cache";
+import {
+  updateStreak,
+  updateSkillProgress,
+  incrementDailyActivity,
+  checkCefrPromotion,
+} from "@/src/lib/activity";
+import type { CEFRLevel } from "@/src/types/cefr";
+import type { ConversationFeedback, ConversationMode, Correction } from "@/src/types/conversation";
+
+// Re-exported so existing consumers keep their import path.
+export type { TranscriptEntry };
+
+// ────────────────────────────────────────────────────────────────────────
+// Public types
+// ────────────────────────────────────────────────────────────────────────
+
+export interface ConversationState {
+  // Story 11-2: "reconnecting" signals the auto-reconnect window between an
+  // unexpected WebSocket close and the next successful open.
+  status: "idle" | "connecting" | "connected" | "reconnecting" | "error" | "disconnected" | "ended";
+  isSpeaking: boolean;
+  isAiSpeaking: boolean;
+  isProcessing: boolean;
+  transcript: TranscriptEntry[];
+  pendingAiText: string;
+  allCorrections: Correction[];
+  durationSeconds: number;
+  error: string | null;
+  feedback: ConversationFeedback | null;
+  conversationId: string | null;
+}
+
+export type VoiceName =
+  | "alloy"
+  | "ash"
+  | "ballad"
+  | "coral"
+  | "echo"
+  | "sage"
+  | "shimmer"
+  | "verse"
+  | "marin"
+  | "cedar";
+
+export interface RealtimeOrchestratorOptions {
+  user: User | null;
+  cefrLevel: CEFRLevel;
+  mode: ConversationMode;
+  topic: string;
+  topicDescription?: string;
+  voice?: VoiceName;
+  memories?: string[];
+  errorPatterns?: string[];
+  onTranscriptUpdate?: (transcript: TranscriptEntry[]) => void;
+  onConversationEnd?: (transcript: TranscriptEntry[], corrections: Correction[]) => void;
+}
+
+/**
+ * Phase A slot names — the 6 independent persist operations dispatched
+ * concurrently by `persistConversation`. Exported for test pinning + Sentry
+ * tag construction. Story 12-1.
+ */
+export const PHASE_A_SLOT_NAMES = [
+  "conversation",
+  "messages",
+  "analysis",
+  "skill-progress",
+  "daily-activity",
+  "streak",
+] as const;
+
+export type PhaseASlotName = (typeof PHASE_A_SLOT_NAMES)[number];
+
+/** Initial conversation state — exported for tests + hook initialization. */
+export const INITIAL_STATE: ConversationState = {
+  status: "idle",
+  isSpeaking: false,
+  isAiSpeaking: false,
+  isProcessing: false,
+  transcript: [],
+  pendingAiText: "",
+  allCorrections: [],
+  durationSeconds: 0,
+  error: null,
+  feedback: null,
+  conversationId: null,
+};
+
+// ────────────────────────────────────────────────────────────────────────
+// RealtimeOrchestrator class
+// ────────────────────────────────────────────────────────────────────────
+
+export class RealtimeOrchestrator {
+  // ─── State + observers ────────────────────────────────────────────────
+  private state: ConversationState = INITIAL_STATE;
+  private readonly subscribers = new Set<(state: ConversationState) => void>();
+  /**
+   * Story 12-1 review-round-1 P6: re-entrant `setState` guard. If a
+   * subscriber callback synchronously calls another orchestrator method
+   * (which calls `setState` internally), the nested call would mutate
+   * state mid-iteration of the snapshot, producing out-of-order observer
+   * notifications. The flag detects re-entrance and queues the nested
+   * updater for drainage after the outer setState's iteration completes.
+   */
+  private isSetStating = false;
+  private pendingUpdates: ((s: ConversationState) => ConversationState)[] = [];
+  /**
+   * Story 12-1 review-round-1 P7: dispose-safety flag. Late events firing
+   * in the same tick as `dispose()` (e.g., `disconnect()` triggers a final
+   * `close` event) would otherwise call `handleEvent` → `setState` → mutate
+   * state but reach zero subscribers (silent data loss). The handleEvent
+   * dispatcher early-returns when `isDisposed` is true.
+   */
+  private isDisposed = false;
+
+  // ─── Connection + audio ───────────────────────────────────────────────
+  private session: RealtimeSession | null = null;
+  private subscription: EventSubscription | null = null;
+  private durationTimer: ReturnType<typeof setInterval> | null = null;
+
+  // ─── Conversation lifecycle ───────────────────────────────────────────
+  private isEnding = false;
+  private conversationId: string | null = null;
+  private durationSeconds = 0;
+  private startTimeMs = 0;
+
+  // ─── Per-turn / streaming state ───────────────────────────────────────
+  private currentAiText = "";
+  /** Story 9-5: set of upstream item/response keys whose terminal `.done` event has already produced a TranscriptEntry. */
+  private processedResponseItems = new Set<string>();
+  /** item_id of the AI response currently being streamed; null between turns. */
+  private inflightItemId: string | null = null;
+  /** Monotonic counter for user-side TranscriptEntry ids; collision-free across same-millisecond bursts. */
+  private userTurnCounter = 0;
+  /** Audio turn counter for `ExpoPlayAudioStream.playSound` chunk ordering. */
+  private turnIdCounter = 0;
+
+  // ─── Transcript + corrections ─────────────────────────────────────────
+  private transcript: TranscriptEntry[] = [];
+  private corrections: Correction[] = [];
+  /**
+   * Story 11-1: corrections accumulated during the current AI turn via
+   * `report_correction` tool-calls. Drained by `parseCorrections` when
+   * `appendIfNew` consumes the terminal `response.output_audio_transcript.done`.
+   * Also cleared on `response.done` + `case "error"` + `realtime.reconnecting`
+   * via `mergeOrphanCorrections` orphan-drain.
+   */
+  private pendingToolCorrections: Correction[] = [];
+
+  // ─── AI-response window tracking (Story 11-1 + 11-2) ──────────────────
+  /**
+   * Story 11-1 review-round-2 P16: tracks the broad AI-response window — set
+   * true on `speech_stopped` (user finished, AI starts processing) and cleared
+   * on `response.done` / `case "error"`. Used by the `report_correction`
+   * inflight gate to accept legitimate tool-calls that fire BEFORE the first
+   * audio delta (which is what sets `inflightItemId`).
+   */
+  private responseInFlight = false;
+  /**
+   * Story 11-2: `Date.now()` captured when the FIRST `response.output_audio.delta`
+   * fires for the current response. Used by the barge-in pure helper to compute
+   * `audio_end_ms = Date.now() - aiSpeakingStartedAtMs` for the
+   * `conversation.item.truncate` event.
+   */
+  private aiSpeakingStartedAtMs: number | null = null;
+  /**
+   * Story 11-2 review-round-2 P22: synchronous mirror of `state.isAiSpeaking`
+   * for event-time access. Pre-12-1 the hook's `isAiSpeakingRef.current = state.isAiSpeaking`
+   * had a stale window between setState enqueue + React commit. Post-12-1
+   * the orchestrator's `setState` updates this field synchronously so the
+   * barge-in handler reads up-to-date values regardless of React render timing.
+   */
+  private isAiSpeakingMirror = false;
+
+  // ────────────────────────────────────────────────────────────────────
+  // Construction + observer pattern
+  // ────────────────────────────────────────────────────────────────────
+
+  constructor(private readonly options: RealtimeOrchestratorOptions) {
+    // Bind methods passed as callbacks so `this` is preserved across closure
+    // boundaries (Story 12-1 review-lesson: closure-vs-this semantics).
+    this.handleEvent = this.handleEvent.bind(this);
+    this.handleFunctionCall = this.handleFunctionCall.bind(this);
+    this.parseCorrections = this.parseCorrections.bind(this);
+    this.end = this.end.bind(this);
+  }
+
+  /**
+   * Subscribe to state changes. Fires the callback synchronously with the
+   * current state (initial sync), then on every subsequent state mutation.
+   * Returns an unsubscribe closure.
+   */
+  subscribe(callback: (state: ConversationState) => void): () => void {
+    this.subscribers.add(callback);
+    callback(this.state);
+    return () => {
+      this.subscribers.delete(callback);
+    };
+  }
+
+  /**
+   * Synchronous state read. Returns a frozen snapshot — the orchestrator's
+   * canonical state mutation flows through `setState` which replaces the
+   * whole object, so the freeze is defensive against direct external
+   * mutation attempts (Story 12-1 review-round-1 P15).
+   */
+  getState(): ConversationState {
+    return Object.freeze({ ...this.state });
+  }
+
+  /**
+   * Cleanup on hook unmount: clear timer, remove audio subscription, close
+   * session, drop all subscribers. Idempotent — second dispose call no-ops.
+   *
+   * Story 12-1 review-round-1 P7: sets `isDisposed = true` so any late
+   * realtime event firing post-dispose short-circuits in `handleEvent`.
+   * Story 12-1 review-round-1 P12: explicit `{reason: "user"}` on session
+   * disconnect so a future RealtimeSession default-arg change doesn't
+   * silently re-open the reconnect chain.
+   */
+  dispose(): void {
+    if (this.isDisposed) return;
+    this.isDisposed = true;
+    if (this.durationTimer) {
+      clearInterval(this.durationTimer);
+      this.durationTimer = null;
+    }
+    this.subscription?.remove();
+    this.subscription = null;
+    this.session?.disconnect({ reason: "user" });
+    this.session = null;
+    void ExpoPlayAudioStream.stopRecording().catch(() => {});
+    void ExpoPlayAudioStream.stopSound().catch(() => {});
+    ExpoPlayAudioStream.destroy();
+    this.subscribers.clear();
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Private state mutation
+  // ────────────────────────────────────────────────────────────────────
+
+  /**
+   * Internal state update + observer fan-out. Subscribers are snapshotted
+   * before iteration so a subscriber unsubscribing during its own callback
+   * doesn't mutate the live Set mid-iteration.
+   *
+   * Story 11-2 review-round-2 P22 lesson: the `isAiSpeakingMirror` field
+   * stays in sync with `state.isAiSpeaking` synchronously here so event-time
+   * reads (barge-in handler) see the up-to-date value regardless of when
+   * React commits the render.
+   *
+   * Story 12-1 review-round-1 P6: re-entrant setState guard. If a
+   * subscriber callback synchronously calls back into the orchestrator
+   * (triggering another setState), the nested updater is queued and
+   * drained AFTER the outer iteration completes — preserves monotonic
+   * observer ordering.
+   */
+  private setState(updater: (s: ConversationState) => ConversationState): void {
+    if (this.isSetStating) {
+      this.pendingUpdates.push(updater);
+      return;
+    }
+    this.isSetStating = true;
+    try {
+      this.state = updater(this.state);
+      this.isAiSpeakingMirror = this.state.isAiSpeaking;
+      const snapshot = Array.from(this.subscribers);
+      for (const cb of snapshot) cb(this.state);
+    } finally {
+      this.isSetStating = false;
+    }
+    // Drain queued updates non-recursively.
+    while (this.pendingUpdates.length > 0) {
+      const next = this.pendingUpdates.shift()!;
+      this.setState(next);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Story 11-1: drain per-turn report_correction buffer
+  // ────────────────────────────────────────────────────────────────────
+
+  /**
+   * Drain the per-turn tool-call buffer. Called by `appendIfNew` (`realtime-transcript.ts`)
+   * when the terminal `response.output_audio_transcript.done` fires for an AI
+   * turn. The `AppendOptions.parseCorrections: (text: string) => Correction[]`
+   * signature is preserved per Story 9-5 contract; the pure helper module is
+   * NOT touched. The `text` parameter is intentionally unused.
+   */
+  private parseCorrections(_text: string): Correction[] {
+    return drainPendingCorrections(this.pendingToolCorrections);
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Audio streaming (ExpoPlayAudioStream subscription)
+  // ────────────────────────────────────────────────────────────────────
+
+  /** Start microphone recording and stream PCM audio to WebSocket */
+  private async startAudioStreaming(): Promise<void> {
+    try {
+      const { granted } = await ExpoPlayAudioStream.requestPermissionsAsync();
+      if (!granted) {
+        this.setState((s) => ({ ...s, error: "Microphone permission denied" }));
+        return;
+      }
+
+      // 24kHz required by OpenAI Realtime GA API for both input and output.
+      // Native audio supports it even though the library's TS types only
+      // enumerate 16000|44100|48000.
+      await ExpoPlayAudioStream.setSoundConfig({
+        sampleRate: 24000 as Parameters<typeof ExpoPlayAudioStream.setSoundConfig>[0]["sampleRate"],
+        playbackMode: "conversation",
+      });
+
+      const { subscription } = await ExpoPlayAudioStream.startRecording({
+        sampleRate: 24000 as Parameters<typeof ExpoPlayAudioStream.startRecording>[0]["sampleRate"],
+        channels: 1,
+        encoding: "pcm_16bit",
+        interval: 250,
+        onAudioStream: async (event) => {
+          // Story 11-2 P24: the `isConnected` gate here is what lets the
+          // subscription stay alive across reconnects — bytes during the
+          // reconnect window are silently dropped without us needing to
+          // tear down + restart the subscription.
+          if (this.session?.isConnected && event.data) {
+            this.session.appendAudio(event.data as string);
+          }
+        },
+      });
+
+      this.subscription = subscription ?? null;
+    } catch (err) {
+      captureError(err, "realtime-voice-audio");
+      const message = err instanceof Error ? err.message : "Microphone error";
+      console.error("[RealtimeVoice] Audio streaming error:", err);
+      this.setState((s) => ({ ...s, error: message }));
+    }
+  }
+
+  /** Stop microphone recording */
+  private async stopAudioStreaming(): Promise<void> {
+    this.subscription?.remove();
+    this.subscription = null;
+    try {
+      await ExpoPlayAudioStream.stopRecording();
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Story 11-1: handle 3 tool-call types
+  // ────────────────────────────────────────────────────────────────────
+
+  /** Handle AI function calls (vocabulary saving, error tracking, corrections) */
+  private async handleFunctionCall(name: string, args: string, callId: string): Promise<void> {
+    const user = this.options.user;
+    try {
+      const parsed = JSON.parse(args);
+
+      if (name === "save_vocabulary" && user) {
+        if (!parsed.french_word || !parsed.english_translation) {
+          this.session?.sendFunctionResult(callId, "Missing required fields.");
+          return;
+        }
+        const { error } = await supabase.from("vocabulary").upsert(
+          {
+            user_id: user.id,
+            french_word: parsed.french_word,
+            english_translation: parsed.english_translation,
+            context_sentence: parsed.context_sentence ?? null,
+            cefr_level: this.options.cefrLevel,
+          },
+          { onConflict: "user_id,french_word" }
+        );
+        if (error) {
+          captureError(error, "save-vocabulary");
+          this.session?.sendFunctionResult(callId, "Failed to save vocabulary.");
+        } else {
+          this.session?.sendFunctionResult(callId, "Vocabulary saved.");
+        }
+      } else if (name === "note_error_pattern" && user) {
+        if (!parsed.error_type || !parsed.description) {
+          this.session?.sendFunctionResult(callId, "Missing required fields.");
+          return;
+        }
+        await trackError(user.id, parsed.error_type, parsed.description);
+        this.session?.sendFunctionResult(callId, "Error pattern noted.");
+      } else if (name === "report_correction") {
+        // Story 11-1 — structured tool-call replaces the legacy
+        // `parseCorrections` regex bridge. Pure helper at
+        // `src/lib/realtime-corrections.ts` owns the safeParse +
+        // result-string contract; the orchestrator owns the buffer +
+        // breadcrumb + sendFunctionResult side effects.
+        //
+        // Review patch P1 (HIGH; widened by P16 in review-round-2): gate
+        // the push on an in-flight AI turn. The widened gate accepts a
+        // tool-call when EITHER `responseInFlight` is true (broad response
+        // window from `speech_stopped` to `response.done`) OR
+        // `inflightItemId` is non-null (set on first audio-transcript
+        // delta). The original `inflightItemId`-only gate over-rejected
+        // legitimate tool-only turns.
+        if (!this.responseInFlight && this.inflightItemId === null) {
+          addBreadcrumb({
+            category: "realtime",
+            level: "warning",
+            message: "report_correction outside in-flight turn dropped",
+            data: { feature: "realtime-report-correction" },
+          });
+          this.session?.sendFunctionResult(
+            callId,
+            "Rejected: outside-turn. Tool-call arrived outside the AI response window; correction not recorded."
+          );
+          return;
+        }
+        // Review patch P9 (MED): cap the buffer at MAX_PENDING_CORRECTIONS.
+        // Review-round-2 P20: rejection message shape standardized.
+        if (this.pendingToolCorrections.length >= MAX_PENDING_CORRECTIONS) {
+          addBreadcrumb({
+            category: "realtime",
+            level: "warning",
+            message: "report_correction buffer cap reached",
+            data: { feature: "realtime-report-correction" },
+          });
+          this.session?.sendFunctionResult(
+            callId,
+            "Rejected: buffer-full. Reached MAX_PENDING_CORRECTIONS for this turn; correction not recorded. Skip further invocations until the next turn."
+          );
+          return;
+        }
+        const callResult = processReportCorrectionCall(parsed);
+        if (callResult.outcome === "invalid") {
+          addBreadcrumb({
+            category: "ai",
+            level: "warning",
+            message: "report_correction args parse failed",
+            data: {
+              feature: "realtime-report-correction",
+              code: callResult.issueCode,
+            },
+          });
+        } else {
+          this.pendingToolCorrections.push(callResult.correction);
+        }
+        this.session?.sendFunctionResult(callId, callResult.resultMessage);
+      } else {
+        this.session?.sendFunctionResult(callId, "Unknown function.");
+      }
+    } catch (err) {
+      captureError(err, "function-call-handler");
+      this.session?.sendFunctionResult(callId, "Function call failed.");
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Story 9-5: append AI-turn transcript entry with dedup
+  // ────────────────────────────────────────────────────────────────────
+
+  /**
+   * Append a single AI-turn transcript entry, applying response-id dedup.
+   * Returns true if the entry was added, false if it was deduped. Story 9-5.
+   */
+  private appendAiTranscriptEntry(text: string, key: string): boolean {
+    const result = appendIfNew(
+      {
+        processed: this.processedResponseItems,
+        transcript: this.transcript,
+        corrections: this.corrections,
+      },
+      key,
+      text,
+      {
+        parseCorrections: this.parseCorrections,
+        onDedup: (k) => {
+          addBreadcrumb({
+            category: "realtime",
+            level: "warning",
+            message: "Duplicate transcript event suppressed",
+            data: { key: k },
+          });
+        },
+      }
+    );
+
+    if (!result.appended) return false;
+
+    this.transcript = result.transcript;
+    this.corrections = result.corrections;
+
+    // Only clear streaming state if the appended turn IS the in-flight one.
+    const isInflight = this.inflightItemId === null || this.inflightItemId === key;
+    if (isInflight) {
+      this.currentAiText = "";
+      this.inflightItemId = null;
+    }
+
+    this.setState((s) => ({
+      ...s,
+      transcript: result.transcript,
+      pendingAiText: isInflight ? "" : s.pendingAiText,
+      allCorrections: result.corrections,
+    }));
+
+    this.options.onTranscriptUpdate?.(result.transcript);
+    return true;
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Realtime event handler (12+ event types)
+  // ────────────────────────────────────────────────────────────────────
+
+  /** Handle incoming Realtime API events */
+  private handleEvent(event: RealtimeEvent): void {
+    // Story 12-1 review-round-1 P7: late events post-dispose short-circuit
+    // so a final WebSocket `close` event after dispose doesn't trigger
+    // setState into a cleared-subscribers Set (silent data loss).
+    if (this.isDisposed) return;
+    switch (event.type) {
+      case "session.created":
+        this.setState((s) => ({ ...s, status: "connected" }));
+        break;
+
+      case "input_audio_buffer.speech_started":
+        this.handleSpeechStarted();
+        break;
+
+      case "input_audio_buffer.speech_stopped":
+        // Story 11-1 review-round-2 P16: the AI's response window opens
+        // here (user finished speaking → AI starts processing).
+        this.responseInFlight = true;
+        this.setState((s) => ({ ...s, isSpeaking: false, isProcessing: true }));
+        break;
+
+      case "response.output_audio.delta": {
+        // Stream each audio chunk immediately for low-latency playback.
+        const turnId = `turn_${this.turnIdCounter}`;
+        void ExpoPlayAudioStream.playSound(event.delta, turnId, "pcm_s16le");
+        // Story 11-2 barge-in: capture AI-speaking start time on first delta.
+        if (this.aiSpeakingStartedAtMs === null) {
+          this.aiSpeakingStartedAtMs = Date.now();
+        }
+        // Story 11-2 review-round-2 P22: synchronous mirror update.
+        this.isAiSpeakingMirror = true;
+        this.setState((s) => ({ ...s, isAiSpeaking: true, isProcessing: false }));
+        break;
+      }
+
+      case "response.output_audio.done":
+        this.turnIdCounter++;
+        // Story 11-2: reset AI-speaking start time on natural turn end.
+        this.aiSpeakingStartedAtMs = null;
+        // Story 11-2 review-round-2 P22: synchronous mirror update.
+        this.isAiSpeakingMirror = false;
+        this.setState((s) => ({ ...s, isAiSpeaking: false }));
+        break;
+
+      // Defensive: with output_modalities=["audio"], this event should not fire.
+      case "response.output_text.delta": {
+        const result = acceptDelta(
+          { inflightItemId: this.inflightItemId, pendingText: this.currentAiText },
+          event.item_id ?? null,
+          event.delta
+        );
+        if (result.accepted) {
+          this.inflightItemId = result.state.inflightItemId;
+          this.currentAiText = result.state.pendingText;
+          this.setState((s) => ({ ...s, pendingAiText: this.currentAiText }));
+        }
+        break;
+      }
+
+      case "response.output_text.done": {
+        const key = resolveTranscriptKey(event, event.text);
+        this.appendAiTranscriptEntry(event.text, key);
+        break;
+      }
+
+      // In voice mode, AI transcript arrives via audio_transcript events.
+      case "response.output_audio_transcript.delta": {
+        const result = acceptDelta(
+          { inflightItemId: this.inflightItemId, pendingText: this.currentAiText },
+          event.item_id ?? null,
+          event.delta
+        );
+        if (result.accepted) {
+          this.inflightItemId = result.state.inflightItemId;
+          this.currentAiText = result.state.pendingText;
+          this.setState((s) => ({ ...s, pendingAiText: this.currentAiText }));
+        }
+        break;
+      }
+
+      case "response.output_audio_transcript.done": {
+        const key = resolveTranscriptKey(event, event.transcript);
+        this.appendAiTranscriptEntry(event.transcript, key);
+        break;
+      }
+
+      case "conversation.item.created":
+        this.handleItemCreated(event);
+        break;
+
+      case "response.function_call_arguments.done":
+        void this.handleFunctionCall(event.name, event.arguments, event.call_id);
+        break;
+
+      case "response.done":
+        this.handleResponseDone();
+        break;
+
+      case "error":
+        this.handleErrorEvent(event);
+        break;
+
+      case "realtime.reconnecting":
+        this.handleReconnecting();
+        break;
+
+      case "realtime.reconnected":
+        // Story 11-2: WebSocket re-established + configureSession() replayed.
+        // Audio subscription was never stopped (P24); it auto-resumes via the
+        // `isConnected` gate inside `onAudioStream`.
+        this.setState((s) => ({ ...s, status: "connected", error: null }));
+        break;
+    }
+  }
+
+  /**
+   * Story 11-2 barge-in: if the user starts speaking WHILE the AI is already
+   * playing audio (interrupted mid-sentence), (1) stop local playback,
+   * (2) send response.cancel, (3) send conversation.item.truncate to
+   * synchronize server-side transcript with what was actually played.
+   */
+  private handleSpeechStarted(): void {
+    const directive = computeBargeInDirective(
+      {
+        isAiSpeaking: this.isAiSpeakingMirror,
+        inflightItemId: this.inflightItemId,
+        aiSpeakingStartedAtMs: this.aiSpeakingStartedAtMs,
+      },
+      Date.now()
+    );
+    if (directive.shouldCancelResponse) {
+      void ExpoPlayAudioStream.stopSound();
+      this.session?.sendRaw({ type: "response.cancel" });
+      if (directive.shouldTruncate && directive.itemId !== null && directive.audioEndMs !== null) {
+        this.session?.sendRaw({
+          type: "conversation.item.truncate",
+          item_id: directive.itemId,
+          content_index: 0,
+          audio_end_ms: directive.audioEndMs,
+        });
+        addBreadcrumb({
+          category: "realtime",
+          level: "info",
+          message: "Barge-in: response cancelled + transcript truncated",
+          data: { feature: "realtime-barge-in" },
+        });
+      } else {
+        addBreadcrumb({
+          category: "realtime",
+          level: "warning",
+          message: "Barge-in: response cancelled without truncate (missing item_id or start time)",
+          data: { feature: "realtime-barge-in" },
+        });
+      }
+      // Reset AI-speaking refs since the response is over.
+      this.aiSpeakingStartedAtMs = null;
+      this.inflightItemId = null;
+      // Story 11-2 review-round-2 P22: synchronous mirror update.
+      this.isAiSpeakingMirror = false;
+      // Story 11-2 review-round-2 P30: clear streaming text accumulator so
+      // next turn doesn't accidentally prefix with stale unplayed text via
+      // `acceptDelta`'s adopt path.
+      this.currentAiText = "";
+      this.setState((s) => ({
+        ...s,
+        isSpeaking: true,
+        isAiSpeaking: false,
+        pendingAiText: "",
+      }));
+    } else {
+      // No AI response to interrupt — existing pre-11-2 behavior.
+      this.setState((s) => ({ ...s, isSpeaking: true }));
+    }
+  }
+
+  private handleItemCreated(event: RealtimeEvent & { type: "conversation.item.created" }): void {
+    const item = event.item as {
+      role?: string;
+      content?: { type: string; transcript?: string }[];
+    };
+    if (item?.role === "user" && item?.content) {
+      const textContent = item.content.find(
+        (c: { type: string; transcript?: string }) => c.type === "input_audio" && c.transcript
+      );
+      // Story 12-1 review-round-1 P9: reject whitespace-only transcripts.
+      // `" "` is truthy and would have created an entry; the `.trim().length`
+      // check filters it out.
+      if (textContent?.transcript && textContent.transcript.trim().length > 0) {
+        const entry: TranscriptEntry = {
+          id: `user_${this.userTurnCounter++}`,
+          role: "user",
+          text: textContent.transcript,
+          timestamp: Date.now(),
+        };
+        this.transcript = [...this.transcript, entry];
+        this.setState((s) => ({ ...s, transcript: this.transcript }));
+        this.options.onTranscriptUpdate?.(this.transcript);
+      }
+    }
+  }
+
+  /**
+   * Story 11-1 P2/P3 + review-round-2 P18: drain orphan tool corrections
+   * (corrections accumulated mid-turn but not yet promoted to
+   * `correctionsRef` via `appendIfNew`) into the conversation list on
+   * `response.done` so the post-conversation pipeline sees them.
+   */
+  private handleResponseDone(): void {
+    const merged = mergeOrphanCorrections(this.corrections, this.pendingToolCorrections);
+    if (merged.shouldBreadcrumb) {
+      this.corrections = merged.conversation;
+      // Review-round-2 P17: snapshot spread so React reads stable array.
+      this.setState((s) => ({ ...s, allCorrections: [...this.corrections] }));
+      addBreadcrumb({
+        category: "realtime",
+        level: "warning",
+        message: "Orphan tool corrections drained at response.done",
+        data: { category: "report_correction" },
+      });
+    }
+    // Drop in-flight delta accumulator so cancelled/tool-only turn doesn't
+    // leak its pending text into the next turn.
+    this.inflightItemId = null;
+    this.currentAiText = "";
+    // Review-round-2 P16: close response window (after orphan-drain).
+    this.responseInFlight = false;
+    // Story 11-2: reset AI-speaking start time.
+    this.aiSpeakingStartedAtMs = null;
+    this.setState((s) => ({ ...s, isProcessing: false, pendingAiText: "" }));
+  }
+
+  private handleErrorEvent(event: RealtimeEvent & { type: "error" }): void {
+    // Review-round-2 P28: suppress known-benign barge-in race codes.
+    if (
+      event.error.code === "no_response_to_cancel" ||
+      event.error.code === "invalid_truncate_audio" ||
+      event.error.code === "item_not_found"
+    ) {
+      addBreadcrumb({
+        category: "realtime",
+        level: "info",
+        message: "Benign barge-in race suppressed",
+        data: { feature: "realtime-barge-in", code: event.error.code },
+      });
+      return;
+    }
+    captureError(event.error, "realtime-voice-error");
+    this.inflightItemId = null;
+    this.currentAiText = "";
+    // Review-round-2 P16: close response window on error.
+    this.responseInFlight = false;
+    // Story 11-2: reset AI-speaking start time on error.
+    this.aiSpeakingStartedAtMs = null;
+    // Story 11-1 P3: drain orphan corrections BEFORE end() so the persisted
+    // record is complete on connection_lost.
+    const merged = mergeOrphanCorrections(this.corrections, this.pendingToolCorrections);
+    if (merged.shouldBreadcrumb) {
+      this.corrections = merged.conversation;
+      this.setState((s) => ({ ...s, allCorrections: [...this.corrections] }));
+      addBreadcrumb({
+        category: "realtime",
+        level: "warning",
+        message: "Orphan tool corrections drained at error",
+        data: { category: "report_correction" },
+      });
+    }
+    if (event.error.code === "connection_lost") {
+      this.setState((s) => ({
+        ...s,
+        status: "disconnected",
+        error: event.error.message,
+        isProcessing: false,
+        isSpeaking: false,
+        isAiSpeaking: false,
+        pendingAiText: "",
+      }));
+      // Trigger full cleanup + persist.
+      this.end();
+    } else {
+      this.setState((s) => ({
+        ...s,
+        status: "error",
+        error: event.error.message,
+        isProcessing: false,
+        pendingAiText: "",
+      }));
+    }
+  }
+
+  private handleReconnecting(): void {
+    // Story 11-2: drain Story 11-1 pending tool buffer into corrections BEFORE
+    // the cross-session boundary so any in-flight tool-call data from before
+    // the disconnect is preserved.
+    const merged = mergeOrphanCorrections(this.corrections, this.pendingToolCorrections);
+    if (merged.shouldBreadcrumb) {
+      this.corrections = merged.conversation;
+      this.setState((s) => ({ ...s, allCorrections: [...this.corrections] }));
+      addBreadcrumb({
+        category: "realtime",
+        level: "warning",
+        message: "Orphan tool corrections drained at reconnect-start",
+        data: { category: "report_correction" },
+      });
+    }
+    // Reset per-turn state — new WebSocket session has no in-flight response.
+    // transcript + corrections + duration + conversationId are preserved.
+    this.inflightItemId = null;
+    this.responseInFlight = false;
+    this.currentAiText = "";
+    this.aiSpeakingStartedAtMs = null;
+    // Review-round-2 P22: synchronous mirror update.
+    this.isAiSpeakingMirror = false;
+    this.setState((s) => ({
+      ...s,
+      status: "reconnecting",
+      isAiSpeaking: false,
+      isProcessing: false,
+      pendingAiText: "",
+    }));
+    // Review-round-2 P24: do NOT stop audio subscription on reconnect.
+    // The `isConnected` gate inside `onAudioStream` drops bytes during the
+    // reconnect window automatically; the subscription resumes on
+    // `realtime.reconnected`.
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Conversation record creation
+  // ────────────────────────────────────────────────────────────────────
+
+  private async createConversationRecord(): Promise<string | null> {
+    const user = this.options.user;
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from("conversations")
+      .insert({
+        user_id: user.id,
+        topic: this.options.topic,
+        scenario_description: this.options.topicDescription,
+        cefr_level: this.options.cefrLevel,
+        mode: this.options.mode,
+        status: "active",
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      if (error) captureError(error, "create-conversation-record");
+      return null;
+    }
+    return data.id;
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // persistConversation — Phase A (parallel) + Phase B (sequential)
+  // Story 12-1: replaces the pre-12-1 8-step sequential chain
+  // ────────────────────────────────────────────────────────────────────
+
+  private async persistConversation(duration: number): Promise<void> {
+    const user = this.options.user;
+    if (!user || !this.conversationId) {
+      if (user && !this.conversationId) {
+        captureError(
+          new Error("Conversation ID is null — data will not be saved"),
+          "persist-conversation"
+        );
+      }
+      return;
+    }
+
+    const conversationId = this.conversationId;
+    const cefrLevel = this.options.cefrLevel;
+    const minutesPracticed = Math.ceil(duration / 60);
+
+    // Offline branch: queue critical data + bail (pre-12-1 behavior preserved).
+    const online = await isOnline();
+    if (!online) {
+      try {
+        await enqueueWrite({
+          table: "conversations",
+          operation: "update",
+          payload: {
+            duration_seconds: duration,
+            status: "completed",
+            completed_at: new Date().toISOString(),
+          },
+          filter: { column: "id", value: conversationId },
+        });
+        const messages = this.transcript.map((entry) => ({
+          conversation_id: conversationId,
+          role: entry.role,
+          content: entry.text,
+          corrections: entry.corrections ?? null,
+        }));
+        for (const msg of messages) {
+          await enqueueWrite({
+            table: "conversation_messages",
+            operation: "insert",
+            payload: msg as unknown as Record<string, unknown>,
+          });
+        }
+      } catch (queueErr) {
+        captureError(queueErr, "persist-conversation-offline-queue");
+      }
+      return;
+    }
+
+    // ── Online: Phase A (6 independent slots in parallel) ────────────
+    const transcript = this.transcript.map((e) => `${e.role}: ${e.text}`).join("\n");
+    const hasCorrections = this.corrections.length > 0;
+    const hasLongTranscript = transcript.length > 50;
+    const totalEntries = this.transcript.filter((e) => e.role === "user").length;
+    const correctedEntries = this.corrections.length;
+    const speakingScore = computeSpeakingScore(totalEntries, correctedEntries);
+    const messages = this.transcript.map((entry) => ({
+      conversation_id: conversationId,
+      role: entry.role,
+      content: entry.text,
+      corrections: entry.corrections ?? null,
+    }));
+
+    // Story 11-5 P5: short-transcript fallback persists corrections directly.
+    const analysisSlot = (): Promise<unknown> => {
+      if (hasLongTranscript) {
+        return extractPostConversationAnalysis({
+          transcript,
+          corrections: this.corrections,
+          cefrLevel,
+        })
+          .then((analysis) =>
+            persistPostConversationAnalysis({
+              userId: user.id,
+              conversationId,
+              analysis,
+            })
+          )
+          .then((result) => {
+            // Story 12-1 review-round-1 P10: drop the `as ConversationFeedback`
+            // cast. `persistPostConversationAnalysis` already returns the
+            // typed shape `{ feedback: ConversationFeedback | undefined }`
+            // (Story 11-5); rely on the source-of-truth type instead of a
+            // call-site assertion that could silently lie post-refactor.
+            // Defensive object check defends against a null-feedback shape
+            // that a future transform might emit.
+            if (result.feedback && typeof result.feedback === "object") {
+              const fb: ConversationFeedback = result.feedback;
+              this.setState((s) => ({ ...s, feedback: fb }));
+            }
+            return result;
+          });
+      }
+      if (hasCorrections) {
+        const patterns = this.corrections.map((c) => ({
+          original: c.original,
+          corrected: c.corrected,
+          pattern: c.explanation,
+          category: c.category,
+        }));
+        return persistErrorPatterns(user.id, patterns);
+      }
+      return Promise.resolve();
+    };
+
+    const phaseAResults = await Promise.allSettled([
+      // Slot 0: conversation completion update
+      supabase
+        .from("conversations")
+        .update({
+          duration_seconds: duration,
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", conversationId),
+      // Slot 1: transcript messages batch insert
+      messages.length > 0
+        ? supabase.from("conversation_messages").insert(messages)
+        : Promise.resolve({ error: null }),
+      // Slot 2: AI analysis + persist (Story 11-5)
+      analysisSlot(),
+      // Slot 3: skill progress
+      updateSkillProgress(user.id, "speaking", cefrLevel, speakingScore, minutesPracticed),
+      // Slot 4: daily activity
+      incrementDailyActivity(user.id, { minutes: minutesPracticed, conversations: 1 }),
+      // Slot 5: streak
+      updateStreak(user.id),
+    ]);
+
+    // Per-slot failure isolation (Story 11-5 P3 pattern: also inspect
+    // `value.error` on fulfilled supabase slots).
+    for (let i = 0; i < phaseAResults.length; i++) {
+      const r = phaseAResults[i];
+      const slot = PHASE_A_SLOT_NAMES[i];
+      if (r.status === "rejected") {
+        captureError(
+          r.reason instanceof Error ? r.reason : new Error(String(r.reason)),
+          `persist-conversation-phase-a-${slot}`
+        );
+        continue;
+      }
+      // Supabase v2 query builders resolve with { data, error } even on failure.
+      const v = r.value as { error?: { message?: string } | null } | undefined;
+      if (v && typeof v === "object" && "error" in v && v.error) {
+        captureError(
+          new Error(v.error.message ?? `phase-a-${slot} supabase error`),
+          `persist-conversation-phase-a-${slot}`
+        );
+      }
+    }
+
+    // ── Phase B: checkCefrPromotion (depends on Phase A's skill-progress UPDATE)
+    try {
+      await checkCefrPromotion(user.id);
+    } catch (err) {
+      captureError(err, "persist-conversation-cefr-promotion");
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Public API: start / sendText / end
+  // ────────────────────────────────────────────────────────────────────
+
+  /** Start the voice conversation */
+  async start(): Promise<void> {
+    // Review-round-2 P25: guard against concurrent invocations AND against
+    // `start()` being called while a reconnect is in progress.
+    if (
+      this.state.status === "connecting" ||
+      this.state.status === "connected" ||
+      this.state.status === "reconnecting"
+    ) {
+      return;
+    }
+
+    // Reset ALL state so retries start clean.
+    this.transcript = [];
+    this.corrections = [];
+    this.currentAiText = "";
+    this.durationSeconds = 0;
+    this.startTimeMs = 0;
+    this.conversationId = null;
+    this.isEnding = false;
+    this.processedResponseItems = new Set();
+    this.inflightItemId = null;
+    this.userTurnCounter = 0;
+    this.pendingToolCorrections = [];
+    this.responseInFlight = false;
+    this.aiSpeakingStartedAtMs = null;
+    // Story 12-1 review-round-1 P1: reset the synchronous mirror so a
+    // previous conversation's stuck `true` value (e.g., barge-in path that
+    // bypassed `handleResponseDone`) doesn't trigger a spurious barge-in
+    // on this conversation's first `speech_started`.
+    this.isAiSpeakingMirror = false;
+
+    // Story 12-1 review-round-1 P13: spread INITIAL_STATE explicitly so a
+    // future field added to ConversationState propagates cleanly. Pre-patch
+    // the literal omitted any new field and silently kept the old value.
+    this.setState(() => ({ ...INITIAL_STATE, status: "connecting" }));
+
+    try {
+      const convoId = await this.createConversationRecord();
+      if (!convoId) {
+        throw new Error("Failed to create conversation record");
+      }
+      this.conversationId = convoId;
+      this.setState((prev) => ({ ...prev, conversationId: convoId }));
+
+      const systemPrompt = buildConversationPrompt({
+        cefrLevel: this.options.cefrLevel,
+        mode: this.options.mode,
+        topic: this.options.topic,
+        topicDescription: this.options.topicDescription,
+        memories: this.options.memories,
+        errorPatterns: this.options.errorPatterns,
+      });
+
+      const config: RealtimeConfig = {
+        systemPrompt,
+        voice: this.options.voice ?? "coral",
+        turnDetection: {
+          type: "server_vad",
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 600,
+        },
+        tools: [
+          {
+            type: "function",
+            name: "save_vocabulary",
+            description: "Save a new vocabulary word the user learned",
+            parameters: {
+              type: "object",
+              properties: {
+                french_word: { type: "string", description: "The French word" },
+                english_translation: { type: "string", description: "English translation" },
+                context_sentence: { type: "string", description: "Example sentence in French" },
+              },
+              required: ["french_word", "english_translation"],
+            },
+          },
+          {
+            type: "function",
+            name: "note_error_pattern",
+            description: "Track a recurring error pattern the user is making",
+            parameters: {
+              type: "object",
+              properties: {
+                error_type: {
+                  type: "string",
+                  enum: ["grammar", "pronunciation", "vocabulary", "register"],
+                },
+                description: { type: "string", description: "Description of the error pattern" },
+              },
+              required: ["error_type", "description"],
+            },
+          },
+          {
+            type: "function",
+            name: "report_correction",
+            description:
+              "Report a French-language correction the user needs. Invoke this whenever the user's French contains a grammar / pronunciation / vocabulary / register error worth correcting. Do NOT emit corrections as text in your audio response — invoke this function instead. The function is silent (your audio response is unaffected). Multiple invocations per turn are allowed (one per distinct error).",
+            parameters: {
+              type: "object",
+              properties: {
+                original: {
+                  type: "string",
+                  description: "The exact French the user said, verbatim (no quotes around it).",
+                },
+                corrected: {
+                  type: "string",
+                  description: "The correct French form.",
+                },
+                explanation: {
+                  type: "string",
+                  description:
+                    "Brief plain-French explanation of why the correction applies. Avoid nested parentheses. 1-2 sentences.",
+                },
+                category: {
+                  type: "string",
+                  enum: ["grammar", "pronunciation", "vocabulary", "register"],
+                  description: "The error category. Pick the single best fit.",
+                },
+              },
+              required: ["original", "corrected", "explanation", "category"],
+            },
+          },
+        ],
+      };
+
+      const session = new RealtimeSession(config);
+      session.on(this.handleEvent);
+      await session.connect();
+      this.session = session;
+
+      await this.startAudioStreaming();
+
+      // Start duration timer using Date.now() to prevent drift.
+      this.startTimeMs = Date.now();
+      this.durationTimer = setInterval(() => {
+        this.durationSeconds = Math.floor((Date.now() - this.startTimeMs) / 1000);
+        this.setState((s) => ({ ...s, durationSeconds: this.durationSeconds }));
+      }, 1000);
+
+      // AI starts the conversation.
+      session.sendText(
+        `Begin the conversation by greeting the user in French and introducing the topic: "${this.options.topic}". The user is at ${this.options.cefrLevel} level.`
+      );
+    } catch (err) {
+      captureError(err, "realtime-voice-connection");
+      const message = err instanceof Error ? err.message : "Connection failed";
+      this.setState((s) => ({ ...s, status: "error", error: message }));
+    }
+  }
+
+  /** Send a text message */
+  sendText(text: string): void {
+    if (!this.session?.isConnected) return;
+
+    const entry: TranscriptEntry = {
+      id: `user_${this.userTurnCounter++}`,
+      role: "user",
+      text,
+      timestamp: Date.now(),
+    };
+
+    this.transcript = [...this.transcript, entry];
+    this.setState((s) => ({ ...s, transcript: this.transcript }));
+    this.options.onTranscriptUpdate?.(this.transcript);
+
+    this.session.sendText(text);
+  }
+
+  /** End the conversation */
+  end(): void {
+    // Guard against double invocation.
+    if (this.isEnding) return;
+    this.isEnding = true;
+
+    if (this.durationTimer) {
+      clearInterval(this.durationTimer);
+      this.durationTimer = null;
+    }
+
+    void this.stopAudioStreaming();
+    // Story 12-1 review-round-1 P12: explicit `{reason: "user"}` so a
+    // future RealtimeSession default-arg change doesn't silently re-open
+    // the reconnect chain.
+    this.session?.disconnect({ reason: "user" });
+    this.session = null;
+    void ExpoPlayAudioStream.stopSound();
+
+    const duration = this.durationSeconds;
+    this.setState((s) => ({
+      ...s,
+      status: s.status === "disconnected" ? "disconnected" : "ended",
+      isSpeaking: false,
+      isAiSpeaking: false,
+      isProcessing: false,
+    }));
+
+    this.persistConversation(duration).catch((err) =>
+      captureError(err, "persist-conversation-end")
+    );
+    // Story 12-1 review-round-1 P11: wrap caller's onConversationEnd in
+    // try/catch so a throwing user callback doesn't leak out of `end()`
+    // (which would leave `isEnding=true` permanently AND skip any further
+    // cleanup callers might expect).
+    try {
+      this.options.onConversationEnd?.(this.transcript, this.corrections);
+    } catch (err) {
+      captureError(err, "on-conversation-end-callback");
+    }
+  }
+}
