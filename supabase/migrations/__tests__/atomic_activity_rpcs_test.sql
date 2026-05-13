@@ -8,14 +8,32 @@
 -- before pushing to remote. Runs inside a transaction that ROLLBACKs at the
 -- end so the test data doesn't pollute the database.
 --
--- Closes Epic 12 AC at shippable-roadmap.md line 219:
--- "Concurrent phone+web session test does not lose any increments
---  (verified via 100 concurrent updates)."
+-- Verifies the **deterministic-math contract** of the 4 RPCs that closes
+-- audit P1-18 (read-then-write races in src/lib/activity.ts).
 --
--- Pattern: simulate concurrency via 100 sequential calls inside a single
--- transaction — Postgres serializes them at the row lock; the cumulative
--- result MUST match the contract. Real concurrent connections would behave
--- the same way (the row lock is the primitive being verified).
+-- IMPORTANT (Review-round-1 P3): the "100-iteration" assertions below
+-- (tests #2, #5, #7) run 100 calls **sequentially inside a single
+-- transaction on one connection**. They prove:
+--   (a) the CASE short-circuit semantics for the streak helper,
+--   (b) the running-average math converges correctly,
+--   (c) the ON CONFLICT DO UPDATE cumulative-add is non-lossy,
+-- which are the load-bearing math contracts.
+--
+-- They do NOT exercise actual cross-connection row-level locking under
+-- concurrent backends. The row lock IS the primitive that closes P1-18
+-- in production, but verifying it requires multiple `psql` sessions or
+-- `pgbench` driving real concurrent transactions. Epic 15.3 owns that
+-- CI-wired concurrency test. The Epic 12 AC at shippable-roadmap.md
+-- line 219 ("verified via 100 concurrent updates") is therefore satisfied
+-- ARCHITECTURALLY by `INSERT ... ON CONFLICT DO UPDATE` (Postgres lock
+-- semantics) + DETERMINISTICALLY by this test (math contract), but not
+-- yet by an end-to-end CI test against real concurrent connections.
+--
+-- For manual concurrency verification, run:
+--   pgbench -c 100 -j 100 -t 1 -f - <<EOF
+--     SELECT update_streak_atomic(<uuid>::uuid, current_date, current_date - 1);
+--   EOF
+-- and verify final streak_days = 1 (today-already-counted short-circuit).
 
 BEGIN;
 
@@ -36,6 +54,23 @@ END $$;
 
 -- Set JWT auth context to user-1 for the rest of the tests.
 SET LOCAL request.jwt.claims = '{"sub": "11111111-1111-1111-1111-111111111111"}';
+
+-- Review-round-1 P16: sanity-check that the JWT setting actually populates
+-- auth.uid(). If it returns NULL, the cross-user defense test (#10) would
+-- pass VACUOUSLY: `NULL IS DISTINCT FROM '22222222-...'` evaluates to TRUE,
+-- so the RAISE EXCEPTION fires regardless of whether the JWT context was
+-- properly installed. Failing loudly here surfaces a test-infrastructure
+-- regression early instead of letting test #10 mask it.
+DO $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'TEST INFRA FAIL: auth.uid() returned NULL after SET LOCAL request.jwt.claims — JWT key may have changed in a future supabase release';
+  END IF;
+  IF auth.uid() <> '11111111-1111-1111-1111-111111111111'::uuid THEN
+    RAISE EXCEPTION 'TEST INFRA FAIL: auth.uid() returned % but expected user-1', auth.uid();
+  END IF;
+  RAISE NOTICE 'TEST INFRA OK: auth.uid() = % (user-1 JWT context installed)', auth.uid();
+END $$;
 
 -- ─── 1. update_streak_atomic happy path: first call (fresh) ──────────────────
 DO $$
@@ -309,30 +344,32 @@ END $$;
 
 -- ─── 11. EXECUTE grant is restricted (authenticated only; PUBLIC revoked) ────
 -- Story 9-9 hardening: REVOKE EXECUTE FROM PUBLIC + GRANT EXECUTE TO authenticated.
--- Verify the grant exists.
+-- Review-round-1 P9: assert ALL 4 functions have the grant (not just ≥ 1).
+-- Pre-patch used `EXISTS` which returns TRUE when any single row matches;
+-- 3 of 4 functions could lose their GRANT and the test would still pass.
 DO $$
 DECLARE
-  v_has_grant boolean;
+  v_granted_count integer;
 BEGIN
-  SELECT EXISTS (
-    SELECT 1
-    FROM pg_proc p
-      JOIN pg_namespace n ON p.pronamespace = n.oid
-      LEFT JOIN LATERAL aclexplode(p.proacl) acl ON true
-    WHERE n.nspname = 'public'
-      AND p.proname IN (
-        'update_streak_atomic',
-        'update_skill_progress_atomic',
-        'increment_daily_activity_atomic',
-        'promote_cefr_level_atomic'
-      )
-      AND acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
-      AND acl.privilege_type = 'EXECUTE'
-  ) INTO v_has_grant;
-  IF NOT v_has_grant THEN
-    RAISE EXCEPTION 'TEST FAIL #11: at least one RPC missing GRANT EXECUTE TO authenticated';
+  SELECT COUNT(DISTINCT p.proname)
+  INTO v_granted_count
+  FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    LEFT JOIN LATERAL aclexplode(p.proacl) acl ON true
+  WHERE n.nspname = 'public'
+    AND p.proname IN (
+      'update_streak_atomic',
+      'update_skill_progress_atomic',
+      'increment_daily_activity_atomic',
+      'promote_cefr_level_atomic'
+    )
+    AND acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated')
+    AND acl.privilege_type = 'EXECUTE';
+
+  IF v_granted_count <> 4 THEN
+    RAISE EXCEPTION 'TEST FAIL #11: expected GRANT EXECUTE TO authenticated on all 4 RPCs, got % distinct grants', v_granted_count;
   END IF;
-  RAISE NOTICE 'TEST PASS #11: GRANT EXECUTE TO authenticated present on RPCs';
+  RAISE NOTICE 'TEST PASS #11: GRANT EXECUTE TO authenticated present on all 4 RPCs';
 END $$;
 
 ROLLBACK;

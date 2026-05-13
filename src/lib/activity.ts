@@ -117,7 +117,10 @@ export async function updateSkillProgress(
     });
 
     if (error) {
-      captureError(error, "update-skill-progress", { skill, score, cefrLevel });
+      // Review-round-1 P12: pass `incomingScore` (clamped) not the raw
+      // `score` — the RPC saw the clamped value, so Sentry should mirror
+      // that for diagnostic fidelity on clamp-related errors.
+      captureError(error, "update-skill-progress", { skill, score: incomingScore, cefrLevel });
     }
   } catch (err) {
     captureError(err, "update-skill-progress", { skill, cefrLevel });
@@ -328,10 +331,11 @@ export async function checkCefrPromotion(userId: string): Promise<void> {
       const nextLevel = CEFR_ORDER[currentIdx + 1];
       // Story 12-3: compare-and-swap UPDATE via RPC. Returns TRUE if the
       // swap landed, FALSE if a concurrent worker already promoted (in
-      // which case we silently return — the next promotion check will
-      // re-evaluate from the post-promotion state). Only true RPC errors
-      // (Postgres down, RLS denial, schema drift) route through captureError.
-      const { error } = await supabase.rpc("promote_cefr_level_atomic", {
+      // which case we breadcrumb but stay silent in error tier — the next
+      // promotion check will re-evaluate from the post-promotion state).
+      // Only true RPC errors (Postgres down, RLS denial, schema drift,
+      // post-12-3 missing-profile-row from P2) route through captureError.
+      const { data: swapped, error } = await supabase.rpc("promote_cefr_level_atomic", {
         p_user_id: userId,
         p_expected_current_level: currentLevel,
         p_next_level: nextLevel,
@@ -339,8 +343,22 @@ export async function checkCefrPromotion(userId: string): Promise<void> {
 
       if (error) {
         captureError(error, "cefr-promotion", { fromLevel: currentLevel, toLevel: nextLevel });
+      } else if (swapped === false) {
+        // Review-round-1 P6: distinguish a real successful promotion from
+        // a CAS-mismatch (concurrent worker already promoted). Pre-patch
+        // both cases fell through to `lastSkippedBreadcrumb.delete(...)`,
+        // misclassifying the race as a successful promotion in observability.
+        // Emit an info-level breadcrumb so operators can see the race
+        // frequency. Do NOT clear the throttle — the user did not actually
+        // advance via this worker.
+        addBreadcrumb({
+          category: "cefr-promotion",
+          level: "info",
+          message: "cefr-promotion-raced (concurrent worker won the CAS)",
+          data: { fromLevel: currentLevel, toLevel: nextLevel },
+        });
       } else {
-        lastSkippedBreadcrumb.delete(userId); // promotion attempt resolved — reset throttle.
+        lastSkippedBreadcrumb.delete(userId); // real promotion fired — reset throttle.
       }
       return;
     }

@@ -254,30 +254,56 @@ describe("Story 12-3 — checkCefrPromotion compare-and-swap rpc contract", () =
     });
   }
 
-  it("Case 12: dispatches `supabase.rpc('promote_cefr_level_atomic', {p_user_id, p_expected_current_level, p_next_level})` on a passing promotion decision", async () => {
-    // A passing 5-skill set at A1 with ≥3 passing + ≥10 exercises → promote A1 → A2
-    setupSelectMocks("A1", [
-      { skill: "listening", score: 90, exercises_completed: 4 },
-      { skill: "reading", score: 90, exercises_completed: 3 },
-      { skill: "speaking", score: 88, exercises_completed: 2 },
-      { skill: "writing", score: 50, exercises_completed: 1 },
-      { skill: "grammar", score: 60, exercises_completed: 1 },
-    ]);
-    mockRpc.mockResolvedValueOnce({ data: true, error: null });
+  /**
+   * Review-round-1 P14: each `checkCefrPromotion` test uses a unique userId
+   * so the module-level `lastSkippedBreadcrumb` Map (in activity.ts) can't
+   * dedup-suppress this test's breadcrumb because of a previous test's
+   * fingerprint (`${currentLevel}:${reason}`). Jest's module-isolation
+   * makes this safe today, but unique IDs are belt-and-braces against
+   * future test additions in the same file.
+   */
 
-    await checkCefrPromotion("user-A");
+  // Review-round-1 P15: table-driven adjacency coverage replaces the single
+  // A1→A2 happy-path case. Catches a future refactor that hardcodes
+  // `p_next_level: "A2"` instead of computing it from CEFR_ORDER[idx + 1].
+  // Covers all 5 CEFR adjacencies. Note that for the higher levels (C1→C2)
+  // we use a passing 5-skill set with high scores — `evaluatePromotion`
+  // doesn't gate on level, just on per-skill passing counts.
+  const PASSING_5_SKILLS = [
+    { skill: "listening", score: 90, exercises_completed: 4 },
+    { skill: "reading", score: 90, exercises_completed: 3 },
+    { skill: "speaking", score: 88, exercises_completed: 2 },
+    { skill: "writing", score: 50, exercises_completed: 1 },
+    { skill: "grammar", score: 60, exercises_completed: 1 },
+  ];
 
-    expect(mockRpc).toHaveBeenCalledTimes(1);
-    const [fnName, args] = mockRpc.mock.calls[0];
-    expect(fnName).toBe("promote_cefr_level_atomic");
-    expect(args).toEqual({
-      p_user_id: "user-A",
-      p_expected_current_level: "A1",
-      p_next_level: "A2",
-    });
-  });
+  it.each([
+    ["A1", "A2"],
+    ["A2", "B1"],
+    ["B1", "B2"],
+    ["B2", "C1"],
+    ["C1", "C2"],
+  ])(
+    "Case 12: promotion %s → %s dispatches `promote_cefr_level_atomic` with computed p_next_level (table-driven adjacency)",
+    async (currentLevel, expectedNextLevel) => {
+      setupSelectMocks(currentLevel, PASSING_5_SKILLS);
+      mockRpc.mockResolvedValueOnce({ data: true, error: null });
+      const userId = `user-case-12-${currentLevel}`;
 
-  it("Case 13: rpc returning FALSE (concurrent worker promoted first) is silent — no captureError", async () => {
+      await checkCefrPromotion(userId);
+
+      expect(mockRpc).toHaveBeenCalledTimes(1);
+      const [fnName, args] = mockRpc.mock.calls[0];
+      expect(fnName).toBe("promote_cefr_level_atomic");
+      expect(args).toMatchObject({
+        p_user_id: userId,
+        p_expected_current_level: currentLevel,
+        p_next_level: expectedNextLevel,
+      });
+    }
+  );
+
+  it("Case 13: rpc returning FALSE (CAS-mismatch) emits info breadcrumb + does NOT route through captureError (Review-round-1 P6)", async () => {
     setupSelectMocks("B1", [
       { skill: "listening", score: 90, exercises_completed: 4 },
       { skill: "reading", score: 90, exercises_completed: 3 },
@@ -288,11 +314,20 @@ describe("Story 12-3 — checkCefrPromotion compare-and-swap rpc contract", () =
     // CAS mismatch: data=false, no error — concurrent worker promoted first
     mockRpc.mockResolvedValueOnce({ data: false, error: null });
 
-    await checkCefrPromotion("user-A");
+    await checkCefrPromotion("user-case-13");
 
     expect(mockRpc).toHaveBeenCalledTimes(1);
-    // No captureError — silent path
+    // Review-round-1 P6: FALSE is now distinguished from a real promotion —
+    // info breadcrumb fires; captureError does NOT (FALSE is an expected race
+    // outcome, not an error).
     expect(mockCaptureError).not.toHaveBeenCalled();
+    expect(mockAddBreadcrumb).toHaveBeenCalledTimes(1);
+    expect(mockAddBreadcrumb.mock.calls[0][0]).toMatchObject({
+      category: "cefr-promotion",
+      level: "info",
+      message: expect.stringContaining("raced"),
+      data: { fromLevel: "B1", toLevel: "B2" },
+    });
   });
 
   it("Case 14: rpc error routes through captureError with 'cefr-promotion' tag + level extras", async () => {
@@ -306,7 +341,7 @@ describe("Story 12-3 — checkCefrPromotion compare-and-swap rpc contract", () =
     const err = new Error("Postgres down");
     mockRpc.mockResolvedValueOnce({ data: null, error: err });
 
-    await checkCefrPromotion("user-A");
+    await checkCefrPromotion("user-case-14");
 
     expect(mockCaptureError).toHaveBeenCalledTimes(1);
     expect(mockCaptureError.mock.calls[0][0]).toBe(err);
@@ -321,7 +356,7 @@ describe("Story 12-3 — checkCefrPromotion compare-and-swap rpc contract", () =
       { skill: "reading", score: 90, exercises_completed: 4 },
     ]);
 
-    await checkCefrPromotion("user-A");
+    await checkCefrPromotion("user-case-15");
 
     expect(mockRpc).not.toHaveBeenCalled();
     expect(mockAddBreadcrumb).toHaveBeenCalledTimes(1);
@@ -334,7 +369,7 @@ describe("Story 12-3 — checkCefrPromotion compare-and-swap rpc contract", () =
   it("Case 16: C2 user short-circuit → no RPC, no breadcrumb (already terminal)", async () => {
     setupSelectMocks("C2", []);
 
-    await checkCefrPromotion("user-A");
+    await checkCefrPromotion("user-case-16");
 
     expect(mockRpc).not.toHaveBeenCalled();
     expect(mockAddBreadcrumb).not.toHaveBeenCalled();

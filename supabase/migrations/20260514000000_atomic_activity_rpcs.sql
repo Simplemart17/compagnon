@@ -68,12 +68,27 @@ BEGIN
   SET streak_days = CASE
         WHEN last_active_date = p_today THEN COALESCE(streak_days, 0)
         WHEN last_active_date = p_yesterday THEN COALESCE(streak_days, 0) + 1
+        -- Review-round-1 P11: clock-skew / DST / timezone-roaming defense.
+        -- If `last_active_date` is in the future relative to `p_today`
+        -- (user traveled west, device clock skew, DST fall-back), none of
+        -- the first two arms match and we'd otherwise reset to 1. Preserve
+        -- the existing streak instead — the user's activity is real.
+        WHEN last_active_date > p_today THEN COALESCE(streak_days, 0)
         ELSE 1
       END,
       last_active_date = p_today,
       updated_at = now()
   WHERE id = p_user_id
   RETURNING streak_days INTO v_new_streak;
+
+  -- Review-round-1 P2: raise on missing profile row instead of silently
+  -- returning NULL. Pre-patch the client wrapper only checked `error`, not
+  -- `data`, so a user whose profile-creation trigger failed would get a
+  -- silent no-op forever with no observability into the failure mode.
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'profile not found for user_id %', p_user_id
+      USING ERRCODE = 'no_data_found';
+  END IF;
 
   RETURN v_new_streak;
 END;
@@ -117,16 +132,39 @@ BEGIN
     RAISE EXCEPTION 'auth.uid() must match p_user_id';
   END IF;
 
+  -- Review-round-1 P4: validate p_cefr_level early. `skill_progress.cefr_level`
+  -- has NO CHECK constraint in the initial schema (line 53), so without this
+  -- guard a malformed/typo CEFR value (e.g., 'a1' lowercase, 'B2 ' with
+  -- whitespace, 'undefined') would land in the column and permanently break
+  -- the no-regress array_position comparison (NULL > x → NULL → ELSE keeps
+  -- the bogus value forever).
+  IF p_cefr_level NOT IN ('A1','A2','B1','B2','C1','C2') THEN
+    RAISE EXCEPTION 'invalid CEFR level: %', p_cefr_level
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  -- Review-round-1 P17: NaN guard. `COALESCE(NaN, 0) = NaN` (NaN is not NULL),
+  -- so a future caller bypassing the client wrapper could write NaN into the
+  -- FLOAT score column. NaN ≠ NaN in IEEE 754; this idiom catches both NaN
+  -- and SQL NULL, normalizing to 0.
+  IF p_incoming_score IS NULL OR NOT (p_incoming_score = p_incoming_score) THEN
+    p_incoming_score := 0;
+  END IF;
+
   -- Clamp incoming score to [0, 100] server-side (mirrors clampScore from
   -- activity.ts). Defensive against malformed client input.
-  p_incoming_score := GREATEST(0, LEAST(100, COALESCE(p_incoming_score, 0)));
+  p_incoming_score := GREATEST(0, LEAST(100, p_incoming_score));
 
   INSERT INTO skill_progress (
     user_id, skill, cefr_level, score, exercises_completed,
     total_time_minutes, last_practiced
   )
   VALUES (
-    p_user_id, p_skill, p_cefr_level, p_incoming_score, 1,
+    -- Review-round-1 P5: round on the fresh INSERT branch too so pre- and
+    -- post-12-3 rows have symmetric integer-rounded semantics. Pre-patch
+    -- only the UPDATE branch rounded; a fresh insert with 95.5 would land
+    -- as 95.5 while the same row's next update would round.
+    p_user_id, p_skill, p_cefr_level, round(p_incoming_score), 1,
     COALESCE(p_time_minutes, 0), now()
   )
   ON CONFLICT (user_id, skill) DO UPDATE
@@ -145,13 +183,28 @@ BEGIN
     -- No-regress CEFR: keep the higher level. Inline array_position
     -- comparison against the canonical CEFR ordering avoids a helper
     -- function (one call site).
+    --
+    -- Review-round-1 P1: COALESCE the stored-side array_position to 0 so a
+    -- NULL or out-of-list `skill_progress.cefr_level` (corruption from a
+    -- legacy migration, NULL default before the schema added it, etc.) is
+    -- treated as "below A1" — the incoming valid level then wins via the
+    -- strict-greater-than comparison. Pre-patch a bogus stored value made
+    -- the LHS `array_position(..., bogus)` return NULL; `NULL > x` is NULL;
+    -- CASE fell to ELSE; bogus value preserved forever. P4 above prevents
+    -- new bad values; this defends against legacy rows.
     cefr_level = CASE
-      WHEN array_position(
-             ARRAY['A1','A2','B1','B2','C1','C2'],
-             EXCLUDED.cefr_level
-           ) > array_position(
-             ARRAY['A1','A2','B1','B2','C1','C2'],
-             skill_progress.cefr_level
+      WHEN COALESCE(
+             array_position(
+               ARRAY['A1','A2','B1','B2','C1','C2'],
+               EXCLUDED.cefr_level
+             ),
+             0
+           ) > COALESCE(
+             array_position(
+               ARRAY['A1','A2','B1','B2','C1','C2'],
+               skill_progress.cefr_level
+             ),
+             0
            )
         THEN EXCLUDED.cefr_level
       ELSE skill_progress.cefr_level
@@ -237,9 +290,28 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   v_rows_updated integer;
+  v_user_exists  boolean;
 BEGIN
   IF auth.uid() IS DISTINCT FROM p_user_id THEN
     RAISE EXCEPTION 'auth.uid() must match p_user_id';
+  END IF;
+
+  -- Review-round-1 P7: validate p_next_level early so a typo or malicious
+  -- input fails with a clear error message instead of a generic
+  -- `check_violation` from the profiles.current_cefr_level CHECK constraint.
+  IF p_next_level NOT IN ('A1','A2','B1','B2','C1','C2') THEN
+    RAISE EXCEPTION 'invalid CEFR level: %', p_next_level
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
+  -- Review-round-1 P2: distinguish "row missing" (raise) from "CAS mismatch"
+  -- (return FALSE silently). Pre-patch both cases returned FALSE; the client
+  -- treats FALSE as "concurrent worker promoted first" → silent — but a
+  -- missing profile row is a real failure that should surface in Sentry.
+  SELECT EXISTS (SELECT 1 FROM profiles WHERE id = p_user_id) INTO v_user_exists;
+  IF NOT v_user_exists THEN
+    RAISE EXCEPTION 'profile not found for user_id %', p_user_id
+      USING ERRCODE = 'no_data_found';
   END IF;
 
   UPDATE profiles

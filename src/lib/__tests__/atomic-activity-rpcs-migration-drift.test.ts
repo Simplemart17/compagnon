@@ -72,14 +72,41 @@ describe("atomic-activity-RPCs migration — drift detector (Story 12-3)", () =>
   // update_streak_atomic — single-statement streak math
   // ---------------------------------------------------------------------------
 
-  it("update_streak_atomic uses CASE for the today/yesterday/reset branches (single statement)", () => {
-    // Must contain all three arms of the CASE expression
+  it("update_streak_atomic uses CASE for the today/yesterday/future/reset branches (single statement)", () => {
+    // Must contain all four arms of the CASE expression
     expect(MIGRATION_SOURCE).toMatch(/WHEN last_active_date = p_today THEN/);
     expect(MIGRATION_SOURCE).toMatch(
       /WHEN last_active_date = p_yesterday THEN COALESCE\(streak_days, 0\) \+ 1/
     );
-    // The "ELSE 1" branch resets the streak when there's a gap
+    // Review-round-1 P11: clock-skew defense — last_active_date in the future
+    // preserves the streak instead of resetting to 1.
+    expect(MIGRATION_SOURCE).toMatch(
+      /WHEN last_active_date > p_today THEN COALESCE\(streak_days, 0\)/
+    );
+    // The "ELSE 1" branch resets the streak when there's a true gap
     expect(MIGRATION_SOURCE).toMatch(/ELSE 1\s+END/);
+  });
+
+  it("update_streak_atomic raises on missing profile row (Review-round-1 P2: no silent NULL)", () => {
+    // Pre-patch UPDATE-not-found returned NULL silently; client only checked
+    // `error` not `data`, masking the missing-row failure mode.
+    expect(MIGRATION_SOURCE).toMatch(
+      /IF NOT FOUND THEN\s+RAISE EXCEPTION 'profile not found for user_id %', p_user_id/
+    );
+  });
+
+  it("promote_cefr_level_atomic validates p_next_level + raises on missing profile (Review-round-1 P7 + P2)", () => {
+    // P7: defense-in-depth on `p_next_level`.
+    expect(MIGRATION_SOURCE).toMatch(
+      /IF p_next_level NOT IN \('A1'\s*,\s*'A2'\s*,\s*'B1'\s*,\s*'B2'\s*,\s*'C1'\s*,\s*'C2'\)\s+THEN/
+    );
+    // P2: distinguish missing-row (raise) from CAS-mismatch (FALSE).
+    expect(MIGRATION_SOURCE).toMatch(
+      /SELECT EXISTS \(SELECT 1 FROM profiles WHERE id = p_user_id\)/
+    );
+    expect(MIGRATION_SOURCE).toMatch(
+      /IF NOT v_user_exists THEN[\s\S]*?RAISE EXCEPTION 'profile not found for user_id %', p_user_id/
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -92,28 +119,71 @@ describe("atomic-activity-RPCs migration — drift detector (Story 12-3)", () =>
     expect(MIGRATION_SOURCE).toMatch(/ON CONFLICT \(user_id, skill\) DO UPDATE/i);
   });
 
-  it("update_skill_progress_atomic computes running-average math server-side", () => {
+  it("update_skill_progress_atomic computes running-average math server-side AND wraps it in round() (Review-round-1 P10)", () => {
     // The math: ((prev_score * prev_exercises) + incoming) / (prev_exercises + 1)
     expect(MIGRATION_SOURCE).toMatch(
       /skill_progress\.score \* skill_progress\.exercises_completed[\s\S]+EXCLUDED\.score[\s\S]+skill_progress\.exercises_completed \+ 1/
     );
+    // Review-round-1 P10: pin `round(` wrapping the running-average. A future
+    // refactor that drops `round(...)` would silently produce float scores in
+    // the FLOAT column, breaking the integer-stored-historically contract
+    // documented in the migration comment.
+    expect(MIGRATION_SOURCE).toMatch(/score\s*=\s*round\(/);
   });
 
-  it("update_skill_progress_atomic preserves the no-regress CEFR rule via array_position comparison", () => {
-    // The inline CASE checks: if EXCLUDED.cefr_level's index > current's index, use EXCLUDED; else keep current
+  it("update_skill_progress_atomic also rounds the fresh INSERT score (Review-round-1 P5: symmetric rounding)", () => {
+    // Pre-patch the fresh INSERT wrote `p_incoming_score` raw while the
+    // UPDATE branch rounded. Post-patch both branches round so pre-/post-12-3
+    // rows have stable integer semantics.
+    expect(MIGRATION_SOURCE).toMatch(/round\(p_incoming_score\)/);
+  });
+
+  it("update_skill_progress_atomic preserves the no-regress CEFR rule via array_position comparison (Review-round-1 P8: tolerates multi-line formatting)", () => {
+    // The inline CASE checks: if EXCLUDED.cefr_level's index > current's index, use EXCLUDED; else keep current.
+    // Review-round-1 P8: the regex tolerates a prettier auto-format that wraps
+    // the ARRAY[...] across multiple lines or adds whitespace around the
+    // brackets/commas — the SQL semantics are unchanged.
     expect(MIGRATION_SOURCE).toMatch(
-      /array_position\(\s*ARRAY\['A1','A2','B1','B2','C1','C2'\],\s*EXCLUDED\.cefr_level/
+      /array_position\(\s*ARRAY\s*\[\s*'A1'\s*,\s*'A2'\s*,\s*'B1'\s*,\s*'B2'\s*,\s*'C1'\s*,\s*'C2'\s*\]\s*,\s*EXCLUDED\.cefr_level/
     );
     expect(MIGRATION_SOURCE).toMatch(
-      /array_position\(\s*ARRAY\['A1','A2','B1','B2','C1','C2'\],\s*skill_progress\.cefr_level/
+      /array_position\(\s*ARRAY\s*\[\s*'A1'\s*,\s*'A2'\s*,\s*'B1'\s*,\s*'B2'\s*,\s*'C1'\s*,\s*'C2'\s*\]\s*,\s*skill_progress\.cefr_level/
     );
+  });
+
+  it("update_skill_progress_atomic COALESCEs the no-regress array_position lookup (Review-round-1 P1: NULL/invalid stored level coerced)", () => {
+    // Pre-patch a NULL or out-of-list stored cefr_level made array_position
+    // return NULL → `NULL > x` is NULL → CASE fell to ELSE → bogus value
+    // preserved. Post-patch both sides are wrapped in COALESCE(..., 0) so an
+    // incoming valid level (e.g., "A1") beats a stored NULL/bogus value.
+    expect(MIGRATION_SOURCE).toMatch(
+      /COALESCE\(\s*array_position\([\s\S]*?EXCLUDED\.cefr_level\s*\),\s*0\s*\)/
+    );
+    expect(MIGRATION_SOURCE).toMatch(
+      /COALESCE\(\s*array_position\([\s\S]*?skill_progress\.cefr_level\s*\),\s*0\s*\)/
+    );
+  });
+
+  it("update_skill_progress_atomic validates p_cefr_level at entry (Review-round-1 P4)", () => {
+    // P4: defense-in-depth — reject invalid CEFR values before they land in
+    // the column (which has no CHECK constraint in the initial schema).
+    expect(MIGRATION_SOURCE).toMatch(
+      /IF p_cefr_level NOT IN \('A1'\s*,\s*'A2'\s*,\s*'B1'\s*,\s*'B2'\s*,\s*'C1'\s*,\s*'C2'\)\s+THEN/
+    );
+  });
+
+  it("update_skill_progress_atomic has NaN guard on p_incoming_score (Review-round-1 P17)", () => {
+    // P17: `COALESCE(NaN, 0) = NaN` because NaN is not NULL. NaN ≠ NaN in
+    // IEEE 754; this idiom catches both NaN and SQL NULL, normalizing to 0.
+    expect(MIGRATION_SOURCE).toMatch(/NOT \(p_incoming_score = p_incoming_score\)/);
   });
 
   it("update_skill_progress_atomic clamps incoming score to [0, 100] server-side as belt-and-braces", () => {
-    // GREATEST(0, LEAST(100, COALESCE(...))) clamps both ends
-    expect(MIGRATION_SOURCE).toMatch(
-      /GREATEST\(0, LEAST\(100, COALESCE\(p_incoming_score, 0\)\)\)/
-    );
+    // GREATEST(0, LEAST(100, ...)) clamps both ends. Review-round-1 P17 moved
+    // the NULL/NaN normalization to a separate `IF` block before the clamp
+    // (see the NaN-guard drift case), so the clamp itself no longer wraps
+    // COALESCE — it operates on the post-normalized variable.
+    expect(MIGRATION_SOURCE).toMatch(/GREATEST\(0, LEAST\(100, p_incoming_score\)\)/);
   });
 
   // ---------------------------------------------------------------------------
