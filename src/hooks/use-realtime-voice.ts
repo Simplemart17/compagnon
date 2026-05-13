@@ -22,8 +22,6 @@ import {
   type TranscriptEntry,
 } from "@/src/lib/realtime-transcript";
 import { buildConversationPrompt } from "@/src/lib/prompts/conversation";
-import { chatCompletionJSON } from "@/src/lib/openai";
-import { conversationFeedbackSchema } from "@/src/lib/schemas/ai-responses";
 import {
   drainPendingCorrections,
   MAX_PENDING_CORRECTIONS,
@@ -34,8 +32,15 @@ import { computeBargeInDirective } from "@/src/lib/realtime-barge-in";
 import { computeSpeakingScore } from "@/src/lib/speaking-score";
 import { supabase } from "@/src/lib/supabase";
 import { useAuthStore } from "@/src/store/auth-store";
-import { extractAndStoreMemories } from "@/src/lib/memory";
-import { trackError, extractErrorsFromCorrections } from "@/src/lib/error-tracker";
+// Story 11-5: consolidated post-conversation analysis replaces the pre-11-5
+// 3-call pipeline (extractAndStoreMemories + extractErrorsFromCorrections +
+// inline conversation-feedback). The non-Realtime flows (echo + translation)
+// still use `extractErrorsFromCorrections` directly.
+import {
+  extractPostConversationAnalysis,
+  persistPostConversationAnalysis,
+} from "@/src/lib/post-conversation-analysis";
+import { persistErrorPatterns, trackError } from "@/src/lib/error-tracker";
 import { addBreadcrumb, captureError } from "@/src/lib/sentry";
 import { isOnline } from "@/src/lib/network";
 import { enqueueWrite } from "@/src/lib/cache";
@@ -991,20 +996,73 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
           if (msgError) captureError(msgError, "persist-conversation-messages");
         }
 
-        // 3. Extract and store companion memories
+        // 3. Consolidated post-conversation analysis (Story 11-5).
+        //    Replaces the pre-11-5 3-call pipeline (extractAndStoreMemories +
+        //    extractErrorsFromCorrections + inline conversation-feedback)
+        //    with a single chatCompletionJSON that returns
+        //    { facts, errorPatterns, feedback } in one pass. Saves ~1.25¢
+        //    per conversation on input cost; drops user-perceived latency
+        //    from ~9s (3 serial calls) to ~3s. The persist fan-out uses
+        //    Promise.allSettled internally so partial failures (one
+        //    persist erroring) don't block the others — matches pre-11-5
+        //    fire-and-forget semantics.
         const transcript = transcriptRef.current.map((e) => `${e.role}: ${e.text}`).join("\n");
+        // Story 11-5 review patch P5: separate short-transcript gates so
+        // corrections-only sessions (short conversation that still produced
+        // `report_correction` tool-calls) don't lose their error patterns.
+        // Pre-11-5: `extractErrorsFromCorrections` had its own
+        // `corrections.length > 0` gate independent of transcript length.
+        // Post-11-5 (pre-patch): the consolidated call short-circuited on
+        // `transcript.length < 50` and skipped all 3 outputs including
+        // error patterns. Now we run the consolidated AI analysis only when
+        // the transcript is long enough to feedback-on, but ALWAYS persist
+        // any corrections directly via `persistErrorPatterns` if they exist.
+        const hasCorrections = correctionsRef.current.length > 0;
+        const hasLongTranscript = transcript.length > 50;
 
-        if (transcript.length > 50) {
-          extractAndStoreMemories(user.id, conversationId, transcript).catch((err) =>
-            captureError(err, "extract-memories")
-          );
-        }
-
-        // 3b. Extract error patterns from corrections for targeted drills
-        if (correctionsRef.current.length > 0) {
-          extractErrorsFromCorrections(user.id, correctionsRef.current).catch((err) =>
-            captureError(err, "extract-error-patterns")
-          );
+        if (hasLongTranscript) {
+          try {
+            const analysis = await extractPostConversationAnalysis({
+              transcript,
+              corrections: correctionsRef.current,
+              cefrLevel,
+            });
+            const { feedback } = await persistPostConversationAnalysis({
+              userId: user.id,
+              conversationId,
+              analysis,
+            });
+            if (feedback) {
+              setState((s) => ({ ...s, feedback }));
+            }
+          } catch (err) {
+            // Schema parse failure (after Story 9-7's parseRetries: 1 retry)
+            // OR a network failure — captured + swallowed so the rest of
+            // persistConversation (skill progress + streak + daily activity
+            // + CEFR promotion) continues unaffected. Matches pre-11-5
+            // fire-and-forget semantics.
+            captureError(err, "post-conversation-analysis");
+          }
+        } else if (hasCorrections) {
+          // 3b. Story 11-5 review patch P5: short-transcript fallback —
+          // persist corrections directly without the AI enrichment step
+          // (no transcript = no facts/feedback worth extracting; but the
+          // user did get mid-conversation corrections via report_correction
+          // tool-calls and we don't want to lose them). The Correction
+          // shape from Story 11-1 maps cleanly to persistErrorPatterns'
+          // expected shape via a small projection: original/corrected/
+          // category copy through; `pattern` defaults to the explanation.
+          try {
+            const patterns = correctionsRef.current.map((c) => ({
+              original: c.original,
+              corrected: c.corrected,
+              pattern: c.explanation,
+              category: c.category,
+            }));
+            await persistErrorPatterns(user.id, patterns);
+          } catch (err) {
+            captureError(err, "post-conversation-error-patterns-short-transcript");
+          }
         }
 
         // 4. Update skill progress for speaking (with score based on corrections ratio).
@@ -1031,39 +1089,10 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
         // 7. Check for CEFR level promotion
         await checkCefrPromotion(user.id);
 
-        // 8. Generate AI feedback summary (non-blocking for UI)
-        if (transcript.length > 50) {
-          try {
-            const feedback = await chatCompletionJSON(
-              [
-                {
-                  role: "system",
-                  content: `Analyze this French conversation transcript and provide feedback. The user's CEFR level is ${cefrLevel}.
-Return JSON: {
-  "summary": "1-2 sentence overall assessment in English",
-  "strengths": ["strength 1", "strength 2"],
-  "improvements": ["area for improvement 1", "area for improvement 2"],
-  "vocabularyUsed": <number of distinct French words the user used>,
-  "fluencyRating": <1-5 scale>,
-  "grammarRating": <1-5 scale>
-}`,
-                },
-                { role: "user", content: transcript },
-              ],
-              conversationFeedbackSchema,
-              { temperature: 0.3, feature: "conversation-feedback" }
-            );
-            setState((s) => ({ ...s, feedback }));
-
-            // Save feedback to conversation record
-            await supabase
-              .from("conversations")
-              .update({ ai_feedback: feedback })
-              .eq("id", conversationId);
-          } catch (err) {
-            captureError(err, "conversation-feedback-generation");
-          }
-        }
+        // 8. (Story 11-5: deleted — the post-conversation feedback is now
+        //    produced as part of the consolidated step 3 above, and the
+        //    `setState({feedback})` + `conversations.update({ai_feedback})`
+        //    writes happen inside `persistPostConversationAnalysis`.)
       } catch (err) {
         captureError(err, "persist-conversation");
       }

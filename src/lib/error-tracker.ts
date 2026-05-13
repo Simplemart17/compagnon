@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 import { chatCompletionJSON } from "./openai";
-import { captureError } from "./sentry";
+import { addBreadcrumb, captureError } from "./sentry";
 import { MICRO_DRILL_THRESHOLD } from "./constants";
 import { sanitizeMemoryContent } from "./memory";
 import { errorPatternBatchSchema, microDrillSchema } from "./schemas/ai-responses";
@@ -203,11 +203,86 @@ export interface MicroDrill {
 const MAX_CORRECTIONS_PER_CONVERSATION = 10;
 
 /**
- * Extract error patterns from AI corrections in a conversation.
- * Call this after each conversation to feed the error tracker.
+ * Persist pre-enriched error patterns to the error tracker (Story 11-5).
  *
- * Batches all corrections into a single AI call for efficiency,
- * capped at MAX_CORRECTIONS_PER_CONVERSATION to limit token usage.
+ * Replaces the embed+insert pipeline that was previously inside
+ * `extractErrorsFromCorrections` (now restricted to non-Realtime callers
+ * — see below). Each pattern is validated against `ERROR_TYPES` then
+ * routed through `trackError`, which handles sanitization + embedding +
+ * upsert into `error_patterns`.
+ *
+ * The Realtime path (`use-realtime-voice.ts` `persistConversation`) now
+ * produces these patterns inline as part of `extractPostConversationAnalysis`
+ * (the consolidated 3-in-1 AI call). The non-Realtime callers
+ * (`use-echo-practice.ts` + `use-translation.ts`) still go through
+ * `extractErrorsFromCorrections` which internally calls this helper.
+ */
+export async function persistErrorPatterns(
+  userId: string,
+  patterns: readonly {
+    original: string;
+    corrected: string;
+    pattern: string;
+    category: string;
+  }[]
+): Promise<void> {
+  if (!Array.isArray(patterns) || patterns.length === 0) return;
+
+  // Track each pattern. `trackError` sanitizes the description via
+  // `sanitizeMemoryContent` internally, so call-site validation only
+  // needs to check the category literal-union + skip absent patterns.
+  // Story 11-5 review patch P9: filter-drops emit a Sentry breadcrumb so
+  // operators can grep for systemic category-typo issues (e.g., an echo
+  // evaluator that emits `"spelling"` would silently no-op pre-patch;
+  // post-patch the operator sees the dropped-category signal in Sentry).
+  for (const item of patterns) {
+    if (!item.pattern || typeof item.pattern !== "string") {
+      addBreadcrumb({
+        category: "ai",
+        level: "warning",
+        message: "persistErrorPatterns dropped item with missing/non-string pattern",
+        data: { feature: "error-pattern-pattern-drop" },
+      });
+      continue;
+    }
+    if (typeof item.category !== "string" || !ERROR_TYPES.has(item.category as ErrorType)) {
+      addBreadcrumb({
+        category: "ai",
+        level: "warning",
+        message: "persistErrorPatterns dropped item with invalid category",
+        data: {
+          feature: "error-pattern-category-drop",
+          // `category` is short categorical; allowlist-safe per Story 9-3.
+          category: typeof item.category === "string" ? item.category : "non-string",
+        },
+      });
+      continue;
+    }
+
+    try {
+      await trackError(userId, item.category as ErrorType, item.pattern);
+    } catch (err) {
+      captureError(err instanceof Error ? err : new Error(String(err)), "extract-errors-track", {
+        category: item.category,
+      });
+    }
+  }
+}
+
+/**
+ * Extract error patterns from AI corrections via a dedicated chat call.
+ *
+ * Story 11-5: this function is still the entry point for **non-Realtime
+ * flows** (`use-echo-practice.ts` + `use-translation.ts`) where the
+ * corrections come from an echo/translation evaluation and there's no
+ * accompanying transcript / feedback to consolidate with. The Realtime
+ * post-conversation path uses `extractPostConversationAnalysis`
+ * (in `src/lib/post-conversation-analysis.ts`) instead, which folds
+ * error patterns into the same combined call that produces facts +
+ * feedback (saves ~1.25¢ per conversation on input cost).
+ *
+ * Batches all corrections into a single AI call for efficiency, capped
+ * at `MAX_CORRECTIONS_PER_CONVERSATION` to limit token usage.
  */
 export async function extractErrorsFromCorrections(
   userId: string,
@@ -220,10 +295,8 @@ export async function extractErrorsFromCorrections(
 ): Promise<void> {
   if (corrections.length === 0) return;
 
-  // Cap corrections to avoid excessively large prompts
   const capped = corrections.slice(0, MAX_CORRECTIONS_PER_CONVERSATION);
 
-  // Build a single prompt containing all corrections
   const correctionsList = capped
     .map(
       (c, i) =>
@@ -250,24 +323,5 @@ Example pattern: "Confuses passe compose with imparfait for habitual past action
     { temperature: 0.2, maxTokens: 1024, feature: "error-tracker-batch" }
   );
 
-  if (result.patterns.length === 0) return;
-
-  // Track each extracted error pattern. trackError sanitizes the description
-  // via sanitizeMemoryContent internally, so call-site validation only needs
-  // to check the category literal-union and skip absent patterns. Sanitizer
-  // is idempotent — calling it again here would be redundant.
-  for (const item of result.patterns) {
-    if (!item.pattern || typeof item.pattern !== "string") continue;
-    if (typeof item.category !== "string" || !ERROR_TYPES.has(item.category as ErrorType)) {
-      continue;
-    }
-
-    try {
-      await trackError(userId, item.category as ErrorType, item.pattern);
-    } catch (err) {
-      captureError(err instanceof Error ? err : new Error(String(err)), "extract-errors-track", {
-        category: item.category,
-      });
-    }
-  }
+  await persistErrorPatterns(userId, result.patterns);
 }

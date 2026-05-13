@@ -35,7 +35,8 @@ export async function generateEchoExercise(params: {
         { role: "user", content: "Generate echo practice sentences." },
       ],
       echoGenerationSchema,
-      { temperature: 0.4, model: "gpt-4o", maxTokens: 2048, feature: "echo-generation" }
+      // Story 11-5: right-sized for 4 echo segments × prompt + correction + explanation.
+      { temperature: 0.4, model: "gpt-4o", maxTokens: 1200, feature: "echo-generation" }
     );
     sentences = result.sentences;
   } catch (err) {
