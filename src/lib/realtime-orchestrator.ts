@@ -1271,10 +1271,19 @@ export class RealtimeOrchestrator {
     // bypassed `handleResponseDone`) doesn't trigger a spurious barge-in
     // on this conversation's first `speech_started`.
     this.isAiSpeakingMirror = false;
-    // Story 12-5: reset audio-stream lifecycle tracking. Same Story 12-1 P1
-    // reset-mirrors-on-start pattern so a pathological `start()` retry
-    // after dispose lands in a clean state for the audio refcount handshake.
-    this.acquireWasCalled = false;
+    // Story 12-5 + review-round-1 P1: reset audio-stream lifecycle tracking.
+    // Same Story 12-1 P1 reset-mirrors-on-start pattern so a pathological
+    // `start()` retry after a partial prior `start()` (or an `end()`→`start()`
+    // recycle that didn't clear the flag) lands in a clean state for the audio
+    // refcount handshake. Critically: if `acquireWasCalled === true` here,
+    // a previous lifecycle leaked an unmatched acquire — fire the matching
+    // release BEFORE clearing the flag so the refcount stays balanced.
+    // Without this, every retry would leak one refcount and the singleton
+    // would stay open for an active consumer that no longer exists.
+    if (this.acquireWasCalled) {
+      this.acquireWasCalled = false;
+      void releaseAudioStream();
+    }
 
     // Story 12-1 review-round-1 P13: spread INITIAL_STATE explicitly so a
     // future field added to ConversationState propagates cleanly. Pre-patch

@@ -25,6 +25,22 @@
  *   `safeSessionCall`-with-breadcrumb observability pattern.
  * - `__resetAudioStreamManagerForTests` with `NODE_ENV !== "test"`
  *   runtime guard mirrors Story 12-2 P11.
+ *
+ * **Concurrency contract (review-round-1 P2 + P7):**
+ * - `acquireAudioStream()` is SYNCHRONOUS and must NOT be awaited between
+ *   the call and the consumer's `acquireWasCalled = true` bookkeeping
+ *   write. The synchronous-acquire invariant guarantees that a peer
+ *   orchestrator's `releaseAudioStream()` cannot interleave between
+ *   acquire and bookkeeping. Violating this is a refcount-leak hazard.
+ * - `releaseAudioStream()` is ASYNC because it awaits native cleanup. The
+ *   `isLastRelease` snapshot is captured AFTER decrement and re-checked
+ *   after each native-cleanup await — so if a peer orchestrator acquires
+ *   the singleton DURING our cleanup-await window, we skip the remaining
+ *   cleanup steps and let the new consumer keep the engine alive.
+ * - `end()`-then-`dispose()` is tolerated: `dispose()` is idempotent via
+ *   `isDisposed`; even if release runs twice across the pair, the
+ *   release-when-zero breadcrumb catches the unmatched second call
+ *   without negative-state pollution.
  */
 import { ExpoPlayAudioStream } from "@mykin-ai/expo-audio-stream";
 
@@ -38,22 +54,25 @@ let refCount = 0;
 
 /**
  * Acquire a reference to the audio-stream singleton. Increments the
- * refcount synchronously and returns the underlying
- * `ExpoPlayAudioStream` reference for callers to use for per-operation
- * methods (`requestPermissionsAsync`, `setSoundConfig`,
- * `startRecording`, `playSound`, etc. — all unchanged from pre-12-5;
- * callers can either use the returned reference or continue importing
- * `ExpoPlayAudioStream` directly since it's a singleton).
+ * refcount SYNCHRONOUSLY (Story 12-5 review-round-1 P7) — callers MUST
+ * record their `acquireWasCalled = true` bookkeeping immediately after
+ * this returns, with no `await` between acquire and the write. The
+ * synchronous-acquire invariant guarantees that a peer orchestrator's
+ * `releaseAudioStream` cannot interleave through the gap.
  *
  * Callers MUST pair this with a matching `releaseAudioStream()` call.
  * Unmatched releases are defended against via the release-when-zero
  * guard, but unmatched acquires (refcount leaks) hold the native module
  * open indefinitely — which is the SAFE failure mode (audio keeps
  * working; only resource is the underlying engine staying allocated).
+ *
+ * Returns void (Story 12-5 review-round-1 P11): the singleton is a
+ * process-wide module already imported at consumer sites — there's no
+ * value in handing it back through the acquire path. Callers continue
+ * importing `ExpoPlayAudioStream` directly for per-operation methods.
  */
-export function acquireAudioStream(): typeof ExpoPlayAudioStream {
+export function acquireAudioStream(): void {
   refCount++;
-  return ExpoPlayAudioStream;
 }
 
 /**
@@ -67,9 +86,24 @@ export function acquireAudioStream(): typeof ExpoPlayAudioStream {
  * emits a Sentry breadcrumb (`feature: "audio-stream-release-when-zero"`)
  * and silently returns without decrementing (refcount stays at 0; no
  * negative-state pollution).
+ *
+ * Story 12-5 review-round-1 P2: the `isLastRelease` snapshot is captured
+ * AFTER the decrement and re-checked after each native-cleanup await.
+ * If a peer orchestrator's `acquireAudioStream()` lands DURING our
+ * await window (refCount goes 0 → 1 between our decrement and our
+ * stopRecording / stopSound resolution), we abandon the remaining
+ * cleanup. Pre-patch a concurrent-orchestrator race could kill the new
+ * consumer's freshly-started recording.
  */
 export async function releaseAudioStream(): Promise<void> {
   if (refCount === 0) {
+    // Story 12-5 review-round-1 P8 REVERTED: the original spec proposed
+    // silencing this breadcrumb under `__DEV__`, but the breadcrumb is the
+    // load-bearing observability signal for the release-when-zero contract
+    // (Case 7 in `audio-stream-manager.test.ts` explicitly asserts it fires).
+    // Tests that legitimately reset the manager via
+    // `__resetAudioStreamManagerForTests()` clear `addBreadcrumb` in their
+    // `beforeEach`, so no test pollution actually occurs.
     addBreadcrumb({
       category: "audio",
       level: "warning",
@@ -79,15 +113,29 @@ export async function releaseAudioStream(): Promise<void> {
     return;
   }
   refCount--;
+  // Snapshot AFTER decrement (P2). The cleanup arm runs only when the
+  // post-decrement count is 0 AND remains 0 across each native await.
   if (refCount === 0) {
     // Last consumer — stop active streams. Best-effort; swallow because
     // we never call destroy() (the only operation that would matter
     // for cross-instance regression) and stopRecording / stopSound on
     // an idle module are no-ops on iOS / Android.
+    //
+    // Re-check refCount after each await: a peer orchestrator that
+    // synchronously acquires during the await window would land
+    // refCount = 1, in which case we abandon the remaining cleanup
+    // (the new consumer expects the engine alive).
     try {
       await ExpoPlayAudioStream.stopRecording();
     } catch {
       // Cleanup-path swallow.
+    }
+    if (refCount !== 0) {
+      // Peer orchestrator acquired during the stopRecording await.
+      // Abandon the rest of the cleanup chain so we don't kill their
+      // freshly-started sound playback. The peer's eventual release
+      // re-enters this branch when they're done.
+      return;
     }
     try {
       await ExpoPlayAudioStream.stopSound();
@@ -108,14 +156,19 @@ export function getAudioStreamRefCountForTests(): number {
 
 /**
  * @internal — test-only reset. Resets the refcount so tests don't leak
- * state across boundaries. Must NOT be called from production code;
- * the runtime guard throws on `NODE_ENV !== "test"` (Story 12-2 P11
- * pattern).
+ * state across boundaries. Must NOT be called from production code; the
+ * runtime guard throws unless BOTH conditions hold: NODE_ENV === 'test'
+ * AND a `jest` global is defined (Story 12-2 P11 base guard + Story
+ * 12-5 review-round-1 P14 belt-and-suspenders against accidental ESM
+ * imports in non-Jest runtimes that happen to set NODE_ENV=test, e.g.,
+ * Storybook / Playwright / Vitest workers).
  */
 export function __resetAudioStreamManagerForTests(): void {
-  if (typeof process !== "undefined" && process.env.NODE_ENV !== "test") {
+  const inJest = typeof jest !== "undefined";
+  const inTestEnv = typeof process !== "undefined" && process.env.NODE_ENV === "test";
+  if (!inJest || !inTestEnv) {
     throw new Error(
-      "__resetAudioStreamManagerForTests must only be called from tests (NODE_ENV must be 'test')"
+      "__resetAudioStreamManagerForTests must only be called from tests (NODE_ENV must be 'test' AND running under Jest)"
     );
   }
   refCount = 0;
