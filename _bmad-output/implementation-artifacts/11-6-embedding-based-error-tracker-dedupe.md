@@ -1,6 +1,6 @@
 # Story 11.6: Embedding-Based Dedupe in Error-Tracker — Replace String-Equality with Cosine Similarity ≥ 0.85
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
