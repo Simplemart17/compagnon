@@ -1,6 +1,6 @@
 # Story 11.4: Replace In-Memory Rate Limit with Supabase RPC + Per-User Daily AI Spend Ceiling
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
