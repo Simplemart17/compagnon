@@ -11,6 +11,7 @@ export type ErrorCode =
   | "AUTH_MISSING"
   | "AUTH_INVALID"
   | "RATE_LIMITED"
+  | "DAILY_COST_CAP_EXCEEDED"
   | "BODY_TOO_LARGE"
   | "INVALID_PARAMS"
   | "UNKNOWN_ACTION"
