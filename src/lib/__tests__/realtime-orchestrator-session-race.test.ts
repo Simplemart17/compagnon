@@ -19,6 +19,7 @@ import { join } from "path";
 
 import type { User } from "@supabase/supabase-js";
 
+import { __resetAudioStreamManagerForTests } from "../audio-stream-manager";
 import { RealtimeOrchestrator, type RealtimeOrchestratorOptions } from "../realtime-orchestrator";
 import { addBreadcrumb } from "../sentry";
 
@@ -140,6 +141,11 @@ beforeEach(() => {
   mockRegisteredHandleEvent = null;
   mockLastSession = null;
   mockConnectImpl = async () => undefined;
+  // Story 12-5 review-round-1 P5: reset the audio-stream-manager refcount so
+  // module-level state from a prior test (which exercises start() →
+  // startAudioStreaming() → acquireAudioStream()) doesn't bleed across the
+  // suite boundary.
+  __resetAudioStreamManagerForTests();
 });
 
 // ============================================================================

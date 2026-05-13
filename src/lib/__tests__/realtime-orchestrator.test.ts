@@ -14,6 +14,7 @@
  * persistConversation parallelization).
  */
 
+import { __resetAudioStreamManagerForTests } from "../audio-stream-manager";
 import {
   INITIAL_STATE,
   PHASE_A_SLOT_NAMES,
@@ -108,6 +109,15 @@ const baseOptions: RealtimeOrchestratorOptions = {
   mode: "companion",
   topic: "daily life",
 };
+
+// Story 12-5 review-round-1 P5: reset the audio-stream-manager refcount
+// between every test so the module-level state doesn't bleed across suites.
+// Without this, a previous test that ran `start()` (which calls
+// `acquireAudioStream`) leaves refCount > 0 for subsequent tests, masking
+// real refcount-leak regressions and skewing concurrent-orchestrator tests.
+beforeEach(() => {
+  __resetAudioStreamManagerForTests();
+});
 
 describe("Story 12-1 — RealtimeOrchestrator public surface", () => {
   it("exports PHASE_A_SLOT_NAMES with the 6 canonical slot names in order", () => {

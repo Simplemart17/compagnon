@@ -43,6 +43,7 @@ import { ExpoPlayAudioStream } from "@mykin-ai/expo-audio-stream";
 import type { EventSubscription } from "expo-modules-core";
 import type { User } from "@supabase/supabase-js";
 
+import { acquireAudioStream, releaseAudioStream } from "@/src/lib/audio-stream-manager";
 import { RealtimeSession, type RealtimeConfig, type RealtimeEvent } from "@/src/lib/realtime";
 import {
   acceptDelta,
@@ -190,6 +191,16 @@ export class RealtimeOrchestrator {
   private session: RealtimeSession | null = null;
   private subscription: EventSubscription | null = null;
   private durationTimer: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Story 12-5: tracks whether `acquireAudioStream()` ran for this
+   * orchestrator instance. Defends `dispose()` from firing an unmatched
+   * `releaseAudioStream()` (which would emit the release-when-zero
+   * breadcrumb but more importantly indicates a `start()` failure
+   * BEFORE `startAudioStreaming()` ran). Reset to false in `start()`'s
+   * reset block (Story 12-1 P1 pattern) and after release in `dispose()`
+   * for double-dispose idempotence.
+   */
+  private acquireWasCalled = false;
 
   // ─── Conversation lifecycle ───────────────────────────────────────────
   private isEnding = false;
@@ -302,9 +313,18 @@ export class RealtimeOrchestrator {
     this.subscription = null;
     this.session?.disconnect({ reason: "user" });
     this.session = null;
-    void ExpoPlayAudioStream.stopRecording().catch(() => {});
-    void ExpoPlayAudioStream.stopSound().catch(() => {});
-    ExpoPlayAudioStream.destroy();
+    // Story 12-5: delegate the audio-stream lifecycle to the
+    // reference-counted manager. The manager invokes `stopRecording()`
+    // + `stopSound()` only on the LAST release (when refcount hits 0)
+    // so concurrent orchestrators don't interrupt each other's audio.
+    // **`ExpoPlayAudioStream.destroy()` is DELETED** (audit P1-19) —
+    // pre-12-5 the orchestrator destroyed the singleton native module
+    // on every unmount, breaking the next mount's audio until app
+    // reload. The OS handles native-module teardown on app exit.
+    if (this.acquireWasCalled) {
+      this.acquireWasCalled = false;
+      void releaseAudioStream();
+    }
     this.subscribers.clear();
   }
 
@@ -427,6 +447,14 @@ export class RealtimeOrchestrator {
 
   /** Start microphone recording and stream PCM audio to WebSocket */
   private async startAudioStreaming(): Promise<void> {
+    // Story 12-5: acquire a reference to the audio-stream singleton
+    // BEFORE the orchestrator interacts with it. The matched
+    // `releaseAudioStream()` runs in `dispose()`; the manager handles
+    // refcount-based cleanup so the singleton native module survives
+    // across orchestrator instances (audit P1-19). Synchronous +
+    // idempotent — safe to call before the permission check.
+    acquireAudioStream();
+    this.acquireWasCalled = true;
     try {
       const { granted } = await ExpoPlayAudioStream.requestPermissionsAsync();
       if (!granted) {
@@ -1243,6 +1271,19 @@ export class RealtimeOrchestrator {
     // bypassed `handleResponseDone`) doesn't trigger a spurious barge-in
     // on this conversation's first `speech_started`.
     this.isAiSpeakingMirror = false;
+    // Story 12-5 + review-round-1 P1: reset audio-stream lifecycle tracking.
+    // Same Story 12-1 P1 reset-mirrors-on-start pattern so a pathological
+    // `start()` retry after a partial prior `start()` (or an `end()`→`start()`
+    // recycle that didn't clear the flag) lands in a clean state for the audio
+    // refcount handshake. Critically: if `acquireWasCalled === true` here,
+    // a previous lifecycle leaked an unmatched acquire — fire the matching
+    // release BEFORE clearing the flag so the refcount stays balanced.
+    // Without this, every retry would leak one refcount and the singleton
+    // would stay open for an active consumer that no longer exists.
+    if (this.acquireWasCalled) {
+      this.acquireWasCalled = false;
+      void releaseAudioStream();
+    }
 
     // Story 12-1 review-round-1 P13: spread INITIAL_STATE explicitly so a
     // future field added to ConversationState propagates cleanly. Pre-patch

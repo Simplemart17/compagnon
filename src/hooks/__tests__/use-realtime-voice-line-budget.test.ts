@@ -65,6 +65,16 @@ describe("Story 12-1 — useRealtimeVoice.ts line budget", () => {
     expect(HOOK_SOURCE).not.toMatch(/expo-audio-stream/);
   });
 
+  it("hook does NOT import audio-stream-manager (orchestrator owns lifecycle now; Story 12-5 review-round-1 P10)", () => {
+    // Negative guard for Story 12-5: only the orchestrator should consume
+    // `acquireAudioStream` / `releaseAudioStream`. If the hook started
+    // importing the manager directly it would mean the lifecycle moved
+    // back into React-land — a regression that would re-introduce the
+    // P1-19 destroy-on-unmount class of bugs by ceding refcount control
+    // to React's render lifecycle.
+    expect(HOOK_SOURCE).not.toMatch(/audio-stream-manager/);
+  });
+
   it("P16 review-patch: hook's public methods are pure pass-throughs to orchestrator (negative-guard against business-logic regression)", () => {
     // Pin the 3 pass-through methods. A future refactor that re-introduces
     // business logic into the hook would break these patterns.
