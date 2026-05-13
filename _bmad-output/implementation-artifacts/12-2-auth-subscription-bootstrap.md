@@ -412,6 +412,24 @@ After this story:
   - [x] `git status` shows the story file as tracked (committed in initial story-file commit on 12-1 branch).
   - [x] `npx prettier --check` on the story file passes.
 
+### Tasks / Subtasks — Review Follow-ups (AI)
+
+- [x] **Round-1 P1: bootstrapAuth re-entrancy guard** — sentinel `bootstrapState` set BEFORE side-effects so re-entrant calls during install see in-progress state.
+- [x] **Round-1 P2: Cold-start setLoading race defense** — `if (!session && !useAuthStore.getState().session)` re-reads store before clearing loading.
+- [x] **Round-1 P3: Jest module-load guard** — `if (typeof process === "undefined" || !process.env.JEST_WORKER_ID)` wraps `bootstrapAuth()` call in `_layout.tsx`.
+- [x] **Round-1 P4: Metro HMR dispose** — `module.hot.dispose` tears down stale subscription on Fast Refresh.
+- [x] **Round-1 P5: `__resetBootstrapForTests` microtask drain** — async + `await Promise.resolve()` × 2; all callers updated to `await`.
+- [x] **Round-1 P6: Idempotent teardown + closure-staleness defense** — `let alreadyTornDown = false` + `capturedSubscription = null` after first call.
+- [x] **Round-1 P7: try/catch on `onAuthStateChange` install** — `captureError(_, "auth-bootstrap-install")` + degrade to no-op teardown.
+- [x] **Round-1 P8: Drift-detector regex tolerates type annotations** — `useAuthStore\(\((?:s|state)(?:\s*:\s*\w+)?\)\s*=>\s*\w+\.[a-zA-Z]+\)`.
+- [x] **Round-1 P9: Removed dead `applyProfileIfFresh` mock** in `use-auth.test.tsx`.
+- [x] **Round-1 P10: Added MFA_CHALLENGE_VERIFIED test case** (Case 10b) in `auth-bootstrap.test.ts`.
+- [x] **Round-1 P11: Runtime test-only guard on `__resetBootstrapForTests`** — throws if `NODE_ENV !== "test"`.
+- [x] **Round-1 P12: StrictMode JSDoc correction** — clarifies module-load is not StrictMode-rerun-protected; actual defense is against accidental `useEffect` invocation + HMR.
+- [x] **Round-1 P13: `mockGetSession.mockReset()` + re-default** in `beforeEach` so `.mockResolvedValueOnce` overrides don't leak.
+- [x] **Round-1 P14: `registeredCallbacks` capture-array** — replaces scalar `registeredCallback`; new length-1 assertion in Case 2 catches double-subscribe regressions.
+- [x] **Round-1 P15: `_layout.tsx` load-bearing-ordering comment** — Sentry.init MUST precede bootstrapAuth.
+
 ## Dev Agent Record
 
 ### Implementation Plan
@@ -512,3 +530,4 @@ After this story:
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-13 | Story 12-2 story file created; closes audit P0-7 deepening (auth listener installed per-consumer → installed once at bootstrap); spec target `useAuth.ts` becomes pure consumer hook (~40-60 lines); MEDIUM risk surface (~6-9 review patches anticipated per Epic 9/10/11/12 retro).                                                                                                                                                                                                                                                                                                                                                                                  |
 | 2026-05-13 | Story 12-2 implementation complete. New `src/lib/auth-bootstrap.ts` (263 lines) absorbs listener + cold-start + 5 action methods + `applyProfileIfFresh` (moved to avoid circular import). `src/hooks/use-auth.ts` shrinks 359 → 70 lines (5.1× reduction; 12.5% under 80-line spec budget). `app/_layout.tsx` calls `bootstrapAuth()` at module-load time. 31 new Jest cases across 3 test files (17 + 6 + 8); test count 1260 → 1291 (+31; spec target was ~1280, beat by 11). All 5 quality gates green: type-check / lint / format / test / colors. Story 9-3 / 9-4 / 9-5 / 9-6 / 9-7 / 9-8 / 9-9 / 9-10 / 10-X / 11-X / 12-1 invariants preserved by construction. |
+| 2026-05-13 | Story 12-2 review-round-1 patches applied: HIGH × 5 (P1 re-entrancy guard via sentinel-before-subscribe; P2 cold-start race defense via re-read store session before clearing loading; P3 Jest module-load guard via `JEST_WORKER_ID` check on `app/_layout.tsx` `bootstrapAuth()` call; P4 Metro HMR dispose hook via `module.hot.dispose`; P5 `__resetBootstrapForTests` microtask drain via async + `await Promise.resolve()` × 2) + MED × 5 (P6 idempotent teardown with `alreadyTornDown` flag + nullified subscription reference; P7 try/catch on `onAuthStateChange` install with `auth-bootstrap-install` Sentry tag; P8 drift-detector regex tolerates type annotations; P9 removed dead `applyProfileIfFresh` mock from `use-auth.test.tsx`; P10 added `MFA_CHALLENGE_VERIFIED → session-only` Case 10b) + LOW × 5 (P11 runtime test-only guard on `__resetBootstrapForTests`; P12 StrictMode JSDoc correction; P13 `mockGetSession.mockReset()` + re-default in `beforeEach`; P14 `registeredCallbacks` capture-array; P15 `_layout.tsx` Sentry.init→bootstrapAuth load-bearing comment). +1 net Jest case (1291 → 1292 — the new MFA case). All 5 quality gates green. 10 pre-existing findings deferred; 5 rejected as noise. CLAUDE.md updated with the review-round-1 patches paragraph. |
