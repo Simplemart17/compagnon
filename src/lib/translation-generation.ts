@@ -64,7 +64,8 @@ export async function generateTranslationExercise(params: {
       {
         temperature: 0.4,
         model: "gpt-4o",
-        maxTokens: 2048,
+        // Story 11-5: right-sized for 5 sentences × source + target + difficulty.
+        maxTokens: 1200,
         feature: "translation-generation",
       }
     );
@@ -147,7 +148,9 @@ export async function evaluateTranslation(params: {
       {
         temperature: 0.4,
         model: "gpt-4o",
-        maxTokens: 2048,
+        // Story 11-5: right-sized for per-sentence eval JSON (overallScore +
+        // dimensions + feedback). Dense but bounded; 800 leaves headroom.
+        maxTokens: 800,
         feature: "translation-evaluation",
       }
     );

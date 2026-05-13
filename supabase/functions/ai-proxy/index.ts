@@ -165,7 +165,11 @@ Deno.serve(async (req: Request) => {
 
         // Story 11-4 — pre-check daily AI spend cap (pessimistic estimate).
         const chatInputTokens = estimateTokensFromMessages(params.messages);
-        const chatMaxOutput = (typeof params.maxTokens === "number" ? params.maxTokens : 2048);
+        // Story 11-5 review patch P7: server-side default mirrors the
+        // client-side `chatCompletion` default (also 800) so a future caller
+        // that bypasses the client wrapper still gets the right-sized
+        // budget for the daily-cost-cap pre-check.
+        const chatMaxOutput = (typeof params.maxTokens === "number" ? params.maxTokens : 800);
         const chatEstimate = estimateChatCostCents(chatModel, chatInputTokens, chatMaxOutput);
         const chatBudget = await checkDailyCostBudget(supabase, user.id, chatEstimate);
         if (!chatBudget.allowed) {
@@ -189,7 +193,9 @@ Deno.serve(async (req: Request) => {
                 model: chatModel,
                 messages: params.messages,
                 temperature: params.temperature ?? 0.7,
-                max_completion_tokens: params.maxTokens ?? 2048,
+                // Story 11-5 review patch P7: server-side default 800 matches
+                // the client-side `chatCompletion` default (no drift).
+                max_completion_tokens: params.maxTokens ?? 800,
                 response_format: params.responseFormat
                   ? { type: params.responseFormat }
                   : undefined,

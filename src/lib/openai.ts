@@ -42,7 +42,17 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Send a chat completion request and return the assistant's text response */
+/**
+ * Send a chat completion request and return the assistant's text response.
+ *
+ * Story 11-5 / audit P1-10: the default `maxTokens` is **800** — a small
+ * sentinel that surfaces mis-sized calls via Zod truncation → schema parse
+ * failure → Sentry, instead of silently over-budgeting every call to 2048.
+ * Every call site SHOULD pass an explicit `maxTokens` sized to its actual
+ * output budget (see the per-site table in CLAUDE.md "Cost discipline" line).
+ * Story 11-4's `daily_cost_ledger` pre-check uses maxTokens as the pessimistic
+ * estimate, so over-large defaults consumed cap budget callers didn't need.
+ */
 export async function chatCompletion(
   messages: ChatMessage[],
   options?: {
@@ -67,7 +77,8 @@ export async function chatCompletion(
           messages,
           model: options?.model ?? "gpt-4o",
           temperature: options?.temperature ?? 0.7,
-          maxTokens: options?.maxTokens ?? 2048,
+          // Story 11-5: sentinel small default; every call site should override.
+          maxTokens: options?.maxTokens ?? 800,
           responseFormat: options?.responseFormat,
         },
       });

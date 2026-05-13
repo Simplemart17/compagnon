@@ -23,7 +23,34 @@ import { supabase } from "./supabase";
 import { shouldReconnect, type CloseReason } from "./realtime-reconnect";
 
 const REALTIME_URL = "wss://api.openai.com/v1/realtime";
-const MODEL = "gpt-realtime";
+
+/**
+ * Default Realtime model (Story 11-5 / audit P1-10 free-tier cost reduction).
+ *
+ * `gpt-realtime-mini` is the v1 free-tier baseline: $10/1M input + $20/1M
+ * output, which is **3.2× cheaper** than `gpt-realtime` ($32/1M + $64/1M).
+ * For the TCF Canada practice use case (5-10 min conversational sessions
+ * with French-language tutoring) the quality difference is operator-
+ * acceptable per the documented free-tier strategy in CLAUDE.md.
+ *
+ * The Story 11-4 `realtime-session` Edge Function allowlist already
+ * accepts `gpt-realtime-mini` (no server-side change needed). The
+ * Story 11-4 `MODEL_RATES["gpt-realtime-mini"]` cost-table entry is
+ * already pinned at the rates above; the daily-cost-cap pre-check
+ * tightens automatically with this constant change.
+ *
+ * Story 11-2's reconnect path replays the cached `RealtimeConfig` on
+ * each reconnect, so the mini model survives reconnects by construction.
+ * Story 11-1's three tools (save_vocabulary, note_error_pattern,
+ * report_correction) all work with mini — OpenAI's Realtime API surface
+ * is identical for both models.
+ *
+ * Future paid-tier override (Epic 16.X): when `profiles.tier` lands,
+ * this constant becomes a function that reads
+ * `useAuthStore.getState().profile?.tier` and returns either
+ * `"gpt-realtime-mini"` (free) or `"gpt-realtime"` (paid).
+ */
+const MODEL = "gpt-realtime-mini";
 
 /** Connection timeout in milliseconds */
 const CONNECT_TIMEOUT_MS = 15_000;
