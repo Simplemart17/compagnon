@@ -1,6 +1,6 @@
 # Story 11.8: Empty-Response Detection for Non-JSON Chat Completions + Retry Parity Across All 4 AI Helpers
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
