@@ -8,6 +8,7 @@ import "react-native-reanimated";
 
 import "@/src/styles/global.css";
 import { useAuth } from "@/src/hooks/use-auth";
+import { bootstrapAuth } from "@/src/lib/auth-bootstrap";
 import {
   registerForPushNotifications,
   setupNotificationResponseListener,
@@ -40,7 +41,28 @@ Notifications.setNotificationHandler({
 // Initialize Sentry as early as possible — before any component renders.
 // DSN is read from EXPO_PUBLIC_SENTRY_DSN; if absent, Sentry is a no-op.
 // Config is owned by src/lib/sentry.ts and snapshot-tested for privacy posture.
+//
+// **Load-bearing ordering (Story 12-2 review-round-1 P15):** `Sentry.init`
+// MUST precede `bootstrapAuth()` because the bootstrap routes errors
+// through `captureError(_, "auth-initial-session")` etc. — calling it
+// before Sentry is initialized would no-op those captures.
 Sentry.init(getSentryInitConfig());
+
+// Story 12-2: install the auth listener + cold-start getSession ONCE per app
+// lifetime at JS-bundle parse time, before any React render. Idempotent —
+// the bootstrap module's `bootstrapState` one-call guard ensures only one
+// `onAuthStateChange` subscription exists regardless of how many `useAuth()`
+// consumers mount. Pre-12-2 each consumer installed its own listener inside
+// `useEffect`. See `src/lib/auth-bootstrap.ts`.
+//
+// **Jest guard (review-round-1 P3):** skip the module-load call when running
+// under Jest. Tests that import this module transitively would otherwise
+// execute the real supabase client's `onAuthStateChange` at module-parse
+// time, before any per-test `jest.mock` factories install. Production
+// builds (where `JEST_WORKER_ID` is unset) call `bootstrapAuth()` normally.
+if (typeof process === "undefined" || !process.env.JEST_WORKER_ID) {
+  bootstrapAuth();
+}
 
 function RootLayoutNav() {
   const { session, user, profile, isLoading, isOnboarded, profileFetchFailed, retryProfileFetch } =
