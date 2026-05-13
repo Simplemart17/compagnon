@@ -37,6 +37,7 @@ import { useAuthStore } from "@/src/store/auth-store";
 import { hapticLight, hapticMedium } from "@/src/lib/haptics";
 import { retrieveMemories } from "@/src/lib/memory";
 import { getTopErrors } from "@/src/lib/error-tracker";
+import { MAX_PROMPT_ERROR_PATTERNS, MAX_PROMPT_MEMORIES } from "@/src/lib/prompts/conversation";
 import { captureError } from "@/src/lib/sentry";
 import { supabase } from "@/src/lib/supabase";
 import { AudioWaveform } from "@/src/components/conversation/AudioWaveform";
@@ -201,9 +202,13 @@ export default function ConversationSessionScreen() {
 
     void (async () => {
       try {
+        // Story 11-7: fetch caps mirror the prompt-injection caps in
+        // `buildConversationPrompt`. Pulling more rows than the builder will
+        // inject was wasted Supabase + pgvector work pre-11-7 (8+5 fetched →
+        // 20-item-slice → 13 injected). Now 3+3 fetched → 3+3 injected.
         const [mems, errors] = await Promise.all([
-          retrieveMemories(user.id, topic, 8).catch(() => []),
-          getTopErrors(user.id, 5).catch(() => []),
+          retrieveMemories(user.id, topic, MAX_PROMPT_MEMORIES).catch(() => []),
+          getTopErrors(user.id, MAX_PROMPT_ERROR_PATTERNS).catch(() => []),
         ]);
         setMemories(mems);
         setErrorPatterns(errors.map((e) => `${e.error_type}: ${e.error_description}`));
