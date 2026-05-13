@@ -1,6 +1,6 @@
 # Story 12.3: Atomic Postgres RPCs for Streak / Skill / Daily-Activity / CEFR Promotion Mutations (Replace Client-Side Read-Then-Write)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -300,6 +300,26 @@ After this story:
   - [x] `git status` showed the story file as untracked-but-not-ignored before commit.
   - [x] `npx prettier --check` on the story file passes.
 
+### Tasks / Subtasks — Review Follow-ups (AI)
+
+- [x] **Round-1 P1: No-regress CEFR rule COALESCE** — `array_position` lookups wrapped in `COALESCE(..., 0)` so NULL/invalid stored `cefr_level` doesn't preserve forever.
+- [x] **Round-1 P2: RAISE on missing profile row** — `update_streak_atomic` + `promote_cefr_level_atomic` both `IF NOT FOUND THEN RAISE EXCEPTION ... USING ERRCODE = 'no_data_found'`; the latter explicitly distinguishes missing-row from CAS-mismatch via pre-`SELECT EXISTS`.
+- [x] **Round-1 P3: pgTAP concurrency truthfulness** — comments rewritten to clarify the 100-iteration assertions verify the SEQUENTIAL math contract, not real cross-connection row-locking; pgbench invocation documented for ops; Epic 15.3 owns CI-wired concurrency test.
+- [x] **Round-1 P4: Validate `p_cefr_level`** at `update_skill_progress_atomic` entry — defense-in-depth against missing CHECK constraint on `skill_progress.cefr_level`.
+- [x] **Round-1 P5: Round fresh INSERT score** — `round(p_incoming_score)` wraps the fresh INSERT VALUES symmetric with the UPDATE branch's running-avg `round(...)`.
+- [x] **Round-1 P6: FALSE CAS info breadcrumb** in `checkCefrPromotion` — distinguishes a real successful promotion from a CAS-mismatch race; `lastSkippedBreadcrumb` cache no longer cleared on FALSE.
+- [x] **Round-1 P7: Validate `p_next_level`** at `promote_cefr_level_atomic` entry — clear error message instead of generic `check_violation`.
+- [x] **Round-1 P8: Loosen drift regex** for multi-line ARRAY[...] formatting — tolerates whitespace + line breaks inside the array literal.
+- [x] **Round-1 P9: pgTAP test #11 `COUNT(DISTINCT) = 4`** — verifies all 4 RPCs have the grant, not just any one.
+- [x] **Round-1 P10: Drift detector pins `score = round(`** on running-avg math.
+- [x] **Round-1 P11: Future `last_active_date` preserves streak** — 4th CASE arm `WHEN last_active_date > p_today THEN COALESCE(streak_days, 0)` defends against clock-skew / DST / timezone-roaming.
+- [x] **Round-1 P12: `captureError` extras use clamped `incomingScore`** instead of raw `score` — Sentry mirrors RPC arg for diagnostic fidelity.
+- [x] **Round-1 P13: CLAUDE.md `__tests__` paths backslash-escaped** — `\_\_tests\_\_` survives prettier's markdown formatter without conversion to `**tests**`.
+- [x] **Round-1 P14: Unique userIds per `checkCefrPromotion` test** — `user-case-12-{level}`, `user-case-13`, etc. — defends against `lastSkippedBreadcrumb` Map state leaking across test cases.
+- [x] **Round-1 P15: Table-driven CEFR adjacency for Case 12** — 5 levels (A1→A2, A2→B1, B1→B2, B2→C1, C1→C2) replace single happy-path; catches hardcoded `p_next_level` regression.
+- [x] **Round-1 P16: pgTAP `auth.uid()` sanity precheck** — fails loudly if the JWT setting doesn't populate `auth.uid()` (defends against test #10 passing vacuously on a future Supabase release).
+- [x] **Round-1 P17: NaN guard `NOT (x = x)`** on `p_incoming_score` — catches both NaN and SQL NULL before the GREATEST/LEAST clamp; defense if client wrapper is bypassed.
+
 ## Dev Agent Record
 
 ### Implementation Plan
@@ -404,3 +424,4 @@ After this story:
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-13 | Story 12-3 story file created; closes audit P1-18 (read-then-write races in `activity.ts` → server-side atomic RPCs); spec target satisfies Epic 12 AC at `shippable-roadmap.md` line 219 (100-concurrent-update no-loss); MEDIUM-to-HIGH risk surface (4 new SQL functions + 4 client rewrites + 3-level test coverage); ~8-12 review patches anticipated per Epic 9/10/11/12 retro budget. |
 | 2026-05-13 | Story 12-3 implementation complete. New migration `20260514000000_atomic_activity_rpcs.sql` (254 lines) adds 4 RPCs: `update_streak_atomic`, `update_skill_progress_atomic`, `increment_daily_activity_atomic`, `promote_cefr_level_atomic` — all with SECURITY DEFINER + SET search_path = public + auth.uid() defense-in-depth + REVOKE/GRANT. `src/lib/activity.ts` 4 helper bodies rewritten to call `supabase.rpc(...)`; both `TODO(epic-10-schema-hardening)` JSDoc markers deleted; unused `maxLevel` helper deleted. 31 new Jest cases across 2 test files: `atomic-activity-rpcs-migration-drift.test.ts` (15 drift-detector cases reading SQL from disk) + `activity-rpc-mutations.test.ts` (16 rpc-mock contract cases). 11 pgTAP-style assertions in `supabase/migrations/__tests__/atomic_activity_rpcs_test.sql` (manual-run; Epic 15.3 owns CI). Test count 1292 → 1323 (+31; spec target was ~1318, beat by 5). CLAUDE.md updated. All 5 quality gates green. Story 9-2 / 9-3 / 9-6 / 9-9 / 9-10 / 10-X / 11-4 / 11-6 / 12-1 / 12-2 invariants preserved by construction. |
+| 2026-05-13 | Story 12-3 review-round-1 patches applied: HIGH × 3 (P1 no-regress CEFR COALESCE for NULL/invalid stored level; P2 RAISE on missing profile row for `update_streak_atomic` + `promote_cefr_level_atomic` distinguishing missing-row from CAS-mismatch; P3 pgTAP comments rewritten to clarify SEQUENTIAL math contract + concurrency deferred to Epic 15.3) + MED × 8 (P4 validate `p_cefr_level` at entry; P5 round() symmetric on fresh INSERT; P6 FALSE-CAS info breadcrumb in `checkCefrPromotion` instead of silent success path; P7 validate `p_next_level` at entry; P8 drift regex loosened to tolerate multi-line ARRAY formatting; P9 pgTAP test #11 `COUNT(DISTINCT) = 4` instead of `EXISTS`; P10 drift detector pins `score = round(...)` usage; P11 future-`last_active_date` preserves streak instead of resetting to 1) + LOW × 6 (P12 `captureError` extras use clamped `incomingScore`; P13 CLAUDE.md `__tests__` paths backslash-escaped against prettier markdown reformat; P14 unique userIds per `checkCefrPromotion` test; P15 table-driven CEFR adjacency for Case 12 [A1→A2, A2→B1, B1→B2, B2→C1, C1→C2]; P16 pgTAP `auth.uid()` sanity precheck against JWT-setting-vacuous-pass; P17 NaN guard `NOT (x = x)` on `p_incoming_score`). +10 net Jest cases (1323 → 1333). 2 pre-existing items deferred (Phase A trigger race; concurrent-connection pgTAP test). 10 rejected as noise. All 5 quality gates green. CLAUDE.md updated with the review-round-1 patches paragraph. |
