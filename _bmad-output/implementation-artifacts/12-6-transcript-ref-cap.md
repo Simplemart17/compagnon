@@ -1,6 +1,6 @@
 # Story 12.6: Cap `transcript` at 200 Entries — Spill Older to DB-Bound Buffer
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
