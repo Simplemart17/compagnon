@@ -46,6 +46,11 @@ import type { User } from "@supabase/supabase-js";
 import { acquireAudioStream, releaseAudioStream } from "@/src/lib/audio-stream-manager";
 import { RealtimeSession, type RealtimeConfig, type RealtimeEvent } from "@/src/lib/realtime";
 import {
+  applyTranscriptCap,
+  toMessagePayload,
+  type ConversationMessagePayload,
+} from "@/src/lib/transcript-cap";
+import {
   acceptDelta,
   appendIfNew,
   resolveTranscriptKey,
@@ -221,6 +226,16 @@ export class RealtimeOrchestrator {
 
   // ─── Transcript + corrections ─────────────────────────────────────────
   private transcript: TranscriptEntry[] = [];
+  /**
+   * Story 12-6: evicted transcript entries in DB-payload shape
+   * (`conversation_id` + `role` + `content` + `corrections`). The
+   * in-memory `transcript` array is FIFO-capped at
+   * `MAX_TRANSCRIPT_ENTRIES = 200`; when an append would exceed the cap,
+   * the evicted entries are pushed here so the persist-time batch insert
+   * sees the COMPLETE conversation regardless of in-memory eviction.
+   * Cleared in `start()`'s reset block alongside `this.transcript`.
+   */
+  private spilledMessages: ConversationMessagePayload[] = [];
   private corrections: Correction[] = [];
   /**
    * Story 11-1: corrections accumulated during the current AI turn via
@@ -687,7 +702,17 @@ export class RealtimeOrchestrator {
 
     if (!result.appended) return false;
 
-    this.transcript = result.transcript;
+    // Story 12-6: cap `this.transcript` at 200 entries via FIFO eviction.
+    // `appendIfNew` already produced `result.transcript = [...this.transcript, result.entry]`
+    // but DID NOT cap. We re-derive the capped tail from the same base + entry —
+    // `appendIfNew`'s contract guarantees `result.appended === true` implies
+    // `result.entry !== undefined`. Evicted entries spill to `spilledMessages`
+    // in DB-payload shape so persist-time sees the COMPLETE conversation.
+    const capResult = applyTranscriptCap(this.transcript, result.entry!);
+    this.transcript = capResult.transcript;
+    if (capResult.evicted.length > 0) {
+      this.handleTranscriptEviction(capResult.evicted);
+    }
     this.corrections = result.corrections;
 
     // Only clear streaming state if the appended turn IS the in-flight one.
@@ -699,13 +724,49 @@ export class RealtimeOrchestrator {
 
     this.setState((s) => ({
       ...s,
-      transcript: result.transcript,
+      transcript: this.transcript,
       pendingAiText: isInflight ? "" : s.pendingAiText,
       allCorrections: result.corrections,
     }));
 
-    this.options.onTranscriptUpdate?.(result.transcript);
+    this.options.onTranscriptUpdate?.(this.transcript);
     return true;
+  }
+
+  /**
+   * Story 12-6: handle FIFO-evicted transcript entries. Pushes each
+   * evicted entry's DB-payload shape (via `toMessagePayload`) into
+   * `this.spilledMessages` so the persist-time batch insert sees the
+   * COMPLETE conversation regardless of in-memory cap eviction.
+   *
+   * Emits a Sentry breadcrumb (`feature: "transcript-cap-evicted"`) per
+   * eviction event so operators can grep production logs for cap-fire
+   * frequency. Breadcrumb level is `info` because eviction is
+   * bounded-by-design behavior, not an anomaly (Story 11-6 review P6
+   * lesson — reserve `error` tier for unexpected failures).
+   *
+   * Defensive early-return when `this.conversationId === null` — should
+   * not occur in practice (eviction can only happen after the first
+   * `appendAiTranscriptEntry` or `handleItemCreated` call, both of which
+   * run post-`createConversationRecord`), but the guard defends against
+   * a pathological code path where events somehow arrive before
+   * `conversationId` is set.
+   */
+  private handleTranscriptEviction(evicted: TranscriptEntry[]): void {
+    if (!this.conversationId) return;
+    for (const entry of evicted) {
+      this.spilledMessages.push(toMessagePayload(entry, this.conversationId));
+    }
+    addBreadcrumb({
+      category: "realtime",
+      level: "info",
+      message: "Transcript cap eviction",
+      data: {
+        feature: "transcript-cap-evicted",
+        evictedCount: evicted.length,
+        totalEntries: this.transcript.length + this.spilledMessages.length,
+      },
+    });
   }
 
   // ────────────────────────────────────────────────────────────────────
@@ -913,7 +974,13 @@ export class RealtimeOrchestrator {
           text: textContent.transcript,
           timestamp: Date.now(),
         };
-        this.transcript = [...this.transcript, entry];
+        // Story 12-6: cap-then-evict via the pure helper. Spill any
+        // evicted entries to `spilledMessages` for persist-time insert.
+        const capResult = applyTranscriptCap(this.transcript, entry);
+        this.transcript = capResult.transcript;
+        if (capResult.evicted.length > 0) {
+          this.handleTranscriptEviction(capResult.evicted);
+        }
         this.setState((s) => ({ ...s, transcript: this.transcript }));
         this.options.onTranscriptUpdate?.(this.transcript);
       }
@@ -1107,12 +1174,12 @@ export class RealtimeOrchestrator {
           },
           filter: { column: "id", value: conversationId },
         });
-        const messages = this.transcript.map((entry) => ({
-          conversation_id: conversationId,
-          role: entry.role,
-          content: entry.text,
-          corrections: entry.corrections ?? null,
-        }));
+        // Story 12-6: prepend the spill buffer so offline-queue persists
+        // the COMPLETE conversation regardless of in-memory cap eviction.
+        const messages = [
+          ...this.spilledMessages,
+          ...this.transcript.map((entry) => toMessagePayload(entry, conversationId)),
+        ];
         for (const msg of messages) {
           await enqueueWrite({
             table: "conversation_messages",
@@ -1127,18 +1194,26 @@ export class RealtimeOrchestrator {
     }
 
     // ── Online: Phase A (6 independent slots in parallel) ────────────
-    const transcript = this.transcript.map((e) => `${e.role}: ${e.text}`).join("\n");
+    // Story 12-6: combine the spill buffer with the live tail so the
+    // AI-analysis input + speaking-score count + Slot 1 batch insert all
+    // see the COMPLETE conversation regardless of in-memory cap eviction.
+    const spilledAsText = this.spilledMessages.map((m) => `${m.role}: ${m.content}`).join("\n");
+    const liveAsText = this.transcript.map((e) => `${e.role}: ${e.text}`).join("\n");
+    const transcript =
+      spilledAsText.length > 0 && liveAsText.length > 0
+        ? `${spilledAsText}\n${liveAsText}`
+        : spilledAsText + liveAsText;
     const hasCorrections = this.corrections.length > 0;
     const hasLongTranscript = transcript.length > 50;
-    const totalEntries = this.transcript.filter((e) => e.role === "user").length;
+    const spilledUserEntries = this.spilledMessages.filter((m) => m.role === "user").length;
+    const liveUserEntries = this.transcript.filter((e) => e.role === "user").length;
+    const totalEntries = spilledUserEntries + liveUserEntries;
     const correctedEntries = this.corrections.length;
     const speakingScore = computeSpeakingScore(totalEntries, correctedEntries);
-    const messages = this.transcript.map((entry) => ({
-      conversation_id: conversationId,
-      role: entry.role,
-      content: entry.text,
-      corrections: entry.corrections ?? null,
-    }));
+    const messages = [
+      ...this.spilledMessages,
+      ...this.transcript.map((entry) => toMessagePayload(entry, conversationId)),
+    ];
 
     // Story 11-5 P5: short-transcript fallback persists corrections directly.
     const analysisSlot = (): Promise<unknown> => {
@@ -1254,6 +1329,10 @@ export class RealtimeOrchestrator {
 
     // Reset ALL state so retries start clean.
     this.transcript = [];
+    // Story 12-6: clear the spill buffer alongside `transcript` so a
+    // `start()` retry / `end()`→`start()` recycle lands in a clean state
+    // (Story 12-1 P13 / Story 12-5 P1 reset-all-state pattern).
+    this.spilledMessages = [];
     this.corrections = [];
     this.currentAiText = "";
     this.durationSeconds = 0;

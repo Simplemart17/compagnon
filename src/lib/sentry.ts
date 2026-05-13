@@ -49,6 +49,9 @@ export const SENTRY_EXTRAS_ALLOWLIST: ReadonlySet<string> = new Set([
   "filteredCount",
   "seenCount",
   "retries",
+  // 12-6 transcript-cap telemetry — small bounded integers; safe under length rule.
+  "evictedCount",
+  "totalEntries",
 ]);
 
 /**
