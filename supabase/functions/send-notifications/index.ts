@@ -10,12 +10,15 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
-import Expo from "https://esm.sh/expo-server-sdk";
+// Pinned to 3.15.0 — unpinned esm.sh resolved to a newer release that transitively
+// imported undici@7.25.0 → node:sqlite, which esm.sh can't polyfill for Deno.
+// Use npm: specifier so Deno's native Node compat handles built-ins.
+import Expo from "npm:expo-server-sdk@3.15.0";
 import type {
   ExpoPushMessage,
   ExpoPushTicket,
   ExpoPushReceipt,
-} from "https://esm.sh/expo-server-sdk";
+} from "npm:expo-server-sdk@3.15.0";
 import {
   checkRateLimit,
   rateLimitResponse,
