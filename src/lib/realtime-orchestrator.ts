@@ -48,6 +48,9 @@ import { RealtimeSession, type RealtimeConfig, type RealtimeEvent } from "@/src/
 import {
   applyTranscriptCap,
   toMessagePayload,
+  SPILLED_MESSAGES_HIGH_WATER_MARK,
+  TRANSCRIPT_CAP_FEATURE_TAG,
+  TRANSCRIPT_CAP_HIGH_WATER_FEATURE_TAG,
   type ConversationMessagePayload,
 } from "@/src/lib/transcript-cap";
 import {
@@ -234,8 +237,27 @@ export class RealtimeOrchestrator {
    * the evicted entries are pushed here so the persist-time batch insert
    * sees the COMPLETE conversation regardless of in-memory eviction.
    * Cleared in `start()`'s reset block alongside `this.transcript`.
+   *
+   * **Residual unboundedness (Story 12-6 review-round-1 P3):** this
+   * buffer grows monotonically with conversation length. The cap bounds
+   * `state.transcript` (FlatList input) at 200 entries, but
+   * `spilledMessages` itself accumulates ~80 bytes per evicted entry
+   * for the session's lifetime. A 24-hour pathological session at 1
+   * turn/5s yields ~1.4MB in this buffer alone. AsyncStorage / mid-
+   * session DB-streaming spill is deferred to Epic 13.X / 17.X
+   * follow-up; the high-water-mark breadcrumb below surfaces in-prod
+   * frequency so operators can decide on the next move.
    */
   private spilledMessages: ConversationMessagePayload[] = [];
+  /**
+   * Story 12-6 review-round-1 P3: idempotency flag for the high-water-
+   * mark breadcrumb. Set true once `spilledMessages.length` first
+   * exceeds `SPILLED_MESSAGES_HIGH_WATER_MARK`, so the breadcrumb fires
+   * EXACTLY ONCE per orchestrator instance regardless of how many
+   * additional evictions follow. Reset to false in `start()`'s reset
+   * block.
+   */
+  private spillHighWaterMarkBreached = false;
   private corrections: Correction[] = [];
   /**
    * Story 11-1: corrections accumulated during the current AI turn via
@@ -708,7 +730,15 @@ export class RealtimeOrchestrator {
     // `appendIfNew`'s contract guarantees `result.appended === true` implies
     // `result.entry !== undefined`. Evicted entries spill to `spilledMessages`
     // in DB-payload shape so persist-time sees the COMPLETE conversation.
-    const capResult = applyTranscriptCap(this.transcript, result.entry!);
+    //
+    // Story 12-6 review-round-1 P2: explicit narrow instead of non-null `!`
+    // assertion. If a future `appendIfNew` refactor ever returns
+    // `{appended: true, entry: undefined}` (e.g., a new branch path), the
+    // non-null assertion would silently propagate `undefined` into the
+    // transcript array and crash downstream at `toMessagePayload(undefined)`.
+    // The explicit check costs one branch and eliminates the lying contract.
+    if (!result.entry) return false;
+    const capResult = applyTranscriptCap(this.transcript, result.entry);
     this.transcript = capResult.transcript;
     if (capResult.evicted.length > 0) {
       this.handleTranscriptEviction(capResult.evicted);
@@ -739,21 +769,41 @@ export class RealtimeOrchestrator {
    * `this.spilledMessages` so the persist-time batch insert sees the
    * COMPLETE conversation regardless of in-memory cap eviction.
    *
-   * Emits a Sentry breadcrumb (`feature: "transcript-cap-evicted"`) per
+   * Emits a Sentry breadcrumb (`feature: TRANSCRIPT_CAP_FEATURE_TAG`) per
    * eviction event so operators can grep production logs for cap-fire
    * frequency. Breadcrumb level is `info` because eviction is
    * bounded-by-design behavior, not an anomaly (Story 11-6 review P6
    * lesson — reserve `error` tier for unexpected failures).
    *
-   * Defensive early-return when `this.conversationId === null` — should
-   * not occur in practice (eviction can only happen after the first
-   * `appendAiTranscriptEntry` or `handleItemCreated` call, both of which
-   * run post-`createConversationRecord`), but the guard defends against
-   * a pathological code path where events somehow arrive before
-   * `conversationId` is set.
+   * **Story 12-6 review-round-1 P1**: when `this.conversationId` is null,
+   * undefined, OR empty string (a pathological invariant violation — the
+   * cap has already committed `this.transcript = capResult.transcript`
+   * BEFORE this handler runs, so the evicted entries are GONE from
+   * memory), we route the data loss through `captureError` instead of
+   * returning silently. Pre-patch the silent return dropped 50+ entries
+   * with zero operator signal; post-patch the loss is visible in Sentry.
+   * The empty-string check is belt-and-suspenders against a future
+   * supabase mock or test path producing `conversationId === ""` (passes
+   * the falsy guard).
+   *
+   * **Story 12-6 review-round-1 P3**: when `spilledMessages.length` first
+   * crosses `SPILLED_MESSAGES_HIGH_WATER_MARK`, fires a one-shot operator
+   * breadcrumb so pathological-session sessions are visible in prod
+   * before they OOM. Idempotent via `this.spillHighWaterMarkBreached`.
    */
   private handleTranscriptEviction(evicted: TranscriptEntry[]): void {
-    if (!this.conversationId) return;
+    if (
+      this.conversationId === null ||
+      this.conversationId === undefined ||
+      this.conversationId === ""
+    ) {
+      captureError(
+        new Error("Transcript eviction with null conversationId"),
+        "transcript-cap-eviction-no-convo-id",
+        { evictedCount: evicted.length }
+      );
+      return;
+    }
     for (const entry of evicted) {
       this.spilledMessages.push(toMessagePayload(entry, this.conversationId));
     }
@@ -762,11 +812,28 @@ export class RealtimeOrchestrator {
       level: "info",
       message: "Transcript cap eviction",
       data: {
-        feature: "transcript-cap-evicted",
+        feature: TRANSCRIPT_CAP_FEATURE_TAG,
         evictedCount: evicted.length,
         totalEntries: this.transcript.length + this.spilledMessages.length,
       },
     });
+    // P3 high-water-mark check fires AFTER the push so the count is
+    // accurate. Idempotent — fires once per orchestrator instance.
+    if (
+      !this.spillHighWaterMarkBreached &&
+      this.spilledMessages.length >= SPILLED_MESSAGES_HIGH_WATER_MARK
+    ) {
+      this.spillHighWaterMarkBreached = true;
+      addBreadcrumb({
+        category: "realtime",
+        level: "warning",
+        message: "Transcript spill buffer high-water-mark breached",
+        data: {
+          feature: TRANSCRIPT_CAP_HIGH_WATER_FEATURE_TAG,
+          totalEntries: this.spilledMessages.length,
+        },
+      });
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────
@@ -1197,12 +1264,14 @@ export class RealtimeOrchestrator {
     // Story 12-6: combine the spill buffer with the live tail so the
     // AI-analysis input + speaking-score count + Slot 1 batch insert all
     // see the COMPLETE conversation regardless of in-memory cap eviction.
+    // Story 12-6 review-round-1 P8: filter-then-join is cleaner than the
+    // pre-patch ternary on `&&`. Empty segments (no spilled OR no live)
+    // drop out before the `\n` separator joins the remaining, so we get
+    // no leading / trailing newline corner cases under future
+    // `toMessagePayload` changes.
     const spilledAsText = this.spilledMessages.map((m) => `${m.role}: ${m.content}`).join("\n");
     const liveAsText = this.transcript.map((e) => `${e.role}: ${e.text}`).join("\n");
-    const transcript =
-      spilledAsText.length > 0 && liveAsText.length > 0
-        ? `${spilledAsText}\n${liveAsText}`
-        : spilledAsText + liveAsText;
+    const transcript = [spilledAsText, liveAsText].filter((s) => s.length > 0).join("\n");
     const hasCorrections = this.corrections.length > 0;
     const hasLongTranscript = transcript.length > 50;
     const spilledUserEntries = this.spilledMessages.filter((m) => m.role === "user").length;
@@ -1333,6 +1402,10 @@ export class RealtimeOrchestrator {
     // `start()` retry / `end()`→`start()` recycle lands in a clean state
     // (Story 12-1 P13 / Story 12-5 P1 reset-all-state pattern).
     this.spilledMessages = [];
+    // Story 12-6 review-round-1 P3: reset the high-water-mark
+    // idempotency flag so a fresh conversation can fire its own
+    // breadcrumb if it accumulates enough spilled entries.
+    this.spillHighWaterMarkBreached = false;
     this.corrections = [];
     this.currentAiText = "";
     this.durationSeconds = 0;

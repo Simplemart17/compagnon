@@ -9,7 +9,7 @@
  *
  * Cap policy:
  *   - `MAX_TRANSCRIPT_ENTRIES = 200` — chosen so realistic 5-min TCF
- *     sessions (~30-50 turns) leave ~6× headroom while bounding
+ *     sessions (~30-50 turns) leave 4-6× headroom while bounding
  *     pathological / debug sessions at a predictable budget. Story
  *     12-1's CLAUDE.md paragraph pre-commits to this value:
  *     "12-6 transcriptRef 200-entry cap operates on the orchestrator's
@@ -61,6 +61,36 @@ import type { TranscriptEntry } from "./realtime-transcript";
 export const MAX_TRANSCRIPT_ENTRIES = 200;
 
 /**
+ * Sentry feature tag fired by the orchestrator's
+ * `handleTranscriptEviction` breadcrumb (Story 12-6 review-round-1 P14).
+ *
+ * Exported as a single source of truth so production code + tests
+ * reference the same string — a typo in either site cannot silently
+ * pass tests via vacuous-filter-by-feature drift.
+ */
+export const TRANSCRIPT_CAP_FEATURE_TAG = "transcript-cap-evicted";
+
+/**
+ * Sentry feature tag fired when `spilledMessages.length` exceeds the
+ * high-water-mark threshold (Story 12-6 review-round-1 P3) — operator
+ * signal that a session has accumulated enough cap-fire spillover to
+ * suggest the in-memory `spilledMessages` buffer is approaching the
+ * "memory bound is monotonic, not strict" boundary documented in
+ * CLAUDE.md. Fires once per orchestrator instance (idempotent via the
+ * orchestrator's `spillHighWaterMarkBreached` flag).
+ */
+export const TRANSCRIPT_CAP_HIGH_WATER_FEATURE_TAG = "transcript-cap-high-water-mark";
+
+/**
+ * Threshold at which `spilledMessages.length` triggers the operator
+ * high-water-mark breadcrumb. Set at 1000 evicted entries (~80KB of
+ * payload-shape memory) — well above realistic 5-min TCF sessions but
+ * still bounded enough that a session in this state warrants follow-up
+ * investigation (Epic 13.X / 17.X AsyncStorage-spill territory).
+ */
+export const SPILLED_MESSAGES_HIGH_WATER_MARK = 1000;
+
+/**
  * DB-payload shape for a `conversation_messages` row. Drops the
  * in-memory bookkeeping fields (`id`, `timestamp`) that `TranscriptEntry`
  * carries — those exist for dedup + React `keyExtractor` stability only.
@@ -90,6 +120,17 @@ export interface ApplyCapResult {
  * Returns NEW arrays on every call (immutability invariant) — even on
  * the identity path, so React reference-equality checks always trigger
  * a re-render and observers can detect the append.
+ *
+ * **Multi-evict semantics** (Story 12-6 review-round-1 P17): if `transcript`
+ * is passed in already exceeding `MAX_TRANSCRIPT_ENTRIES` (e.g., a bypass
+ * path injected entries directly without going through this helper, or a
+ * future caller batch-loaded transcript state), this helper correctly
+ * evicts the front overflow such that `result.transcript.length ===
+ * MAX_TRANSCRIPT_ENTRIES` and `result.evicted.length = transcript.length +
+ * 1 - MAX_TRANSCRIPT_ENTRIES`. The multi-entry eviction is by design;
+ * callers receiving `evicted.length > 1` should still propagate every
+ * entry to the spill buffer (the orchestrator's `handleTranscriptEviction`
+ * iterates the array, so this is safe by construction).
  */
 export function applyTranscriptCap(
   transcript: TranscriptEntry[],

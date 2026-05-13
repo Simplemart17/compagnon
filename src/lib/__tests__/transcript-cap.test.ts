@@ -63,6 +63,12 @@ describe("Story 12-6 — applyTranscriptCap eviction (FIFO)", () => {
     expect(result.evicted[0]).toBe(input[0]);
     // Tail-200 of the returned transcript begins with entry[1] (entry[0] evicted).
     expect(result.transcript[0]).toBe(input[1]);
+    // Story 12-6 review-round-1 P10: explicit non-membership +
+    // membership assertions catch a future regression that leaks
+    // `newEntry` into both `transcript` AND `evicted` (cap-then-evict
+    // sequencing violation would pass the prior assertions vacuously).
+    expect(result.evicted).not.toContain(newEntry);
+    expect(result.transcript).toContain(newEntry);
   });
 
   it("Case 5: FIFO ordering — the new entry is ALWAYS at the END of the returned transcript", () => {
@@ -107,6 +113,36 @@ describe("Story 12-6 — applyTranscriptCap immutability", () => {
     // Input contents unchanged.
     expect(input).toEqual(inputSnapshot);
     // Result is a NEW array (reference inequality).
+    expect(result.transcript).not.toBe(input);
+  });
+
+  it("Case 7b: input transcript array is NOT mutated on the EVICTION path (200 + 1) — review-round-1 P11", () => {
+    // Pre-patch Case 7 only covered the identity path. A regression
+    // that, for example, uses `.splice` instead of `.slice` on the
+    // eviction path would mutate the input AND would not be caught.
+    // This case pins the immutability invariant for the eviction path.
+    const input = Array.from({ length: 200 }, (_, i) => makeEntry(i));
+    const inputSnapshot = [...input];
+    const inputRef = input;
+    const firstEntryRef = input[0];
+    const newEntry = makeEntry(200);
+
+    const result = applyTranscriptCap(input, newEntry);
+
+    // Eviction actually fired (sanity).
+    expect(result.evicted).toHaveLength(1);
+    // Input array reference unchanged.
+    expect(input).toBe(inputRef);
+    // Input length unchanged (no splice).
+    expect(input).toHaveLength(200);
+    // Input contents unchanged (every element at same index).
+    expect(input).toEqual(inputSnapshot);
+    // The evicted entry is the SAME reference as input[0] (proves it
+    // wasn't cloned mid-eviction and proves input[0] still exists in
+    // the original array post-call).
+    expect(input[0]).toBe(firstEntryRef);
+    expect(result.evicted[0]).toBe(firstEntryRef);
+    // Result is a NEW array.
     expect(result.transcript).not.toBe(input);
   });
 });
