@@ -365,6 +365,63 @@ export class RealtimeOrchestrator {
   }
 
   // ────────────────────────────────────────────────────────────────────
+  // Story 12-4 — uniform wrapper for session-method dispatch from inside
+  // `handleEvent`-reachable paths
+  // ────────────────────────────────────────────────────────────────────
+
+  /**
+   * Uniform wrapper for the 13 `this.session?.method()` call sites inside
+   * `handleEvent`-reachable paths. When `this.session === null` (race with
+   * `start()` / `dispose()` / `disconnect()`), the method is skipped AND a
+   * Sentry breadcrumb fires so the silent-no-op failure mode is observable.
+   *
+   * Pre-12-4 these call sites used `this.session?.method()` which silently
+   * no-op'd. Audit P2-21 closes the race architecturally via the early-
+   * assignment in `start()`; this wrapper is the post-fix telemetry hook
+   * that catches any future regression where a similar race appears.
+   *
+   * Used inside `handleFunctionCall` (Story 11-1 tool-call acks) and
+   * `handleSpeechStarted` (Story 11-2 barge-in) and the audio-stream
+   * callback. NOT used at `dispose` / `sendText` / `end` public-API entry
+   * points — those are called from React event handlers, not from inside
+   * `handleEvent`, so the race doesn't apply.
+   *
+   * **Synchronous-fn invariant (Review-round-1 P9):** `fn` MUST be
+   * synchronous. The helper returns `T | undefined` — if a future caller
+   * passes an async `fn`, the resulting `Promise<T> | undefined` would be
+   * silently dropped by call sites that don't `await` the helper's return
+   * (re-introducing the silent-no-op failure mode this helper sets out to
+   * fix). All 13 current call sites pass synchronous methods
+   * (`sendFunctionResult`, `sendRaw`, `appendAudio` all return `void`).
+   *
+   * **TOCTOU defense (Review-round-1 P5):** the `this.session` reference is
+   * captured into a local `const session` BEFORE the null check so a
+   * synchronous re-entrant `end()` / `dispose()` between the guard and the
+   * call cannot null the captured ref mid-flight. (All current callers are
+   * sync; this is defense-in-depth for future async-fn migrations.)
+   *
+   * Throws from `fn` are passed through (the helper only null-guards
+   * `this.session`, not the inner method's exceptions).
+   */
+  private safeSessionCall<T>(fn: (session: RealtimeSession) => T, context: string): T | undefined {
+    // Review-round-1 P5: capture the ref so a re-entrant null-out between
+    // the guard and the call sees the same instance.
+    const session = this.session;
+    if (session === null) {
+      addBreadcrumb({
+        category: "realtime",
+        level: "warning",
+        // Review-round-1 P13: descriptive message; `feature` extras key
+        // carries the categorical tag for Sentry grep.
+        message: "Session ref null when handler dispatched",
+        data: { feature: "orchestrator-session-null-on-event", context },
+      });
+      return undefined;
+    }
+    return fn(session);
+  }
+
+  // ────────────────────────────────────────────────────────────────────
   // Audio streaming (ExpoPlayAudioStream subscription)
   // ────────────────────────────────────────────────────────────────────
 
@@ -395,8 +452,21 @@ export class RealtimeOrchestrator {
           // subscription stay alive across reconnects — bytes during the
           // reconnect window are silently dropped without us needing to
           // tear down + restart the subscription.
-          if (this.session?.isConnected && event.data) {
-            this.session.appendAudio(event.data as string);
+          //
+          // Story 12-4 + review-round-1 P1: route through `safeSessionCall`
+          // so a null `this.session` (race with `dispose()` mid-stream,
+          // post-disconnect) emits a Sentry breadcrumb instead of silently
+          // dropping audio. The `isConnected` check MUST live inside the
+          // closure — pre-patch had `if (this.session?.isConnected && ...)`
+          // BEFORE the helper which made the null path dead-code (the
+          // optional chain short-circuited to `undefined` BEFORE reaching
+          // `safeSessionCall`, so the breadcrumb could never fire).
+          if (event.data) {
+            this.safeSessionCall((s) => {
+              if (s.isConnected) {
+                s.appendAudio(event.data as string);
+              }
+            }, "audio-stream");
           }
         },
       });
@@ -433,7 +503,10 @@ export class RealtimeOrchestrator {
 
       if (name === "save_vocabulary" && user) {
         if (!parsed.french_word || !parsed.english_translation) {
-          this.session?.sendFunctionResult(callId, "Missing required fields.");
+          this.safeSessionCall(
+            (s) => s.sendFunctionResult(callId, "Missing required fields."),
+            "tool-call-save-vocabulary"
+          );
           return;
         }
         const { error } = await supabase.from("vocabulary").upsert(
@@ -448,17 +521,29 @@ export class RealtimeOrchestrator {
         );
         if (error) {
           captureError(error, "save-vocabulary");
-          this.session?.sendFunctionResult(callId, "Failed to save vocabulary.");
+          this.safeSessionCall(
+            (s) => s.sendFunctionResult(callId, "Failed to save vocabulary."),
+            "tool-call-save-vocabulary"
+          );
         } else {
-          this.session?.sendFunctionResult(callId, "Vocabulary saved.");
+          this.safeSessionCall(
+            (s) => s.sendFunctionResult(callId, "Vocabulary saved."),
+            "tool-call-save-vocabulary"
+          );
         }
       } else if (name === "note_error_pattern" && user) {
         if (!parsed.error_type || !parsed.description) {
-          this.session?.sendFunctionResult(callId, "Missing required fields.");
+          this.safeSessionCall(
+            (s) => s.sendFunctionResult(callId, "Missing required fields."),
+            "tool-call-note-error-pattern"
+          );
           return;
         }
         await trackError(user.id, parsed.error_type, parsed.description);
-        this.session?.sendFunctionResult(callId, "Error pattern noted.");
+        this.safeSessionCall(
+          (s) => s.sendFunctionResult(callId, "Error pattern noted."),
+          "tool-call-note-error-pattern"
+        );
       } else if (name === "report_correction") {
         // Story 11-1 — structured tool-call replaces the legacy
         // `parseCorrections` regex bridge. Pure helper at
@@ -480,9 +565,13 @@ export class RealtimeOrchestrator {
             message: "report_correction outside in-flight turn dropped",
             data: { feature: "realtime-report-correction" },
           });
-          this.session?.sendFunctionResult(
-            callId,
-            "Rejected: outside-turn. Tool-call arrived outside the AI response window; correction not recorded."
+          this.safeSessionCall(
+            (s) =>
+              s.sendFunctionResult(
+                callId,
+                "Rejected: outside-turn. Tool-call arrived outside the AI response window; correction not recorded."
+              ),
+            "tool-call-report-correction"
           );
           return;
         }
@@ -495,9 +584,13 @@ export class RealtimeOrchestrator {
             message: "report_correction buffer cap reached",
             data: { feature: "realtime-report-correction" },
           });
-          this.session?.sendFunctionResult(
-            callId,
-            "Rejected: buffer-full. Reached MAX_PENDING_CORRECTIONS for this turn; correction not recorded. Skip further invocations until the next turn."
+          this.safeSessionCall(
+            (s) =>
+              s.sendFunctionResult(
+                callId,
+                "Rejected: buffer-full. Reached MAX_PENDING_CORRECTIONS for this turn; correction not recorded. Skip further invocations until the next turn."
+              ),
+            "tool-call-report-correction"
           );
           return;
         }
@@ -515,13 +608,22 @@ export class RealtimeOrchestrator {
         } else {
           this.pendingToolCorrections.push(callResult.correction);
         }
-        this.session?.sendFunctionResult(callId, callResult.resultMessage);
+        this.safeSessionCall(
+          (s) => s.sendFunctionResult(callId, callResult.resultMessage),
+          "tool-call-report-correction"
+        );
       } else {
-        this.session?.sendFunctionResult(callId, "Unknown function.");
+        this.safeSessionCall(
+          (s) => s.sendFunctionResult(callId, "Unknown function."),
+          "tool-call-unknown"
+        );
       }
     } catch (err) {
       captureError(err, "function-call-handler");
-      this.session?.sendFunctionResult(callId, "Function call failed.");
+      this.safeSessionCall(
+        (s) => s.sendFunctionResult(callId, "Function call failed."),
+        "tool-call-handler-error"
+      );
     }
   }
 
@@ -715,14 +817,20 @@ export class RealtimeOrchestrator {
     );
     if (directive.shouldCancelResponse) {
       void ExpoPlayAudioStream.stopSound();
-      this.session?.sendRaw({ type: "response.cancel" });
+      this.safeSessionCall((s) => s.sendRaw({ type: "response.cancel" }), "barge-in-cancel");
       if (directive.shouldTruncate && directive.itemId !== null && directive.audioEndMs !== null) {
-        this.session?.sendRaw({
-          type: "conversation.item.truncate",
-          item_id: directive.itemId,
-          content_index: 0,
-          audio_end_ms: directive.audioEndMs,
-        });
+        const itemId = directive.itemId;
+        const audioEndMs = directive.audioEndMs;
+        this.safeSessionCall(
+          (s) =>
+            s.sendRaw({
+              type: "conversation.item.truncate",
+              item_id: itemId,
+              content_index: 0,
+              audio_end_ms: audioEndMs,
+            }),
+          "barge-in-truncate"
+        );
         addBreadcrumb({
           category: "realtime",
           level: "info",
@@ -1231,10 +1339,54 @@ export class RealtimeOrchestrator {
         ],
       };
 
+      // Story 12-4: populate `this.session` BEFORE `await session.connect()`
+      // so any WebSocket message arriving during the await window (OpenAI's
+      // `session.updated` ack, an early function-call from a very-fast turn,
+      // etc.) sees the correct ref when `handleEvent` runs. Pre-12-4 the
+      // assignment happened AFTER the await, leaving 13 `this.session?.foo()`
+      // call sites in `handleEvent`-reachable paths to silently no-op via
+      // optional-chaining when an event landed during the microtask gap
+      // between `ws.onopen → resolve()` and the orchestrator's continuation.
+      // Audit P2-21 closed architecturally.
+      //
+      // Review-round-1 patches applied:
+      // - **P7 (handler-before-ref ordering):** `session.on(handler)` is
+      //   called BEFORE `this.session = session` so any synchronous re-entrant
+      //   code path that reads `this.session` and dispatches a method sees
+      //   the session WITH its handler already wired. The early-assign still
+      //   closes the await race because both statements run synchronously
+      //   before `await session.connect()` either way.
+      // - **P8 (session.on throw defense):** `session.on(handler)` is wrapped
+      //   inside the same try/catch as the await so a synchronous throw
+      //   from the registration (Set.add OOM, future SDK validation) is
+      //   handled by the same cleanup path instead of leaving `this.session`
+      //   pointing to a half-initialized session.
+      // - **P3 (disconnect on connect failure):** the inner catch calls
+      //   `session.disconnect({reason:"user"})` BEFORE nulling `this.session`
+      //   so a partially-opened WebSocket doesn't leak with its `onclose` /
+      //   `onmessage` handlers still wired to the orchestrator's
+      //   `handleEvent` — late events from the failed session can't drive
+      //   state mutations on a "disposed" orchestrator instance.
+      // - Cleanup on connect failure clears `this.session = null` + resets
+      //   synchronous mirrors so a failure-then-retry sequence starts clean
+      //   (Story 12-1 P1 pattern).
       const session = new RealtimeSession(config);
-      session.on(this.handleEvent);
-      await session.connect();
-      this.session = session;
+      try {
+        session.on(this.handleEvent);
+        this.session = session;
+        await session.connect();
+      } catch (err) {
+        try {
+          session.disconnect({ reason: "user" });
+        } catch {
+          // disconnect on a half-open WS may throw on some platforms;
+          // swallow because we're already in the error path.
+        }
+        this.session = null;
+        this.isAiSpeakingMirror = false;
+        this.responseInFlight = false;
+        throw err;
+      }
 
       await this.startAudioStreaming();
 
