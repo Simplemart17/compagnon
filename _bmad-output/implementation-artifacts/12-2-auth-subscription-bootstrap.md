@@ -1,6 +1,6 @@
 # Story 12.2: Move Auth Subscription to One-Time Bootstrap + Convert `useAuth` to a Pure Consumer Hook
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
