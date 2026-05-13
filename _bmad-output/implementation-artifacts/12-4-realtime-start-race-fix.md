@@ -1,6 +1,6 @@
 # Story 12.4: Fix `RealtimeOrchestrator.start()` Race — Assign `this.session = session` BEFORE `await session.connect()`
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -272,33 +272,75 @@ After this story:
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Reorder `this.session = session`** (AC #1)
-  - [ ] Move `this.session = session` to BEFORE `await session.connect()`.
-  - [ ] Wrap `await session.connect()` in an inner try/catch.
-  - [ ] On connect failure: `this.session = null` + reset synchronous mirrors + rethrow.
+- [x] **Task 1: Reorder `this.session = session`** (AC #1)
+  - [x] Moved `this.session = session` to BEFORE `await session.connect()`.
+  - [x] Wrapped `await session.connect()` in an inner try/catch.
+  - [x] On connect failure: `this.session = null` + reset synchronous mirrors (`isAiSpeakingMirror`, `responseInFlight`) + rethrow.
 
-- [ ] **Task 2: Introduce `safeSessionCall` helper + migrate 13 call sites** (AC #2)
-  - [ ] Add private `safeSessionCall<T>(fn, context)` method.
-  - [ ] Migrate the 11 `sendFunctionResult` sites with per-tool `context` tags.
-  - [ ] Migrate the 2 barge-in `sendRaw` sites.
-  - [ ] Migrate the 1 `appendAudio` site.
-  - [ ] Do NOT migrate `dispose` / `sendText` / `end` public-API sites.
+- [x] **Task 2: Introduce `safeSessionCall` helper + migrate 14 call sites** (AC #2)
+  - [x] Added private `safeSessionCall<T>(fn, context)` method (Story 12-2 wrapper-with-breadcrumb pattern).
+  - [x] Migrated 11 `sendFunctionResult` sites with 5 per-tool context tags: `tool-call-save-vocabulary` (3 sites), `tool-call-note-error-pattern` (2 sites), `tool-call-report-correction` (4 sites), `tool-call-unknown` (1 site), `tool-call-handler-error` (1 site).
+  - [x] Migrated 2 barge-in `sendRaw` sites: `barge-in-cancel` + `barge-in-truncate`.
+  - [x] Migrated 1 `appendAudio` site: `audio-stream`.
+  - [x] Did NOT migrate `dispose` (:303), `sendText` (:1261/:1274), `end` (:1292) public-API sites.
 
-- [ ] **Task 3: Sentry allowlist verification** (AC #3)
-  - [ ] Verify `feature: "orchestrator-session-null-on-event"` is < 80 chars (it is — 36 chars).
-  - [ ] Verify `context` extras key is allowlisted (it is — Story 9-3).
+- [x] **Task 3: Sentry allowlist verification** (AC #3)
+  - [x] Verified `feature: "orchestrator-session-null-on-event"` is 36 chars (< 80 threshold).
+  - [x] Verified `context` extras key is already in the Story 9-3 allowlist at `src/lib/sentry.ts`.
 
-- [ ] **Task 4: Tests** (AC #4)
-  - [ ] CREATE `src/lib/__tests__/realtime-orchestrator-session-race.test.ts` (~10 cases).
-  - [ ] Run existing test suite + verify Story 12-1 / 11-1 / 11-2 cases stay green.
+- [x] **Task 4: Tests** (AC #4)
+  - [x] CREATED `src/lib/__tests__/realtime-orchestrator-session-race.test.ts` (10 cases: 5 drift-detector + 1 connect-failure-cleanup + 2 helper-behavior + 2 Story 11-1/11-2 path preservation).
+  - [x] Verified existing tests stay green (1333 → 1343, +10 from new file).
 
-- [ ] **Task 5: Update CLAUDE.md** (AC #5)
+- [x] **Task 5: Update CLAUDE.md** (AC #5)
 
-- [ ] **Task 6: Quality gates** (AC #Z)
-  - [ ] type-check / lint / format / test / colors all green.
-  - [ ] CI Sentry DSN + Submit credentials leak guards pass.
-  - [ ] `git status` shows the story file as untracked-but-not-ignored.
-  - [ ] `npx prettier --check` on the story file passes.
+- [x] **Task 6: Quality gates** (AC #Z)
+  - [x] type-check / lint / format / test / colors all green.
+  - [x] CI Sentry DSN + Submit credentials leak guards pass.
+  - [x] `git status` showed the story file as untracked-but-not-ignored before initial commit.
+  - [x] `npx prettier --check` on the story file passes.
+
+## Dev Agent Record
+
+### Implementation Plan
+
+**Phase 1 — Reorder `this.session = session`.** In `start()` at `src/lib/realtime-orchestrator.ts:1234-1237`, moved the assignment BEFORE `await session.connect()` and wrapped the await in an inner try/catch that clears `this.session = null` + resets `this.isAiSpeakingMirror = false` + `this.responseInFlight = false` on failure (Story 12-1 P1 pattern extended to catch path), then rethrows so the outer catch still runs the `state.status = "error"` path.
+
+**Phase 2 — `safeSessionCall` helper.** Added `private safeSessionCall<T>(fn: (session: RealtimeSession) => T, context: string): T | undefined` right before the audio-streaming section. On null session, emits `addBreadcrumb({ category: "realtime", level: "warning", message: "orchestrator-session-null-on-event", data: { feature: "orchestrator-session-null-on-event", context } })` and returns `undefined`. On non-null session, invokes `fn(this.session)` and returns its result (transparent pass-through). Throws from the inner method propagate.
+
+**Phase 3 — 14 call site migrations.** Migrated all `this.session?.method()` invocations inside `handleEvent`-reachable paths (`handleFunctionCall`, `handleSpeechStarted`, audio-stream callback) to `this.safeSessionCall(s => s.method(args), "<context-tag>")`. Public-API entry points at `:303` (dispose), `:1261`/`:1274` (sendText), `:1292` (end) intentionally NOT migrated — they're called from React event handlers, not from `handleEvent`, so the race doesn't apply.
+
+**Phase 4 — Test file.** Created `src/lib/__tests__/realtime-orchestrator-session-race.test.ts` (358 lines, 10 cases): 5 drift-detector cases using comment-stripped `ORCHESTRATOR_CODE_ONLY` (Story 12-2 P12 lesson) to pin assign-before-await positive + no-late-assign negative + catch-path cleanup contract + `safeSessionCall` signature + canonical breadcrumb message; 1 connect-failure-cleanup case using a rejecting `mockConnectImpl`; 2 helper-behavior cases (happy path → method invoked + no breadcrumb; null path after `end()` → method skipped + canonical breadcrumb fires); 2 cross-story preservation cases (Story 11-1 report_correction + Story 11-2 barge-in still route through the helper). One Jest mock-hoisting issue resolved by `mock`-prefix renames (`mockConnectImpl`, `mockRegisteredHandleEvent`, `mockLastSession`); one regex tightening to use `code-only` source (the JSDoc comment I added contained `await session.connect()` which initially tripped the positive-guard regex); one Case 8 fix to use `end()` instead of `dispose()` because `dispose()` sets `isDisposed = true` which short-circuits `handleEvent` (Story 12-1 P7 guard).
+
+**Phase 5 — CLAUDE.md.** New 1-paragraph architecture line inserted after the Story 12-3 paragraph documenting the pre-12-4 race, the 3-part fix (assign-before-await + helper + 14 migrations), the new feature tag, the cross-story invariants. The `__tests__` test-path references inside backticks are backslash-escaped (`\_\_tests\_\_`) to survive prettier's markdown italic-marker normalization (Story 12-3 P13 lesson applied prophylactically).
+
+**Phase 6 — Quality gates.** All 5 gates green: type-check (tsc --noEmit), lint (eslint --max-warnings 0 after one auto-fix pass), format:check (prettier --check after one auto-fix pass), test (1343/1343 across 58 suites; +10 net from 12-4), check:colors (no hardcoded hex colors).
+
+### Completion Notes
+
+- **P2-21 race architecturally closed**: `this.session` populated before any WebSocket event can fire; the 14 `safeSessionCall` sites preserve happy-path bit-identical behavior while making the silent-no-op failure mode observable in Sentry.
+- **Story 11-1 tool-call hang scenario structurally impossible**: every `sendFunctionResult` dispatched from `handleFunctionCall` now resolves to the populated session reference instead of silently dropping.
+- **Story 11-2 barge-in path correctness window starts earlier**: user can interrupt the AI's very first utterance because `sendRaw({type:"response.cancel"})` no longer no-ops.
+- **One new Sentry feature tag**: `"orchestrator-session-null-on-event"` (36 chars; under 80-char allowlist threshold; `context` extras key already allowlisted).
+- **Public hook API surface unchanged**: `useRealtimeVoice` consumer screens compile + run with zero changes.
+- **Story 12-1 invariants preserved by construction**: `PHASE_A_SLOT_NAMES`, `INITIAL_STATE`, observer pattern, synchronous-mirror invariants, `isDisposed` short-circuit all unchanged.
+- **Event-queueing during connect window deferred** per spec — early-assign closes the race; events in the window are `session.updated` confirmations that the switch default-ignores. Future Epic 12.X can add a queue if telemetry reveals event-loss frequency.
+
+### File List
+
+**Created:**
+
+- `src/lib/__tests__/realtime-orchestrator-session-race.test.ts` — 358 lines, 10 Jest cases.
+
+**Modified:**
+
+- `src/lib/realtime-orchestrator.ts` — reordered `this.session = session` (lines 1331-1342) + added `safeSessionCall` helper (lines 367-401) + migrated 14 call sites.
+- `CLAUDE.md` — added Story 12-4 architecture paragraph after the Story 12-3 paragraph.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — flipped 12-4 to `review` + updated `last_updated`.
+
+**Deleted (replaced by helper-routing):**
+
+- The 14 pre-12-4 `this.session?.method(args)` direct-optional-chaining call sites inside `handleEvent`-reachable paths (replaced with `this.safeSessionCall(s => s.method(args), "tag")` invocations; not aliased — Story 10-2 / 11-3 / 11-4 / 11-5 / 11-6 / 11-7 / 11-8 / 12-1 / 12-2 / 12-3 "delete don't alias" pattern).
 
 ## Dev Notes
 
@@ -344,3 +386,4 @@ After this story:
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-13 | Story 12-4 story file created; closes audit P2-21 (race in `RealtimeOrchestrator.start()` where `this.session = session` is assigned after `await session.connect()` and early events see null ref); SMALL risk surface (~30-line orchestrator edit + 1 new test file); ~4-6 review patches anticipated per Epic 9/10/11/12 retro budget. Cross-story dependencies: Story 11-1 tool-call protocol, Story 11-2 barge-in, Story 12-1 orchestrator structure — all preserved by construction. |
+| 2026-05-13 | Story 12-4 implementation complete. `src/lib/realtime-orchestrator.ts`: reordered `this.session = session` to BEFORE `await session.connect()` + inner try/catch with `this.session = null` + `isAiSpeakingMirror = false` + `responseInFlight = false` cleanup on connect failure; added `safeSessionCall<T>(fn, context)` private helper (Story 12-2 wrapper-with-breadcrumb pattern); migrated 14 `this.session?.method()` call sites in `handleEvent`-reachable paths to `safeSessionCall` invocations with 7 distinct context tags (5 tool-call + 2 barge-in + 1 audio-stream); 4 public-API entry points intentionally NOT migrated. New test file `src/lib/__tests__/realtime-orchestrator-session-race.test.ts` (10 Jest cases: 5 drift-detector with comment-stripped source + 1 connect-failure-cleanup + 2 helper-behavior + 2 Story-11-1/11-2-preservation). Test count 1333 → 1343 (+10; spec target was ~1343, exact). One new Sentry feature tag `"orchestrator-session-null-on-event"` (36 chars; under 80 threshold). Story 9-3 / 9-4 / 9-5 / 9-6 / 9-7 / 9-8 / 9-9 / 9-10 / 10-X / 11-1 (tool-call protocol) / 11-2 (barge-in + reconnect) / 11-3 / 11-4 / 11-5 / 11-6 / 11-7 / 11-8 / 12-1 (orchestrator structure) / 12-2 / 12-3 invariants preserved by construction. CLAUDE.md updated. All 5 quality gates green. |
