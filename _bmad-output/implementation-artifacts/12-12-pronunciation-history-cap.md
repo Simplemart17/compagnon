@@ -1,6 +1,6 @@
 # Story 12.12: Pronunciation History FIFO Cap at 50 Entries — Bounded Memory + Bounded `identifyWeakSounds` Compute
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
