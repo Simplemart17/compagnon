@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!response.ok) {
-      const upstreamMessage = await parseUpstreamError(response);
+      const upstreamMessage = await parseUpstreamError(response, "openai-realtime-token");
       return errorResponse({ code: "UPSTREAM_ERROR", message: `OpenAI Realtime error: ${upstreamMessage}`, status: response.status, corsHeaders });
     }
 

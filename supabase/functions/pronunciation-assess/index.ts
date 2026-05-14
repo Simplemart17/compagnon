@@ -161,7 +161,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!azureResponse.ok) {
-      const upstreamMessage = await parseUpstreamError(azureResponse);
+      const upstreamMessage = await parseUpstreamError(azureResponse, "azure-pronunciation");
       return errorResponse({ code: "UPSTREAM_ERROR", message: `Azure Speech error: ${upstreamMessage}`, status: azureResponse.status, corsHeaders });
     }
 
