@@ -218,6 +218,36 @@ export class RealtimeOrchestrator {
 
   // ─── Per-turn / streaming state ───────────────────────────────────────
   private currentAiText = "";
+  /**
+   * Story 13-1: handle for the pending `requestAnimationFrame` that will
+   * fire the next `setState({ ...s, pendingAiText: this.currentAiText })`.
+   * Set by `scheduleAiTextSetState()`; cleared by the rAF callback when it
+   * runs, OR by `cancelPendingAiTextRaf()` on `dispose()` /
+   * `response.*.done` / barge-in / `case "error"` / `start()` reset.
+   *
+   * **Why rAF coalesce:** the `response.output_audio_transcript.delta`
+   * handler fires at ~50Hz (~20ms cadence) during AI streaming speech.
+   * Pre-13-1 each delta called `setState` directly, producing ~250 React
+   * subscriber-notifications per 5s utterance. Post-13-1 multiple deltas
+   * within a single frame coalesce into ONE setState; the final delta of
+   * a burst still surfaces to subscribers on the next frame (~16ms max
+   * delay). Closes audit P2-3.
+   *
+   * **Story 12-1 P7 contract extension:** queued-async-work MUST check
+   * `this.isDisposed` before mutating state. The rAF callback does this
+   * check; dispose() AND barge-in cancel the handle defensively.
+   *
+   * **Story 13-1 review-round-1 P5:** typed as `ReturnType<typeof requestAnimationFrame>`
+   * rather than `number` for cross-platform safety. RN polyfills may not
+   * return a plain number (some return objects or symbols); `cancelAnimationFrame`
+   * expects whatever `requestAnimationFrame` returned. Using `ReturnType` keeps
+   * the pair contractually aligned regardless of the underlying implementation.
+   * The `!== null` check correctly handles the edge case where a polyfill
+   * returns `0` as a valid handle (a `=== null` check would also be correct;
+   * a `!handle` truthy-check would NOT — that's the future regression this
+   * type pins against).
+   */
+  private aiTextRafHandle: ReturnType<typeof requestAnimationFrame> | null = null;
   /** Story 9-5: set of upstream item/response keys whose terminal `.done` event has already produced a TranscriptEntry. */
   private processedResponseItems = new Set<string>();
   /** item_id of the AI response currently being streamed; null between turns. */
@@ -346,6 +376,13 @@ export class RealtimeOrchestrator {
       clearInterval(this.durationTimer);
       this.durationTimer = null;
     }
+    // Story 13-1: cancel any pending pendingAiText rAF. Defends against
+    // a queued frame callback firing AFTER `isDisposed = true` and either
+    // (a) silently no-opping via the rAF's own isDisposed check (correct
+    // but wastes a frame), or (b) — more importantly — surviving a future
+    // refactor that drops the rAF callback's defensive check. Belt-and-
+    // suspenders extension of the Story 12-1 P7 isDisposed contract.
+    this.cancelPendingAiTextRaf();
     this.subscription?.remove();
     this.subscription = null;
     this.session?.disconnect({ reason: "user" });
@@ -403,6 +440,49 @@ export class RealtimeOrchestrator {
     while (this.pendingUpdates.length > 0) {
       const next = this.pendingUpdates.shift()!;
       this.setState(next);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // Story 13-1: rAF-coalesced pendingAiText setState — closes audit P2-3
+  // ────────────────────────────────────────────────────────────────────
+
+  /**
+   * Schedule a `setState({ ...s, pendingAiText: this.currentAiText })` to
+   * fire on the next animation frame. Coalesces multiple invocations within
+   * a single frame into ONE setState — closes the ~50Hz render storm during
+   * AI streaming speech (audit P2-3).
+   *
+   * Idempotent: if a frame is already queued, this is a no-op. The pending
+   * rAF reads `this.currentAiText` at the moment it FIRES, so callers can
+   * update `currentAiText` synchronously between schedule calls and the
+   * coalesced setState surfaces the LATEST value.
+   *
+   * **Story 12-1 P7 contract extension:** the rAF callback checks
+   * `this.isDisposed` before mutating state. `cancelPendingAiTextRaf()`
+   * additionally cancels the pending handle on lifecycle boundaries so the
+   * rAF never fires post-dispose.
+   */
+  private scheduleAiTextSetState(): void {
+    if (this.aiTextRafHandle !== null) return;
+    this.aiTextRafHandle = requestAnimationFrame(() => {
+      this.aiTextRafHandle = null;
+      if (this.isDisposed) return;
+      this.setState((s) => ({ ...s, pendingAiText: this.currentAiText }));
+    });
+  }
+
+  /**
+   * Cancel the pending `aiTextRafHandle` if one is queued. Called from
+   * `dispose()` and from every `.done` / `error` / barge-in / `start()`
+   * reset path so a late-firing rAF can't (a) surface stale pendingAiText
+   * after the response is finalized, or (b) call setState into a
+   * disposed orchestrator.
+   */
+  private cancelPendingAiTextRaf(): void {
+    if (this.aiTextRafHandle !== null) {
+      cancelAnimationFrame(this.aiTextRafHandle);
+      this.aiTextRafHandle = null;
     }
   }
 
@@ -870,9 +950,23 @@ export class RealtimeOrchestrator {
         if (this.aiSpeakingStartedAtMs === null) {
           this.aiSpeakingStartedAtMs = Date.now();
         }
-        // Story 11-2 review-round-2 P22: synchronous mirror update.
+        // Story 13-1: state-change guard. Pre-13-1 this setState fired on
+        // EVERY audio chunk (~50Hz cadence); the value only changes on the
+        // FIRST delta of a turn. Capture the PRE-mutation mirror value so
+        // the guard's reading is decoupled from any concurrent React-state
+        // mutation by a re-entrant subscriber (Story 13-1 review-round-1
+        // P2 fix — pre-patch the guard read `this.state.isAiSpeaking`
+        // which could flip back to false mid-burst from a barge-in or
+        // subscriber-queued updater, re-firing the setState).
+        const wasAiSpeaking = this.isAiSpeakingMirror;
+        // Story 11-2 review-round-2 P22: synchronous mirror update. The
+        // mirror is the authoritative event-time source of truth for
+        // barge-in detection — set true on EVERY delta regardless of
+        // whether the React setState fires for this one.
         this.isAiSpeakingMirror = true;
-        this.setState((s) => ({ ...s, isAiSpeaking: true, isProcessing: false }));
+        if (!wasAiSpeaking) {
+          this.setState((s) => ({ ...s, isAiSpeaking: true, isProcessing: false }));
+        }
         break;
       }
 
@@ -882,6 +976,10 @@ export class RealtimeOrchestrator {
         this.aiSpeakingStartedAtMs = null;
         // Story 11-2 review-round-2 P22: synchronous mirror update.
         this.isAiSpeakingMirror = false;
+        // Story 13-1: cancel any pending pendingAiText rAF so the
+        // turn-finalization setState below is the authoritative final state
+        // (a queued rAF firing AFTER this setState would surface stale text).
+        this.cancelPendingAiTextRaf();
         this.setState((s) => ({ ...s, isAiSpeaking: false }));
         break;
 
@@ -895,12 +993,24 @@ export class RealtimeOrchestrator {
         if (result.accepted) {
           this.inflightItemId = result.state.inflightItemId;
           this.currentAiText = result.state.pendingText;
-          this.setState((s) => ({ ...s, pendingAiText: this.currentAiText }));
+          // Story 13-1: route through rAF-coalesce helper instead of direct
+          // setState. Closes audit P2-3 — multiple deltas within a single
+          // frame coalesce into ONE setState; the final delta of a burst
+          // still surfaces on the next rAF tick (~16ms max delay). The
+          // synchronous `this.currentAiText` update above means the
+          // coalesced setState always reads the latest value.
+          this.scheduleAiTextSetState();
         }
         break;
       }
 
       case "response.output_text.done": {
+        // Story 13-1: cancel any pending rAF so the finalization path below
+        // is the authoritative final state for pendingAiText. The
+        // `appendAiTranscriptEntry` call clears `pendingAiText` to "" via
+        // its own setState — a queued rAF firing AFTER that would
+        // re-surface the partial text from a previous frame.
+        this.cancelPendingAiTextRaf();
         const key = resolveTranscriptKey(event, event.text);
         this.appendAiTranscriptEntry(event.text, key);
         break;
@@ -916,12 +1026,18 @@ export class RealtimeOrchestrator {
         if (result.accepted) {
           this.inflightItemId = result.state.inflightItemId;
           this.currentAiText = result.state.pendingText;
-          this.setState((s) => ({ ...s, pendingAiText: this.currentAiText }));
+          // Story 13-1: route through rAF-coalesce helper (same rationale
+          // as response.output_text.delta above — this is the active voice-
+          // mode path firing at ~50Hz).
+          this.scheduleAiTextSetState();
         }
         break;
       }
 
       case "response.output_audio_transcript.done": {
+        // Story 13-1: cancel any pending rAF before finalization (same as
+        // response.output_text.done above).
+        this.cancelPendingAiTextRaf();
         const key = resolveTranscriptKey(event, event.transcript);
         this.appendAiTranscriptEntry(event.transcript, key);
         break;
@@ -1010,6 +1126,10 @@ export class RealtimeOrchestrator {
       // next turn doesn't accidentally prefix with stale unplayed text via
       // `acceptDelta`'s adopt path.
       this.currentAiText = "";
+      // Story 13-1: cancel any pending pendingAiText rAF so the barge-in
+      // setState below (which clears pendingAiText to "") is the
+      // authoritative final state for this interrupted turn.
+      this.cancelPendingAiTextRaf();
       this.setState((s) => ({
         ...s,
         isSpeaking: true,
@@ -1081,6 +1201,9 @@ export class RealtimeOrchestrator {
     this.responseInFlight = false;
     // Story 11-2: reset AI-speaking start time.
     this.aiSpeakingStartedAtMs = null;
+    // Story 13-1: cancel any pending rAF so the response-finalization
+    // setState below is the authoritative final state for pendingAiText.
+    this.cancelPendingAiTextRaf();
     this.setState((s) => ({ ...s, isProcessing: false, pendingAiText: "" }));
   }
 
@@ -1106,6 +1229,9 @@ export class RealtimeOrchestrator {
     this.responseInFlight = false;
     // Story 11-2: reset AI-speaking start time on error.
     this.aiSpeakingStartedAtMs = null;
+    // Story 13-1: cancel any pending rAF so a queued setState can't surface
+    // stale partial text after the error-handling state mutations below.
+    this.cancelPendingAiTextRaf();
     // Story 11-1 P3: drain orphan corrections BEFORE end() so the persisted
     // record is complete on connection_lost.
     const merged = mergeOrphanCorrections(this.corrections, this.pendingToolCorrections);
@@ -1165,6 +1291,12 @@ export class RealtimeOrchestrator {
     this.aiSpeakingStartedAtMs = null;
     // Review-round-2 P22: synchronous mirror update.
     this.isAiSpeakingMirror = false;
+    // Story 13-1 review-round-1 P4: cancel any pending pendingAiText rAF
+    // so a queued frame can't surface stale partial text AFTER the
+    // reconnect setState clears pendingAiText to "". The orchestrator
+    // survives the cross-session boundary (transcript + corrections are
+    // preserved) but the streaming-text accumulator is reset.
+    this.cancelPendingAiTextRaf();
     this.setState((s) => ({
       ...s,
       status: "reconnecting",
@@ -1408,6 +1540,11 @@ export class RealtimeOrchestrator {
     this.spillHighWaterMarkBreached = false;
     this.corrections = [];
     this.currentAiText = "";
+    // Story 13-1: defensively cancel + null the pendingAiText rAF handle on
+    // start() retry / end()→start() recycle so a stale rAF from a prior
+    // conversation can't fire setState into the fresh state (matches the
+    // Story 12-1 P1 + Story 12-5 P1 reset-mirrors-on-start pattern).
+    this.cancelPendingAiTextRaf();
     this.durationSeconds = 0;
     this.startTimeMs = 0;
     this.conversationId = null;
