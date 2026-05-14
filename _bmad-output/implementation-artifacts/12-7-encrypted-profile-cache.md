@@ -1,6 +1,6 @@
 # Story 12.7: Encrypt Profile Cache — Route Sensitive Cache Keys Through SecureStore
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
