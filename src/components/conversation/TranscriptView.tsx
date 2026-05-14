@@ -359,16 +359,26 @@ export function TranscriptView({
       data={transcript}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
-      // Story 13-1: extraData ref-stable on `transcript.length` only — closes
-      // audit P2-3. Pre-13-1 the `condensed` branch was `${transcript.length}-${isAiSpeaking}`,
-      // which invalidated FlatList virtualization on every AI-speech start/stop
-      // (~2 flips per turn). The `isAiSpeaking`-dependent rendering inside
-      // `renderItem` (the side-note correction gating at lines 318-324) reads
-      // `isAiSpeakingRef.current` at render-time (Story 12-1 ref-stable
-      // pattern), so visible rows pick up the latest value when the parent
-      // re-renders for any other reason (e.g., `pendingAiText` updating via
-      // the rAF-coalesced setState path in the orchestrator).
-      extraData={transcript.length}
+      // Story 13-1 review-round-1 P1: REVERTED to pre-13-1 shape. The
+      // original 13-1 implementation simplified this to `transcript.length`
+      // only, but that introduced THREE correctness regressions:
+      // (a) Side-note correction gating (renderItem lines 318-324) reads
+      //     `isAiSpeakingRef.current` — when isAiSpeaking flips mid-turn
+      //     with no transcript entry added, FlatList wasn't invalidating
+      //     and rows kept rendering with the stale ref value.
+      // (b) Story 12-6 transcript cap eviction at length=200 → length
+      //     stays at 200 → no extraData change → visible rows displayed
+      //     content of evicted items.
+      // (c) Hot-reload undefined-transcript crash risk.
+      //
+      // The actual P2-3 storm fix is in the orchestrator (~7500 setState/
+      // session → ~900); the per-turn extraData flip cost is only ~60
+      // invalidations/session — well within the ≥55 FPS budget. The
+      // `condensed` branch keeps `isAiSpeaking` in the key because that's
+      // where the correction-gating UX matters; the non-condensed branch
+      // (history viewer) uses `transcript.length` only since the
+      // conversation is already complete.
+      extraData={condensed ? `${transcript.length}-${isAiSpeaking}` : transcript.length}
       ListFooterComponent={renderFooter}
       className={condensed ? undefined : "flex-1"}
       style={condensed ? { flex: 1 } : undefined}

@@ -236,8 +236,18 @@ export class RealtimeOrchestrator {
    * **Story 12-1 P7 contract extension:** queued-async-work MUST check
    * `this.isDisposed` before mutating state. The rAF callback does this
    * check; dispose() AND barge-in cancel the handle defensively.
+   *
+   * **Story 13-1 review-round-1 P5:** typed as `ReturnType<typeof requestAnimationFrame>`
+   * rather than `number` for cross-platform safety. RN polyfills may not
+   * return a plain number (some return objects or symbols); `cancelAnimationFrame`
+   * expects whatever `requestAnimationFrame` returned. Using `ReturnType` keeps
+   * the pair contractually aligned regardless of the underlying implementation.
+   * The `!== null` check correctly handles the edge case where a polyfill
+   * returns `0` as a valid handle (a `=== null` check would also be correct;
+   * a `!handle` truthy-check would NOT — that's the future regression this
+   * type pins against).
    */
-  private aiTextRafHandle: number | null = null;
+  private aiTextRafHandle: ReturnType<typeof requestAnimationFrame> | null = null;
   /** Story 9-5: set of upstream item/response keys whose terminal `.done` event has already produced a TranscriptEntry. */
   private processedResponseItems = new Set<string>();
   /** item_id of the AI response currently being streamed; null between turns. */
@@ -940,16 +950,21 @@ export class RealtimeOrchestrator {
         if (this.aiSpeakingStartedAtMs === null) {
           this.aiSpeakingStartedAtMs = Date.now();
         }
-        // Story 11-2 review-round-2 P22: synchronous mirror update — MUST stay
-        // BEFORE any state-change guard so barge-in handlers reading the
-        // mirror see the up-to-date value regardless of whether the React
-        // setState fires this delta.
-        this.isAiSpeakingMirror = true;
         // Story 13-1: state-change guard. Pre-13-1 this setState fired on
         // EVERY audio chunk (~50Hz cadence); the value only changes on the
-        // FIRST delta of a turn. Guard skips the setState when isAiSpeaking
-        // is already true — cuts ~50 setState/turn to 1. Closes audit P2-3.
-        if (!this.state.isAiSpeaking) {
+        // FIRST delta of a turn. Capture the PRE-mutation mirror value so
+        // the guard's reading is decoupled from any concurrent React-state
+        // mutation by a re-entrant subscriber (Story 13-1 review-round-1
+        // P2 fix — pre-patch the guard read `this.state.isAiSpeaking`
+        // which could flip back to false mid-burst from a barge-in or
+        // subscriber-queued updater, re-firing the setState).
+        const wasAiSpeaking = this.isAiSpeakingMirror;
+        // Story 11-2 review-round-2 P22: synchronous mirror update. The
+        // mirror is the authoritative event-time source of truth for
+        // barge-in detection — set true on EVERY delta regardless of
+        // whether the React setState fires for this one.
+        this.isAiSpeakingMirror = true;
+        if (!wasAiSpeaking) {
           this.setState((s) => ({ ...s, isAiSpeaking: true, isProcessing: false }));
         }
         break;
@@ -1276,6 +1291,12 @@ export class RealtimeOrchestrator {
     this.aiSpeakingStartedAtMs = null;
     // Review-round-2 P22: synchronous mirror update.
     this.isAiSpeakingMirror = false;
+    // Story 13-1 review-round-1 P4: cancel any pending pendingAiText rAF
+    // so a queued frame can't surface stale partial text AFTER the
+    // reconnect setState clears pendingAiText to "". The orchestrator
+    // survives the cross-session boundary (transcript + corrections are
+    // preserved) but the streaming-text accumulator is reset.
+    this.cancelPendingAiTextRaf();
     this.setState((s) => ({
       ...s,
       status: "reconnecting",

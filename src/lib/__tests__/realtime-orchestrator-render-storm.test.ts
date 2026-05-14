@@ -150,6 +150,27 @@ function extractMethodBody(signatureStart: string): string {
   return nextMatch ? after.slice(0, nextMatch.index) : after;
 }
 
+/**
+ * Extract a single switch-case arm by anchoring on the case label and
+ * slicing forward until the next `case "..."` label, `default:`, or the
+ * closing `}` of the switch. Story 13-1 review-round-1 P7 fix: pre-patch
+ * Case 7 took a fixed forward window (1000-1500 bytes) from each case
+ * label, which could overlap into a sibling case-arm and mask a
+ * regression that removed `cancelPendingAiTextRaf()` from one specific
+ * arm. Post-patch the case-arm bound is precise.
+ */
+function extractCaseArm(caseLabel: string): string {
+  const idx = ORCHESTRATOR_CODE_ONLY.indexOf(caseLabel);
+  if (idx < 0) {
+    throw new Error(`Case label not found: ${caseLabel}`);
+  }
+  const after = ORCHESTRATOR_CODE_ONLY.slice(idx + caseLabel.length);
+  // Match: the next `case "..."` label OR `default:` at any indent.
+  const nextCaseRe = /\n\s+(?:case\s+["'`]|default:)/;
+  const nextMatch = nextCaseRe.exec(after);
+  return nextMatch ? after.slice(0, nextMatch.index) : after;
+}
+
 describe("Story 13-1 — orchestrator render-storm drift detectors (audit P2-3)", () => {
   it("Case 1: `scheduleAiTextSetState` method exists + uses `requestAnimationFrame`", () => {
     const body = extractMethodBody("private scheduleAiTextSetState(): void {");
@@ -171,49 +192,55 @@ describe("Story 13-1 — orchestrator render-storm drift detectors (audit P2-3)"
   });
 
   it("Case 3: `response.output_audio.delta` setState is guarded behind state-change check", () => {
-    // Slice the relevant case-arm out of handleEvent. Anchor on the
-    // canonical case label so a future code reformat doesn't break this.
-    const idx = ORCHESTRATOR_CODE_ONLY.indexOf('case "response.output_audio.delta":');
-    expect(idx).toBeGreaterThan(0);
-    // Take a generous window forward (~1.5KB) — large enough to span the
-    // whole case body but well under the next sibling case.
-    const armSlice = ORCHESTRATOR_CODE_ONLY.slice(idx, idx + 1500);
-    // Synchronous mirror update is PRESERVED before any guard (Story 11-2
-    // P22 invariant).
-    expect(armSlice).toMatch(/this\.isAiSpeakingMirror\s*=\s*true/);
-    // State-change guard wraps the setState — the load-bearing post-13-1
-    // pattern that cuts ~50 setStates/turn to 1.
-    expect(armSlice).toMatch(/if\s*\(\s*!\s*this\.state\.isAiSpeaking\s*\)/);
+    // Story 13-1 review-round-1 P7 fix: use `extractCaseArm` for precise
+    // case-body bounding so a regression that removes the guard from
+    // THIS arm can't be masked by a sibling arm's matching pattern.
+    const arm = extractCaseArm('case "response.output_audio.delta":');
+    // Synchronous mirror update is PRESERVED — Story 11-2 P22 invariant.
+    expect(arm).toMatch(/this\.isAiSpeakingMirror\s*=\s*true/);
+    // Story 13-1 review-round-1 P2: the guard reads the captured
+    // pre-mutation mirror value (`wasAiSpeaking`), not `this.state.isAiSpeaking`,
+    // so re-entrant subscriber mutations to React state can't re-fire
+    // the setState mid-burst.
+    expect(arm).toMatch(/const\s+wasAiSpeaking\s*=\s*this\.isAiSpeakingMirror/);
+    expect(arm).toMatch(/if\s*\(\s*!\s*wasAiSpeaking\s*\)/);
   });
 
   it("Case 4: text-delta + audio-transcript-delta routes through `scheduleAiTextSetState()`", () => {
-    // Both delta handlers must dispatch through the rAF helper, NOT
-    // direct setState. Anchor on each case label individually.
-    const textArmIdx = ORCHESTRATOR_CODE_ONLY.indexOf('case "response.output_text.delta":');
-    expect(textArmIdx).toBeGreaterThan(0);
-    const textArm = ORCHESTRATOR_CODE_ONLY.slice(textArmIdx, textArmIdx + 1500);
+    // Story 13-1 review-round-1 P7 fix: extractCaseArm for both case
+    // labels — pre-patch the 1500-byte window could include the next
+    // case-arm's matching call, masking a regression in one of the two.
+    const textArm = extractCaseArm('case "response.output_text.delta":');
     expect(textArm).toMatch(/this\.scheduleAiTextSetState\s*\(\s*\)/);
 
-    const audioArmIdx = ORCHESTRATOR_CODE_ONLY.indexOf(
-      'case "response.output_audio_transcript.delta":'
-    );
-    expect(audioArmIdx).toBeGreaterThan(0);
-    const audioArm = ORCHESTRATOR_CODE_ONLY.slice(audioArmIdx, audioArmIdx + 1500);
+    const audioArm = extractCaseArm('case "response.output_audio_transcript.delta":');
     expect(audioArm).toMatch(/this\.scheduleAiTextSetState\s*\(\s*\)/);
   });
 
-  it("Case 5: NEGATIVE — pre-13-1 direct setState pattern `setState((s) => ({ ...s, pendingAiText: this.currentAiText }))` appears 0 times outside `scheduleAiTextSetState`", () => {
+  it("Case 5: NEGATIVE — pre-13-1 direct setState pattern (any shape with `pendingAiText:` + a `this.\\w+` value) appears 0 times outside `scheduleAiTextSetState`", () => {
     // Pre-13-1 the two delta handlers inlined this setState directly.
     // Post-13-1 it only appears inside `scheduleAiTextSetState`. Excise
     // that method body before searching the rest of the file.
+    //
+    // Story 13-1 review-round-1 P6: broaden the negative-guard regex per
+    // Story 12-12 M1 lesson. Pre-patch the regex matched ONLY the EXACT
+    // pre-13-1 shape `setState((s) => ({ ...s, pendingAiText: this.currentAiText }))`
+    // — a benign refactor producing `setState((s) => ({ pendingAiText: this.currentAiText, ...s }))`
+    // (property reorder) OR `setState((s) => ({ ...s, pendingAiText: this.someAlias }))`
+    // (alias rename) would slip through silently. Post-patch the regex
+    // accepts ANY setState whose updater object contains `pendingAiText:`
+    // assigned from a `this.<identifier>` reference, in any property
+    // order, with optional whitespace.
     const helperBody = extractMethodBody("private scheduleAiTextSetState(): void {");
     const helperIdx = ORCHESTRATOR_CODE_ONLY.indexOf(helperBody);
     const beforeHelper = ORCHESTRATOR_CODE_ONLY.slice(0, helperIdx);
     const afterHelper = ORCHESTRATOR_CODE_ONLY.slice(helperIdx + helperBody.length);
     const withoutHelper = beforeHelper + afterHelper;
-    // Whitespace-tolerant negative guard against the pre-13-1 shape.
+    // Loosened regex: matches `setState((s) => ({ ... pendingAiText: this.<anything> ... }))`
+    // in any property order with any whitespace. The `[\s\S]{0,200}?` is
+    // non-greedy + bounded so it can't span across unrelated setState calls.
     expect(withoutHelper).not.toMatch(
-      /setState\s*\(\s*\(s\)\s*=>\s*\(\s*\{\s*\.\.\.s\s*,\s*pendingAiText:\s*this\.currentAiText\s*\}\s*\)\s*\)/
+      /setState\s*\(\s*\(s\)\s*=>\s*\(\s*\{[\s\S]{0,200}?pendingAiText:\s*this\.\w+[\s\S]{0,200}?\}\s*\)\s*\)/
     );
   });
 
@@ -222,28 +249,18 @@ describe("Story 13-1 — orchestrator render-storm drift detectors (audit P2-3)"
     expect(body).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
   });
 
-  it("Case 7: `cancelPendingAiTextRaf` is called from every `.done` / error / barge-in path", () => {
-    // response.output_audio.done case arm
-    const audioDoneIdx = ORCHESTRATOR_CODE_ONLY.indexOf('case "response.output_audio.done":');
-    expect(audioDoneIdx).toBeGreaterThan(0);
-    const audioDoneArm = ORCHESTRATOR_CODE_ONLY.slice(audioDoneIdx, audioDoneIdx + 1000);
+  it("Case 7: `cancelPendingAiTextRaf` is called from every `.done` / error / barge-in / reconnect path", () => {
+    // Story 13-1 review-round-1 P7 fix: extractCaseArm for proper
+    // case-body bounding — pre-patch the fixed 1000-1500 byte windows
+    // could include sibling case-arms' matching `cancelPendingAiTextRaf`
+    // calls, masking a regression that removed it from one specific arm.
+    const audioDoneArm = extractCaseArm('case "response.output_audio.done":');
     expect(audioDoneArm).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
 
-    // response.output_text.done case arm
-    const textDoneIdx = ORCHESTRATOR_CODE_ONLY.indexOf('case "response.output_text.done":');
-    expect(textDoneIdx).toBeGreaterThan(0);
-    const textDoneArm = ORCHESTRATOR_CODE_ONLY.slice(textDoneIdx, textDoneIdx + 1500);
+    const textDoneArm = extractCaseArm('case "response.output_text.done":');
     expect(textDoneArm).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
 
-    // response.output_audio_transcript.done case arm
-    const audioTranscriptDoneIdx = ORCHESTRATOR_CODE_ONLY.indexOf(
-      'case "response.output_audio_transcript.done":'
-    );
-    expect(audioTranscriptDoneIdx).toBeGreaterThan(0);
-    const audioTranscriptDoneArm = ORCHESTRATOR_CODE_ONLY.slice(
-      audioTranscriptDoneIdx,
-      audioTranscriptDoneIdx + 1500
-    );
+    const audioTranscriptDoneArm = extractCaseArm('case "response.output_audio_transcript.done":');
     expect(audioTranscriptDoneArm).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
 
     // handleResponseDone method body
@@ -259,6 +276,11 @@ describe("Story 13-1 — orchestrator render-storm drift detectors (audit P2-3)"
     // handleSpeechStarted (barge-in path)
     const bargeInBody = extractMethodBody("private handleSpeechStarted(): void {");
     expect(bargeInBody).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
+
+    // Story 13-1 review-round-1 P4: handleReconnecting also cancels the
+    // pending rAF before clearing pendingAiText (cross-session boundary).
+    const reconnectingBody = extractMethodBody("private handleReconnecting(): void {");
+    expect(reconnectingBody).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
   });
 
   it("Case 8: Story 11-2 P22 invariant — `isAiSpeakingMirror = true` AND `= false` both still present", () => {
@@ -296,26 +318,36 @@ describe("Story 13-1 — orchestrator render-storm runtime contracts (audit P2-3
    * callbacks. Each test restores the originals to prevent cross-test
    * leakage. Story 12-5 P4 lesson applies — install in `beforeEach`,
    * restore in `afterEach`.
+   *
+   * **Story 13-1 review-round-1 P3:** mock cancelAnimationFrame ACTUALLY
+   * removes the callback from the pending queue (matching real-browser
+   * behavior) — pre-patch the mock only logged the handle, so Case 12
+   * couldn't distinguish whether the cancel call worked or whether only
+   * the in-callback `isDisposed` guard prevented the post-dispose
+   * setState. Post-patch the mock keeps a handle→callback Map and the
+   * flush helper iterates only the live (uncancelled) entries — both
+   * defense layers are now independently verifiable.
    */
-  let rafCallbacks: (() => void)[];
+  let rafQueue: Map<number, () => void>;
   let rafHandleCounter: number;
   let originalRaf: typeof requestAnimationFrame;
   let originalCancel: typeof cancelAnimationFrame;
   let cancelledHandles: number[];
 
   beforeEach(() => {
-    rafCallbacks = [];
+    rafQueue = new Map();
     rafHandleCounter = 0;
     cancelledHandles = [];
     originalRaf = global.requestAnimationFrame;
     originalCancel = global.cancelAnimationFrame;
     global.requestAnimationFrame = ((cb: () => void) => {
       const handle = ++rafHandleCounter;
-      rafCallbacks.push(cb);
+      rafQueue.set(handle, cb);
       return handle;
     }) as unknown as typeof requestAnimationFrame;
     global.cancelAnimationFrame = ((handle: number) => {
       cancelledHandles.push(handle);
+      rafQueue.delete(handle); // P3: real-browser parity — removes from pending queue
     }) as unknown as typeof cancelAnimationFrame;
   });
 
@@ -324,11 +356,20 @@ describe("Story 13-1 — orchestrator render-storm runtime contracts (audit P2-3
     global.cancelAnimationFrame = originalCancel;
   });
 
-  /** Flush all queued rAF callbacks in order, then clear the queue. */
+  /**
+   * Flush all queued (uncancelled) rAF callbacks in insertion order, then
+   * clear the queue. P3 fix: only invokes live entries — a cancelled
+   * handle is already removed from `rafQueue`.
+   */
   function flushRaf(): void {
-    const queue = [...rafCallbacks];
-    rafCallbacks.length = 0;
+    const queue = Array.from(rafQueue.values());
+    rafQueue.clear();
     for (const cb of queue) cb();
+  }
+
+  /** Number of pending (uncancelled) rAF callbacks. */
+  function rafQueueSize(): number {
+    return rafQueue.size;
   }
 
   it("Case 10: 100 `response.output_audio.delta` events fire setState EXACTLY ONCE for the isAiSpeaking flip", () => {
@@ -372,7 +413,7 @@ describe("Story 13-1 — orchestrator render-storm runtime contracts (audit P2-3
       item_id: "item-X",
     });
     subscriber.mockClear(); // drop the isAiSpeaking-flip notification
-    const initialRafCount = rafCallbacks.length;
+    const initialRafCount = rafQueueSize();
 
     for (let i = 0; i < 100; i++) {
       dispatcher.handleEvent({
@@ -383,7 +424,7 @@ describe("Story 13-1 — orchestrator render-storm runtime contracts (audit P2-3
     }
 
     // Idempotent schedule: 100 deltas → 1 NEW rAF queued.
-    expect(rafCallbacks.length - initialRafCount).toBe(1);
+    expect(rafQueueSize() - initialRafCount).toBe(1);
     // The currentAiText (private) is updated synchronously each delta;
     // the coalesced setState surfaces the final accumulated string on
     // the next rAF tick. State has NOT changed yet — schedule pending.
@@ -392,14 +433,26 @@ describe("Story 13-1 — orchestrator render-storm runtime contracts (audit P2-3
     flushRaf();
 
     // After flush, exactly ONE setState surfaces the coalesced
-    // pendingAiText (the 100-character accumulated string).
+    // pendingAiText. Story 13-1 review-round-1 P8 fix: assert the EXACT
+    // accumulated string ("a" × 100), not just length — defends against
+    // a future regression that produces a 100-char string with different
+    // content (e.g., a corrupted acceptDelta adopt-vs-append branch).
     expect(subscriber).toHaveBeenCalledTimes(1);
-    expect(orch.getState().pendingAiText.length).toBe(100);
+    expect(orch.getState().pendingAiText).toBe("a".repeat(100));
 
     orch.dispose();
   });
 
-  it("Case 12: `dispose()` cancels pending rAF before it fires", () => {
+  it("Case 12: `dispose()` cancels pending rAF (cancel layer verified independently)", () => {
+    // Story 13-1 review-round-1 P3: this test now verifies the
+    // `cancelAnimationFrame` call independently of the in-callback
+    // `isDisposed` guard. Pre-patch the mock didn't actually remove the
+    // callback from the queue, so a future regression that removed the
+    // cancel call would silently pass (the in-callback guard would
+    // still catch it). Post-patch the mock DOES remove the entry from
+    // `rafQueue` on cancel, so we can directly assert the queue is
+    // empty after dispose AND that the in-callback guard remains as
+    // belt-and-suspenders defense (verified in Case 13 below).
     const orch = new RealtimeOrchestrator(baseOptions);
     const subscriber = jest.fn();
     orch.subscribe(subscriber);
@@ -413,28 +466,71 @@ describe("Story 13-1 — orchestrator render-storm runtime contracts (audit P2-3
     });
     subscriber.mockClear();
 
-    // Schedule a pendingAiText rAF via a transcript-delta event.
     dispatcher.handleEvent({
       type: "response.output_audio_transcript.delta",
       delta: "should not surface",
       item_id: "item-Y",
     });
-    expect(rafCallbacks.length).toBeGreaterThan(0);
+    expect(rafQueueSize()).toBe(1);
     const handlesBeforeDispose = cancelledHandles.length;
+    const handleScheduled = Array.from(rafQueue.keys())[0];
 
     orch.dispose();
 
-    // dispose() called cancelAnimationFrame on the pending handle.
+    // dispose() called cancelAnimationFrame on the EXACT handle that was
+    // queued (not just any handle). The mock removes it from the queue.
     expect(cancelledHandles.length).toBeGreaterThan(handlesBeforeDispose);
+    expect(cancelledHandles).toContain(handleScheduled);
+    expect(rafQueueSize()).toBe(0);
+
+    // No setState fires post-dispose — the queue is empty so flushRaf
+    // has nothing to invoke. The cancel layer alone is sufficient.
+    subscriber.mockClear();
+    flushRaf();
+    expect(subscriber).not.toHaveBeenCalled();
+  });
+
+  it("Case 13: rAF callback's in-callback `isDisposed` guard is the SECOND defense layer (belt-and-suspenders)", () => {
+    // Story 13-1 review-round-1 P3: separate test to verify the
+    // in-callback `isDisposed` guard works independently of cancel.
+    // We simulate a scenario where the cancel call is missing (e.g., a
+    // future refactor drops it) by manually setting isDisposed via the
+    // orchestrator's public dispose() call BUT then re-injecting the
+    // original rAF callback into the queue to bypass the cancel
+    // (modeling the regression we're defending against). The
+    // in-callback `isDisposed` check should still prevent the setState.
+    const orch = new RealtimeOrchestrator(baseOptions);
+    const subscriber = jest.fn();
+    orch.subscribe(subscriber);
     subscriber.mockClear();
 
-    // Now flush — the rAF callback may still run (we mock the cancel
-    // call, but the queued callbacks remain in `rafCallbacks` so the
-    // flush helper invokes them). The orchestrator's INTERNAL guard
-    // (`if (this.isDisposed) return` in the rAF callback) prevents the
-    // setState from firing even though the test harness flushes the
-    // queue. Belt-and-suspenders: cancel call AND in-callback guard.
+    const dispatcher = asDispatcher(orch);
+    dispatcher.handleEvent({
+      type: "response.output_audio.delta",
+      delta: "AAAA",
+      item_id: "item-Z",
+    });
+    subscriber.mockClear();
+
+    dispatcher.handleEvent({
+      type: "response.output_audio_transcript.delta",
+      delta: "should still not surface",
+      item_id: "item-Z",
+    });
+    expect(rafQueueSize()).toBe(1);
+    const handleScheduled = Array.from(rafQueue.keys())[0];
+    const rafCallback = rafQueue.get(handleScheduled)!;
+
+    // Simulate the regression: dispose runs but the cancel call is
+    // missing. Re-inject the callback into the queue AFTER dispose so
+    // the in-callback guard is the ONLY defense.
+    orch.dispose();
+    rafQueue.set(handleScheduled, rafCallback);
+
+    subscriber.mockClear();
     flushRaf();
+    // The in-callback `if (this.isDisposed) return` guard prevents the
+    // setState from firing. Belt-and-suspenders confirmed.
     expect(subscriber).not.toHaveBeenCalled();
   });
 });
