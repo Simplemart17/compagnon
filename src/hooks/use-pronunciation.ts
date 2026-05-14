@@ -16,6 +16,7 @@ import {
   type PronunciationResult,
   type PhonemeScore,
 } from "@/src/lib/pronunciation";
+import { appendCappedHistory } from "@/src/lib/pronunciation-history";
 
 import { useAudioRecorder } from "./use-audio-recorder";
 
@@ -75,9 +76,13 @@ export function usePronunciation(): UsePronunciationReturn {
 
         const result = await assessPronunciation(base64, referenceText);
 
-        // Use functional updater to avoid stale closure over state.history
+        // Use functional updater to avoid stale closure over state.history.
+        // Story 12-12 (P2-22 closure): history is FIFO-capped at
+        // `MAX_PRONUNCIATION_HISTORY = 50` via `appendCappedHistory` —
+        // bounds both memory (~25 KB max) and `identifyWeakSounds` compute
+        // (~2,500 iterations per call) by construction.
         setState((prev) => {
-          const newHistory = [...prev.history, result];
+          const newHistory = appendCappedHistory(prev.history, result);
           const weakSounds = identifyWeakSounds(newHistory);
           return {
             ...prev,
@@ -113,9 +118,13 @@ export function usePronunciation(): UsePronunciationReturn {
 
         const result = await assessPronunciation(base64, referenceText);
 
-        // Use functional updater to avoid stale closure over state.history
+        // Use functional updater to avoid stale closure over state.history.
+        // Story 12-12 (P2-22 closure): history is FIFO-capped at
+        // `MAX_PRONUNCIATION_HISTORY = 50` via `appendCappedHistory` —
+        // bounds both memory (~25 KB max) and `identifyWeakSounds` compute
+        // (~2,500 iterations per call) by construction.
         setState((prev) => {
-          const newHistory = [...prev.history, result];
+          const newHistory = appendCappedHistory(prev.history, result);
           const weakSounds = identifyWeakSounds(newHistory);
           return {
             ...prev,
