@@ -1,6 +1,6 @@
 # Story 12.8: Password Policy Tightening — ≥10 Characters + Composition + Server-Side Supabase Enforcement
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
