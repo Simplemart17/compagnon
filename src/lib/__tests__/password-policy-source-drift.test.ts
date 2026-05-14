@@ -14,9 +14,16 @@
  *   (d) NEGATIVE — the literal placeholder `min. 6 caractères` is gone.
  *   (e) NEGATIVE — `captureError` is NEVER passed the `password`
  *       variable (defends against accidental telemetry leak; Story 9-3
- *       contract).
- *   (f) Post-12-8 placeholder `min. 10 caractères` is present (or the
- *       MIN_PASSWORD_LENGTH constant is referenced).
+ *       contract). Uses balanced-paren extraction (review-round-1 P3)
+ *       so a `password` reference inside a NESTED call like
+ *       `captureError(err, "tag", buildExtras(password))` cannot slip
+ *       through the regex's first-`)` truncation.
+ *   (f) Post-12-8 placeholder uses `MIN_PASSWORD_LENGTH` constant via
+ *       template literal (review-round-1 P6). Pre-patch the test
+ *       accepted a vacuous `MIN_PASSWORD_LENGTH` import-without-use;
+ *       post-patch the constant must appear inside a placeholder
+ *       template literal so a reverted placeholder cannot satisfy the
+ *       test by leaving the import alone.
  */
 
 import * as fs from "fs";
@@ -31,6 +38,60 @@ const SIGNUP_FILE_PATH = path.resolve(__dirname, "../../../app/(auth)/signup.tsx
  */
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
+/**
+ * Extract every `captureError(...)` call's argument list using
+ * balanced-paren walking (review-round-1 P3). Pre-patch the regex
+ * `/captureError\s*\([\s\S]*?\)/g` was non-greedy and stopped at the
+ * FIRST `)`, so a multi-line / nested call like
+ * `captureError(err, "tag", buildExtras(password))` was captured as
+ * `captureError(err, "tag", buildExtras(` — losing the `password`
+ * reference and silently passing the negative-guard.
+ *
+ * This walker correctly handles arbitrary nesting up to a sane depth
+ * by counting open/close parens character-by-character.
+ */
+function extractCaptureErrorCalls(source: string): string[] {
+  const calls: string[] = [];
+  const needle = "captureError";
+  let i = 0;
+  while (i < source.length) {
+    const idx = source.indexOf(needle, i);
+    if (idx === -1) break;
+    // Confirm word boundary BEFORE the match (defends against
+    // identifiers like `mockCaptureError` matching by substring).
+    const prevChar = idx > 0 ? source[idx - 1] : "";
+    if (prevChar && /[A-Za-z0-9_$]/.test(prevChar)) {
+      i = idx + needle.length;
+      continue;
+    }
+    // Find the opening paren after optional whitespace.
+    let j = idx + needle.length;
+    while (j < source.length && /\s/.test(source[j])) j++;
+    if (source[j] !== "(") {
+      i = idx + needle.length;
+      continue;
+    }
+    // Walk forward counting parens.
+    let depth = 0;
+    const start = j;
+    while (j < source.length) {
+      const ch = source[j];
+      if (ch === "(") depth++;
+      else if (ch === ")") {
+        depth--;
+        if (depth === 0) {
+          j++;
+          break;
+        }
+      }
+      j++;
+    }
+    calls.push(source.slice(start, j));
+    i = j;
+  }
+  return calls;
 }
 
 const SIGNUP_SOURCE = fs.readFileSync(SIGNUP_FILE_PATH, "utf-8");
@@ -53,32 +114,49 @@ describe("signup.tsx — Story 12-8 source drift detector", () => {
   });
 
   it("Case 3: NEGATIVE — pre-12-8 `password.length < 6` regression is absent", () => {
-    // Match `password.length` with optional whitespace + `<` + optional ws + 6
-    // Comment-stripped source so JSDoc cannot false-positive.
     expect(SIGNUP_CODE_ONLY).not.toMatch(/password\.length\s*<\s*6\b/);
   });
 
   it("Case 4: NEGATIVE — pre-12-8 `min. 6 caractères` placeholder is absent", () => {
-    // The `\.` literal dot in the placeholder; keep tolerant of NBSP.
     expect(SIGNUP_CODE_ONLY).not.toMatch(/min\.\s*6\s*caract[eè]res/i);
   });
 
-  it("Case 5: NEGATIVE — captureError is NEVER passed the password variable (Story 9-3 contract)", () => {
-    // Match `captureError(...)` arguments and assert no occurrence carries
-    // the bare `password` identifier. Tolerant of whitespace + multi-line
-    // arg lists.
-    const captureErrorCalls = SIGNUP_CODE_ONLY.match(/captureError\s*\(([\s\S]*?)\)/g) ?? [];
+  it("Case 5: NEGATIVE — captureError is NEVER passed the password variable (Story 9-3 contract; balanced-paren walker)", () => {
+    const captureErrorCalls = extractCaptureErrorCalls(SIGNUP_CODE_ONLY);
+    // Sanity: there IS at least one captureError call in this file
+    // (the catch-block uses captureError(err, "signup")). If this drops
+    // to zero, the walker is broken.
+    expect(captureErrorCalls.length).toBeGreaterThan(0);
     for (const call of captureErrorCalls) {
       // Identifier-boundary match: \bpassword\b must not appear in the
-      // argument list. (A future refactor that includes `password.length`
-      // as an arg would fail this.)
+      // argument list. A future refactor that includes `password` or
+      // `password.length` as an arg — even nested — would fail this.
       expect(call).not.toMatch(/\bpassword\b/);
     }
   });
 
-  it("Case 6: post-12-8 `min. 10 caractères` placeholder OR MIN_PASSWORD_LENGTH ref is present", () => {
-    const hasNewPlaceholder = /min\.\s*10\s*caract[eè]res/i.test(SIGNUP_CODE_ONLY);
-    const hasConstantRef = /MIN_PASSWORD_LENGTH/.test(SIGNUP_CODE_ONLY);
-    expect(hasNewPlaceholder || hasConstantRef).toBe(true);
+  it("Case 5b: walker self-check — extracts a synthetic call with nested parens completely", () => {
+    // Defends against a future regression in `extractCaptureErrorCalls`
+    // that re-introduces the first-`)` truncation bug. If the walker
+    // breaks, this synthetic test fires loudly instead of silently
+    // returning no findings on the real source.
+    const synthetic = `captureError(err, "tag", buildExtras(password));`;
+    const calls = extractCaptureErrorCalls(synthetic);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("password");
+  });
+
+  it("Case 6: post-12-8 placeholder uses MIN_PASSWORD_LENGTH constant via template literal (P6 strict)", () => {
+    // Pre-patch this test was an OR — accepting either the literal
+    // `min. 10 caractères` OR a bare `MIN_PASSWORD_LENGTH` import.
+    // The import-only path was vacuous: a future regression that
+    // reverted the placeholder to `min. 6 caractères` while leaving
+    // the import in place would silently pass.
+    // Post-patch: REQUIRE the constant to appear inside a template
+    // literal in the placeholder (the JSX `placeholder=` attribute
+    // value) so the source-of-truth is genuinely consumed.
+    expect(SIGNUP_CODE_ONLY).toMatch(
+      /placeholder=\{`Mot de passe \(min\.\s*\$\{MIN_PASSWORD_LENGTH\}\s*caract[eè]res\)`\}/
+    );
   });
 });

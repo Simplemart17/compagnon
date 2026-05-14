@@ -24,6 +24,8 @@ import { PasswordStrengthIndicator } from "@/src/components/auth/PasswordStrengt
 import { useAuth } from "@/src/hooks/use-auth";
 import { Colors } from "@/src/lib/design";
 import {
+  MIN_PASSWORD_LENGTH,
+  getGenericWeakPasswordFrenchMessage,
   getPwnedFrenchMessage,
   isPwnedRejection,
   mapSupabaseWeakPasswordError,
@@ -86,7 +88,7 @@ export default function SignUpScreen() {
 
     const policyResult = validatePasswordStrength(password);
     if (!policyResult.valid) {
-      const itemized = policyResult.reasons.map(passwordPolicyReasonToFrenchMessage).join(" • ");
+      const itemized = policyResult.reasons.map(passwordPolicyReasonToFrenchMessage).join("\n");
       Alert.alert("Mot de passe invalide", itemized);
       return;
     }
@@ -99,9 +101,17 @@ export default function SignUpScreen() {
           Alert.alert("Mot de passe invalide", getPwnedFrenchMessage());
         } else {
           const mapped = mapSupabaseWeakPasswordError(error, password);
-          if (mapped && mapped.length > 0) {
-            const itemized = mapped.map(passwordPolicyReasonToFrenchMessage).join(" • ");
-            Alert.alert("Mot de passe invalide", itemized);
+          if (mapped !== null) {
+            // Story 12-8 review-round-1 P7: ALWAYS surface a French
+            // message for weak_password rejections, never the English
+            // Supabase engineering text. Empty mapped result happens
+            // when server-reported reasons are unparseable; show the
+            // generic French fallback in that case.
+            const message =
+              mapped.length > 0
+                ? mapped.map(passwordPolicyReasonToFrenchMessage).join("\n")
+                : getGenericWeakPasswordFrenchMessage();
+            Alert.alert("Mot de passe invalide", message);
           } else {
             Alert.alert("Sign Up Failed", error.message);
           }
@@ -263,7 +273,7 @@ export default function SignUpScreen() {
                   🔒
                 </Text>
                 <TextInput
-                  placeholder="Mot de passe (min. 10 caractères)"
+                  placeholder={`Mot de passe (min. ${MIN_PASSWORD_LENGTH} caractères)`}
                   placeholderTextColor={Colors.textTertiary}
                   value={password}
                   onChangeText={setPassword}
@@ -271,7 +281,7 @@ export default function SignUpScreen() {
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
                   accessibilityLabel="Password"
-                  accessibilityHint="Enter a password with at least 10 characters and one uppercase, one lowercase, and one digit"
+                  accessibilityHint={`Enter a password with at least ${MIN_PASSWORD_LENGTH} characters and one uppercase, one lowercase, and one digit`}
                   className="flex-1 text-[15px] text-primary p-0"
                 />
               </View>
