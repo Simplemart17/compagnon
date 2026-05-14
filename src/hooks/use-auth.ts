@@ -29,6 +29,8 @@
  */
 import { useAuthStore } from "@/src/store/auth-store";
 import {
+  refreshSessionAfterVerification,
+  resendVerificationEmail,
   retryProfileFetch,
   signInWithEmail,
   signUpWithEmail,
@@ -38,6 +40,8 @@ import {
 
 export {
   applyProfileIfFresh,
+  refreshSessionAfterVerification,
+  resendVerificationEmail,
   retryProfileFetch,
   signInWithEmail,
   signUpWithEmail,
@@ -61,6 +65,8 @@ export function useAuth() {
     isLoading,
     isOnboarded,
     profileFetchFailed,
+    refreshSessionAfterVerification,
+    resendVerificationEmail,
     retryProfileFetch,
     signInWithEmail,
     signUpWithEmail,
