@@ -14,7 +14,9 @@ import {
   setupNotificationResponseListener,
 } from "@/src/hooks/use-notifications";
 import { Colors, Radii, Spacing, Typography } from "@/src/lib/design";
+import { isEmailVerified } from "@/src/lib/email-verification";
 import { captureError, getSentryInitConfig } from "@/src/lib/sentry";
+import { EmailVerificationGate } from "@/src/components/auth/EmailVerificationGate";
 import { NetworkBanner } from "@/src/components/common/NetworkBanner";
 import { ErrorBoundary as AppErrorBoundary } from "@/src/components/common/ErrorBoundary";
 import { ToastProvider } from "@/src/components/common/Toast/ToastContext";
@@ -65,8 +67,18 @@ if (typeof process === "undefined" || !process.env.JEST_WORKER_ID) {
 }
 
 function RootLayoutNav() {
-  const { session, user, profile, isLoading, isOnboarded, profileFetchFailed, retryProfileFetch } =
-    useAuth();
+  const {
+    session,
+    user,
+    profile,
+    isLoading,
+    isOnboarded,
+    profileFetchFailed,
+    refreshSessionAfterVerification,
+    resendVerificationEmail,
+    retryProfileFetch,
+    signOut,
+  } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const hasRegisteredNotifications = useRef(false);
@@ -77,19 +89,37 @@ function RootLayoutNav() {
     }
   }, [isLoading]);
 
-  // Register for push notifications once per app launch when authenticated.
-  // Reset the guard on sign-out so a new user can register their token.
+  // Register for push notifications once per app launch when authenticated
+  // AND email-verified. Reset the guard on sign-out OR when verification
+  // is revoked so a re-verified session re-registers cleanly.
+  //
+  // Story 12-9 — verification guard: an unverified session must NOT
+  // pre-register a push token. Otherwise an attacker who signs up + abandons
+  // leaves a token attached to the abandoned UID, polluting the
+  // `device_tokens` table with rows that will never receive notifications.
+  // The dep array includes `user` so the effect re-fires when
+  // `email_confirmed_at` flips from undefined → ISO timestamp after the
+  // user clicks the verification link and the listener propagates the
+  // refreshed session to the store.
+  //
+  // Review-round-1 H2 patch: the reset branch now ALSO fires when the
+  // session is present but `!isEmailVerified(user)` (admin-driven revoke
+  // OR `USER_UPDATED` that flips email_confirmed_at set → unset). Without
+  // this, a subsequent re-verify cycle would leave `hasRegisteredNotifications.current`
+  // stuck at `true` and the push token would never re-register after the
+  // device-token rotation.
   useEffect(() => {
-    if (session && !hasRegisteredNotifications.current) {
+    if (session && !hasRegisteredNotifications.current && isEmailVerified(user)) {
       hasRegisteredNotifications.current = true;
       registerForPushNotifications().catch((err) => {
         captureError(err, "notification-registration");
       });
     }
-    if (!session) {
+    // H2: reset on sign-out OR on verification revocation.
+    if (!session || !isEmailVerified(user)) {
       hasRegisteredNotifications.current = false;
     }
-  }, [session]);
+  }, [session, user]);
 
   // Deep link handler for notification taps — single listener at root level
   useEffect(() => {
@@ -118,6 +148,22 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboarding = segments[0] === "onboarding";
 
+    // Story 12-9: unverified-but-session-bearing users must NOT be routed
+    // into onboarding or the tabs. The render-branch below shows the gate.
+    // This guard runs UPSTREAM of the 9-10 ProfileRetryScreen guard by
+    // deliberate placement — an unverified user shouldn't have reached
+    // profile-load. Reading `user.email_confirmed_at` directly keeps
+    // Supabase as the single source of truth (server-authoritative; no
+    // client-cached flag that could be tampered with).
+    //
+    // Review-round-1 M7 patch: moved ABOVE the 9-10 ProfileRetryScreen
+    // guard so the routing-effect order matches the render-branch order
+    // (verification fires UPSTREAM in BOTH dimensions). Pre-patch, both
+    // guards `return;`-early so the functional outcome was identical, but
+    // a future refactor that adds logic between them would silently break
+    // the "verification UPSTREAM" claim.
+    if (session && !isEmailVerified(user) && !inAuthGroup) return;
+
     // Story 9-10 AC #3: hold the splash on the retry surface — do NOT route
     // to onboarding when the profile failed to load (offline + corrupted
     // cache). `isOnboarded` defaults to false when `profile` is null, which
@@ -136,10 +182,37 @@ function RootLayoutNav() {
       router.replace("/(tabs)/home");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, isLoading, isOnboarded, profile, profileFetchFailed, segments]);
+  }, [session, user, isLoading, isOnboarded, profile, profileFetchFailed, segments]);
 
   if (isLoading) {
     return null;
+  }
+
+  // Render-branch ordering (Story 12-9):
+  //   isLoading (returns null above) →
+  //   EmailVerificationGate (Story 12-9) →
+  //   ProfileRetryScreen (Story 9-10) →
+  //   main app
+  //
+  // The verification gate fires UPSTREAM of profile-retry by deliberate
+  // placement — an unverified user shouldn't have reached profile-load.
+  const inAuthGroupRender = segments[0] === "(auth)";
+
+  // Story 12-9: render the email-verification gate when the session exists
+  // but `user.email_confirmed_at` is unset. Wrapped in `AppErrorBoundary`
+  // so a render error inside the gate cannot crash the app uncaught
+  // (Story 9-10 P7 pattern, applied here as well).
+  if (session && !isEmailVerified(user) && !inAuthGroupRender) {
+    return (
+      <AppErrorBoundary>
+        <EmailVerificationGate
+          userEmail={user?.email}
+          onResendVerification={resendVerificationEmail}
+          onSignOut={signOut}
+          onRefreshSession={refreshSessionAfterVerification}
+        />
+      </AppErrorBoundary>
+    );
   }
 
   // Story 9-10 AC #3: profile fetch failed (offline + corrupted cache).
@@ -151,7 +224,6 @@ function RootLayoutNav() {
   // proceed to home as soon as the auth group hands them off.
   // P7 (9-10 review): wrap in `AppErrorBoundary` so a render error in the
   // retry surface cannot crash the app uncaught.
-  const inAuthGroupRender = segments[0] === "(auth)";
   if (session && !profile && profileFetchFailed && !inAuthGroupRender) {
     return (
       <AppErrorBoundary>
