@@ -94,53 +94,73 @@ export function timeoutResponse(
 }
 
 /**
- * Parse an upstream API error response into a human-readable message.
- *
- * OpenAI returns: { "error": { "message": "...", "type": "...", "code": "..." } }
- * Azure returns:  { "error": { "message": "...", "code": "..." } } or plain text/XML
- *
- * This function tries to extract the nested message. If the body is not JSON
- * or does not match the expected shape, it falls back to the raw text.
+ * Cap for the raw upstream-error body that flows into operator-visible
+ * function logs (Story 12-11). 2000 chars is enough to capture the full
+ * JSON error shape from OpenAI / Azure, the top of an HTML 5xx page, and
+ * the most-informative fragment of plain-text errors — while preventing
+ * a malformed mountain of HTML from blowing out log storage. Mirrors the
+ * Story 9-4 `MAX_MEMORY_CHARS = 300` and Story 11-7 `MAX_PROMPT_ITEM_CHARS = 80`
+ * bounded-budget pattern (the budget is larger here because the consumer
+ * is a log file, not a render path).
  */
-export async function parseUpstreamError(response: Response): Promise<string> {
+const MAX_LOGGED_BODY_CHARS = 2000;
+
+/**
+ * Read an upstream error response body, log it to operator-visible function
+ * logs via `console.error` with the `[upstream-error]` prefix, and return a
+ * GENERIC categorized message to the caller — Story 12-11 / closes audit P1-14.
+ *
+ * **Load-bearing security property:** the return value NEVER carries upstream
+ * content. Pre-12-11 the function returned `parsed.error.message` (leaks
+ * model names like `"The model gpt-4o is overloaded"` AND prompt fragments
+ * like `"Your message exceeds token limit: 'translate French...'"`) OR raw
+ * text (leaks HTML 5xx pages with server fingerprints). Post-12-11 the
+ * return value is ALWAYS `"Upstream API error (status N)"`. Operators get
+ * the full upstream body via Supabase function logs; clients see only the
+ * generic message + HTTP status code.
+ *
+ * **Client-side retry compatibility:** the HTTP status code is preserved
+ * in the returned string, so the client-side `isRetryable()` regex at
+ * `src/lib/openai.ts:76-94` substring-matches on `"500"` / `"502"` / `"503"`
+ * / `"429"` and triggers retry exactly as it did pre-12-11. No client code
+ * change required.
+ *
+ * **Log retrieval recipe** (see `_bmad-output/planning-artifacts/runbooks/upstream-error-debugging.md` for the full operator runbook):
+ *   - Supabase CLI: `supabase functions logs <function-name> --tail=200 | grep '\[upstream-error\]'`
+ *   - Supabase Dashboard: Edge Functions → `<function-name>` → Logs tab
+ *
+ * @param response The upstream error Response (non-OK status).
+ * @param upstreamLabel Categorical kebab-case short string identifying which
+ *   upstream this is — one of: `"openai-chat-or-embedding"`, `"openai-whisper"`,
+ *   `"openai-realtime-token"`, `"azure-tts"`, `"azure-pronunciation"`. Flows
+ *   ONLY to the `console.error` log line, NEVER to the client response.
+ * @returns A generic message of the shape `"Upstream API error (status N)"`.
+ */
+export async function parseUpstreamError(
+  response: Response,
+  upstreamLabel: string
+): Promise<string> {
+  const status = response.status;
+  const genericMessage = `Upstream API error (status ${status})`;
+
   // The body of an error response should be tiny. If it isn't, the upstream
   // is hung mid-body and we shouldn't let the read consume the rest of the
-  // isolate's wall-clock budget. Cap at ERROR_BODY_READ_TIMEOUT_MS (5s).
-  // If the read times out, fall back to a generic message so the caller's
-  // structured-error pipeline still surfaces something sensible.
-  // Story 11-3 review patch P1 (body-read coverage).
+  // isolate's wall-clock budget. Cap at ERROR_BODY_READ_TIMEOUT_MS (5s) via
+  // the Story 11-3 `withTimeout` helper.
   let rawText: string;
   try {
-    rawText = await withTimeout(
-      "error-body-read",
-      response.text(),
-      ERROR_BODY_READ_TIMEOUT_MS
+    rawText = await withTimeout("error-body-read", response.text(), ERROR_BODY_READ_TIMEOUT_MS);
+  } catch {
+    console.error(
+      `[upstream-error] ${upstreamLabel} status=${status} body=body-read-timeout`
     );
-  } catch {
-    return `Upstream returned ${response.status} (body read timed out after ${ERROR_BODY_READ_TIMEOUT_MS}ms)`;
+    return genericMessage;
   }
 
-  try {
-    const parsed = JSON.parse(rawText);
-
-    // OpenAI / Azure standard shape: { error: { message: "..." } }
-    if (parsed?.error?.message) {
-      const errObj = parsed.error;
-      const parts = [errObj.message];
-      if (errObj.type) parts.push(`type=${errObj.type}`);
-      if (errObj.code) parts.push(`code=${errObj.code}`);
-      return parts.join(" | ");
-    }
-
-    // Some APIs return { message: "..." } directly
-    if (parsed?.message) {
-      return parsed.message;
-    }
-
-    // Fallback: return the raw JSON as a string
-    return rawText;
-  } catch {
-    // Not JSON — return raw text (could be XML, HTML error page, etc.)
-    return rawText || `Upstream returned ${response.status} with empty body`;
-  }
+  const truncated =
+    rawText.length > MAX_LOGGED_BODY_CHARS
+      ? rawText.slice(0, MAX_LOGGED_BODY_CHARS) + "... (truncated)"
+      : rawText;
+  console.error(`[upstream-error] ${upstreamLabel} status=${status} body=${truncated}`);
+  return genericMessage;
 }

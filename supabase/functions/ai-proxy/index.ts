@@ -268,7 +268,7 @@ Deno.serve(async (req: Request) => {
         }
 
         if (!azureTtsResponse.ok) {
-          const upstreamMessage = await parseUpstreamError(azureTtsResponse);
+          const upstreamMessage = await parseUpstreamError(azureTtsResponse, "azure-tts");
           return errorResponse({ code: "UPSTREAM_ERROR", message: `Azure TTS error: ${upstreamMessage}`, status: azureTtsResponse.status, corsHeaders });
         }
 
@@ -417,7 +417,7 @@ Deno.serve(async (req: Request) => {
         }
 
         if (!openaiResponse.ok) {
-          const upstreamMessage = await parseUpstreamError(openaiResponse);
+          const upstreamMessage = await parseUpstreamError(openaiResponse, "openai-whisper");
           return errorResponse({ code: "UPSTREAM_ERROR", message: `OpenAI Whisper error: ${upstreamMessage}`, status: openaiResponse.status, corsHeaders });
         }
 
@@ -444,7 +444,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!openaiResponse.ok) {
-      const upstreamMessage = await parseUpstreamError(openaiResponse);
+      const upstreamMessage = await parseUpstreamError(openaiResponse, "openai-chat-or-embedding");
       return errorResponse({ code: "UPSTREAM_ERROR", message: `OpenAI error: ${upstreamMessage}`, status: openaiResponse.status, corsHeaders });
     }
 
