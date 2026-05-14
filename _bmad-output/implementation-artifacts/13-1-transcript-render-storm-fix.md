@@ -257,7 +257,44 @@ claude-opus-4-7[1m]
 - **Task 5 done.** Quality gates: `tsc` 0 errors; `lint` 0 warnings (post `Array<T>` → `T[]` fix); `prettier` clean; `jest` 1622 / 1622 passing across 76 suites.
 - **Task 6 done.** CLAUDE.md gained a 12-paragraph-precedent-style Story 13-1 architecture entry (post-Story-12-12 review-round-1 entry) documenting the two-axis fix + cross-story invariants (Stories 9-3 / 9-5 / 11-1 / 11-2 / 12-1 / 12-6 / 12-12 all explicitly preserved) + expected setState reduction (~88%). `sprint-status.yaml` `13-1-transcript-render-storm-fix` flipped `backlog → ready-for-dev → in-progress → review`; `last_updated` header tracks each phase.
 - **Cross-story invariants verified clean:** `src/lib/sentry.ts` zero-diff (no new feature tags / no new extras keys); `src/lib/realtime-transcript.ts` zero-diff (`appendIfNew` / `acceptDelta` / `resolveTranscriptKey` byte-identical — Story 9-5 contract preserved); `src/lib/realtime-corrections.ts` zero-diff (Story 11-1 tool-call protocol unchanged); `src/lib/realtime-barge-in.ts` zero-diff (Story 11-2 helper unchanged); `src/lib/transcript-cap.ts` zero-diff (Story 12-6 `MAX_TRANSCRIPT_ENTRIES = 200` unchanged); `package.json` + `package-lock.json` + `supabase/` + `.github/workflows/` all zero-diff.
-- **Closes audit P2-3** architecturally. Expected impact: setState/utterance drops from ~250 → ~30 (~88% reduction); extraData invalidations/session drops from 60 → 0; parent re-renders/utterance drops proportionally. Final pendingAiText reaches subscribers within one frame (~16.67ms) of the last delta — imperceptible. Epic 13 AC `≥ 55 FPS on iPhone 11 for 30 turns` satisfied architecturally (a real-device FPS trace requires Reactotron / Flipper instrumentation which lives outside CI; Epic 15 / live-device QA owns that verification).
+- **Closes audit P2-3** architecturally. Expected impact: setState/utterance drops from ~250 → ~30 (~88% reduction); parent re-renders/utterance drops proportionally. Final pendingAiText reaches subscribers within one frame (~16.67ms) of the last delta — imperceptible. Epic 13 AC `≥ 55 FPS on iPhone 11 for 30 turns` satisfied architecturally (a real-device FPS trace requires Reactotron / Flipper instrumentation which lives outside CI; Epic 15 / live-device QA owns that verification).
+
+### Senior Developer Review (AI) — Review-Round-1
+
+**Date:** 2026-05-14
+**Outcome:** APPROVE — patches applied
+**Review layers:** Blind Hunter (18 findings) + Edge Case Hunter (15 findings) + Acceptance Auditor (APPROVE, 0 violations) — run in parallel.
+**Triage:** 10 patches applied (HIGH × 4 + MED × 4 + LOW × 2); 5 deferred; 12 rejected as noise.
+
+**Acceptance Auditor verdict:** APPROVE — all 13 ACs structurally satisfied. The HIGH-severity issues that drove this patch cycle were surfaced by Blind + Edge Case Hunters — cross-file invariants visible only with deeper code reading.
+
+**Patches applied:**
+
+- **P1 (HIGH) — TranscriptView extraData REVERTED.** The initial implementation over-applied the spec hint by dropping `isAiSpeaking` from extraData in both branches. Review surfaced 3 correctness regressions: (a) side-note correction gating reads `isAiSpeakingRef.current` at render-time but only re-evaluates when FlatList re-renders rows — without an extraData change on `isAiSpeaking` flip, gating stays stale during AI speech; (b) Story 12-6 transcript cap eviction at length=200 → length stays at 200 → FlatList doesn't invalidate → visible rows display content of evicted items; (c) hot-reload undefined-transcript crash risk. Math correction: orchestrator changes deliver ~99% of the storm fix (~7500 setStates/session → ~900); per-turn extraData flip cost is only ~60 invalidations/session. Condensed-branch ternary restored; non-condensed remains `transcript.length`-only. Drift detector updated: dropped negative-guard for template-literal shape; added positive guard for restored ternary.
+
+- **P2 (HIGH) — State-change guard race fix.** Pre-patch `if (!this.state.isAiSpeaking)` read React state which could flip back to false mid-burst from a re-entrant subscriber or barge-in path. Post-patch captures the PRE-mutation mirror value via `const wasAiSpeaking = this.isAiSpeakingMirror;` then the mirror update + guard reads `wasAiSpeaking`. Story 11-2 P22 mirror invariant preserved (mirror update stays unconditional, moved below the capture). Drift Case 3 updated.
+
+- **P3 (HIGH) — Case 12 belt-and-suspenders test split.** Pre-patch the mock `cancelAnimationFrame` only logged the handle; `flushRaf()` invoked the cb regardless → only the in-callback `isDisposed` guard was tested. Post-patch the mock uses a `Map<handle, callback>` + `.delete()` on cancel (real-browser parity). Case 12 asserts CANCEL layer independently (queue empty after dispose; specific handle cancelled); NEW Case 13 verifies the in-callback `isDisposed` guard independently by re-injecting the callback post-dispose. Both defense layers separately testable.
+
+- **P4 (HIGH) — handleReconnecting missing cancel.** Story 11-2 reconnect path cleared pendingAiText but didn't cancel pending rAF. Post-patch `cancelPendingAiTextRaf()` added before the reconnect setState; drift Case 7 extended (5-site cancel coverage).
+
+- **P5 (MED) — `aiTextRafHandle` type.** Changed `number | null` → `ReturnType<typeof requestAnimationFrame> | null` for cross-platform safety. JSDoc documents `!== null` correctly handles handle=0 (P10 absorbed into P5).
+
+- **P6 (MED) — Case 5 negative-guard regex broadened.** Applied Story 12-12 M1 lesson. Pre-patch matched ONLY the exact pre-13-1 shape. Post-patch matches `setState((s) => ({ ... pendingAiText: this.<anything> ... }))` in any property order.
+
+- **P7 (MED) — Case 7 window-slice → `extractCaseArm` helper.** Pre-patch the 1000-1500 byte window could overlap sibling case-arms. Post-patch new helper anchors on case-label + slices precisely to next `case "..."` or `default:`. Cases 3, 4, 7 all updated.
+
+- **P8 (MED) — Case 11 exact-string assertion.** Pre-patch `.length === 100`; post-patch `toBe("a".repeat(100))` defends against future regression producing 100-char string with different content.
+
+- **P9 (LOW) — Misleading comment reworded.** "MUST stay BEFORE" → mirror update is positional documentation, not a load-bearing precondition.
+
+- **P10 (LOW) — handle=0 documentation absorbed into P5 JSDoc.**
+
+**Deferred (5):** mockClear initial-sync masking (BH-11); no re-entrancy runtime test (BH-12); app-backgrounded rAF defer (EC-4 — RN-specific quirk); cross-item `.done` cancel only-if-inflight (EC-9 — at-most one-frame lag); no runtime UI test for condensed mode (BH-14 — drift detector covers source contract).
+
+**Rejected as noise (12):** BH-4 start()-reset ordering (synchronous; no race); BH-10 barge-in cancel position (no actual hazard); BH-13 getState() bypasses normalization (false premise); BH-16 CLAUDE.md not updated (false — in commit `925fd97`); BH-18 mock returns non-void (JS no-op); BH-19 idempotent test (covered by Case 11); EC-11 rAF drainage isDisposed (covered by Story 12-1 P6); EC-12 null-handle cancel no-op (correct by construction); EC-13 dispose race (handled by in-callback check); EC-14 handleResponseDone re-entrant (Story 12-1 P6 general contract); 2 Acceptance Auditor spec ambiguities self-resolved.
+
+**Tests after round-1:** 1622 / 1622 passing (+0 net; Case 13 added but TranscriptView template-literal negative-guard case dropped — redistributed net zero). All 4 quality gates green.
 
 ### File List
 
