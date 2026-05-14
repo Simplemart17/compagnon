@@ -67,10 +67,13 @@ ASCII semantics deliberately mirror Supabase's server-side enforcement to avoid 
 Run the following `curl` against the Auth signup endpoint to confirm Layer 2 is in force. Replace `$SUPABASE_URL` and `$SUPABASE_ANON_KEY` with your project's values (from `.env.local`).
 
 ```bash
+# Note: email uses @invalid.localdomain so accidentally-created accounts
+# are obviously fake AND the address contains no `+` (which requires
+# shell-escaping in some operator shells).
 curl -i -X POST "$SUPABASE_URL/auth/v1/signup" \
   -H "apikey: $SUPABASE_ANON_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"email":"test+12-8-policy@example.com","password":"abc123"}'
+  -d '{"email":"verify-12-8-policy@invalid.localdomain","password":"abc123"}'
 ```
 
 **Expected response (Layer 2 IS in force):**
@@ -97,14 +100,14 @@ content-type: application/json
 ...
 
 {
-  "user": { "id": "...", "email": "test+12-8-policy@example.com", ... },
+  "user": { "id": "...", "email": "verify-12-8-policy@invalid.localdomain", ... },
   ...
 }
 ```
 
 If you see HTTP 200, the dashboard policy is still at its default (`min_length=6, password_required_characters=""`). Re-do steps 3-5; do NOT consider the deploy complete until the verification returns HTTP 422.
 
-After verification, delete the test user from the Auth dashboard so the email can be re-used for future verifications.
+**REQUIRED post-verification cleanup:** if the dashboard policy is incorrectly relaxed and the curl above succeeded with HTTP 200, you MUST delete the resulting test user from `Authentication → Users` before fixing the policy and re-running. Leaving a test user in production indefinitely is a low-quality but real security hygiene issue (test accounts are common credential-stuffing targets). After a successful HTTP 422 verification, no user is created — no cleanup needed.
 
 ---
 
