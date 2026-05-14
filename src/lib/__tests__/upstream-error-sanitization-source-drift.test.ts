@@ -102,7 +102,11 @@ describe("parseUpstreamError sanitization — Story 12-11 source drift detector"
     // `return genericMessage` (the local const) — no upstream content
     // can flow through any of these regexes.
     expect(body).not.toMatch(/return\s+rawText\b/);
-    expect(body).not.toMatch(/return\s+parsed[.?]?\.?message\b/);
+    // Post-12-11 polish-sweep M1: regex tightened from `parsed[.?]?\.?message`
+    // (character-class shape was a copy-paste artifact accepting `..message` /
+    // `?.message` / etc.) to the precise `parsed\??\.message` shape covering
+    // both `parsed.message` and optional-chained `parsed?.message`.
+    expect(body).not.toMatch(/return\s+parsed\??\.message\b/);
     expect(body).not.toMatch(/return\s+errObj\.message\b/);
     expect(body).not.toMatch(/return\s+parts\.join\b/);
   });
@@ -154,5 +158,15 @@ describe("parseUpstreamError sanitization — Story 12-11 source drift detector"
     expect(aiProxyCount).toBe(3);
     expect(pronunciationCount).toBe(1);
     expect(realtimeCount).toBe(1);
+  });
+
+  it("Case 7: `MAX_LOGGED_BODY_CHARS = 2000` is exported and unchanged (drift pin)", () => {
+    // Post-12-11 polish-sweep L3: export the bounded-budget constant so a
+    // future log-shipping integration that wants to align its own buffer to
+    // this value doesn't have to duplicate the literal. Pins the value to
+    // 2000 — lowering it silently would clip useful upstream-error context
+    // from operator logs; raising it past a few KB could blow out log
+    // storage on a malformed mountain of HTML.
+    expect(ERRORS_TS_CODE_ONLY).toMatch(/export\s+const\s+MAX_LOGGED_BODY_CHARS\s*=\s*2000\s*;/);
   });
 });
