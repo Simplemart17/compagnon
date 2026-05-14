@@ -1,6 +1,6 @@
 # Story 12.9: Email Verification Gate Before App Loads
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
