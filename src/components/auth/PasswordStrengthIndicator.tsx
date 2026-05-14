@@ -9,29 +9,38 @@
  * Hides itself when `password.length === 0` to avoid a flash of the
  * indicator on first focus before the user types anything.
  *
- * Accessibility (review-round-1 P9):
+ * Accessibility (review-round-1 P9 + review-round-2 R2-P4):
  * - The progress bar uses `accessibilityRole="progressbar"` +
  *   `accessibilityValue={{min: 0, max: 3, now: segmentCount}}` so screen
  *   readers can describe the strength level numerically.
  * - Each checklist row is wrapped in a parent `accessible` View with
  *   `accessibilityRole="checkbox"` + `accessibilityState={{checked: met}}`
  *   + `accessibilityLabel` set to the French requirement string. Child
- *   `<Text>` elements have `importantForAccessibility="no-hide-descendants"`
- *   (Android) AND `accessibilityElementsHidden={true}` (iOS) so screen
- *   readers don't double-announce the icon `"·"` / `"✓"` glyph alongside
- *   the parent's label.
+ *   `<Text>` elements have `importantForAccessibility="no"` (Android —
+ *   suppresses TalkBack from descending into the leaf — review-round-2
+ *   R2-P4 fix; pre-R2 used `"no-hide-descendants"` which means "this
+ *   view IS important, descendants NOT hidden" — the OPPOSITE of the
+ *   intent for a leaf, leaving TalkBack to triple-announce
+ *   "·, Au moins une minuscule, checkbox, unchecked, Au moins une
+ *   minuscule") AND `accessibilityElementsHidden={true}` (iOS) so the
+ *   parent's label is read once.
  * - The strength label uses `accessibilityLiveRegion="polite"` (Android)
  *   so screen-reader users hear the strength change as they type without
  *   spam-firing per keystroke (Android batches polite-region updates).
  *
  * `React.memo` because the parent re-renders on every keystroke; the
- * indicator's only dep is `password`. The expensive parts
- * (`validatePasswordStrength` + `computePasswordStrengthLabel`) run
- * inside a single combined `useMemo` keyed off `password`
- * (review-round-1 P19 — pre-patch two `useMemo` calls created a
- * vacuous-memoization pattern because `reasons` was a fresh array on
- * every keystroke, so the second `useMemo`'s dep-array always
- * invalidated).
+ * indicator's only dep is `password`. A single combined `useMemo`
+ * keyed off `password` provides STRUCTURAL memoization — every
+ * downstream consumer in the same render shares one stable `derived`
+ * object reference. **Note (review-round-2 R2-P10):** the memo is NOT
+ * a perf optimization for the validators themselves —
+ * `validatePasswordStrength` and `computePasswordStrengthLabel` are
+ * O(n) on small strings (microsecond-cheap) and the memo never has a
+ * cache hit during typing because every keystroke changes `password`.
+ * The benefit is purely API hygiene: one derived object, one
+ * dep-array, one place to extend. (Pre-R1 the indicator had two
+ * `useMemo` calls with the second's dep-array vacuously invalidating
+ * because `reasons` was a fresh array each call.)
  */
 
 import React, { useMemo } from "react";
@@ -72,10 +81,12 @@ export interface PasswordStrengthIndicatorProps {
 function PasswordStrengthIndicatorImpl({ password }: PasswordStrengthIndicatorProps) {
   // Single memoized derivation keyed only on `password` (review-round-1
   // P19). All downstream values (label, segment count, color, set of
-  // failing reasons) are computed once per password change.
+  // failing reasons) are computed once per password change. The
+  // `computePasswordStrengthLabel` 2-arg signature (R2-P5) eliminates
+  // the prior desync hazard between `passwordLength` and `password`.
   const derived = useMemo(() => {
     const { reasons } = validatePasswordStrength(password);
-    const label = computePasswordStrengthLabel(reasons, password.length, password);
+    const label = computePasswordStrengthLabel(reasons, password);
     return {
       reasons,
       label,
@@ -137,7 +148,7 @@ function PasswordStrengthIndicatorImpl({ password }: PasswordStrengthIndicatorPr
               style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
             >
               <Text
-                importantForAccessibility="no-hide-descendants"
+                importantForAccessibility="no"
                 accessibilityElementsHidden={true}
                 style={[
                   Typography.caption,
@@ -151,7 +162,7 @@ function PasswordStrengthIndicatorImpl({ password }: PasswordStrengthIndicatorPr
                 {met ? "✓" : "·"}
               </Text>
               <Text
-                importantForAccessibility="no-hide-descendants"
+                importantForAccessibility="no"
                 accessibilityElementsHidden={true}
                 style={[Typography.caption, { color: met ? Colors.success : Colors.textTertiary }]}
               >

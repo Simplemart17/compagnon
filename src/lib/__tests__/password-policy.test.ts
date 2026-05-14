@@ -179,6 +179,31 @@ describe("password-policy: validatePasswordStrength()", () => {
     const result = validatePasswordStrength("Correct horse battery 9A");
     expect(result.valid).toBe(true);
   });
+
+  // R2-P8 — parametric whitespace coverage. Pre-R2 only `\t` (Case 11d)
+  // and `" "` (Case 11e) were tested; a regression like
+  // `password.replace(/\t/g, "").length < MIN` (specifically strip tabs)
+  // would have passed Case 11d. Post-R2 the parametric block ensures
+  // ALL ASCII whitespace + NBSP variants are trim-stripped.
+  it.each([
+    [" ", "ASCII space"],
+    ["\t", "tab"],
+    ["\n", "newline"],
+    ["\r", "carriage return"],
+    ["\v", "vertical tab"],
+    ["\f", "form feed"],
+    [" ", "non-breaking space (NBSP)"],
+  ])(
+    "Case 11g[%s]: review-round-2 R2-P8 — trailing %s is stripped by trim() and length fails",
+    (whitespace, _label) => {
+      // 9 content chars + 1 trailing whitespace = 10 raw chars. trim()
+      // strips → 9 content chars → length fails.
+      // 9 content chars + 1 trailing whitespace = 10 raw chars. trim()
+      // strips → 9 content chars → length fails.
+      const result = validatePasswordStrength(`Aa1Aa1Aa1${whitespace}`);
+      expect(result.reasons).toContain("length");
+    }
+  );
 });
 
 describe("password-policy: passwordPolicyReasonToFrenchMessage()", () => {
@@ -260,12 +285,48 @@ describe("password-policy: mapSupabaseWeakPasswordError()", () => {
   it("Case 19b: review-round-1 P11 — accepts AuthWeakPasswordError name even without weak_password code", () => {
     // Defense-in-depth: a future Supabase release renaming `code`
     // without renaming the error class still triggers French fallback.
+    // Note: this requires `code` to be ABSENT from the error object (not
+    // just non-matching) per R2-P2 coherent-shape requirement.
     const result = mapSupabaseWeakPasswordError(
       { name: "AuthWeakPasswordError", reasons: ["length"] },
       "abc"
     );
     expect(result).not.toBeNull();
     expect(result).toContain("length");
+  });
+
+  it("Case 19c: review-round-2 R2-P2 — incoherent {code: 'user_already_exists', name: 'AuthWeakPasswordError'} returns null", () => {
+    // R2-P2: a malformed/buggy SDK shape where `code` and `name`
+    // disagree should NOT be classified as a weak_password error.
+    // Pre-R2 the OR-condition admitted it → user saw French
+    // password-strength UI for an email-taken error → could never
+    // recover by changing the password. Post-R2: contradictory `code`
+    // overrides the `name`-only match.
+    const result = mapSupabaseWeakPasswordError(
+      { code: "user_already_exists", name: "AuthWeakPasswordError" },
+      "abc"
+    );
+    expect(result).toBeNull();
+  });
+
+  it("Case 19d: review-round-2 R2-P2 — incoherent {code: 'rate_limit_exceeded', name: 'AuthWeakPasswordError'} returns null", () => {
+    // Twin to 19c: any non-weak_password code with a contradictory
+    // weak-password-name still returns null. Defends against future
+    // SDK responses that lump generic codes with typed error classes.
+    const result = mapSupabaseWeakPasswordError(
+      { code: "rate_limit_exceeded", name: "AuthWeakPasswordError", reasons: ["pwned"] },
+      "Welcome2026!"
+    );
+    expect(result).toBeNull();
+    // Also pin via isPwnedRejection — should also be false because
+    // the underlying isWeakPasswordError narrowing returns false.
+    expect(
+      isPwnedRejection({
+        code: "rate_limit_exceeded",
+        name: "AuthWeakPasswordError",
+        reasons: ["pwned"],
+      })
+    ).toBe(false);
   });
 
   it("Case 20: weak_password with reasons=['pwned'] + valid password returns empty array (pwned is non-itemized)", () => {
@@ -355,9 +416,9 @@ describe("password-policy: isPwnedRejection() + getPwnedFrenchMessage() + getGen
     expect(isPwnedRejection(undefined)).toBe(false);
   });
 
-  it("Case 21c: getPwnedFrenchMessage returns canonical French copy", () => {
+  it("Case 21c: review-round-2 R2-P9 — getPwnedFrenchMessage ends with trailing period (symmetric with generic message)", () => {
     expect(getPwnedFrenchMessage()).toBe(
-      "Ce mot de passe a été divulgué dans une fuite de données"
+      "Ce mot de passe a été divulgué dans une fuite de données."
     );
   });
 
@@ -368,38 +429,44 @@ describe("password-policy: isPwnedRejection() + getPwnedFrenchMessage() + getGen
   });
 });
 
-describe("password-policy: computePasswordStrengthLabel() — review-round-1 P2 tightened", () => {
+describe("password-policy: computePasswordStrengthLabel() — review-round-1 P2 tightened + review-round-2 R2-P5 single-password signature", () => {
   it("Case 22a: 0 reasons + length >= 14 + 6+ distinct chars → 'strong'", () => {
-    expect(computePasswordStrengthLabel([], 14, "Abcdefghi1jklm")).toBe("strong");
-    expect(computePasswordStrengthLabel([], 100, "Abcdefghi1jklmnop")).toBe("strong");
+    // R2-P5: single `password` arg; length is derived internally.
+    // Distinct chars: A,b,c,d,e,f,g,h,i,1,j,k,l,m = 14 distinct → strong.
+    expect(computePasswordStrengthLabel([], "Abcdefghi1jklm")).toBe("strong");
+    // 17 chars, 16 distinct → strong.
+    expect(computePasswordStrengthLabel([], "Abcdefghi1jklmnop")).toBe("strong");
   });
 
-  it("Case 22a-no-pw: 0 reasons + length >= 14 + no password arg → 'strong' (legacy contract preserved)", () => {
-    // Without `password`, distinct-char check cannot run; behaves like
-    // pre-P2: length >= 14 + 0 reasons = strong.
-    expect(computePasswordStrengthLabel([], 14)).toBe("strong");
-  });
-
-  it("Case 22b: 0 reasons + length 10 (passing but short) → 'medium'", () => {
-    expect(computePasswordStrengthLabel([], 10)).toBe("medium");
-    expect(computePasswordStrengthLabel([], 13)).toBe("medium");
+  it("Case 22b: 0 reasons + length 10-13 (passing but short) → 'medium'", () => {
+    // 10 chars: "Aaaaaaaaa1" — A, a, 1 = 3 distinct (below 6-floor)
+    // BUT length 10 < 14 short-circuits to medium first.
+    expect(computePasswordStrengthLabel([], "Aaaaaaaaa1")).toBe("medium");
+    // 13 chars: "Aaaaaaaaaaaa1" — same length<14 short-circuit.
+    expect(computePasswordStrengthLabel([], "Aaaaaaaaaaaa1")).toBe("medium");
   });
 
   it("Case 22c: 1 reason (length >= 8) → 'medium'", () => {
-    expect(computePasswordStrengthLabel(["digit"], 10)).toBe("medium");
-    expect(computePasswordStrengthLabel(["uppercase"], 20)).toBe("medium");
+    // R2-P5: synthetic `reasons` argument paired with a real password.
+    // The function trusts the caller's reasons (the indicator derives
+    // them from validatePasswordStrength); the test exercises the
+    // helper's branch logic with explicit reasons.
+    expect(computePasswordStrengthLabel(["digit"], "Aaaaaaaaaa")).toBe("medium");
+    expect(computePasswordStrengthLabel(["uppercase"], "abcdefghijklmnopqrst")).toBe("medium");
   });
 
   it("Case 22d: 2 reasons (length >= 8) → 'medium'", () => {
-    expect(computePasswordStrengthLabel(["digit", "uppercase"], 10)).toBe("medium");
+    expect(computePasswordStrengthLabel(["digit", "uppercase"], "aaaaaaaaaa")).toBe("medium");
   });
 
   it("Case 22e: 3+ reasons → 'weak'", () => {
-    expect(computePasswordStrengthLabel(["length", "lowercase", "uppercase"], 5)).toBe("weak");
+    expect(computePasswordStrengthLabel(["length", "lowercase", "uppercase"], "12345")).toBe(
+      "weak"
+    );
     expect(
       computePasswordStrengthLabel(
         ["length", "lowercase", "uppercase", "digit"] as PasswordPolicyReason[],
-        0
+        ""
       )
     ).toBe("weak");
   });
@@ -408,33 +475,42 @@ describe("password-policy: computePasswordStrengthLabel() — review-round-1 P2 
     // Spec deliverable (a)(vii) "(counts also length < 8)" — even a
     // single rule failure on a very-short password should NOT show
     // "medium" (which reads as "almost there" to users).
-    expect(computePasswordStrengthLabel(["digit"], 7)).toBe("weak");
-    expect(computePasswordStrengthLabel(["uppercase"], 4)).toBe("weak");
-    expect(computePasswordStrengthLabel(["length"], 3)).toBe("weak");
+    expect(computePasswordStrengthLabel(["digit"], "abcdefg")).toBe("weak"); // 7 chars
+    expect(computePasswordStrengthLabel(["uppercase"], "abcd")).toBe("weak"); // 4 chars
+    expect(computePasswordStrengthLabel(["length"], "abc")).toBe("weak"); // 3 chars
   });
 
   it("Case 22g: review-round-1 P2 — entropy floor — 'Aaaaaaaaaaaaa1' (14 chars, 3 distinct) → 'medium' not 'strong'", () => {
     // The canonical false-confidence case: 14 chars, all 4 classes,
     // but only 3 distinct chars (`A`, `a`, `1`). Pre-patch this was
     // rated `"strong"` despite obvious dictionary-attack vulnerability.
-    expect(computePasswordStrengthLabel([], 14, "Aaaaaaaaaaaaa1")).toBe("medium");
+    expect(computePasswordStrengthLabel([], "Aaaaaaaaaaaaa1")).toBe("medium");
   });
 
   it("Case 22h: review-round-1 P2 — entropy floor boundary — exactly 6 distinct chars → 'strong'", () => {
-    // "Aabcde1jklmno" — let's count distinct: A, a, b, c, d, e, 1, j,
-    // k, l, m, n, o = 13 distinct. Above the 6-floor → strong.
-    // Construct a precise 6-distinct example: "AaBbCc1234" then
-    // padded — distinct chars: A, a, B, b, C, c, 1, 2, 3, 4 = 10.
-    // For a 6-distinct boundary: "Aaaaaaaaaa1B" → A, a, 1, B = 4
-    // distinct (still below floor). Use "AaBbCc1Dd2" → A,a,B,b,C,c,1,D,d,2 = 10 distinct.
-    // Construct exactly-6 distinct: "AaBbCc111111" → A,a,B,b,C,c,1 = 7 distinct.
     // "AaBb1c1c1c1c1c" → A,a,B,b,1,c = 6 distinct, length 14.
-    expect(computePasswordStrengthLabel([], 14, "AaBb1c1c1c1c1c")).toBe("strong");
+    // At the 6-distinct floor → strong.
+    expect(computePasswordStrengthLabel([], "AaBb1c1c1c1c1c")).toBe("strong");
   });
 
   it("Case 22i: review-round-1 P2 — entropy floor boundary — exactly 5 distinct chars → 'medium'", () => {
     // "AaB1cccccccccc" → A, a, B, 1, c = 5 distinct, length 14.
     // Below the 6-floor → medium.
-    expect(computePasswordStrengthLabel([], 14, "AaB1cccccccccc")).toBe("medium");
+    expect(computePasswordStrengthLabel([], "AaB1cccccccccc")).toBe("medium");
+  });
+
+  it("Case 22j: review-round-2 R2-P5 — desync hazard eliminated by single-arg signature (compile-time)", () => {
+    // Pre-R2: caller could pass `(reasons, 100, "abc")` triggering
+    // length-passes branch + distinct-char fail. Post-R2: signature
+    // accepts only `(reasons, password)` so passwordLength is ALWAYS
+    // derived from password. A regression to the 3-arg form would
+    // fail TypeScript compilation. This test exercises the canonical
+    // case: a 3-char password with passing classes — should be weak
+    // because length<8 + 0 reasons doesn't fire (need at least 1
+    // reason for the very-short clause), so falls through to
+    // length<14 → medium. Wait — 0 reasons + length 3 → length<14 →
+    // medium. So 0 reasons on a 3-char password is medium. That's
+    // intentional — pin it.
+    expect(computePasswordStrengthLabel([], "abc")).toBe("medium");
   });
 });

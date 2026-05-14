@@ -95,12 +95,25 @@ export default function SignUpScreen() {
 
     setLoading(true);
     try {
-      const { error } = await signUpWithEmail(email.trim(), password, fullName.trim());
+      // R2-P1: trim the password before passing to signUpWithEmail so the
+      // bytes Supabase stores (bcrypt hashes the raw input — no
+      // server-side trim) match the bytes the client validated. Without
+      // this, a user typing `"Abcdefghi1 "` (10 content chars + trailing
+      // space) would sign up successfully but fail every subsequent
+      // sign-in because iOS/Android keyboards auto-strip trailing
+      // whitespace at sign-in time. validatePasswordStrength's internal
+      // trim already enforced the rule on the client; this trim closes
+      // the round-trip hazard at the storage layer.
+      const trimmedPassword = password.trim();
+      const { error } = await signUpWithEmail(email.trim(), trimmedPassword, fullName.trim());
       if (error) {
         if (isPwnedRejection(error)) {
           Alert.alert("Mot de passe invalide", getPwnedFrenchMessage());
         } else {
-          const mapped = mapSupabaseWeakPasswordError(error, password);
+          // R2-P1: pass `trimmedPassword` (the bytes the server actually
+          // saw) to the mapper so the always-merge re-validates against
+          // the same bytes that triggered the rejection.
+          const mapped = mapSupabaseWeakPasswordError(error, trimmedPassword);
           if (mapped !== null) {
             // Story 12-8 review-round-1 P7: ALWAYS surface a French
             // message for weak_password rejections, never the English

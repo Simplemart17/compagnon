@@ -14,16 +14,19 @@
  *   (d) NEGATIVE — the literal placeholder `min. 6 caractères` is gone.
  *   (e) NEGATIVE — `captureError` is NEVER passed the `password`
  *       variable (defends against accidental telemetry leak; Story 9-3
- *       contract). Uses balanced-paren extraction (review-round-1 P3)
- *       so a `password` reference inside a NESTED call like
- *       `captureError(err, "tag", buildExtras(password))` cannot slip
- *       through the regex's first-`)` truncation.
+ *       contract). Uses STRING-LITERAL-AWARE balanced-paren extraction
+ *       (review-round-2 R2-P3) so a `password` reference inside a
+ *       NESTED call OR after a string literal containing `)` like
+ *       `captureError(err, "tag with )", buildExtras(password))` cannot
+ *       slip through.
  *   (f) Post-12-8 placeholder uses `MIN_PASSWORD_LENGTH` constant via
- *       template literal (review-round-1 P6). Pre-patch the test
- *       accepted a vacuous `MIN_PASSWORD_LENGTH` import-without-use;
- *       post-patch the constant must appear inside a placeholder
- *       template literal so a reverted placeholder cannot satisfy the
- *       test by leaving the import alone.
+ *       template literal (review-round-1 P6 + review-round-2 R2-P13
+ *       Prettier-multi-line tolerance).
+ *   (g) Call-site ordering — `isPwnedRejection` MUST be called BEFORE
+ *       `mapSupabaseWeakPasswordError` in signup.tsx (review-round-2
+ *       R2-P12). The current contract relies on this ordering: if
+ *       flipped, a `["pwned"]` rejection would surface the generic
+ *       French message instead of the pwned-specific message.
  */
 
 import * as fs from "fs";
@@ -42,15 +45,19 @@ function stripComments(source: string): string {
 
 /**
  * Extract every `captureError(...)` call's argument list using
- * balanced-paren walking (review-round-1 P3). Pre-patch the regex
- * `/captureError\s*\([\s\S]*?\)/g` was non-greedy and stopped at the
- * FIRST `)`, so a multi-line / nested call like
- * `captureError(err, "tag", buildExtras(password))` was captured as
- * `captureError(err, "tag", buildExtras(` — losing the `password`
- * reference and silently passing the negative-guard.
+ * STRING-LITERAL-AWARE balanced-paren walking. Pre-R1 a non-greedy
+ * regex truncated at the first `)`; pre-R2 a naive paren-counter
+ * truncated at any `)` inside a string literal (e.g.,
+ * `captureError(err, "tag with )", buildExtras(password))` got
+ * captured as `(err, "tag with )` — losing the `password` reference).
  *
- * This walker correctly handles arbitrary nesting up to a sane depth
- * by counting open/close parens character-by-character.
+ * R2-P3 fix: the walker tracks `inString` state and skips chars
+ * inside `"..."`, `'...'`, and `` `...` `` literals (handling \` /
+ * `\\` / `${...}` template-expression nesting too). Outside strings,
+ * `(` / `)` count toward depth as before.
+ *
+ * Handles arbitrary `()` nesting outside string literals
+ * (review-round-2 R2-P11 JSDoc tightening).
  */
 function extractCaptureErrorCalls(source: string): string[] {
   const calls: string[] = [];
@@ -73,11 +80,51 @@ function extractCaptureErrorCalls(source: string): string[] {
       i = idx + needle.length;
       continue;
     }
-    // Walk forward counting parens.
+    // Walk forward counting parens, with string-literal awareness.
     let depth = 0;
     const start = j;
+    let inString: false | '"' | "'" | "`" = false;
+    let templateDepth = 0; // depth of `${...}` inside a template literal
     while (j < source.length) {
       const ch = source[j];
+      if (inString) {
+        if (ch === "\\") {
+          // Escape sequence — skip the next char (defends against
+          // `"foo\""` ending the literal prematurely).
+          j += 2;
+          continue;
+        }
+        if (inString === "`" && ch === "$" && source[j + 1] === "{") {
+          // Entering a template-literal expression `${...}` — switch
+          // back to code mode but remember the template depth so we
+          // can re-enter the template literal when the expression's
+          // closing `}` matches.
+          templateDepth++;
+          inString = false;
+          j += 2;
+          continue;
+        }
+        if (ch === inString) {
+          inString = false;
+          j++;
+          continue;
+        }
+        j++;
+        continue;
+      }
+      // Code mode (outside string literals).
+      if (ch === '"' || ch === "'" || ch === "`") {
+        inString = ch;
+        j++;
+        continue;
+      }
+      if (templateDepth > 0 && ch === "}") {
+        // Closing a `${...}` expression — re-enter the template literal.
+        templateDepth--;
+        inString = "`";
+        j++;
+        continue;
+      }
       if (ch === "(") depth++;
       else if (ch === ")") {
         depth--;
@@ -121,7 +168,7 @@ describe("signup.tsx — Story 12-8 source drift detector", () => {
     expect(SIGNUP_CODE_ONLY).not.toMatch(/min\.\s*6\s*caract[eè]res/i);
   });
 
-  it("Case 5: NEGATIVE — captureError is NEVER passed the password variable (Story 9-3 contract; balanced-paren walker)", () => {
+  it("Case 5: NEGATIVE — captureError is NEVER passed the password variable (Story 9-3 contract; string-literal-aware walker)", () => {
     const captureErrorCalls = extractCaptureErrorCalls(SIGNUP_CODE_ONLY);
     // Sanity: there IS at least one captureError call in this file
     // (the catch-block uses captureError(err, "signup")). If this drops
@@ -130,7 +177,8 @@ describe("signup.tsx — Story 12-8 source drift detector", () => {
     for (const call of captureErrorCalls) {
       // Identifier-boundary match: \bpassword\b must not appear in the
       // argument list. A future refactor that includes `password` or
-      // `password.length` as an arg — even nested — would fail this.
+      // `password.length` as an arg — even nested in a string literal
+      // OR a balanced-paren expression — would fail this.
       expect(call).not.toMatch(/\bpassword\b/);
     }
   });
@@ -146,17 +194,66 @@ describe("signup.tsx — Story 12-8 source drift detector", () => {
     expect(calls[0]).toContain("password");
   });
 
-  it("Case 6: post-12-8 placeholder uses MIN_PASSWORD_LENGTH constant via template literal (P6 strict)", () => {
-    // Pre-patch this test was an OR — accepting either the literal
+  it("Case 5c: review-round-2 R2-P3 — walker handles `)` inside string literals without truncating", () => {
+    // The R2 fix: walker's `inString` state skips parens inside quoted
+    // strings + template literals. Pre-R2 a naive paren counter would
+    // truncate at the `)` inside "tag with )" and miss the `password`
+    // reference entirely.
+    const cases = [
+      // Double-quoted string with `)` inside.
+      `captureError(err, "tag with )", buildExtras(password));`,
+      // Single-quoted string with `)` inside.
+      `captureError(err, 'tag with )', { x: password });`,
+      // Template literal with `)` inside.
+      `captureError(err, \`tag with )\`, { x: password });`,
+      // Template literal with nested `${expr(arg)}` containing the
+      // password reference inside the expression.
+      `captureError(err, \`tag with \${password.length}\`, {});`,
+      // Escaped quote inside string — `\"` shouldn't terminate the literal.
+      `captureError(err, "tag \\"with quote and )", buildExtras(password));`,
+    ];
+    for (const synthetic of cases) {
+      const calls = extractCaptureErrorCalls(synthetic);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toContain("password");
+    }
+  });
+
+  it("Case 6: post-12-8 placeholder uses MIN_PASSWORD_LENGTH constant via template literal (R2-P13 Prettier-tolerant)", () => {
+    // Pre-R1 this test was an OR — accepting either the literal
     // `min. 10 caractères` OR a bare `MIN_PASSWORD_LENGTH` import.
-    // The import-only path was vacuous: a future regression that
-    // reverted the placeholder to `min. 6 caractères` while leaving
-    // the import in place would silently pass.
-    // Post-patch: REQUIRE the constant to appear inside a template
-    // literal in the placeholder (the JSX `placeholder=` attribute
-    // value) so the source-of-truth is genuinely consumed.
+    // R1-P6 made it strict but used a tight regex that failed if
+    // Prettier wrapped the JSX attribute across lines.
+    // Post-R2-P13 the regex tolerates `[\s\S]*?` between key segments
+    // so any reformat preserving the constant-inside-placeholder
+    // semantic passes.
     expect(SIGNUP_CODE_ONLY).toMatch(
-      /placeholder=\{`Mot de passe \(min\.\s*\$\{MIN_PASSWORD_LENGTH\}\s*caract[eè]res\)`\}/
+      /placeholder=\s*\{\s*`[\s\S]*?\$\{\s*MIN_PASSWORD_LENGTH\s*\}[\s\S]*?caract[eè]res[\s\S]*?`\s*\}/
     );
+  });
+
+  it("Case 7: review-round-2 R2-P12 — isPwnedRejection MUST be called BEFORE mapSupabaseWeakPasswordError in the catch-block", () => {
+    // The signup catch-block contract: if the rejection is HIBP-pwned,
+    // surface the pwned-specific French message ("Ce mot de passe a
+    // été divulgué..."). Otherwise fall through to the always-merge
+    // mapper. If a future refactor flips the order, a `["pwned"]`
+    // rejection would silently surface the generic French message
+    // ("Mot de passe trop faible. Veuillez en choisir un autre.")
+    // instead of the pwned-specific one because mapSupabaseWeakPasswordError
+    // returns `[]` for pwned-only reasons (P1 contract).
+    //
+    // Anchor on the CALL-SITE form (`identifier(`) — not the bare
+    // identifier — so the alphabetically-sorted import block doesn't
+    // make the test vacuous (both names appear in the import; the
+    // call-site form pins the runtime ordering inside handleSignUp).
+    const isPwnedCallIdx = SIGNUP_CODE_ONLY.search(/isPwnedRejection\s*\(/);
+    const mapperCallIdx = SIGNUP_CODE_ONLY.search(/mapSupabaseWeakPasswordError\s*\(/);
+    // Both should exist as call sites.
+    expect(isPwnedCallIdx).toBeGreaterThan(-1);
+    expect(mapperCallIdx).toBeGreaterThan(-1);
+    // Ordering: the FIRST call to isPwnedRejection appears before the
+    // FIRST call to mapSupabaseWeakPasswordError. A regression flipping
+    // the order — even by accident during a refactor — fails this.
+    expect(isPwnedCallIdx).toBeLessThan(mapperCallIdx);
   });
 });

@@ -58,7 +58,25 @@
  * fix, the user could sign up with whitespace-padding tricks that fail
  * to round-trip on next sign-in. Inner whitespace (e.g.,
  * `"correct horse battery 9A"`) is preserved — only the outer trim
- * matters for length.
+ * matters for length. **Belt-and-suspenders defense (review-round-2
+ * R2-P1):** signup.tsx ALSO trims the password before passing it to
+ * `signUpWithEmail`, so the validated bytes match the bytes Supabase
+ * stores. This eliminates the round-trip hazard where Supabase's bcrypt
+ * stores the raw (untrimmed) password and the next sign-in fails when
+ * the user's keyboard auto-strips trailing whitespace.
+ *
+ * **Unicode whitespace caveat (review-round-2 R2-P7):**
+ * `String.prototype.trim()` strips ECMA-262 whitespace + line
+ * terminators (per the §22.1.3.32 / §22.1.3.34 list — includes ASCII
+ * tab/space/CR/LF, U+00A0 NBSP, BOM U+FEFF, etc.) but does NOT strip:
+ * U+200B (ZERO WIDTH SPACE), U+200C/D (zero-width joiners), U+2060
+ * (WORD JOINER), U+180E (MONGOLIAN VOWEL SEPARATOR — pre-Unicode-6.3
+ * was whitespace, now ZWNBSP-class). A user pasting a password with
+ * one of these characters at the boundary will see a different content
+ * length than the displayed glyph count. The practical impact is
+ * minimal (these characters are rarely in passwords); operators
+ * monitoring authentication failure rates can extend the trim regex if
+ * telemetry surfaces a real-world hit.
  *
  * **HIBP (HaveIBeenPwned) forward-compat:**
  * The `mapSupabaseWeakPasswordError` translator handles a `"pwned"`
@@ -163,7 +181,9 @@ export function passwordPolicyReasonToFrenchMessage(reason: PasswordPolicyReason
   return FRENCH_MESSAGES[reason];
 }
 
-const PWNED_FRENCH_MESSAGE = "Ce mot de passe a été divulgué dans une fuite de données";
+// R2-P9: trailing-period punctuation is symmetric across both message
+// constants so Alert dialogs render consistent sentence terminators.
+const PWNED_FRENCH_MESSAGE = "Ce mot de passe a été divulgué dans une fuite de données.";
 
 const GENERIC_WEAK_PASSWORD_FRENCH_MESSAGE =
   "Mot de passe trop faible. Veuillez en choisir un autre.";
@@ -201,15 +221,36 @@ export function getGenericWeakPasswordFrenchMessage(): string {
  * match OR the `name` match, so a future Supabase release that renames
  * the code without renaming the error class still triggers French
  * fallback (or vice versa).
+ *
+ * **Review-round-2 R2-P2 — coherent-shape requirement:** when BOTH
+ * `code` and `name` are present and they DISAGREE (e.g.,
+ * `{code: "user_already_exists", name: "AuthWeakPasswordError"}` from a
+ * malformed SDK release), this helper returns `false`. Pre-patch the OR
+ * was too permissive — a name-match alone fired even when the code
+ * field clearly contradicted it, causing the user to see a French
+ * password-strength UI for an email-taken / rate-limit error they
+ * couldn't recover from by changing their password. Post-patch:
+ *   - `code === "weak_password"` (with or without `name`): true.
+ *   - `name === "AuthWeakPasswordError"` AND no `code` field: true.
+ *   - `name === "AuthWeakPasswordError"` AND `code` is NOT
+ *     `"weak_password"`: false (contradictory shape).
+ *   - Neither matches: false.
  */
 function isWeakPasswordError(
   error: unknown
 ): error is { code?: string; name?: string; reasons?: unknown } {
   if (typeof error !== "object" || error === null) return false;
-  const codeMatches = "code" in error && (error as { code: unknown }).code === "weak_password";
+  const hasCodeField = "code" in error;
+  const codeMatches = hasCodeField && (error as { code: unknown }).code === "weak_password";
   const nameMatches =
     "name" in error && (error as { name: unknown }).name === "AuthWeakPasswordError";
-  return codeMatches || nameMatches;
+
+  // Coherent-shape requirement: a contradictory `code` (present but not
+  // matching) overrides a `name`-only match. This prevents misclassifying
+  // non-password errors as weak-password rejections.
+  if (codeMatches) return true;
+  if (nameMatches && !hasCodeField) return true;
+  return false;
 }
 
 /**
@@ -320,10 +361,22 @@ export function mapSupabaseWeakPasswordError(
  * - `"strong"` ONLY if all 4 pass AND length ≥ 14 AND distinct-char
  *   count ≥ 6.
  *
- * `passwordLength` is the **raw** length (not trimmed) — a long-but-
+ * **Review-round-2 R2-P5 — single-`password` signature:** pre-R2 the
+ * function accepted `(reasons, passwordLength, password?)` which let a
+ * caller pass desynchronized values like `(reasons, 100, "abc")` —
+ * length-passes branch would fire while the entropy gate ran on a
+ * 3-char string. Post-R2 the function takes only `password` and
+ * derives `password.length` internally, eliminating the desync hazard.
+ * Consumers (tests + indicator) MUST pass the actual password string.
+ *
+ * `password.length` is the **raw** length (not trimmed) — a long-but-
  * mostly-whitespace password should NOT be rated strong because the
  * trimmed-length check in `validatePasswordStrength` will already have
  * pushed `"length"` into reasons.
+ *
+ * The distinct-char counter uses `new Set(password)` which iterates by
+ * code points (per ES2015 String iterator) — emoji surrogate pairs
+ * count as ONE distinct char, which is the correct entropy semantic.
  *
  * Length / uniqueness thresholds (`STRONG_LENGTH_THRESHOLD` = 14,
  * `VERY_SHORT_LENGTH_THRESHOLD` = 8, `STRONG_DISTINCT_CHARS_THRESHOLD`
@@ -332,17 +385,15 @@ export function mapSupabaseWeakPasswordError(
  */
 export function computePasswordStrengthLabel(
   reasons: PasswordPolicyReason[],
-  passwordLength: number,
-  password?: string
+  password: string
 ): "weak" | "medium" | "strong" {
+  const passwordLength = password.length;
   if (reasons.length >= 3) return "weak";
   if (reasons.length > 0 && passwordLength < VERY_SHORT_LENGTH_THRESHOLD) return "weak";
   if (reasons.length > 0) return "medium";
   if (passwordLength < STRONG_LENGTH_THRESHOLD) return "medium";
-  if (typeof password === "string") {
-    const distinctChars = new Set(password).size;
-    if (distinctChars < STRONG_DISTINCT_CHARS_THRESHOLD) return "medium";
-  }
+  const distinctChars = new Set(password).size;
+  if (distinctChars < STRONG_DISTINCT_CHARS_THRESHOLD) return "medium";
   return "strong";
 }
 
