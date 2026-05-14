@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-14 # 12-10 implementation complete on feature/12-10-npm-audit-fix (branched from main post-12-9 PR #84 merge); 1575 tests passing (+5 net 1570→1575); all 4 quality gates green; closes audit P1-13 architecturally with REFRAMING (current npm audit is 0/0/4/5; AC "0 high" met today); zero product-code diff. Status: review (ready for code-review).
+last_updated: 2026-05-14 # 12-10 review-round-1 complete (HIGH × 3 + MED × 4 + LOW × 4 = 11 patches applied; 7 deferred; 0 rejected); 1578 tests passing (+3 net round-1 1575→1578 / +8 net total 1570→1578); all 4 quality gates green. M4 reconciliation: main HEAD verified at 1570 tests (Story 12-9 docs were off-by-6; 12-10's 1570→1575 baseline confirmed correct).
 project: companion
 project_key: NOKEY
 tracking_system: file-system

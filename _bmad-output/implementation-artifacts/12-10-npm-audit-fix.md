@@ -123,7 +123,7 @@ None. Dependency vulnerabilities are a supply-chain concern visible at build tim
    - Case 2: run-script contains `npm audit --audit-level=high`.
    - Case 3: NEGATIVE — does NOT contain `--audit-level=low`.
    - Case 4: NEGATIVE — does NOT contain `--audit-level=moderate`.
-   - Case 5: ordering — the new step's name appears AFTER the `name: Tests` line (indexOf comparison on the read source).
+   - Case 5: ordering — the new step's name appears AFTER the `- name: Tests` line (via `String.prototype.search` regex-position comparison on the read source — equivalent to indexOf for first-match semantics).
 
 5. **Quality gates green.** `npm run type-check && npm run lint && npm run format:check && npx jest` all pass post-implementation. Total Jest case count rises by ≈ 5.
 
@@ -300,6 +300,41 @@ claude-opus-4-7[1m]
 - **Reframing achievement:** the original P1-13 finding claimed `3 high (xmldom)`. Today those vulns are gone. The Epic 12 AC `"0 high"` is met today AND CI-gated against regression. The 9 remaining vulns are documented + risk-classified (zero production-runtime exposure) + on a quarterly review cadence + filed for SDK 57+ resolution.
 - **OPERATOR ACTION REQUIRED post-merge:** none mandatory before merge (the CI gate is self-deploying). First quarterly review per runbook §3 due 2026-08-14: update "Last reviewed" date + verify the 9-vuln inventory matches `npm audit --json` output + log entry in §7.
 - Closes audit **P1-13** architecturally with reframing.
+
+#### Review-round-1 patches (2026-05-14)
+
+Adversarial 3-layer review surfaced 24 raw findings → 19 distinct after dedup. Triage: **HIGH × 3 + MED × 4 + LOW × 4 = 11 patches applied; 7 deferred; 0 rejected** (all findings were valid; none classified as noise).
+
+**Drift detector hardening (5 patches in one file):**
+- **H1** [`ci-audit-gate-source-drift.test.ts`](src/lib/__tests__/ci-audit-gate-source-drift.test.ts): all 5 original regexes were whole-file substring matches. New `extractGateStepBlock` + `extractGateRunCommand` helpers anchor every regex to the gate step's actual `run:` line value. Pre-patch the comment block contained `--audit-level=high` (in a backtick-quoted reference) so the positive guard could pass with a disabled `run:` line; benign future operator comments like `# Don't tighten to --audit-level=moderate without sign-off` would have failed the negative guards.
+- **H2** New Case 7: NEGATIVE guard against `continue-on-error: true` + `if:` keys inside the gate step block. A future PR could weaken the gate to a no-op via these workflow-level mechanisms while leaving the `run:` line intact — pre-patch undetected.
+- **H3** New Case 5: NEGATIVE guard against `--audit-level=critical`. Spec AC #1 explicitly required this (in addition to `low` and `moderate`); pre-patch the drift only pinned `low` + `moderate`, so a future edit to `--audit-level=critical` would weaken the gate to only fail on critical vulns while letting high through.
+- **M1** Case 8 (renumbered from Case 5): ordering check rewritten to assert the gate appears AFTER all four quality-gate predecessors (`TypeScript type check`, `Lint`, `Prettier format check`, `Tests`). Pre-patch the check used only the first `- name:\s*Tests` match — brittle to step rename AND to any future step with `Tests` prefix added before the gate.
+- **L2** New Case 6: NEGATIVE guard against `--omit=dev`. The story rationale explicitly argues for dev-deps inclusion (a high-severity dev-dep vuln can exfiltrate secrets from a dev machine OR CI runner), and the drift pin prevents silent weakening.
+
+**Runbook polish (2 patches):**
+- **M2** Consolidated "Last reviewed" date to a single source of truth in § 3. Top-of-file header was a duplicate (guaranteed drift); now points to § 3. Mirrors Story 11-4's `MODEL_RATES` single-source-of-truth pattern.
+- **M3** Reconciled inconsistent cadence claims ("1st business day of each quarter" vs "next due: 2026-08-14" — 6 weeks apart). Canonical interpretation is now rolling-90-days; next due date corrected to 2026-08-12.
+
+**Doc corrections (3 patches):**
+- **L1** CLAUDE.md path reference `node_modules/.package-lock.json` → `package-lock.json`. The committed top-level lockfile is the authoritative source; `.package-lock.json` under `node_modules/` is npm's internal hidden cache file.
+- **L4** CLAUDE.md "~1-2s by reusing setup-node npm cache" claim corrected. `npm audit` makes a fresh HTTPS call to `registry.npmjs.org/-/npm/v1/security/advisories/bulk` on every run — doesn't use the package-tarball cache. Actual cost is ~2-5s of audit-endpoint HTTPS latency.
+- **L3** Story file AC #4 wording: "indexOf comparison" → "via `String.prototype.search` regex-position comparison" (matches the impl's `.search()` API; functionally identical to `indexOf` for first-match).
+
+**M4 test count baseline reconciliation:** verified by checking out `main` HEAD and running `npx jest` — returns `1570 passed, 1570 total`. Story 12-9's documented final count of `1564` was off-by-6 (likely an intermediate-state count taken before the final patches landed). **Story 12-10's `1570 → 1575` baseline is verified correct**; the +6 discrepancy is pre-existing Story 12-9 documentation drift, NOT a 12-10 violation. Post-round-1 the count is **1575 → 1578** (+3 net from the 3 new drift cases H2 + H3 + L2 added; M1 was a rewrite of existing Case 5, not a new case).
+
+**Deferred (7 items):**
+- **D1 (MED)** No scheduled audit job — vulns disclosed between PRs go undetected until next push. Warrants a separate follow-up story (daily `schedule:` cron). Out of scope for review-round-1.
+- **D2 (LOW)** `npm audit` network/registry-failure isolation (no `timeout-minutes` / retry) — broader CI-reliability concern shared with `npm ci` and existing leak guards. Out of scope.
+- **D3 (LOW)** SDK 57+ verification recipe — forward-looking; operator fills in at SDK 57 RC review.
+- **D4 (LOW)** Tailwindcss runtime-postcss claim spot-check — operator adds `expo export` grep verification to runbook §1 footnote at next quarterly review.
+- **D5 (LOW)** "Last reviewed" concrete date vs placeholder format — defensible (documents the actual baseline review event).
+- **D6 (LOW)** Sprint-status status transitions collapsed in git history — process hygiene only.
+- **D7 (LOW)** Tasks/Subtasks pre-checked at story-file creation — same hygiene concern.
+
+**Quality gates:** all 4 green post-round-1 (`tsc` 0 errors, `lint` 0 warnings, `format:check` clean, `jest` 1578/1578).
+
+**Verified 2026-05-14**, story 12-10 (post-review-round-1 patches HIGH × 3 + MED × 4 + LOW × 4).
 
 ### File List
 
