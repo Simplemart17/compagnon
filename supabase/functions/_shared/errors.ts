@@ -103,7 +103,7 @@ export function timeoutResponse(
  * bounded-budget pattern (the budget is larger here because the consumer
  * is a log file, not a render path).
  */
-const MAX_LOGGED_BODY_CHARS = 2000;
+export const MAX_LOGGED_BODY_CHARS = 2000;
 
 /**
  * Read an upstream error response body, log it to operator-visible function
