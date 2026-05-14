@@ -346,6 +346,74 @@ export async function signUpWithEmail(email: string, password: string, fullName:
   return { data, error };
 }
 
+/**
+ * Resend the email-verification confirmation email (Story 12-9).
+ *
+ * Calls `supabase.auth.resend({type: "signup", email})` — the `type` is
+ * the discriminator distinguishing signup-confirmation resend from the
+ * email-change confirmation flow (per
+ * `node_modules/@supabase/auth-js/dist/main/lib/types.d.ts:685-694`
+ * `ResendParams` union).
+ *
+ * Server-side rate-limit (Supabase default): 1 request per email per
+ * 60 seconds. The client-side `RESEND_COOLDOWN_MS = 60_000` in
+ * `src/lib/email-verification.ts` mirrors this duration so the user sees
+ * "wait 60s" feedback without round-tripping for a 429.
+ *
+ * Error shapes the caller should expect:
+ *   - `{name: "AuthApiError", code: "over_email_send_rate_limit"}` —
+ *     resend rate-limit exceeded (UX: French Alert "Please wait a minute").
+ *   - Network / 5xx — generic error; UX falls back to a French generic
+ *     "try again" message.
+ *
+ * @param email The user's email address. MUST be the address from the
+ *   active session's user — passing an arbitrary email would either no-op
+ *   server-side or trip rate-limits intended for the session's address.
+ */
+export async function resendVerificationEmail(email: string): Promise<{ error: unknown }> {
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+  });
+  return { error };
+}
+
+/**
+ * Manually refresh the session — the user-driven re-check path after they
+ * tap the verification link in their email (Story 12-9).
+ *
+ * Calls `supabase.auth.refreshSession()` which the auth listener (Story
+ * 9-6 + Story 12-2 lines 163-200) receives as `USER_UPDATED` or
+ * `TOKEN_REFRESHED` with the freshly-confirmed user shape. The listener's
+ * `setSession(session)` call propagates `user.email_confirmed_at` to the
+ * store; the verification gate then re-renders against the updated user
+ * and the auth-guard falls through to the routing arms.
+ *
+ * Return value matches the `signInWithEmail` / `resendVerificationEmail`
+ * shape (`{error}`) so the caller can surface a French Alert on failure
+ * AND so an unhandled-rejection cannot escape from the gate's `onPress`
+ * boundary. Review-round-1 H1 patch: pre-patch the helper was `Promise<void>`
+ * with no `try/catch` — a network blip / 5xx / expired refresh token
+ * rejected, the rejection escaped the gate's `try/finally`, and the user
+ * saw the spinner disappear with zero feedback. Post-patch every failure
+ * mode flows through the explicit error channel.
+ *
+ * Note: this helper does NOT inspect whether the post-refresh user is
+ * actually verified — that's the gate's responsibility (it reads
+ * `useAuthStore.getState().user?.email_confirmed_at` after the await
+ * resolves and surfaces a French Alert if still unset). Decoupling the
+ * "refresh succeeded" signal from the "verification confirmed" signal
+ * lets each layer own its concern.
+ */
+export async function refreshSessionAfterVerification(): Promise<{ error: unknown }> {
+  try {
+    const { error } = await supabase.auth.refreshSession();
+    return { error };
+  } catch (err) {
+    return { error: err };
+  }
+}
+
 export async function signOut() {
   const userId = useAuthStore.getState().user?.id;
   const { error } = await supabase.auth.signOut();
