@@ -25,6 +25,7 @@ import {
   clearSecureCacheForUser,
   getSecureCache,
   invalidateSecureCache,
+  readSecureCacheIgnoreTTL,
   setSecureCache,
 } from "../secure-cache";
 import { addBreadcrumb, captureError } from "../sentry";
@@ -215,11 +216,19 @@ describe("Story 12-7 — failure handling (captureError + breadcrumb + no propag
     expect(breadcrumbCalls).toHaveLength(1);
   });
 
-  it("Case 9: corrupted JSON in SecureStore — getSecureCache returns null without throwing", async () => {
+  it("Case 9: corrupted JSON in SecureStore — getSecureCache returns null + cleans up the bad entry (P21 review-round-1)", async () => {
     // Directly poison the store with non-JSON.
     mockedSecureStore.getItemAsync.mockResolvedValueOnce("{ not-valid-json");
     const out = await getSecureCache("user-1", "profile");
     expect(out).toBeNull();
+    // P21 review-round-1: explicitly verify the cleanup-on-corruption
+    // contract — pre-patch Case 9 only asserted return-null, so a
+    // regression that removed the `void deleteItemAsync` cleanup would
+    // have left corrupted entries forever-failing JSON.parse on every
+    // cold start.
+    expect(mockedSecureStore.deleteItemAsync).toHaveBeenCalledWith(
+      buildSecureKey("user-1", "profile")
+    );
   });
 });
 
@@ -260,5 +269,79 @@ describe("Story 12-7 — test-only reset hook (Story 12-2 P11 pattern)", () => {
     } finally {
       env.NODE_ENV = originalNodeEnv;
     }
+  });
+});
+
+// ============================================================================
+// Story 12-7 review-round-1 patches — additional regression coverage
+// ============================================================================
+
+describe("Story 12-7 review-round-1 P4 — envelope shape validation prevents undefined-as-fresh", () => {
+  // Pre-patch: a stored entry that parses to `42`, `null`, `{}`, or
+  // `{x:1}` (manually poisoned, partial write, future schema migration)
+  // would slip through `entry.timestamp` being undefined → NaN > ttlMs
+  // = false → returns `entry.data` (which may be `undefined`) as a
+  // "fresh cache hit," violating the `Promise<T | null>` type contract.
+  it.each([
+    ["primitive 42", "42"],
+    ["primitive null", "null"],
+    ["empty object", "{}"],
+    ["missing timestamp", JSON.stringify({ data: "x", ttlMs: 60_000 })],
+    ["missing ttlMs", JSON.stringify({ data: "x", timestamp: 1000 })],
+    ["non-finite timestamp NaN", JSON.stringify({ data: "x", timestamp: "x", ttlMs: 60_000 })],
+    ["non-finite ttlMs NaN", JSON.stringify({ data: "x", timestamp: 1000, ttlMs: "x" })],
+  ])(
+    "Case 14: getSecureCache returns null + cleans up when stored JSON is non-envelope (%s)",
+    async (_label, badJson) => {
+      mockedSecureStore.getItemAsync.mockResolvedValueOnce(badJson);
+      const out = await getSecureCache("user-1", "profile");
+      expect(out).toBeNull();
+      expect(mockedSecureStore.deleteItemAsync).toHaveBeenCalledWith(
+        buildSecureKey("user-1", "profile")
+      );
+    }
+  );
+
+  it("Case 15: readSecureCacheIgnoreTTL returns null on non-envelope shape + cleans up", async () => {
+    // Test the fallback-path reader specifically — it accepts older data
+    // even past TTL, but should NOT accept structurally-invalid data.
+    mockedSecureStore.getItemAsync.mockResolvedValueOnce(JSON.stringify({ wrong: "shape" }));
+    const out = await readSecureCacheIgnoreTTL("user-1", "profile");
+    expect(out).toBeNull();
+    expect(mockedSecureStore.deleteItemAsync).toHaveBeenCalledWith(
+      buildSecureKey("user-1", "profile")
+    );
+  });
+});
+
+describe("Story 12-7 review-round-1 P12 — buildSecureKey input validation", () => {
+  it("Case 16: throws on empty userId — defends against collidable empty-userId key", () => {
+    expect(() => buildSecureKey("", "profile")).toThrow(/non-empty/);
+  });
+
+  it("Case 17: throws on empty key — defends against collidable empty-key suffix", () => {
+    expect(() => buildSecureKey("user-1", "")).toThrow(/non-empty/);
+  });
+
+  it("Case 18: sanitizes invalid charset in userId (e.g., OIDC sub with `:` separator)", () => {
+    // SecureStore charset is [A-Za-z0-9._-]+. A userId with `:` (e.g.,
+    // legacy OIDC `oidc:abc`) would be rejected at runtime. Post-P12 we
+    // sanitize to underscores deterministically.
+    const safe = buildSecureKey("oidc:abc", "profile");
+    expect(safe).toBe("companion_secure_oidc_abc_profile");
+    expect(safe).toMatch(/^[A-Za-z0-9._-]+$/);
+    expect(safe).not.toContain(":");
+  });
+
+  it("Case 19: sanitizes invalid charset in key", () => {
+    const safe = buildSecureKey("user-1", "weird key with spaces");
+    expect(safe).toMatch(/^[A-Za-z0-9._-]+$/);
+    expect(safe).not.toContain(" ");
+  });
+
+  it("Case 20: same input → same output (deterministic sanitization, no collision risk)", () => {
+    const a = buildSecureKey("user-1", "profile");
+    const b = buildSecureKey("user-1", "profile");
+    expect(a).toBe(b);
   });
 });

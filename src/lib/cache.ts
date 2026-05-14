@@ -77,6 +77,66 @@ function buildKey(userId: string, key: string): string {
 // ---------------------------------------------------------------------------
 
 /**
+ * Story 12-7 review-round-1 P2: module-level in-flight Promise gate for
+ * the one-shot migration. Mirrors Story 9-6's `flushWriteQueue let
+ * inFlight` pattern. Without this gate, two concurrent `getCache(userId,
+ * "profile")` calls (e.g., auth-bootstrap + a parallel screen mount)
+ * would both observe the legacy entry, both write to SecureStore, both
+ * fire the `secure-cache-migrated` breadcrumb — violating the once-per-
+ * device idempotency contract.
+ *
+ * Keyed by `${userId}:${key}` so two distinct keys can migrate
+ * concurrently without serializing each other. Entries are cleared on
+ * resolution so a future cold-start can re-enter if needed (e.g., if
+ * the delete failed and the legacy entry survived).
+ */
+const migrationInFlight = new Map<string, Promise<{ data: unknown; ttlMs: number } | null>>();
+
+/**
+ * Migrate a single legacy plaintext entry to SecureStore. Returns the
+ * migrated data + TTL (so the caller can apply its own TTL check) OR
+ * null if no legacy entry exists OR was shape-invalid.
+ *
+ * **Story 12-7 review-round-1 P1**: TTL check happens BEFORE the
+ * SecureStore write. If the legacy entry is expired, we delete it and
+ * return null without writing — pre-patch the code would write expired
+ * data with a fresh `Date.now()` timestamp, effectively reviving stale
+ * data with a reset TTL clock.
+ *
+ * **Story 12-7 review-round-1 P6**: `deleteLegacyPlaintextEntry` is
+ * AWAITED (not fire-and-forget) so the breadcrumb fires only after the
+ * delete succeeds. A failed delete would otherwise trigger re-migration
+ * on the next cold start, re-firing the `secure-cache-migrated`
+ * breadcrumb and inflating the rollout-coverage metric.
+ */
+async function migrateLegacyToSecure<T>(
+  userId: string,
+  key: string
+): Promise<{ data: T; ttlMs: number } | null> {
+  const legacy = await readLegacyPlaintextEntry<T>(userId, key);
+  if (legacy === null) return null;
+
+  // P1: re-check TTL BEFORE writing. If expired, only clean up + return null.
+  const age = Date.now() - legacy.timestamp;
+  if (age > legacy.ttlMs) {
+    await deleteLegacyPlaintextEntry(userId, key);
+    return null;
+  }
+
+  await setSecureCache(userId, key, legacy.data, legacy.ttlMs);
+  // P6: await the delete BEFORE the breadcrumb so a failed delete
+  // doesn't claim migration succeeded.
+  await deleteLegacyPlaintextEntry(userId, key);
+  addBreadcrumb({
+    category: "cache",
+    level: "info",
+    message: "Profile cache migrated to SecureStore",
+    data: { feature: "secure-cache-migrated" },
+  });
+  return { data: legacy.data, ttlMs: legacy.ttlMs };
+}
+
+/**
  * Retrieve a cached value if it exists and has not expired.
  *
  * @returns The cached data, or `null` if missing / expired.
@@ -86,27 +146,32 @@ export async function getCache<T>(userId: string, key: string): Promise<T | null
   // native platforms. Web users fall through to AsyncStorage (SecureStore
   // is not available; browser localStorage is encrypted-at-rest by the OS).
   if (SECURE_CACHE_KEYS.has(key) && Platform.OS !== "web") {
-    // Story 12-7 one-shot migration: if a pre-12-7 plaintext entry exists in
-    // AsyncStorage, copy it to SecureStore + delete from AsyncStorage. The
-    // migration is idempotent: AsyncStorage.getItem returns null on subsequent
-    // reads, so the migration path is never re-entered. Fail-safe: SecureStore
-    // write before AsyncStorage delete — a crash mid-migration leaves the
-    // legacy entry in place and the next read re-migrates without data loss.
-    const legacy = await readLegacyPlaintextEntry<T>(userId, key);
-    if (legacy !== null) {
-      await setSecureCache(userId, key, legacy.data, legacy.ttlMs);
-      void deleteLegacyPlaintextEntry(userId, key);
-      addBreadcrumb({
-        category: "cache",
-        level: "info",
-        message: "Profile cache migrated to SecureStore",
-        data: { feature: "secure-cache-migrated" },
-      });
-      // Return the migrated data after re-checking its TTL — if the legacy
-      // entry was already expired, behave like a cache miss.
-      const age = Date.now() - legacy.timestamp;
-      if (age > legacy.ttlMs) return null;
-      return legacy.data;
+    // Story 12-7 one-shot migration with P2 concurrent-read serialization.
+    // Idempotent: AsyncStorage.getItem returns null on subsequent reads, so
+    // the migration path is never re-entered. Fail-safe: SecureStore write
+    // before AsyncStorage delete — a crash mid-migration leaves the legacy
+    // entry in place and the next read re-migrates without data loss.
+    //
+    // P2 review-round-1: serialize concurrent migration attempts via the
+    // module-level `migrationInFlight` Map so two parallel `getCache` calls
+    // don't both observe the legacy entry + double-fire the breadcrumb.
+    const migrationKey = `${userId}:${key}`;
+    let migratePromise = migrationInFlight.get(migrationKey) as
+      | Promise<{ data: T; ttlMs: number } | null>
+      | undefined;
+    if (!migratePromise) {
+      migratePromise = migrateLegacyToSecure<T>(userId, key);
+      migrationInFlight.set(
+        migrationKey,
+        migratePromise as unknown as Promise<{ data: unknown; ttlMs: number } | null>
+      );
+      // Clear the in-flight gate on resolution so a future cold start can
+      // re-enter if needed (e.g., delete failed and legacy survived).
+      void migratePromise.finally(() => migrationInFlight.delete(migrationKey));
+    }
+    const migrated = await migratePromise;
+    if (migrated !== null) {
+      return migrated.data;
     }
     return getSecureCache<T>(userId, key);
   }
@@ -200,6 +265,18 @@ export async function cacheWithFallback<T>(
         if (secureCached !== null) {
           return { data: secureCached, fromCache: true };
         }
+        // P3 review-round-1: cold-launch offline with a legacy plaintext
+        // entry still present — `getCache` would have migrated it on the
+        // first read, but since this is the FIRST read AND the network
+        // failed, the migration block never ran. Fall through to the
+        // legacy plaintext entry as a second offline fallback so the
+        // user sees their cached profile instead of a hard throw.
+        // Migration on the next successful (online or offline) `getCache`
+        // call will move this entry to SecureStore.
+        const legacy = await readLegacyPlaintextEntry<T>(userId, key);
+        if (legacy !== null) {
+          return { data: legacy.data, fromCache: true };
+        }
       } else {
         const raw = await AsyncStorage.getItem(buildKey(userId, key));
         if (raw) {
@@ -240,12 +317,31 @@ export async function invalidateCache(userId: string, key: string): Promise<void
  * Remove all cache entries for a specific user. Story 12-7: clears BOTH
  * the AsyncStorage plaintext namespace AND the SecureStore allowlist
  * entries, so sign-out / account-delete leaves no encrypted residue
- * behind. AsyncStorage is cleared FIRST so a crash mid-clear leaves a
- * consistent "partial-clear" state where SecureStore is still
- * authoritative (next sign-in re-migrates from the empty AsyncStorage
- * cleanly).
+ * behind.
+ *
+ * **Story 12-7 review-round-1 P7**: SecureStore clears FIRST. The
+ * canonical caller is sign-out / account-delete — we want the encrypted
+ * PII (the higher-sensitivity store) destroyed first. If the process
+ * crashes mid-clear, the partial-clear state leaves the LESS sensitive
+ * plaintext layer lingering rather than the encrypted PII. On the next
+ * cold start the migration block re-migrates the surviving plaintext
+ * entry (idempotent path).
+ *
+ * **Story 12-7 review-round-1 P11**: `clearSecureCacheForUser` is
+ * wrapped in its own try/catch + `captureError` so a Platform-shim
+ * sync-throw doesn't reject this function to its caller (sign-out flow
+ * surfaces unhandled rejection).
  */
 export async function clearUserCache(userId: string): Promise<void> {
+  // P7: SecureStore first — sign-out's primary intent is to destroy
+  // encrypted PII. No-op on web (`clearSecureCacheForUser` has its own
+  // Platform.OS === "web" early-return).
+  try {
+    await clearSecureCacheForUser(userId, [...SECURE_CACHE_KEYS]);
+  } catch (err) {
+    captureError(err, "cache-clear-user-secure", { key: "secure-batch" });
+  }
+  // Then the plaintext namespace.
   try {
     const allKeys = await AsyncStorage.getAllKeys();
     const userPrefix = `${CACHE_PREFIX}${userId}:`;
@@ -256,10 +352,6 @@ export async function clearUserCache(userId: string): Promise<void> {
   } catch (err) {
     captureError(err, "cache-clear-user");
   }
-  // Story 12-7: also clear SecureStore allowlist entries for this user.
-  // No-op on web (clearSecureCacheForUser's Platform.OS === "web" early
-  // return is the project-canonical fallback shape).
-  await clearSecureCacheForUser(userId, [...SECURE_CACHE_KEYS]);
 }
 
 /**

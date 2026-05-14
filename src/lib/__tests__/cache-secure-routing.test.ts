@@ -26,6 +26,7 @@ import { join } from "path";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 import {
   CACHE_KEYS,
@@ -115,6 +116,10 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockedAsyncStorage.__reset();
   mockedSecureStore.__reset();
+  // P18 review-round-1: explicit reset to "ios" so any future test that
+  // toggles Platform.OS (e.g., via mockPlatform("web")) doesn't leak the
+  // OS state into subsequent cases within the same file.
+  (Platform as unknown as { OS: string }).OS = "ios";
 });
 
 describe("Story 12-7 — cache.ts routing fork", () => {
@@ -189,6 +194,20 @@ describe("Story 12-7 — migration (one-shot, idempotent)", () => {
     expect(out).toEqual(legacyData);
     // SecureStore was written with the migrated data.
     expect(mockedSecureStore.setItemAsync).toHaveBeenCalledTimes(1);
+    // P5 review-round-1: explicitly verify the value passed to
+    // SecureStore.setItemAsync contains the legacy data — pre-patch
+    // Case 5 only asserted call count, so a regression writing
+    // `setSecureCache(_, _, undefined, _)` would have passed vacuously.
+    const setItemCall = mockedSecureStore.setItemAsync.mock.calls[0] as [string, string, unknown];
+    expect(setItemCall[0]).toBe("companion_secure_user-1_profile");
+    const writtenEnvelope = JSON.parse(setItemCall[1]) as {
+      data: typeof legacyData;
+      timestamp: number;
+      ttlMs: number;
+    };
+    expect(writtenEnvelope.data).toEqual(legacyData);
+    expect(typeof writtenEnvelope.timestamp).toBe("number");
+    expect(writtenEnvelope.ttlMs).toBe(60_000);
     // Legacy AsyncStorage entry was deleted.
     expect(mockedAsyncStorage.removeItem).toHaveBeenCalledWith("@companion_cache:user-1:profile");
     // Migration breadcrumb fired exactly once.
@@ -322,13 +341,182 @@ describe("Story 12-7 — cache.ts drift detectors (audit P1-11 closure)", () => 
     expect(CACHE_CODE_ONLY).toMatch(/invalidateCache[\s\S]*?SECURE_CACHE_KEYS\.has\(key\)/);
   });
 
-  it("Case 13: NEGATIVE guard — no `AsyncStorage.setItem` writes a key matching /profile/ verbatim", () => {
-    // Walk every `AsyncStorage.setItem(...)` call site and assert none of
-    // them write a key that contains the literal substring "profile".
-    // The migration block uses `removeItem` (allowed), not setItem.
-    const setItemMatches = CACHE_CODE_ONLY.match(/AsyncStorage\.setItem\([^)]+\)/g) ?? [];
+  it("Case 13: NEGATIVE guard — no `AsyncStorage.setItem` call uses CACHE_KEYS.PROFILE verbatim (literal-string regression check)", () => {
+    // Walk every `AsyncStorage.setItem(...)` call site (regex tolerates
+    // nested parens in `buildKey(userId, key)` by allowing one level of
+    // balanced parens). Assert none of them pass `CACHE_KEYS.PROFILE`
+    // or `"profile"` as a literal — those would indicate a regression
+    // that bypassed the SECURE_CACHE_KEYS fork.
+    //
+    // **P20 review-round-1 scope clarification**: the pre-12-7 plaintext
+    // write path uses `AsyncStorage.setItem(buildKey(userId, key), ...)`
+    // where `key` is a variable, NOT the literal "profile". This regex
+    // pins LITERAL-STRING regressions only (e.g., `AsyncStorage.setItem(
+    // buildKey(userId, "profile"), ...)` or `AsyncStorage.setItem(
+    // buildKey(userId, CACHE_KEYS.PROFILE), ...)`). The structural
+    // fork-presence is pinned by Cases 9-12 above (those check that
+    // `SECURE_CACHE_KEYS.has(key)` appears in each write/read fork
+    // body); Case 13 is the literal-key escape hatch.
+    const setItemMatches =
+      CACHE_CODE_ONLY.match(/AsyncStorage\.setItem\((?:[^()]|\([^()]*\))+\)/g) ?? [];
     for (const match of setItemMatches) {
-      expect(match).not.toMatch(/profile/i);
+      expect(match).not.toMatch(/CACHE_KEYS\.PROFILE/);
+      expect(match).not.toMatch(/["']profile["']/);
     }
+  });
+});
+
+// ============================================================================
+// Story 12-7 review-round-1 patches — additional regression coverage
+// ============================================================================
+
+describe("Story 12-7 review-round-1 P1 — expired legacy entry is NOT written to SecureStore", () => {
+  it("Case 14: legacy entry past TTL → return null + delete legacy + NO setSecureCache call + NO migration breadcrumb", async () => {
+    // Pre-patch: getCache would (a) write expired data to SecureStore with a
+    // fresh Date.now() timestamp (effectively reviving stale data), (b) fire
+    // the migration breadcrumb as success, (c) return null. The next read
+    // would return the now-"fresh" stale data.
+    const legacyData = { full_name: "Marie", streak_days: 7 };
+    const expiredEntry = {
+      data: legacyData,
+      timestamp: Date.now() - 9_999_999, // way past expiry
+      ttlMs: 60_000,
+    };
+    await mockedAsyncStorage.setItem(
+      "@companion_cache:user-1:profile",
+      JSON.stringify(expiredEntry)
+    );
+
+    const out = await getCache<typeof legacyData>("user-1", CACHE_KEYS.PROFILE);
+
+    // Cache miss returned to caller.
+    expect(out).toBeNull();
+    // SecureStore was NOT written (pre-patch would have written expired data).
+    expect(mockedSecureStore.setItemAsync).not.toHaveBeenCalled();
+    // Legacy entry was deleted (cleanup happens regardless of TTL).
+    expect(mockedAsyncStorage.removeItem).toHaveBeenCalledWith("@companion_cache:user-1:profile");
+    // Migration breadcrumb did NOT fire (pre-patch would have inflated the
+    // operator rollout-coverage metric with this expired entry).
+    const migrationBreadcrumbs = (addBreadcrumb as jest.Mock).mock.calls.filter(
+      (call) =>
+        (call[0] as { data?: { feature?: string } }).data?.feature === "secure-cache-migrated"
+    );
+    expect(migrationBreadcrumbs).toHaveLength(0);
+  });
+});
+
+describe("Story 12-7 review-round-1 P2 — concurrent migration is serialized via in-flight Promise gate", () => {
+  it("Case 15: two parallel getCache calls during migration → SecureStore written ONCE + breadcrumb fires ONCE", async () => {
+    // Pre-patch: both parallel calls would observe the legacy entry, both
+    // call setSecureCache, both fire `secure-cache-migrated`. Post-P2:
+    // module-level Map keys on `${userId}:${key}` so the second caller
+    // awaits the first caller's migration result.
+    const legacyData = { full_name: "Marie", streak_days: 7 };
+    await mockedAsyncStorage.setItem(
+      "@companion_cache:user-1:profile",
+      JSON.stringify({ data: legacyData, timestamp: Date.now(), ttlMs: 60_000 })
+    );
+
+    // Kick off two parallel reads.
+    const [outA, outB] = await Promise.all([
+      getCache<typeof legacyData>("user-1", CACHE_KEYS.PROFILE),
+      getCache<typeof legacyData>("user-1", CACHE_KEYS.PROFILE),
+    ]);
+
+    // Both calls return the migrated data.
+    expect(outA).toEqual(legacyData);
+    expect(outB).toEqual(legacyData);
+    // SecureStore was written EXACTLY ONCE (serialized by the in-flight gate).
+    expect(mockedSecureStore.setItemAsync).toHaveBeenCalledTimes(1);
+    // Migration breadcrumb fired EXACTLY ONCE.
+    const migrationBreadcrumbs = (addBreadcrumb as jest.Mock).mock.calls.filter(
+      (call) =>
+        (call[0] as { data?: { feature?: string } }).data?.feature === "secure-cache-migrated"
+    );
+    expect(migrationBreadcrumbs).toHaveLength(1);
+  });
+});
+
+describe("Story 12-7 review-round-1 P3 — offline cold-launch with legacy entry falls back through legacy plaintext", () => {
+  it("Case 16: cacheWithFallback with offline fetchFn + legacy plaintext entry only → returns legacy data (no migration runs)", async () => {
+    // Pre-patch: cacheWithFallback's catch-branch called readSecureCacheIgnoreTTL,
+    // which returned null because no migration had run yet. The function then
+    // re-threw fetchErr — user got a hard error despite having a cached profile
+    // in plaintext AsyncStorage. Post-P3: the catch-branch now also tries
+    // readLegacyPlaintextEntry as a second fallback for secure keys.
+    const legacyData = { full_name: "Marie", streak_days: 7 };
+    await mockedAsyncStorage.setItem(
+      "@companion_cache:user-1:profile",
+      JSON.stringify({ data: legacyData, timestamp: Date.now(), ttlMs: 60_000 })
+    );
+    // SecureStore is empty — no prior migration has run.
+    const fetchFn = jest.fn(async () => {
+      throw new Error("network down");
+    });
+
+    const result = await cacheWithFallback<typeof legacyData>(
+      "user-1",
+      CACHE_KEYS.PROFILE,
+      fetchFn,
+      60_000
+    );
+
+    expect(result.fromCache).toBe(true);
+    expect(result.data).toEqual(legacyData);
+    // SecureStore was NOT written during the fallback path (migration runs on
+    // the NEXT getCache, not during this offline-fallback).
+    expect(mockedSecureStore.setItemAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe("Story 12-7 review-round-1 P9 — end-to-end round-trip via the real setCache + cacheWithFallback flow", () => {
+  it("Case 17: setCache → fetchFn-fails → cacheWithFallback returns the secured value (full production flow)", async () => {
+    // Pre-patch Case 7 seeded SecureStore directly via mockedSecureStore.setItemAsync,
+    // bypassing the keychainAccessible pin in production setSecureCache. Case 17
+    // drives the full flow: production setCache fires real setItemAsync (with the
+    // accessibility option), then cacheWithFallback's catch-branch reads it back.
+    const profileData = { full_name: "Marie", streak_days: 7 };
+
+    // Drive the real production write path.
+    await setCache("user-1", CACHE_KEYS.PROFILE, profileData, 60_000);
+    // Verify the production write passed the iOS keychain accessibility pin.
+    expect(mockedSecureStore.setItemAsync).toHaveBeenCalledTimes(1);
+    const [, , options] = mockedSecureStore.setItemAsync.mock.calls[0] as [
+      string,
+      string,
+      { keychainAccessible: unknown },
+    ];
+    expect(options).toMatchObject({
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+
+    // Now drive a fetchFn-fails read.
+    const fetchFn = jest.fn(async () => {
+      throw new Error("network down");
+    });
+    const result = await cacheWithFallback<typeof profileData>(
+      "user-1",
+      CACHE_KEYS.PROFILE,
+      fetchFn,
+      60_000
+    );
+    expect(result.fromCache).toBe(true);
+    expect(result.data).toEqual(profileData);
+  });
+});
+
+describe("Story 12-7 review-round-1 P19 — web platform fork (cache.ts runtime verification)", () => {
+  it("Case 18: Platform.OS === 'web' + setCache for profile → AsyncStorage.setItem fires + SecureStore NOT called", async () => {
+    // Pre-patch the AC #2 wording required this fork to exist but no
+    // runtime test verified it at the cache.ts level. A future refactor
+    // dropping `&& Platform.OS !== 'web'` from the fork conditional would
+    // route web users to SecureStore (which early-returns silently).
+    (Platform as unknown as { OS: string }).OS = "web";
+
+    await setCache("user-1", CACHE_KEYS.PROFILE, { full_name: "Marie" }, 60_000);
+
+    expect(mockedAsyncStorage.setItem).toHaveBeenCalledTimes(1);
+    expect(mockedAsyncStorage.setItem.mock.calls[0][0]).toBe("@companion_cache:user-1:profile");
+    expect(mockedSecureStore.setItemAsync).not.toHaveBeenCalled();
   });
 });
