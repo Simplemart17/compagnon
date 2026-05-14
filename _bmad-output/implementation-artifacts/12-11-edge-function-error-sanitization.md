@@ -1,6 +1,6 @@
 # Story 12.11: Edge Function Error Sanitization — `parseUpstreamError` Returns Generic Categorized Message + Logs Raw Body to Operator-Visible Function Logs
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
