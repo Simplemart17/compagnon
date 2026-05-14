@@ -29,6 +29,23 @@ The independent multi-agent audit on **2026-05-06** found that the codebase is a
 
 The 10 agents reported ~120 distinct findings. After deduping cross-cutting themes, the consolidated list below is grouped by severity. Every finding is traceable to a file/line.
 
+### Audit refresh — 2026-05-14 (post-Epic-12)
+
+The 2026-05-06 audit table below is preserved verbatim for traceability. Status at 2026-05-14 (8 calendar days later, post-Epic-12 closure):
+
+- **All 10 P0 findings closed** by Epic 9 (Stories 9-1 through 9-9; P0-1 has a separate spec-correction footnote — see below).
+- **20 of 21 P1 findings closed** by Epics 10 + 11 + 12. The exception is **P1-20** (bilingual UI chaos) → Epic 14.1.
+- **9 of 25 P2 findings closed** by Epics 10 + 11 + 12 (P2-1, P2-2, P2-8, P2-9, P2-21, P2-22) plus 3 more handed off to Epic 13/14. Remaining open: P2-3/4/5/6/7 (→ Epic 13), P2-10/11/12/13 (→ Epic 14), P2-14/15/16/17/18 (→ Epic 17), P2-19/20/23/24/25 (→ backlog).
+- **2 findings decayed** — assumption underneath them moved between 2026-05-06 and 2026-05-14:
+  - **P1-13** (`npm audit` 3 high vulns) — xmldom dropped from dep tree by the Expo SDK 49→55 upgrade that landed during Epic 9-11. Today's `npm audit` is **0/0/4/5** (0 critical, 0 high, 4 moderate build-time-only postcss, 5 low dev-only). **✓ Closed by Story 12-10 (reframed)** — CI gate at `--audit-level=high` pinned at `.github/workflows/ci.yml:49`; AC "0 high vulns" already met. Epic 16.11 follow-up tracks SDK 57+ upgrade that would close the 4 moderates.
+  - **P1-16** (test coverage ≈ 3-5%) — wrong by ~2 orders of magnitude. See footnote.[^p1-16-reframing]
+
+**Closure citations (which story closed which finding) live in `_bmad-output/implementation-artifacts/sprint-status.yaml` and `CLAUDE.md` architecture paragraphs — not duplicated in each table row below to avoid drift.**
+
+[^p1-16-reframing]: **Story 12-10 audit refresh footnote (2026-05-14):** the audit's "≈ 3-5% coverage, only `scoring.test.ts` exists" claim is stale. Today the repo has **1607 passing Jest tests** spanning `src/lib/__tests__/`, `src/hooks/__tests__/`, `src/components/**/__tests__/`, `src/lib/prompts/__tests__/`, `src/lib/schemas/__tests__/`, plus pgTAP-style SQL tests under `supabase/migrations/__tests__/` and Deno-runnable Edge Function tests under `supabase/functions/_shared/__tests__/`. **Epic 15's scope should pivot accordingly:** the actual gap is NOT "write the missing tests" but (1) wire Jest coverage thresholds into CI (today there is no `--coverage` gate), (2) wire the manual-run Deno + pgTAP suites into CI (Epic 15.3), and (3) add Detox/Maestro E2E for the 5 golden flows (onboarding → first conversation → first mock test → CEFR promotion → vocabulary review). Treating P1-16 as written would burn engineering time writing tests for already-tested surfaces.
+
+---
+
 ### P0 — Release blockers (must fix before any external beta)
 
 | # | Finding | Files | Source agent |
