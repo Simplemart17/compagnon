@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-13 # 12-8 review-round-1 complete; PR #83 opened against main; 1492 tests passing (+55 net 1437→1492); all 5 quality gates green; status: done; operator action required post-merge per _bmad-output/planning-artifacts/runbooks/auth-password-policy.md
+last_updated: 2026-05-13 # 12-8 review-round-2 complete (HIGH×3 + MED×3 + LOW×8 = 14 patches on the round-1 patches themselves); 1503 tests passing (+11 net round-2 1492→1503 / +66 net total 1437→1503); all 5 quality gates green; status: done; PR #83 still open with round-2 patches pushed; operator action required post-merge per _bmad-output/planning-artifacts/runbooks/auth-password-policy.md
 project: companion
 project_key: NOKEY
 tracking_system: file-system
