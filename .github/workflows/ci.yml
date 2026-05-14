@@ -36,6 +36,18 @@ jobs:
       - name: Tests
         run: npm test -- --no-coverage
 
+      - name: Dependency vulnerability gate
+        # Story 12-10: prevent regression of `npm audit reports 0 high
+        # vulnerabilities` (Epic 12 AC). Calibrated to `--audit-level=high`
+        # — zero-tolerance for high/critical; documented-tolerance for
+        # moderate/low limited to dev/build-time exposure (current
+        # inventory in `_bmad-output/planning-artifacts/runbooks/dependency-vulnerability-policy.md`).
+        # Includes dev-deps deliberately: a high-severity dev-dep vuln can
+        # exfiltrate secrets from a dev's machine OR a CI runner. The bar
+        # for "high" is high enough that we want the gate to fire even
+        # for dev-deps.
+        run: npm audit --audit-level=high
+
       - name: Hex color check
         run: npm run check:colors
 
