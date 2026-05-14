@@ -1,6 +1,6 @@
 # Story 12.10: `npm audit` Reframing — CI Gate at `high+` + Risk-Classified Documentation of Dev/Build-Time Moderates
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
