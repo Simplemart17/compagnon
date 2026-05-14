@@ -71,9 +71,25 @@ export function appendCappedHistory(
   prevHistory: PronunciationResult[],
   newResult: PronunciationResult
 ): PronunciationResult[] {
-  const appended = [...prevHistory, newResult];
-  if (appended.length <= MAX_PRONUNCIATION_HISTORY) return appended;
-  // FIFO: drop the oldest entries from the head; preserve insertion order.
-  // `.slice(start)` returns a new array — input is never mutated.
-  return appended.slice(appended.length - MAX_PRONUNCIATION_HISTORY);
+  // Review-round-1 L1 patch: slice-BEFORE-append for bounded allocation
+  // regardless of input size. Pre-patch the helper always spread `prevHistory`
+  // into a temporary `appended` array first (creating an N+1-element
+  // intermediate in memory) before slicing down to MAX. For the defensive
+  // over-cap branch documented in JSDoc (input length ≫ MAX — e.g., a
+  // future caller bypassing this helper), the pre-patch implementation
+  // built a 5,001-element array before slicing down to 50 — the exact
+  // memory pathology the cap is meant to prevent. Post-patch the slice
+  // runs FIRST when needed, so the allocation is at most MAX + 1 elements
+  // regardless of input size.
+  //
+  // `.slice` returns a new array — input is never mutated either way.
+  if (prevHistory.length >= MAX_PRONUNCIATION_HISTORY) {
+    // FIFO: drop the oldest entries from the head; preserve insertion order.
+    // After slicing, append the new result at tail — bounded at exactly
+    // MAX entries (the slice grabs the trailing MAX-1, then +1 new entry
+    // = MAX total).
+    return [...prevHistory.slice(prevHistory.length - MAX_PRONUNCIATION_HISTORY + 1), newResult];
+  }
+  // At-or-below cap: simple append; result length stays ≤ MAX.
+  return [...prevHistory, newResult];
 }

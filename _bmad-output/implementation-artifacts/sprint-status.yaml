@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-14 # 12-12 implementation complete on feature/12-12-pronunciation-history-cap (branched from main post-12-11 PR #86 merge). 1605 tests passing (+15 net 1590→1605; matches spec target exactly). All 4 quality gates green. Closes audit P2-22 architecturally. FINAL Epic-12 story — Epic 12 is now COMPLETE (12 of 12 stories done); Epic 12 retro is the next workflow step. Status: review (ready for code-review).
+last_updated: 2026-05-14 # 12-12 review-round-1 complete (MED × 2 + LOW × 3 = 5 patches applied; 4 deferred; 1 rejected). 1607 tests passing (+2 net round-1 1605→1607). All 4 quality gates green. Acceptance Auditor returned 0 findings — cleanest review surface across Epic 12. Epic 12 is now FULLY POLISHED AND COMPLETE (12 of 12 stories done); Epic 12 retro is the next workflow step.
 project: companion
 project_key: NOKEY
 tracking_system: file-system

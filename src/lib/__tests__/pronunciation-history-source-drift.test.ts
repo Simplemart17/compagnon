@@ -47,25 +47,47 @@ describe("use-pronunciation.ts — Story 12-12 source-drift detector", () => {
     // helper. Globally count occurrences in the comment-stripped source
     // to defend against a future refactor that drops one call site
     // without dropping the other.
+    //
+    // Review-round-1 M1 patch: loosened regex to (a) tolerate optional
+    // chaining `prev?.history` (a future defensive guard), (b) accept
+    // any identifier as the second argument (so a benign rename of
+    // `result` → `assessmentResult` doesn't break this guard despite
+    // contract preservation).
     const matches = HOOK_CODE_ONLY.match(
-      /appendCappedHistory\s*\(\s*prev\.history\s*,\s*result\s*\)/g
+      /appendCappedHistory\s*\(\s*prev\??\.history\s*,\s*\w+\s*\)/g
     );
     expect(matches).not.toBeNull();
     expect(matches?.length).toBe(2);
   });
 
-  it("Case 3: NEGATIVE — pre-12-12 `[...prev.history, result]` spread pattern is GONE", () => {
-    // The exact pre-12-12 leak shape. Whitespace-tolerant regex catches
-    // formatter variations like `[...prev.history,result]` or
-    // `[ ...prev.history , result ]`.
-    expect(HOOK_CODE_ONLY).not.toMatch(/\[\s*\.\.\.\s*prev\.history\s*,\s*result\s*\]/);
+  it("Case 3: NEGATIVE — pre-12-12 unbounded-append patterns are GONE", () => {
+    // The exact pre-12-12 leak shape `[...prev.history, result]` is the
+    // primary regression target. Review-round-1 M1 patch ALSO guards
+    // against alternative unbounded-append idioms a future contributor
+    // might reach for (e.g., `prev.history.concat(...)`) that would
+    // re-introduce the same defect via a different syntax.
+    //
+    // Whitespace-tolerant — catches formatter variations like
+    // `[...prev.history,result]` or `[ ...prev.history , result ]`.
+
+    // (a) Original pre-12-12 spread pattern (loosened to accept any
+    //     identifier as the appended value).
+    expect(HOOK_CODE_ONLY).not.toMatch(/\[\s*\.\.\.\s*prev\??\.history\s*,\s*\w+\s*\]/);
+
+    // (b) Alternative leak pattern: `.concat()` on history.
+    expect(HOOK_CODE_ONLY).not.toMatch(/prev\??\.history\.concat\s*\(/);
   });
 
-  it("Case 4: `identifyWeakSounds(newHistory)` call is preserved at TWO sites", () => {
+  it("Case 4: `identifyWeakSounds(<any-identifier>)` call is preserved at TWO sites", () => {
     // The aggregate computation is the load-bearing diagnostic. A future
     // refactor that drops the call without replacing it loses the
     // weak-phoneme surface entirely.
-    const matches = HOOK_CODE_ONLY.match(/identifyWeakSounds\s*\(\s*newHistory\s*\)/g);
+    //
+    // Review-round-1 M1 patch: loosened the argument regex from the
+    // hardcoded `newHistory` to `\w+` so a benign rename (e.g.,
+    // `newHistory` → `cappedHistory`) doesn't break this guard despite
+    // contract preservation.
+    const matches = HOOK_CODE_ONLY.match(/identifyWeakSounds\s*\(\s*\w+\s*\)/g);
     expect(matches).not.toBeNull();
     expect(matches?.length).toBe(2);
   });
