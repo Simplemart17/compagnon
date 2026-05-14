@@ -383,6 +383,21 @@ claude-opus-4-7[1m]
 - **Closes audit P2-22** architecturally.
 - **Epic 12 is COMPLETE — 12 of 12 stories done.** Story 12-12 is the FINAL Epic-12 story. Epic 12 retrospective is the next workflow step.
 
+#### Review-round-1 patches (2026-05-14)
+
+Adversarial 3-layer review surfaced 11 distinct findings after dedup. **Acceptance Auditor returned 0 findings — all 13 ACs structurally satisfied** (the cleanest review surface across Epic 12). Triage: **MED × 2 + LOW × 3 = 5 patches applied; 4 deferred; 1 rejected.**
+
+- **M1** drift detector regex hardening — Cases 2 + 4 loosened to accept `\w+` for variable-name renames (`result` → `assessmentResult`); Cases 2 + 3 tolerate optional-chaining `prev?.history`; Case 3 gains a second negative guard `/prev\??\.history\.concat\s*\(/` for the alternative leak pattern. Pre-patch a benign rename OR a `.concat()`-based regression would slip through.
+- **M2** new Case 11 — pins the cap × `identifyWeakSounds` interaction by driving 63 results where indices 0-2 carry a "ɑ̃" weak phoneme; asserts the capped trailing-50 view DROPS the weak phoneme from `identifyWeakSounds` output while the uncapped 63-entry view STILL flags it (count=3, avgScore=40). Future cap-value adjustments (50 → 30) re-evaluate this threshold deliberately.
+- **L1** `appendCappedHistory` reordered to slice-BEFORE-append for bounded allocation regardless of input size. Pre-patch the defensive over-cap branch built a 5,001-element array before slicing to 50; post-patch allocation is bounded at exactly MAX elements.
+- **L2** Case 6 (no-mutation test) upgraded to full-array snapshot via `[...prev]` + `toEqual(snapshot)` deep equality. Pre-patch only `prev.length` and `prev[0]` were checked — a future "optimization" mutating `prev[25]` would have passed silently.
+- **L3** new Case 3b — isolates the at-cap (50→51) boundary so an off-by-one regression (`<` vs `<=` in the cap predicate) fails with a clear diagnostic instead of vacuously passing the broader Case 4.
+- **Deferred (4):** D1 no runtime hook integration test (drift detector + helper unit tests cover the contract; full hook test is a future-story scope); D2 non-defensive against `null`/`undefined` input (TypeScript catches; runtime defensiveness adds noise); D3 drift detector Case 5 doesn't reject `import type` regression (TypeScript catches); D4 `WordScore.phonemes` empty-array Azure-data interaction (pre-existing, not 12-12 regression).
+- **Rejected (1):** concurrent-assessments race — Edge Case Hunter analyzed, NOT A BUG (React's functional setState updaters pass the latest state to each successive updater).
+- **+2 net Jest cases** (1605 → 1607): Case 11 (M2) + Case 3b (L3) added; Case 6 (L2) modified in place; M1 modified drift cases in place; L1 source change preserved existing test contract.
+- All 4 quality gates green post-round-1.
+- Verified 2026-05-14, story 12-12 (post-review-round-1 patches MED × 2 + LOW × 3).
+
 ### File List
 
 **New files:**
