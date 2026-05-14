@@ -1,6 +1,6 @@
 # Story 13.1: Transcript Render Storm Fix — `extraData` ref-stable + rAF-coalesced delta setState
 
-Status: review
+Status: done
 
 ## Story
 
