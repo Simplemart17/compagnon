@@ -20,8 +20,16 @@ import Reanimated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { PasswordStrengthIndicator } from "@/src/components/auth/PasswordStrengthIndicator";
 import { useAuth } from "@/src/hooks/use-auth";
 import { Colors } from "@/src/lib/design";
+import {
+  getPwnedFrenchMessage,
+  isPwnedRejection,
+  mapSupabaseWeakPasswordError,
+  passwordPolicyReasonToFrenchMessage,
+  validatePasswordStrength,
+} from "@/src/lib/password-policy";
 import { captureError } from "@/src/lib/sentry";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -76,8 +84,10 @@ export default function SignUpScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters.");
+    const policyResult = validatePasswordStrength(password);
+    if (!policyResult.valid) {
+      const itemized = policyResult.reasons.map(passwordPolicyReasonToFrenchMessage).join(" • ");
+      Alert.alert("Mot de passe invalide", itemized);
       return;
     }
 
@@ -85,7 +95,17 @@ export default function SignUpScreen() {
     try {
       const { error } = await signUpWithEmail(email.trim(), password, fullName.trim());
       if (error) {
-        Alert.alert("Sign Up Failed", error.message);
+        if (isPwnedRejection(error)) {
+          Alert.alert("Mot de passe invalide", getPwnedFrenchMessage());
+        } else {
+          const mapped = mapSupabaseWeakPasswordError(error, password);
+          if (mapped && mapped.length > 0) {
+            const itemized = mapped.map(passwordPolicyReasonToFrenchMessage).join(" • ");
+            Alert.alert("Mot de passe invalide", itemized);
+          } else {
+            Alert.alert("Sign Up Failed", error.message);
+          }
+        }
       } else {
         Alert.alert(
           "Check Your Email",
@@ -243,7 +263,7 @@ export default function SignUpScreen() {
                   🔒
                 </Text>
                 <TextInput
-                  placeholder="Mot de passe (min. 6 caractères)"
+                  placeholder="Mot de passe (min. 10 caractères)"
                   placeholderTextColor={Colors.textTertiary}
                   value={password}
                   onChangeText={setPassword}
@@ -251,10 +271,11 @@ export default function SignUpScreen() {
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
                   accessibilityLabel="Password"
-                  accessibilityHint="Enter a password with at least 6 characters"
+                  accessibilityHint="Enter a password with at least 10 characters and one uppercase, one lowercase, and one digit"
                   className="flex-1 text-[15px] text-primary p-0"
                 />
               </View>
+              <PasswordStrengthIndicator password={password} />
             </View>
 
             {/* Primary Button */}
