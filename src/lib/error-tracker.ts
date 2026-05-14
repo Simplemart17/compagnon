@@ -1,9 +1,45 @@
 import { supabase } from "./supabase";
-import { chatCompletionJSON } from "./openai";
+import { chatCompletionJSON, generateEmbedding } from "./openai";
 import { addBreadcrumb, captureError } from "./sentry";
 import { MICRO_DRILL_THRESHOLD } from "./constants";
 import { sanitizeMemoryContent } from "./memory";
 import { errorPatternBatchSchema, microDrillSchema } from "./schemas/ai-responses";
+
+/**
+ * Cosine-similarity threshold for semantic dedup of error patterns (Story 11-6 / P1-21).
+ * Strict `>` comparison in the `match_error_pattern` RPC — at exact 0.85 → NO match.
+ * Operator-spec'd in `_bmad-output/planning-artifacts/shippable-roadmap.md` line 186.
+ */
+export const ERROR_PATTERN_SIMILARITY_THRESHOLD = 0.85;
+
+/**
+ * Expected embedding dimension for `text-embedding-3-small` (and the
+ * `error_patterns.embedding` column type `VECTOR(1536)`). A vector with a
+ * different length cannot be persisted; `trackError` validates this
+ * post-`generateEmbedding` and falls back to string-equality dedup on mismatch.
+ */
+export const EMBEDDING_DIMENSION = 1536;
+
+/**
+ * Validate that an embedding vector is well-shaped before sending it to the
+ * RPC / INSERT. P1 + P2 review-round-1 patches:
+ *   - P1: reject empty `[]` (API success-with-no-data) or wrong-dim arrays
+ *         (a future `dimensions` API param override would return ≠ 1536).
+ *   - P2: reject NaN / Infinity components — `JSON.stringify` would emit
+ *         `"null"` for those and the Postgres VECTOR cast would fail.
+ *
+ * Pure: no I/O, no logging. Returns `true` iff the array is a 1536-long
+ * Float32-castable sequence with all finite components.
+ */
+export function isValidEmbedding(vec: unknown): vec is number[] {
+  if (!Array.isArray(vec)) return false;
+  if (vec.length !== EMBEDDING_DIMENSION) return false;
+  for (let i = 0; i < vec.length; i++) {
+    const x = vec[i];
+    if (typeof x !== "number" || !Number.isFinite(x)) return false;
+  }
+  return true;
+}
 
 /** Error types that get tracked */
 export type ErrorType = "grammar" | "pronunciation" | "vocabulary" | "register";
@@ -41,6 +77,30 @@ export interface ErrorPattern {
  * `extractErrorsFromCorrections`) inherits the 300-char cap and injection-token
  * strip — matches the CLAUDE.md "called on every write" contract.
  *
+ * Story 11-6 dedup pipeline (closes audit P1-21):
+ *
+ *   1. Sanitize description (300-char cap + injection-token strip).
+ *   2. Generate an embedding for the sanitized description (`generateEmbedding`).
+ *      Ordering is load-bearing: the embedding represents the sanitized stored
+ *      text, NOT the pre-sanitized text — same invariant as `persistMemories`
+ *      at `src/lib/memory.ts` (Story 11-5).
+ *   3. Validate the embedding shape via `isValidEmbedding` (P1+P2: rejects
+ *      empty arrays, wrong-dim arrays, and NaN/Infinity components — any of
+ *      which would have failed the Postgres VECTOR cast at the RPC).
+ *   4. Call `match_error_pattern` RPC — hybrid WHERE clause matches both
+ *      embedding rows (cosine > 0.85) AND legacy NULL-embedding rows (exact
+ *      string-equality fallback). Returns at most one row (the best match).
+ *   5. On RPC match → UPDATE `occurrences + 1` + `last_occurred`. On no match
+ *      → INSERT new row WITH the embedding column populated.
+ *
+ * Fail-OPEN policy: `generateEmbedding` rejection / invalid embedding shape /
+ * RPC error / fallback Postgres error all route through `addBreadcrumb` at
+ * `warning` level (P6 review-round-1 patch — these are operational signals,
+ * not crashes) and fall back to pre-11-6 string-equality dedup. The user's
+ * error tracking is uninterrupted on these failures — same policy as Story
+ * 11-4's Postgres-error fail-OPEN in `checkRateLimit`. Only truly unexpected
+ * exceptions (P4 top-level catch) route through `captureError`.
+ *
  * Returns silently if `errorType` is not a known literal or if `description`
  * sanitizes to the empty string (sanitization-driven drops are not anomalies
  * and are not captured to Sentry).
@@ -50,51 +110,176 @@ export async function trackError(
   errorType: ErrorType,
   description: string
 ): Promise<void> {
-  // Defensive runtime checks — keep behavior consistent across all callers.
-  if (!ERROR_TYPES.has(errorType)) return;
-  const safeDescription = typeof description === "string" ? sanitizeMemoryContent(description) : "";
-  if (safeDescription.length === 0) return;
+  // P4: top-level try/catch — ensures an unexpected throw doesn't escape and
+  // abort a `persistErrorPatterns` loop mid-batch. Same defense as Story 11-5's
+  // `Promise.allSettled` per-slot isolation.
+  try {
+    // Defensive runtime checks — keep behavior consistent across all callers.
+    if (!ERROR_TYPES.has(errorType)) return;
+    const safeDescription =
+      typeof description === "string" ? sanitizeMemoryContent(description) : "";
+    if (safeDescription.length === 0) return;
 
-  // Check if this error pattern already exists
-  const { data: existing } = await supabase
-    .from("error_patterns")
-    .select("id, occurrences")
-    .eq("user_id", userId)
-    .eq("error_type", errorType)
-    .eq("error_description", safeDescription)
-    .eq("resolved", false)
-    .maybeSingle();
-
-  if (existing) {
-    // Increment occurrences
-    const { error: updateError } = await supabase
-      .from("error_patterns")
-      .update({
-        occurrences: existing.occurrences + 1,
-        last_occurred: new Date().toISOString(),
-      })
-      .eq("id", existing.id);
-
-    if (updateError) {
-      captureError(updateError, "track-error-update", {
-        errorType,
-        description: safeDescription,
+    // 1. Generate embedding (fail-OPEN). Ordering invariant: sanitize → embed.
+    let queryEmbedding: number[] | null = null;
+    try {
+      const raw = await generateEmbedding(safeDescription);
+      // P1+P2: shape guard. Empty `[]` / wrong-dim / NaN / Infinity all fail
+      // the Postgres VECTOR(1536) cast — treat as embedding-unavailable and
+      // fall back to string-equality dedup rather than burning an RPC call.
+      if (isValidEmbedding(raw)) {
+        queryEmbedding = raw;
+      } else {
+        addBreadcrumb({
+          category: "ai",
+          level: "warning",
+          message: "trackError: generateEmbedding returned malformed vector",
+          data: { feature: "track-error-embedding", errorType, description: safeDescription },
+        });
+      }
+    } catch (err) {
+      // P6: addBreadcrumb (warning-level) instead of captureError (error-level).
+      // P7: include description in the breadcrumb data for operator visibility.
+      const errMsg = err instanceof Error ? err.message : String(err);
+      addBreadcrumb({
+        category: "ai",
+        level: "warning",
+        message: `trackError: generateEmbedding failed: ${errMsg.slice(0, 80)}`,
+        data: { feature: "track-error-embedding", errorType, description: safeDescription },
       });
+      // Fall through to string-equality dedup below.
     }
-  } else {
-    // Create new error pattern
-    const { error: insertError } = await supabase.from("error_patterns").insert({
-      user_id: userId,
-      error_type: errorType,
-      error_description: safeDescription,
-    });
 
-    if (insertError) {
-      captureError(insertError, "track-error-insert", {
-        errorType,
-        description: safeDescription,
+    // 2. Try embedding-first dedup via the hybrid RPC.
+    let existing: { id: string; occurrences: number } | null = null;
+    if (queryEmbedding !== null) {
+      const { data, error: rpcError } = await supabase.rpc("match_error_pattern", {
+        p_error_type: errorType,
+        p_error_description: safeDescription,
+        p_query_embedding: JSON.stringify(queryEmbedding),
+        p_threshold: ERROR_PATTERN_SIMILARITY_THRESHOLD,
       });
+      if (rpcError) {
+        // P6: addBreadcrumb (warning) for fail-OPEN. P12: PostgrestError isn't an Error
+        // instance — Sentry can drop or mis-frame it; breadcrumb avoids the issue
+        // entirely. P7: include description.
+        addBreadcrumb({
+          category: "ai",
+          level: "warning",
+          message: `trackError: match_error_pattern RPC error: ${rpcError.message?.slice(0, 80) ?? "unknown"}`,
+          data: { feature: "track-error-rpc", errorType, description: safeDescription },
+        });
+        // Fall through to string-equality fallback below.
+      } else if (Array.isArray(data) && data.length > 0) {
+        // P5: validate row shape before trusting fields.
+        const row = data[0] as { id?: unknown; occurrences?: unknown };
+        if (typeof row.id === "string" && typeof row.occurrences === "number") {
+          existing = { id: row.id, occurrences: row.occurrences };
+        } else {
+          addBreadcrumb({
+            category: "ai",
+            level: "warning",
+            message: "trackError: match_error_pattern RPC returned malformed row",
+            data: { feature: "track-error-rpc", errorType, description: safeDescription },
+          });
+        }
+      }
     }
+
+    // 3. Fallback dedup (no embedding OR no RPC match): pre-11-6 string-equality.
+    //    Re-runs even when embedding succeeded but the RPC found no match — defends
+    //    against a brand-new write while a concurrent legacy row exists with the
+    //    same exact string but no embedding yet (Arm 2 of the RPC handles this,
+    //    but the fallback is also belt-and-braces for the post-RPC-error path).
+    if (existing === null) {
+      const { data: fallbackRow, error: fallbackError } = await supabase
+        .from("error_patterns")
+        .select("id, occurrences")
+        .eq("user_id", userId)
+        .eq("error_type", errorType)
+        .eq("error_description", safeDescription)
+        .eq("resolved", false)
+        .maybeSingle();
+      if (fallbackError) {
+        // P6+P7+P12: warning-level breadcrumb (not captureError); include description.
+        addBreadcrumb({
+          category: "ai",
+          level: "warning",
+          message: `trackError: fallback string-eq query failed: ${fallbackError.message?.slice(0, 80) ?? "unknown"}`,
+          data: { feature: "track-error-fallback", errorType, description: safeDescription },
+        });
+      } else if (fallbackRow) {
+        // P5: validate fallbackRow shape.
+        const fb = fallbackRow as { id?: unknown; occurrences?: unknown };
+        if (typeof fb.id === "string" && typeof fb.occurrences === "number") {
+          existing = { id: fb.id, occurrences: fb.occurrences };
+        } else {
+          addBreadcrumb({
+            category: "ai",
+            level: "warning",
+            message: "trackError: fallback string-eq returned malformed row",
+            data: { feature: "track-error-fallback", errorType, description: safeDescription },
+          });
+        }
+      }
+    }
+
+    // 4. Either UPDATE existing OR INSERT new (with embedding if we have one).
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("error_patterns")
+        .update({
+          occurrences: existing.occurrences + 1,
+          last_occurred: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        // UPDATE/INSERT failures stay captureError-level — these are
+        // unexpected DB write failures, not the embedding-vendor-hiccup class
+        // that P6 reclassifies. Preserves the pre-11-6 contract for these
+        // routes. `captureError` accepts `unknown` and wraps to Error
+        // internally (closes P12 — no client-side wrap needed).
+        captureError(updateError, "track-error-update", {
+          errorType,
+          description: safeDescription,
+        });
+      }
+    } else {
+      // Conditionally include the embedding column. ABSENT when we don't have one
+      // (NOT `null`, NOT `undefined` — keeps Supabase happy + lets legacy-style
+      // fallback rows stay NULL-embedding so future writes can match via Arm 2).
+      const insertPayload: {
+        user_id: string;
+        error_type: ErrorType;
+        error_description: string;
+        embedding?: string;
+      } = {
+        user_id: userId,
+        error_type: errorType,
+        error_description: safeDescription,
+      };
+      if (queryEmbedding !== null) {
+        insertPayload.embedding = JSON.stringify(queryEmbedding);
+      }
+      const { error: insertError } = await supabase.from("error_patterns").insert(insertPayload);
+
+      if (insertError) {
+        captureError(insertError, "track-error-insert", {
+          errorType,
+          description: safeDescription,
+        });
+      }
+    }
+  } catch (unexpected) {
+    // P4: top-level guard. Any unforeseen throw (sanitizer regex engine
+    // exception, JSON.stringify on a circular vector, etc.) routes here so
+    // `persistErrorPatterns` keeps processing the rest of the batch.
+    captureError(
+      unexpected instanceof Error ? unexpected : new Error(String(unexpected)),
+      "track-error-unexpected",
+      { errorType }
+    );
   }
 }
 

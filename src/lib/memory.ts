@@ -113,8 +113,21 @@ const MEMORY_TYPES: ReadonlySet<MemoryType> = new Set(
  */
 const ZERO_WIDTH_CHARS = /[​-‏⁠‪-‮⁦-⁩﻿­]/g;
 
-/** Fragment of REDACTED_INJECTION_MARKER for stripping a partial trailing marker. */
-const PARTIAL_MARKER_TAIL = /\[redacted:[a-z-]*$/;
+/**
+ * Fragment of REDACTED_INJECTION_MARKER for stripping a partial trailing marker.
+ *
+ * Exported so downstream truncation helpers (Story 11-7 `truncateToBytes` in
+ * `src/lib/prompts/conversation.ts`) share the same source of truth — if a
+ * future operator changes `REDACTED_INJECTION_MARKER`'s character class (e.g.,
+ * adds digits or uppercase tags), both call sites pick up the change without
+ * a silent partial-tail leak.
+ *
+ * Pattern matches the canonical marker `[redacted:instruction-like]` plus any
+ * lowercase + hyphen tail; current character class is `[a-z-]*` to mirror the
+ * marker's existing format. Case-insensitive flag is defensive only — the
+ * marker source is lowercase.
+ */
+export const PARTIAL_MARKER_TAIL = /\[redacted:[a-z-]*$/i;
 
 /**
  * Strip instruction-like substrings, normalize, and cap to MAX_MEMORY_CHARS.
@@ -177,6 +190,11 @@ export function sanitizeMemoryContent(input: string): string {
     const code = out.charCodeAt(cut - 1);
     if (code >= 0xd800 && code <= 0xdbff) cut -= 1;
     out = out.slice(0, cut);
+    // Reset .lastIndex on the shared regex before each replace — the `i` flag
+    // promotion in Story 11-7 means the regex object is stateful only when used
+    // with `g`, but we use `replace` (non-stateful) so the reset is belt-and-
+    // braces against future flag changes.
+    PARTIAL_MARKER_TAIL.lastIndex = 0;
     out = out.replace(PARTIAL_MARKER_TAIL, "").trimEnd();
   }
   return out;

@@ -7,20 +7,102 @@
 // (Story 10-4 / `docs/tcf-spec-source.md §7.2`). The block is built from
 // constant-time module exports — no user input flows in, so the Story 9-4
 // defense holds without additional sanitisation.
-import { sanitizeMemoryContent } from "@/src/lib/memory";
+import { PARTIAL_MARKER_TAIL, sanitizeMemoryContent } from "@/src/lib/memory";
 import { buildVocabularyConstraintBlock } from "@/src/lib/prompts/vocabulary-tiers";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { ConversationMode } from "@/src/types/conversation";
 
 /**
- * Cap the count of user-derived items rendered into the system prompt.
- * Prevents an attacker from ballooning prompt token count via the memory store
- * (or, more pedestrianly, from drowning the "treat as data" prelude in noise
- * across an unbounded list). 20 items is comfortable for a long-running
- * companion while keeping each conversation prompt bounded. Per-item char
- * truncation is owned by Epic 11.7.
+ * Max memories rendered into the conversation system prompt (Story 11-7).
+ * Spec value per `_bmad-output/planning-artifacts/shippable-roadmap.md` line 187.
+ * Caps the user-derived tail so TTFT for the first AI turn after `session.update`
+ * doesn't grow with the user's memory-store size. Replaces the pre-11-7
+ * `MAX_PROMPT_USER_ITEMS = 20` shared cap (deleted; "delete don't alias" per
+ * Story 10-2 / 11-3 / 11-4 / 11-5 / 11-6).
  */
-const MAX_PROMPT_USER_ITEMS = 20;
+export const MAX_PROMPT_MEMORIES = 3;
+
+/**
+ * Max error patterns rendered into the conversation system prompt (Story 11-7).
+ * Same rationale + spec source as `MAX_PROMPT_MEMORIES`. Story 11-6's hybrid
+ * dedupe (`match_error_pattern` RPC) guarantees these are 3 distinct mistakes,
+ * not 3 near-duplicates.
+ */
+export const MAX_PROMPT_ERROR_PATTERNS = 3;
+
+/**
+ * Max bytes (UTF-16 code units) per item rendered into the conversation system
+ * prompt (Story 11-7). Applied AFTER `sanitizeMemoryContent` so Story 9-4
+ * injection-strip + 300-char storage cap run first; the 80-byte cap is a
+ * PROMPT-INJECTION-ONLY bound — does NOT affect storage (the
+ * `companion_memory.content` + `error_patterns.error_description` columns
+ * keep their full sanitized text). Spec value per roadmap.
+ */
+export const MAX_PROMPT_ITEM_CHARS = 80;
+
+/**
+ * Truncate `text` to at most `max` UTF-16 code units. Predictable hard slice
+ * with no ellipsis marker, no word-boundary heuristics — predictability +
+ * minimal output tax beats prettier cuts.
+ *
+ * **NAMING WARNING**: this is "Bytes" by historical convention but operates
+ * on UTF-16 code units, not UTF-8 bytes. For ASCII + most Latin-1 text the
+ * distinction is invisible; for emoji / supplementary-plane chars (2 code
+ * units each) and 4-byte-UTF-8-encoded chars the cap is operator-friendly
+ * rather than wire-bound. If you need a strict UTF-8 byte budget (rare in
+ * this codebase), use `TextEncoder.encode(text).byteLength` and budget
+ * separately — `max` here is purely the count of `text.charAt(i)` slots.
+ *
+ * Three defensive guards (the first two mirror `sanitizeMemoryContent` from
+ * `src/lib/memory.ts`):
+ *   1. Surrogate-pair backoff: if the cut lands on EITHER half of a UTF-16
+ *      surrogate pair (high 0xD800-0xDBFF OR low 0xDC00-0xDFFF — Story 11-7
+ *      review patch P3 widened from high-only), back off by 1 so we never
+ *      emit a lone surrogate (which breaks JSON + UTF-8). Catches both the
+ *      well-formed-emoji-spans-the-cut case AND the malformed-lone-low-
+ *      surrogate-input case.
+ *   2. Partial-marker tail strip: shared `PARTIAL_MARKER_TAIL` regex from
+ *      `memory.ts` (Story 11-7 review patch P2 — single source of truth so
+ *      a future operator change to `REDACTED_INJECTION_MARKER`'s character
+ *      class doesn't silently leak a partial tail through this helper).
+ *   3. `max <= 0` short-circuit (Story 11-7 review patch P1): pre-patch
+ *      `cut = max ≤ 0` plus `charCodeAt(-1) === NaN` skipped the surrogate
+ *      backoff and `slice(0, -1)` silently dropped the last character of
+ *      the input. Post-patch returns `""` immediately for `max <= 0`.
+ *
+ * **NOT GUARDED** (operator-acceptable scope — documented but not fixed in
+ * v1): combining marks (e.g., `é` = `e + U+0301`). A cut at byte N can
+ * orphan a combining diacritic at position N-1 from its base char at N-2.
+ * For English-pattern memory + error-pattern text this is rare enough to
+ * defer; if future French-only or Arabic-only prompts use NFD-form text,
+ * widen the guard.
+ *
+ * Pure: no I/O, no logging. Idempotent for inputs ≤ max:
+ *   `truncateToBytes(truncateToBytes(s, n), n) === truncateToBytes(s, n)`.
+ *
+ * Non-string inputs are returned verbatim (defensive — let the caller fail
+ * downstream if they really mis-typed). Same `typeof` guard as
+ * `sanitizeMemoryContent`.
+ */
+export function truncateToBytes(text: string, max: number): string {
+  if (typeof text !== "string") return text;
+  // P1: defensive guard for non-positive max — preempts the `charCodeAt(-1)
+  // === NaN` + `slice(0, negative)` silent-drop pathology.
+  if (max <= 0) return "";
+  if (text.length <= max) return text;
+  let cut = max;
+  const code = text.charCodeAt(cut - 1);
+  // P3: back off for EITHER half of a surrogate pair — pre-patch only the
+  // high-half check fired, leaving lone-low-surrogate malformed input
+  // un-handled.
+  if ((code >= 0xd800 && code <= 0xdbff) || (code >= 0xdc00 && code <= 0xdfff)) {
+    cut -= 1;
+  }
+  let out = text.slice(0, cut);
+  // P2: shared regex from memory.ts — single source of truth.
+  out = out.replace(PARTIAL_MARKER_TAIL, "").trimEnd();
+  return out;
+}
 
 /** Build the system prompt for the conversation companion */
 export function buildConversationPrompt(params: {
@@ -152,7 +234,9 @@ After all 3 tasks, provide a detailed evaluation:
     const safeMemories = memories
       .map(sanitizeMemoryContent)
       .filter((m) => m.length > 0)
-      .slice(0, MAX_PROMPT_USER_ITEMS);
+      .slice(0, MAX_PROMPT_MEMORIES)
+      .map((m) => truncateToBytes(m, MAX_PROMPT_ITEM_CHARS))
+      .filter((m) => m.length > 0); // defensive: drop truncate-to-empty edge case
     if (safeMemories.length > 0) {
       prompt += `
 
@@ -172,7 +256,9 @@ ${safeMemories.map((m) => `- ${m}`).join("\n")}
     const safeErrors = errorPatterns
       .map(sanitizeMemoryContent)
       .filter((e) => e.length > 0)
-      .slice(0, MAX_PROMPT_USER_ITEMS);
+      .slice(0, MAX_PROMPT_ERROR_PATTERNS)
+      .map((e) => truncateToBytes(e, MAX_PROMPT_ITEM_CHARS))
+      .filter((e) => e.length > 0); // defensive: drop truncate-to-empty edge case
     if (safeErrors.length > 0) {
       prompt += `
 

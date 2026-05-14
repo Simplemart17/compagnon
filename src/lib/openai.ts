@@ -16,11 +16,64 @@ type ChatMessage = {
   content: string;
 };
 
-const MAX_RETRIES = 2;
-const RETRY_DELAYS = [1000, 2000]; // ms delay before each retry
+/**
+ * Network-retry budget shared across all 4 AI helpers (Story 11-8 / Epic 11.8).
+ * Each helper's transient-error retry loop runs at most `MAX_RETRIES`
+ * additional attempts (so `MAX_RETRIES + 1` total attempts including the
+ * original call). Story 11-3's server-side `fetchWithTimeout` is per-attempt:
+ * worst-case end-to-end latency = `(MAX_RETRIES + 1) × per-attempt-timeout +
+ * Σ RETRY_DELAYS`. Pre-11-8 only `chatCompletion` used this budget; TTS /
+ * Whisper / embeddings used a local `maxRetries = 1` (deleted, not aliased).
+ *
+ * P6 review-round-1 patch: this JSDoc is now the SINGLE anchor referenced by
+ * the other helpers' JSDocs (via "see MAX_RETRIES"); per-helper JSDocs no
+ * longer hardcode the literal "2" so bumping this value propagates cleanly.
+ */
+export const MAX_RETRIES = 2;
 
-/** Whether an error is retryable (network/server issues, not auth/validation) */
-function isRetryable(error: unknown): boolean {
+/**
+ * Per-attempt backoff delays in ms, indexed by attempt count (0-indexed).
+ * Story 11-8: all 4 helpers consume the same schedule for operator symmetry.
+ * Pre-11-8 TTS / Whisper / embedding used a fixed `sleep(1000)`.
+ *
+ * P7 review-round-1 patch: `Object.freeze`'d so a consumer mutating
+ * `RETRY_DELAYS.push(4000)` can't silently corrupt the schedule for all 4
+ * helpers globally. Test pins `Object.isFrozen(RETRY_DELAYS) === true`.
+ *
+ * `?? RETRY_DELAYS[RETRY_DELAYS.length - 1]` fallback at the consumption site
+ * protects against future `MAX_RETRIES` bumps to 3+ that out-pace this array.
+ */
+export const RETRY_DELAYS: readonly number[] = Object.freeze([1000, 2000]) as readonly number[];
+
+/**
+ * The four canonical retryable-empty-response error messages emitted by the
+ * 4 AI helpers in this module. Story 11-8 review patch P1: the previous
+ * `msg.includes("empty")` substring match was too broad — would have
+ * spuriously retried legitimate non-recoverable errors that coincidentally
+ * contain the word "empty" (e.g., "OpenAI error: empty quota", "Empty
+ * request body — 400", "Authentication failed: empty token cookie"). The
+ * exact-match allowlist below is the precise contract.
+ */
+const RETRYABLE_EMPTY_MESSAGES: ReadonlySet<string> = new Set([
+  "empty ai response",
+  "empty tts response",
+  "empty transcription response",
+  "empty embedding response",
+]);
+
+/**
+ * Whether an error is retryable (network/server issues, not auth/validation).
+ *
+ * Story 11-8: the 4 canonical empty-response sentinels are also retryable
+ * (a 200-with-empty-body upstream stutter recovers via the retry loop). The
+ * match is exact-message (review patch P1) not substring — see
+ * `RETRYABLE_EMPTY_MESSAGES`.
+ *
+ * P8 review-round-1 patch: exported so runtime tests can assert the matrix
+ * of (message, expected-retryable) pairs directly instead of relying on
+ * source-string grep.
+ */
+export function isRetryable(error: unknown): boolean {
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
     return (
@@ -31,7 +84,10 @@ function isRetryable(error: unknown): boolean {
       msg.includes("502") ||
       msg.includes("503") ||
       msg.includes("429") ||
-      msg.includes("rate limit")
+      msg.includes("rate limit") ||
+      // Story 11-8 + review patch P1: exact-match against the canonical
+      // sentinel set, NOT a substring check.
+      RETRYABLE_EMPTY_MESSAGES.has(msg)
     );
   }
   return false;
@@ -101,8 +157,21 @@ export async function chatCompletion(
       }
       if (data?.error) throw new Error(`OpenAI error: ${data.error}`);
 
-      const content = data?.choices?.[0]?.message?.content ?? "";
-      if (!content && options?.responseFormat === "json_object") {
+      // Story 11-8 review patch P10: drop the `?? ""` default so `content` is
+      // `string | undefined`, making the `typeof` check below meaningful (pre-
+      // patch the default coerced everything to a string, leaving the typeof
+      // branch unreachable — a future refactor that removed the default would
+      // have silently mis-handled non-string upstream values).
+      const content: unknown = data?.choices?.[0]?.message?.content;
+      // Story 11-8 (+ review patch P9): empty-response check applies to ALL
+      // response formats. P9: use `/\S/u` regex instead of `.trim().length`
+      // so Unicode whitespace categories (U+00A0 NBSP, U+2028 line separator,
+      // U+2029 paragraph separator, etc.) are also detected as empty.
+      // `.trim()` is ASCII-whitespace-only on older JS engines and could leak
+      // visually-empty responses through. Throws "Empty AI response" which
+      // matches the canonical-sentinel set in `isRetryable` so a one-shot
+      // upstream stutter becomes a retry instead of a failure.
+      if (typeof content !== "string" || !/\S/u.test(content)) {
         throw new Error("Empty AI response");
       }
 
@@ -269,7 +338,16 @@ export async function chatCompletionJSON<T>(
 /** Azure French neural voice (server maps short name → full Azure voice name) */
 export type FrenchVoice = "denise" | "henri" | "vivienne" | "brigitte" | "remy" | "eloise";
 
-/** Generate speech audio from text using Azure Neural TTS (returns Base64 string) */
+/**
+ * Generate speech audio from text using Azure Neural TTS (returns Base64 string).
+ *
+ * Story 11-8: retry budget bumped from local `maxRetries = 1` to shared
+ * `MAX_RETRIES` (see constant above) for parity with `chatCompletion`.
+ * Backoff schedule adopts the shared `RETRY_DELAYS` exponential schedule
+ * instead of the pre-11-8 fixed `sleep(1000)`. New empty-Blob and
+ * empty-string-fallback checks throw "Empty TTS response" which is
+ * retryable via the `RETRYABLE_EMPTY_MESSAGES` allowlist in `isRetryable`.
+ */
 export async function generateSpeech(
   text: string,
   options?: {
@@ -279,7 +357,7 @@ export async function generateSpeech(
 ): Promise<string> {
   await requireNetwork();
 
-  const maxRetries = 1;
+  const maxRetries = MAX_RETRIES;
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -299,6 +377,12 @@ export async function generateSpeech(
       if (data instanceof Blob) {
         const buffer = await data.arrayBuffer();
         const bytes = new Uint8Array(buffer);
+        // Story 11-8: empty-Blob check — Azure 200-with-zero-byte-body is rare
+        // but possible; would silently propagate empty base64 to the audio
+        // player → silent UI failure or crash.
+        if (bytes.length === 0) {
+          throw new Error("Empty TTS response");
+        }
         let binary = "";
         for (let i = 0; i < bytes.length; i++) {
           binary += String.fromCharCode(bytes[i]);
@@ -306,14 +390,20 @@ export async function generateSpeech(
         return btoa(binary);
       }
 
-      if (typeof data === "string") return data;
+      if (typeof data === "string") {
+        // Story 11-8: empty-string fallback check.
+        if (data.length === 0) {
+          throw new Error("Empty TTS response");
+        }
+        return data;
+      }
 
       throw new Error("Unexpected TTS response format");
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
 
       if (attempt < maxRetries && isRetryable(lastError)) {
-        await sleep(1000);
+        await sleep(RETRY_DELAYS[attempt] ?? 2000);
         continue;
       }
 
@@ -324,14 +414,23 @@ export async function generateSpeech(
   throw lastError ?? new Error("TTS request failed");
 }
 
-/** Transcribe audio using OpenAI Whisper (returns transcription text) */
+/**
+ * Transcribe audio using OpenAI Whisper (returns transcription text).
+ *
+ * Story 11-8: retry budget bumped from local `maxRetries = 1` to shared
+ * `MAX_RETRIES` (see constant above) for parity. Backoff schedule adopts
+ * `RETRY_DELAYS`. The pre-existing empty-text check ("Empty transcription
+ * response") is unchanged in message but is now in the
+ * `RETRYABLE_EMPTY_MESSAGES` allowlist, so a previously non-retried Whisper
+ * empty-text response is now retried up to `MAX_RETRIES` times with backoff.
+ */
 export async function transcribeAudio(
   audioBase64: string,
   language: string = "fr"
 ): Promise<string> {
   await requireNetwork();
 
-  const maxRetries = 1;
+  const maxRetries = MAX_RETRIES;
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -357,7 +456,7 @@ export async function transcribeAudio(
       lastError = err instanceof Error ? err : new Error(String(err));
 
       if (attempt < maxRetries && isRetryable(lastError)) {
-        await sleep(1000);
+        await sleep(RETRY_DELAYS[attempt] ?? 2000);
         continue;
       }
 
@@ -368,11 +467,30 @@ export async function transcribeAudio(
   throw lastError ?? new Error("Transcription request failed");
 }
 
-/** Generate text embeddings for companion memory */
+/**
+ * Generate text embeddings for companion memory.
+ *
+ * Story 11-8: retry budget bumped from local `maxRetries = 1` to shared
+ * `MAX_RETRIES` (see constant above) for parity. Backoff schedule adopts
+ * `RETRY_DELAYS`. Pre-11-8 silently returned `?? []` on missing data —
+ * that empty array propagated through `persistMemories` to Postgres
+ * `JSON.stringify([])` → VECTOR(1536) cast rejection (delayed write
+ * failure noise). Post-11-8 the boundary throws "Empty embedding response"
+ * which is in the `RETRYABLE_EMPTY_MESSAGES` allowlist consumed by
+ * `isRetryable`.
+ *
+ * Two-layer defense preserved: Story 11-6 `isValidEmbedding` at
+ * `error-tracker.ts` is the consumer-side check (verifies length === 1536
+ * + every component is finite). This boundary throw is the coarse-grain
+ * "non-empty array" gate; the consumer check catches wrong-dim / NaN /
+ * Infinity. Both stay layered (review patch P5 adds an explicit test that
+ * imports `isValidEmbedding` and proves it still rejects a 5-element array
+ * the boundary accepts).
+ */
 export async function generateEmbedding(text: string): Promise<number[]> {
   await requireNetwork();
 
-  const maxRetries = 1;
+  const maxRetries = MAX_RETRIES;
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -387,12 +505,26 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       if (error) throw new Error(`Embedding error: ${error.message}`);
       if (data?.error) throw new Error(`OpenAI error: ${data.error}`);
 
-      return data?.data?.[0]?.embedding ?? [];
+      // Story 11-8: replace silent `?? []` return with explicit throw.
+      // P2 review-round-1 patch: validate `data?.data` is an Array BEFORE
+      // indexing — pre-patch a shape-drift like `data: { data: { 0: ... } }`
+      // (plain object with numeric keys) would still pass through the
+      // optional chain and reach the embedding-length check via undefined,
+      // emitting "Empty embedding response" with no signal that the shape
+      // was wrong. The explicit array check makes shape drift fail loudly.
+      if (!Array.isArray(data?.data)) {
+        throw new Error("Empty embedding response");
+      }
+      const embedding = data.data[0]?.embedding;
+      if (!Array.isArray(embedding) || embedding.length === 0) {
+        throw new Error("Empty embedding response");
+      }
+      return embedding;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
 
       if (attempt < maxRetries && isRetryable(lastError)) {
-        await sleep(1000);
+        await sleep(RETRY_DELAYS[attempt] ?? 2000);
         continue;
       }
 
