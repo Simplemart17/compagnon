@@ -1,6 +1,6 @@
 # Story 13.5: History Modal FlatList — replace `ScrollView.map` with virtualized `FlatList` so 500-message transcripts don't render all bubbles at once
 
-Status: review
+Status: done
 
 ## Story
 
