@@ -1,6 +1,6 @@
 # Story 13.7: className+style Resolution on Hot Animated Rows — collapse the mixed-prop merge cost on `ConversationCard`, `TodayPlanItem`, `SkillCard`, `StatTile`, and `AnimatedMessage`
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
