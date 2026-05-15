@@ -19,4 +19,16 @@ module.exports = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
   },
+  // Force Jest worker exit after the suite completes. Several React Native
+  // 3rd-party native modules (e.g. `@sentry/react-native`'s
+  // `AsyncExpiringMap` cleanup `setInterval`, `expo-modules-core` runtime
+  // bindings) install unref-less timers / handles at module-load time and
+  // never tear them down — causing "A worker process has failed to exit
+  // gracefully" warnings + 5-10s teardown stalls. The structural Sentry
+  // mock in `jest.setup.js` catches the largest offender; `forceExit`
+  // covers the remaining 3rd-party residue without masking real test
+  // leaks (per-test cleanup via `afterEach` + `jest.clearAllMocks` is
+  // unchanged). Matches jest-expo's recommended config for projects that
+  // import native-module-backed packages at the test boundary.
+  forceExit: true,
 };

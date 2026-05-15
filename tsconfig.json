@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "jsxImportSource": "nativewind",
+    "types": ["jest", "node"],
     "paths": {
       "@/*": ["./*"]
     }

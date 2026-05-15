@@ -33,25 +33,19 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import { useRealtimeVoice } from "@/src/hooks/use-realtime-voice";
+import { useSessionFeedbackAggregate } from "@/src/hooks/use-session-feedback-aggregate";
 import { useAuthStore } from "@/src/store/auth-store";
 import { hapticLight, hapticMedium } from "@/src/lib/haptics";
 import { retrieveMemories } from "@/src/lib/memory";
 import { getTopErrors } from "@/src/lib/error-tracker";
 import { MAX_PROMPT_ERROR_PATTERNS, MAX_PROMPT_MEMORIES } from "@/src/lib/prompts/conversation";
 import { captureError } from "@/src/lib/sentry";
-import { supabase } from "@/src/lib/supabase";
 import { AudioWaveform } from "@/src/components/conversation/AudioWaveform";
 import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
 import { ProcessingIndicator } from "@/src/components/conversation/ProcessingIndicator";
-import {
-  SessionComparison,
-  type SessionComparisonMetric,
-} from "@/src/components/feedback/SessionComparison";
-import {
-  MilestoneBanner,
-  type MilestoneBannerProps,
-} from "@/src/components/feedback/MilestoneBanner";
+import { SessionComparison } from "@/src/components/feedback/SessionComparison";
+import { MilestoneBanner } from "@/src/components/feedback/MilestoneBanner";
 import { ErrorJourneyBar } from "@/src/components/home/ErrorJourneyBar";
 import type { ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
@@ -169,18 +163,10 @@ export default function ConversationSessionScreen() {
   const [showTextInput, setShowTextInput] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const hasNavigatedDisconnect = useRef(false);
-  const [comparisonMetrics, setComparisonMetrics] = useState<SessionComparisonMetric[] | null>(
-    null
-  );
-  const [milestone, setMilestone] = useState<MilestoneBannerProps | null>(null);
-  const [errorJourney, setErrorJourney] = useState<{ total: number; resolved: number } | null>(
-    null
-  );
-  const [nextAction, setNextAction] = useState<{
-    label: string;
-    route: string;
-    params?: Record<string, string>;
-  } | null>(null);
+  // Story 13-3: the 4 pieces of feedback-aggregation state (comparisonMetrics,
+  // milestone, errorJourney, nextAction) are now derived inside the
+  // `useSessionFeedbackAggregate` hook below from a single RPC call instead
+  // of 4 separate useEffect waterfalls / 6 round-trips. Closes audit P2-4.
   const [preConversationCefrLevel, setPreConversationCefrLevel] = useState<string | null>(null);
   const cefrCapturedRef = useRef(false);
 
@@ -238,274 +224,22 @@ export default function ConversationSessionScreen() {
     },
   });
 
-  // Fetch previous session for comparison when feedback becomes available
-  useEffect(() => {
-    if (!conversation.feedback || !conversation.conversationId || !user?.id) return;
-
-    const currentConversationId = conversation.conversationId;
-    const currentFeedback = conversation.feedback;
-
-    void (async () => {
-      try {
-        const { data: prev } = await supabase
-          .from("conversations")
-          .select("ai_feedback, duration_seconds, completed_at")
-          .eq("user_id", user.id)
-          .eq("status", "completed")
-          .neq("id", currentConversationId)
-          .order("completed_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (!prev) {
-          setComparisonMetrics(null);
-          return;
-        }
-
-        // Hide comparison if previous session was > 21 days ago (3+ weeks absence)
-        if (prev.completed_at) {
-          const daysSince =
-            (Date.now() - new Date(prev.completed_at).getTime()) / (1000 * 60 * 60 * 24);
-          if (daysSince > 21) {
-            setComparisonMetrics(null);
-            return;
-          }
-        }
-
-        const prevFeedback = prev.ai_feedback as {
-          fluencyRating?: number;
-          grammarRating?: number;
-        } | null;
-
-        if (prevFeedback?.fluencyRating == null || prevFeedback?.grammarRating == null) {
-          setComparisonMetrics(null);
-          return;
-        }
-
-        const direction = (current: number, previous: number): "up" | "down" | "same" =>
-          current > previous ? "up" : current < previous ? "down" : "same";
-
-        const formatMinutes = (seconds: number): string => {
-          const m = Math.round(seconds / 60);
-          return m < 1 ? "< 1m" : `${m}m`;
-        };
-
-        setComparisonMetrics([
-          {
-            label: "Fluency",
-            previous: `${prevFeedback.fluencyRating}/5`,
-            current: `${currentFeedback.fluencyRating}/5`,
-            direction: direction(currentFeedback.fluencyRating, prevFeedback.fluencyRating),
-          },
-          {
-            label: "Grammar",
-            previous: `${prevFeedback.grammarRating}/5`,
-            current: `${currentFeedback.grammarRating}/5`,
-            direction: direction(currentFeedback.grammarRating, prevFeedback.grammarRating),
-          },
-          {
-            label: "Duration",
-            previous: formatMinutes(prev.duration_seconds ?? 0),
-            current: formatMinutes(conversation.durationSeconds),
-            direction: direction(conversation.durationSeconds, prev.duration_seconds ?? 0),
-          },
-        ]);
-      } catch (err) {
-        captureError(err, "session-comparison-fetch");
-        setComparisonMetrics(null);
-      }
-    })();
-  }, [conversation.feedback, conversation.conversationId, conversation.durationSeconds, user?.id]);
-
-  // Detect milestones (personal best, error resolution, CEFR promotion) when feedback arrives
-  useEffect(() => {
-    if (!conversation.feedback || !conversation.conversationId || !user?.id) return;
-
-    const currentConversationId = conversation.conversationId;
-    const currentFeedback = conversation.feedback;
-
-    void (async () => {
-      try {
-        // --- CEFR promotion detection (highest priority) ---
-        if (preConversationCefrLevel) {
-          const { data: updatedProfile } = await supabase
-            .from("profiles")
-            .select("current_cefr_level")
-            .eq("id", user.id)
-            .single();
-
-          if (updatedProfile && updatedProfile.current_cefr_level !== preConversationCefrLevel) {
-            setMilestone({
-              icon: "\uD83C\uDF1F",
-              title: "CEFR Promotion!",
-              subtitle: `Welcome to ${updatedProfile.current_cefr_level}!`,
-              type: "cefr_promotion",
-            });
-            return;
-          }
-        }
-
-        // --- Personal best detection (second priority) ---
-        const { data: allPrev } = await supabase
-          .from("conversations")
-          .select("ai_feedback")
-          .eq("user_id", user.id)
-          .eq("status", "completed")
-          .neq("id", currentConversationId);
-
-        if (allPrev && allPrev.length > 0) {
-          let maxFluency = 0;
-          let maxGrammar = 0;
-
-          for (const row of allPrev) {
-            const fb = row.ai_feedback as {
-              fluencyRating?: number;
-              grammarRating?: number;
-            } | null;
-            if (fb?.fluencyRating != null && fb.fluencyRating > maxFluency) {
-              maxFluency = fb.fluencyRating;
-            }
-            if (fb?.grammarRating != null && fb.grammarRating > maxGrammar) {
-              maxGrammar = fb.grammarRating;
-            }
-          }
-
-          const fluencyBest = currentFeedback.fluencyRating > maxFluency && maxFluency > 0;
-          const grammarBest = currentFeedback.grammarRating > maxGrammar && maxGrammar > 0;
-
-          if (fluencyBest || grammarBest) {
-            const subtitle =
-              fluencyBest && grammarBest
-                ? `Fluency ${currentFeedback.fluencyRating}/5 & Grammar ${currentFeedback.grammarRating}/5`
-                : fluencyBest
-                  ? `Your best fluency score: ${currentFeedback.fluencyRating}/5`
-                  : `Your best grammar score: ${currentFeedback.grammarRating}/5`;
-            setMilestone({
-              icon: "\uD83C\uDFC6",
-              title: "New Personal Best!",
-              subtitle,
-              type: "personal_best",
-            });
-            return;
-          }
-        }
-
-        // --- Error resolution detection (third priority) ---
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const { data: resolvedErrors } = await supabase
-          .from("error_patterns")
-          .select("error_description")
-          .eq("user_id", user.id)
-          .eq("resolved", true)
-          .gte("last_occurred", fiveMinutesAgo)
-          .order("last_occurred", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (resolvedErrors) {
-          setMilestone({
-            icon: "\uD83C\uDFAF",
-            title: "Pattern Resolved!",
-            subtitle: resolvedErrors.error_description,
-            type: "error_resolved",
-          });
-          return;
-        }
-
-        setMilestone(null);
-      } catch (err) {
-        captureError(err, "milestone-detection");
-        setMilestone(null);
-      }
-    })();
-  }, [conversation.feedback, conversation.conversationId, user?.id, preConversationCefrLevel]);
-
-  // Fetch error journey counts when feedback arrives
-  useEffect(() => {
-    if (!conversation.feedback || !user?.id) return;
-
-    void (async () => {
-      try {
-        const { count: totalCount, error: totalError } = await supabase
-          .from("error_patterns")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id);
-
-        if (totalError) {
-          captureError(totalError, "error-journey-total-query");
-          setErrorJourney(null);
-          return;
-        }
-
-        if (totalCount == null || totalCount === 0) {
-          setErrorJourney(null);
-          return;
-        }
-
-        const { count: resolvedCount, error: resolvedError } = await supabase
-          .from("error_patterns")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("resolved", true);
-
-        if (resolvedError) {
-          captureError(resolvedError, "error-journey-resolved-query");
-        }
-
-        setErrorJourney({ total: totalCount, resolved: resolvedCount ?? 0 });
-      } catch (err) {
-        captureError(err, "error-journey-fetch");
-        setErrorJourney(null);
-      }
-    })();
-  }, [conversation.feedback, user?.id]);
-
-  // Derive contextual next action from feedback
-  useEffect(() => {
-    if (!conversation.feedback) return;
-
-    const corrections = conversation.allCorrections ?? [];
-
-    // Count correction categories for structured matching
-    const categoryCounts = { pronunciation: 0, grammar: 0, vocabulary: 0, register: 0 };
-    for (const c of corrections) {
-      if (typeof c !== "string" && c.category) {
-        categoryCounts[c.category] = (categoryCounts[c.category] ?? 0) + 1;
-      }
-    }
-
-    // Also check improvements text for keywords (covers cases without structured corrections)
-    const improvementsText = (conversation.feedback.improvements ?? []).join(" ").toLowerCase();
-
-    if (
-      categoryCounts.pronunciation > 0 ||
-      improvementsText.includes("prononciation") ||
-      improvementsText.includes("pronunciation") ||
-      improvementsText.includes("accent")
-    ) {
-      setNextAction({ label: "Practice Pronunciation", route: "/(tabs)/practice/pronunciation" });
-    } else if (
-      categoryCounts.grammar > 0 ||
-      improvementsText.includes("grammar") ||
-      improvementsText.includes("grammaire")
-    ) {
-      const firstGrammarError = corrections.find(
-        (c) => typeof c !== "string" && c.category === "grammar"
-      );
-      setNextAction({
-        label: "Review Grammar",
-        route: "/(tabs)/practice/grammar",
-        params:
-          firstGrammarError && typeof firstGrammarError !== "string"
-            ? { errorType: firstGrammarError.explanation }
-            : undefined,
-      });
-    } else if (categoryCounts.vocabulary > 0 || improvementsText.includes("vocabul")) {
-      setNextAction({ label: "Review Vocabulary", route: "/(tabs)/practice/vocabulary" });
-    } else {
-      setNextAction({ label: "Continue Practicing", route: "/(tabs)/practice" });
-    }
-  }, [conversation.feedback, conversation.allCorrections]);
+  // Story 13-3: single chokepoint replacing the pre-13-3 4-effect waterfall
+  // (~220 lines of inline session-comparison + milestone-detection + error-
+  // journey + next-action logic). Closes audit P2-4. Server-side aggregate
+  // returns max scalars instead of N JSONB rows; single COUNT(*) FILTER
+  // atomic snapshot for error_counts (Story 13-2 P2 race-fix mirror);
+  // server-side 21-day + 5-min cutoffs (pre-13-3 client-side filter-after-
+  // fetch). Hook return shape byte-identical to the 4 pre-13-3 useState
+  // pieces — the JSX consumer below doesn't change.
+  const { comparisonMetrics, milestone, errorJourney, nextAction } = useSessionFeedbackAggregate({
+    userId: user?.id,
+    conversationId: conversation.conversationId,
+    preConversationCefrLevel,
+    currentFeedback: conversation.feedback,
+    currentDurationSeconds: conversation.durationSeconds,
+    allCorrections: conversation.allCorrections,
+  });
 
   // Prevent accidental back navigation during active conversation
   useEffect(() => {
