@@ -1,0 +1,135 @@
+/**
+ * Story 13-2 — `retrieveDailyGreetingMemories` module-level embedding cache tests
+ * (audit P2-5 partial closure).
+ *
+ * Pins:
+ *   - First call generates embedding + caches it.
+ *   - Second+ calls within same module lifetime reuse the cached embedding
+ *     (NO second `generateEmbedding` call).
+ *   - `match_memories` RPC fires on EVERY call (the cache is for the
+ *     embedding, not the result).
+ *   - `__resetDailyGreetingEmbeddingForTests` clears the cache.
+ *   - Runtime guard: `__resetDailyGreetingEmbeddingForTests` throws in
+ *     non-test environments (Story 12-2 P11 / Story 12-5 / Story 12-7 pattern).
+ *   - Story 9-4 sanitizeMemoryContent invariant preserved at read-time on
+ *     every returned memory string.
+ */
+
+import { __resetDailyGreetingEmbeddingForTests, retrieveDailyGreetingMemories } from "../memory";
+
+const mockGenerateEmbedding = jest.fn();
+jest.mock("../openai", () => ({
+  __esModule: true,
+  generateEmbedding: (...args: unknown[]) => mockGenerateEmbedding(...args),
+  chatCompletion: jest.fn(),
+  chatCompletionJSON: jest.fn(),
+}));
+
+const mockRpc = jest.fn();
+const mockFrom = jest.fn();
+jest.mock("../supabase", () => ({
+  __esModule: true,
+  supabase: {
+    rpc: (...args: unknown[]) => mockRpc(...args),
+    from: (...args: unknown[]) => mockFrom(...args),
+  },
+}));
+
+const FAKE_EMBEDDING = new Array(1536).fill(0).map((_, i) => i / 1536);
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  __resetDailyGreetingEmbeddingForTests();
+  mockGenerateEmbedding.mockResolvedValue(FAKE_EMBEDDING);
+  mockRpc.mockResolvedValue({
+    data: [{ content: "user is learning French for TCF" }],
+    error: null,
+  });
+});
+
+describe("retrieveDailyGreetingMemories — Story 13-2 embedding memoization", () => {
+  it("Case 1: first call invokes generateEmbedding('daily greeting')", async () => {
+    await retrieveDailyGreetingMemories("user-123", 3);
+
+    expect(mockGenerateEmbedding).toHaveBeenCalledTimes(1);
+    expect(mockGenerateEmbedding).toHaveBeenCalledWith("daily greeting");
+  });
+
+  it("Case 2: second call REUSES cached embedding (no second generateEmbedding call)", async () => {
+    await retrieveDailyGreetingMemories("user-123", 3);
+    await retrieveDailyGreetingMemories("user-123", 3);
+    await retrieveDailyGreetingMemories("user-456", 3); // different user — same cache
+
+    expect(mockGenerateEmbedding).toHaveBeenCalledTimes(1);
+  });
+
+  it("Case 3: match_memories RPC fires on EVERY call (cache is for embedding, not result)", async () => {
+    await retrieveDailyGreetingMemories("user-123", 3);
+    await retrieveDailyGreetingMemories("user-123", 3);
+    await retrieveDailyGreetingMemories("user-123", 3);
+
+    const rpcCalls = mockRpc.mock.calls.filter((args) => args[0] === "match_memories");
+    expect(rpcCalls.length).toBe(3);
+  });
+
+  it("Case 4: match_memories receives the cached embedding as query_embedding", async () => {
+    await retrieveDailyGreetingMemories("user-123", 3);
+
+    const rpcCall = mockRpc.mock.calls.find((args) => args[0] === "match_memories");
+    expect(rpcCall).toBeDefined();
+    const args = rpcCall![1] as { query_embedding: string; match_count: number };
+    expect(args.match_count).toBe(3);
+    expect(JSON.parse(args.query_embedding)).toEqual(FAKE_EMBEDDING);
+  });
+
+  it("Case 5: returns sanitized memory contents (Story 9-4 read-time invariant)", async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: [
+        { content: "first memory" },
+        { content: "" }, // empty after sanitize → filtered out
+        { content: "third memory" },
+      ],
+      error: null,
+    });
+
+    const result = await retrieveDailyGreetingMemories("user-123", 3);
+
+    expect(result.length).toBe(2);
+    expect(result).toContain("first memory");
+    expect(result).toContain("third memory");
+  });
+
+  it("Case 6: __resetDailyGreetingEmbeddingForTests clears the cache", async () => {
+    await retrieveDailyGreetingMemories("user-123", 3);
+    expect(mockGenerateEmbedding).toHaveBeenCalledTimes(1);
+
+    __resetDailyGreetingEmbeddingForTests();
+
+    await retrieveDailyGreetingMemories("user-123", 3);
+    expect(mockGenerateEmbedding).toHaveBeenCalledTimes(2); // cache miss after reset
+  });
+
+  it("Case 7: __resetDailyGreetingEmbeddingForTests throws in non-test environment", () => {
+    const originalEnv = process.env.NODE_ENV;
+    try {
+      // Bypass the narrowed-union type by going through a Record<string, string>
+      // view of process.env. The runtime guard inside the helper reads via
+      // `process.env.NODE_ENV !== "test"` — independent of TypeScript's
+      // narrowing.
+      (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+      expect(() => __resetDailyGreetingEmbeddingForTests()).toThrow(
+        "__resetDailyGreetingEmbeddingForTests is test-only"
+      );
+    } finally {
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
+    }
+  });
+
+  it("Case 8: limit defaults to 3 when omitted", async () => {
+    await retrieveDailyGreetingMemories("user-123");
+
+    const rpcCall = mockRpc.mock.calls.find((args) => args[0] === "match_memories");
+    const args = rpcCall![1] as { match_count: number };
+    expect(args.match_count).toBe(3);
+  });
+});
