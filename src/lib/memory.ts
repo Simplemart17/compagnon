@@ -331,6 +331,90 @@ export async function retrieveMemories(
     .filter((c) => c.length > 0);
 }
 
+// ---------------------------------------------------------------------------
+// Story 13-2: daily-greeting embedding memoization — closes audit P2-5 (partial)
+// ---------------------------------------------------------------------------
+
+/**
+ * Module-level cache for the embedding of the fixed string `"daily greeting"`.
+ * This is the ONE fixed-context embedding query in the codebase — topic-based
+ * `retrieveMemories` calls (conversation bootstrap with per-session topics)
+ * generate per-call embeddings and are NOT cached here.
+ *
+ * **Cache lifetime:** app launch. Cleared on hot reload / app kill — exactly
+ * the right granularity. First home mount of an app launch pays ~200ms for
+ * the embedding once; every subsequent mount in that launch is free.
+ *
+ * **Cache key:** none — the string `"daily greeting"` is fixed by design.
+ * If a future story needs multiple fixed-string memoizations, refactor to
+ * `Map<string, number[]>` keyed on the input string.
+ *
+ * **Cross-story invariants:**
+ * - Story 11-4 daily-cost-cap: REDUCES OpenAI embedding cost-ledger writes
+ *   (1 per launch vs N per session). The per-request `daily-cost-cap-pre-check`
+ *   flow at `supabase/functions/ai-proxy/index.ts` is unchanged.
+ * - Story 11-8 retry contract: `generateEmbedding` retries on transient
+ *   failures BEFORE the result is cached — only successful embeddings are
+ *   memoized.
+ */
+let dailyGreetingEmbeddingCache: number[] | null = null;
+
+/**
+ * Retrieve top memories matching the fixed `"daily greeting"` context.
+ * Identical to `retrieveMemories(userId, "daily greeting", limit)` except
+ * the embedding is cached at module level across calls (Story 13-2).
+ *
+ * On first call: `generateEmbedding("daily greeting")` runs + result cached.
+ * On subsequent calls: cached embedding is reused; only `match_memories`
+ * RPC fires.
+ *
+ * Same read-time `sanitizeMemoryContent` defense as `retrieveMemories`
+ * (Story 9-4 stored-prompt-injection invariant preserved).
+ */
+export async function retrieveDailyGreetingMemories(
+  userId: string,
+  limit: number = 3
+): Promise<string[]> {
+  if (dailyGreetingEmbeddingCache === null) {
+    dailyGreetingEmbeddingCache = await generateEmbedding("daily greeting");
+  }
+
+  const { data, error } = await supabase.rpc("match_memories", {
+    query_embedding: JSON.stringify(dailyGreetingEmbeddingCache),
+    match_count: limit,
+    match_threshold: 0.7,
+  });
+
+  if (error || !data) {
+    // Fallback: fetch recent memories without vector search (mirrors
+    // `retrieveMemories` behavior — Story 9-5 / 9-10 resilience pattern).
+    return fetchRecentMemories(userId, limit);
+  }
+
+  return (data as { content: string }[])
+    .map((m) => sanitizeMemoryContent(m.content))
+    .filter((c) => c.length > 0);
+}
+
+/**
+ * Test-only helper to clear the daily-greeting embedding cache. Enables
+ * test isolation between cases that check cache-hit vs cache-miss
+ * behavior. Throws in non-test environments — accidental production
+ * invocation would force a re-embedding next call (wasted cost) without
+ * any positive effect on correctness.
+ *
+ * Mirrors the Story 12-2 P11 / Story 12-5 / Story 12-7 `__reset*ForTests`
+ * pattern.
+ *
+ * @internal
+ */
+export function __resetDailyGreetingEmbeddingForTests(): void {
+  if (typeof process !== "undefined" && process.env.NODE_ENV !== "test") {
+    throw new Error("__resetDailyGreetingEmbeddingForTests is test-only");
+  }
+  dailyGreetingEmbeddingCache = null;
+}
+
 /** Fallback: fetch most recent memories for a user */
 async function fetchRecentMemories(userId: string, limit: number): Promise<string[]> {
   const { data } = await supabase
