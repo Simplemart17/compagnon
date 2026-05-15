@@ -76,12 +76,22 @@ function HookHost({
   return <Text>host</Text>;
 }
 
+/**
+ * Track every renderer created during a test so `afterEach` can unmount
+ * them. Without this, react-test-renderer keeps the root tree (with the
+ * hook's `useEffect` cleanup callbacks + the captured Supabase / Sentry
+ * mocks) alive past the test boundary → Jest's worker fails to exit
+ * gracefully ("worker process has failed to exit gracefully" warning).
+ */
+const activeRenderers: ReturnType<typeof create>[] = [];
+
 function renderHost(options: UseSessionFeedbackAggregateOptions) {
   const result: { current: UseSessionFeedbackAggregateReturn | null } = { current: null };
   let renderer: ReturnType<typeof create>;
   act(() => {
     renderer = create(<HookHost {...options} result={result} />);
   });
+  activeRenderers.push(renderer!);
   // Allow async microtask + state updates to settle.
   return { result, renderer: renderer! };
 }
@@ -95,6 +105,20 @@ async function flushAsync(): Promise<void> {
 
 beforeEach(() => {
   jest.clearAllMocks();
+});
+
+afterEach(() => {
+  for (const renderer of activeRenderers) {
+    try {
+      act(() => {
+        renderer.unmount();
+      });
+    } catch {
+      // Already-unmounted renderers (e.g. Case 14) throw on second unmount —
+      // safe to swallow; the goal is just to ensure no live tree lingers.
+    }
+  }
+  activeRenderers.length = 0;
 });
 
 describe("useSessionFeedbackAggregate — Story 13-3 hook contract (audit P2-4)", () => {
@@ -405,6 +429,7 @@ describe("useSessionFeedbackAggregate — Story 13-3 hook contract (audit P2-4)"
         />
       );
     });
+    activeRenderers.push(renderer!);
 
     // RPC is pending; state pieces are still initial (null).
     expect(result.current?.comparisonMetrics).toBeNull();
