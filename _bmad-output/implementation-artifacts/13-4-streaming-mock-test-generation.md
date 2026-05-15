@@ -1,6 +1,6 @@
 # Story 13.4: Streaming Mock-Test Generation — `useMockTestGeneration` hook parallelizes per-section AI calls so section 1 is playable while section 2 generates
 
-Status: review
+Status: done
 
 ## Story
 
