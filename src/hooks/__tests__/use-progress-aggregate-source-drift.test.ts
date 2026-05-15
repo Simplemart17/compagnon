@@ -54,7 +54,14 @@ describe("use-progress.ts — Story 13-2 source-drift detector (audit P2-5)", ()
   });
 
   it("Case 4: Sentry tag `progress-loading` preserved at the refresh-catch site", () => {
-    expect(HOOK_CODE_ONLY).toMatch(/captureError\([^)]*,\s*["']progress-loading["']\s*\)/);
+    // Story 13-2 review-round-1 P11: use string-literal-tolerant matching
+    // for the categorical-tag arg. Pre-patch `[^)]*` was stopped by any
+    // intermediate `)` (e.g., if a future refactor used
+    // `captureError(computeError(), "progress-loading")` the regex would
+    // fail). Just match the canonical short-tag string verbatim — that
+    // string only ever appears in captureError calls in this project.
+    expect(HOOK_CODE_ONLY).toMatch(/["']progress-loading["']/);
+    expect(HOOK_CODE_ONLY).toMatch(/captureError\s*\(/);
   });
 
   it("Case 5: `CACHE_KEYS.HOME_AGGREGATE` is invalidated on `logActivity`", () => {

@@ -64,10 +64,14 @@ describe("getHomeAggregate — Story 13-2 client helper", () => {
     await getHomeAggregate("user-123", "2026-05-14");
 
     expect(mockRpc).toHaveBeenCalledTimes(1);
-    expect(mockRpc).toHaveBeenCalledWith("get_home_aggregate", {
-      p_user_id: "user-123",
-      p_date: "2026-05-14",
-    });
+    // Story 13-2 review-round-1 P3: 3-arg RPC including p_now ISO string
+    // for SRS-due-cutoff consistency with the local-timezone p_date.
+    const [fnName, args] = mockRpc.mock.calls[0];
+    expect(fnName).toBe("get_home_aggregate");
+    expect(args.p_user_id).toBe("user-123");
+    expect(args.p_date).toBe("2026-05-14");
+    expect(typeof args.p_now).toBe("string");
+    expect(args.p_now).toMatch(/^\d{4}-\d{2}-\d{2}T/); // ISO 8601 timestamp
   });
 
   it("Case 2: returns the aggregate verbatim on success", async () => {
@@ -95,6 +99,43 @@ describe("getHomeAggregate — Story 13-2 client helper", () => {
     );
     expect(captureError).toHaveBeenCalledWith(expect.any(Error), "home-aggregate-fetch");
   });
+
+  // Story 13-2 review-round-1 P7: per-key rejection matrix. Pre-patch
+  // Case 4 only verified the generic "malformed shape" error message
+  // and ANY missing key. A future shape-guard reorder that accidentally
+  // accepted half-malformed payloads would still pass. Post-patch we
+  // explicitly verify EVERY top-level key triggers rejection when
+  // missing or malformed.
+  const keyRejectionMatrix: readonly { name: string; mutation: (v: HomeAggregate) => unknown }[] = [
+    { name: "skills not array", mutation: (v) => ({ ...v, skills: "x" }) },
+    {
+      name: "daily_activity_today wrong type",
+      mutation: (v) => ({ ...v, daily_activity_today: 5 }),
+    },
+    { name: "recent_activity missing", mutation: (v) => ({ ...v, recent_activity: undefined }) },
+    { name: "top_errors null (not array)", mutation: (v) => ({ ...v, top_errors: null }) },
+    { name: "streak_days as string", mutation: (v) => ({ ...v, streak_days: "7" }) },
+    { name: "weakest_skill wrong type", mutation: (v) => ({ ...v, weakest_skill: 42 }) },
+    { name: "srs_due_count null", mutation: (v) => ({ ...v, srs_due_count: null }) },
+    {
+      name: "error_counts missing total",
+      mutation: (v) => ({ ...v, error_counts: { resolved: 0 } }),
+    },
+    {
+      name: "error_counts missing resolved",
+      mutation: (v) => ({ ...v, error_counts: { total: 5 } }),
+    },
+    { name: "has_activity_today as integer", mutation: (v) => ({ ...v, has_activity_today: 1 }) },
+  ];
+  it.each(keyRejectionMatrix)(
+    "Case 4-matrix: rejects malformed shape — $name",
+    async ({ mutation }) => {
+      mockRpc.mockResolvedValueOnce({ data: mutation(validAggregate), error: null });
+      await expect(getHomeAggregate("user-123", "2026-05-14")).rejects.toThrow(
+        "get_home_aggregate returned malformed shape"
+      );
+    }
+  );
 });
 
 describe("isValidHomeAggregate — Story 13-2 shape guard", () => {

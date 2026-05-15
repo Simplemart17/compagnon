@@ -44,16 +44,17 @@ describe("use-daily-briefing.ts — Story 13-2 source-drift detector (audit P2-5
   });
 
   it("Case 3: POSITIVE — both `getHomeAggregate(` and `retrieveDailyGreetingMemories(` call sites present", () => {
-    expect(HOOK_CODE_ONLY).toMatch(
-      /getHomeAggregate\s*\(\s*userId\s*,\s*getLocalDateString\(\)\s*\)/
-    );
-    expect(HOOK_CODE_ONLY).toMatch(/retrieveDailyGreetingMemories\s*\(\s*userId\s*,\s*3\s*\)/);
+    // Story 13-2 review-round-1 P10: broaden regex to accept ANY identifier
+    // as the first arg (`\w+`) — pre-patch hardcoded `userId` which would
+    // miss benign renames like `currentUserId`. Story 12-12 M1 lesson.
+    expect(HOOK_CODE_ONLY).toMatch(/getHomeAggregate\s*\(\s*\w+\s*,\s*getLocalDateString\(\)\s*\)/);
+    expect(HOOK_CODE_ONLY).toMatch(/retrieveDailyGreetingMemories\s*\(\s*\w+\s*,\s*3\s*\)/);
   });
 
-  it('Case 4: NEGATIVE — pre-13-2 `retrieveMemories(userId, "daily greeting", ...)` is GONE', () => {
-    expect(HOOK_CODE_ONLY).not.toMatch(
-      /retrieveMemories\s*\(\s*userId\s*,\s*["']daily greeting["']/
-    );
+  it('Case 4: NEGATIVE — pre-13-2 `retrieveMemories(<any>, "daily greeting", ...)` is GONE', () => {
+    // P10: same broadening — `\w+` catches the pattern regardless of the
+    // identifier name a future refactor might use for the user-id.
+    expect(HOOK_CODE_ONLY).not.toMatch(/retrieveMemories\s*\(\s*\w+\s*,\s*["']daily greeting["']/);
   });
 
   it('Case 5: NEGATIVE — pre-13-2 inline `supabase.from("vocabulary")` SRS query is GONE', () => {
@@ -82,8 +83,14 @@ describe("use-daily-briefing.ts — Story 13-2 source-drift detector (audit P2-5
   });
 
   it("Case 9: Sentry tags preserved + new `daily-briefing-aggregate` tag added", () => {
-    expect(HOOK_CODE_ONLY).toMatch(/captureError\([^)]*,\s*["']daily-briefing-memories["']\s*\)/);
-    expect(HOOK_CODE_ONLY).toMatch(/captureError\([^)]*,\s*["']daily-briefing-aggregate["']\s*\)/);
+    // Story 13-2 review-round-1 P11: use string-literal-tolerant matching.
+    // Pre-patch `[^)]*` was stopped by any intermediate `)` (e.g., a
+    // future refactor with `captureError(computeError(), "tag")` would
+    // miss this guard). Match the categorical tag strings directly +
+    // require captureError to be invoked at least once anywhere.
+    expect(HOOK_CODE_ONLY).toMatch(/["']daily-briefing-memories["']/);
+    expect(HOOK_CODE_ONLY).toMatch(/["']daily-briefing-aggregate["']/);
+    expect(HOOK_CODE_ONLY).toMatch(/captureError\s*\(/);
   });
 
   it("Case 10: `CACHE_KEYS.HOME_AGGREGATE` used as the aggregate cache key", () => {

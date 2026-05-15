@@ -25,9 +25,13 @@ const MIGRATION_PATH = join(
 const SQL = readFileSync(MIGRATION_PATH, "utf-8");
 
 describe("get_home_aggregate RPC — Story 13-2 migration drift detector (audit P2-5)", () => {
-  it("Case 1: function signature `get_home_aggregate(p_user_id uuid, p_date date) RETURNS jsonb`", () => {
+  it("Case 1: function signature `get_home_aggregate(p_user_id uuid, p_date date, p_now timestamptz DEFAULT now())` RETURNS jsonb", () => {
+    // Story 13-2 review-round-1 P3: p_now parameter added so SRS-due
+    // cutoff shares "now" definition with the client's local-date. The
+    // DEFAULT now() preserves 2-arg-call back-compat via Postgres'
+    // default-argument resolution.
     expect(SQL).toMatch(
-      /CREATE OR REPLACE FUNCTION get_home_aggregate\(\s*p_user_id\s+uuid\s*,\s*p_date\s+date\s*\)\s+RETURNS\s+jsonb/i
+      /CREATE OR REPLACE FUNCTION get_home_aggregate\(\s*p_user_id\s+uuid\s*,\s*p_date\s+date\s*,\s*p_now\s+timestamptz\s+DEFAULT\s+now\(\)\s*\)\s+RETURNS\s+jsonb/i
     );
   });
 
@@ -42,9 +46,12 @@ describe("get_home_aggregate RPC — Story 13-2 migration drift detector (audit 
   });
 
   it("Case 4: REVOKE EXECUTE FROM PUBLIC + GRANT EXECUTE TO authenticated", () => {
-    expect(SQL).toMatch(/REVOKE EXECUTE ON FUNCTION get_home_aggregate\(uuid, date\) FROM PUBLIC/);
+    // Story 13-2 review-round-1 P3: signature now (uuid, date, timestamptz).
     expect(SQL).toMatch(
-      /GRANT EXECUTE ON FUNCTION get_home_aggregate\(uuid, date\) TO authenticated/
+      /REVOKE EXECUTE ON FUNCTION get_home_aggregate\(uuid, date, timestamptz\) FROM PUBLIC/
+    );
+    expect(SQL).toMatch(
+      /GRANT EXECUTE ON FUNCTION get_home_aggregate\(uuid, date, timestamptz\) TO authenticated/
     );
   });
 
@@ -89,9 +96,12 @@ describe("get_home_aggregate RPC — Story 13-2 migration drift detector (audit 
     expect(SQL).toMatch(/FROM skill_progress[\s\S]+?ORDER BY score ASC[\s\S]+?LIMIT\s+1/);
   });
 
-  it("Case 10: srs_due_count uses `next_review <= now()` predicate", () => {
+  it("Case 10: srs_due_count uses `next_review <= p_now` predicate (P3 fix)", () => {
+    // Story 13-2 review-round-1 P3: pre-patch used Postgres `now()` UTC,
+    // post-patch uses `p_now` from the client (local-timezone-consistent
+    // with `p_date`).
     expect(SQL).toMatch(
-      /FROM vocabulary\s+WHERE\s+user_id\s*=\s*p_user_id\s+AND\s+next_review\s*<=\s*now\(\)/
+      /FROM vocabulary\s+WHERE\s+user_id\s*=\s*p_user_id\s+AND\s+next_review\s*<=\s*p_now/
     );
   });
 
@@ -101,5 +111,26 @@ describe("get_home_aggregate RPC — Story 13-2 migration drift detector (audit 
 
   it("Case 12: recent_activity ORDER BY date DESC (most-recent first)", () => {
     expect(SQL).toMatch(/FROM daily_activity[\s\S]+?ORDER BY date DESC[\s\S]+?LIMIT\s+7/);
+  });
+
+  it("Case 13: error_counts uses single-query FILTER (P2 race fix)", () => {
+    // Story 13-2 review-round-1 P2: pre-patch used two separate SELECT
+    // COUNT(*) queries; concurrent UPDATE could produce `resolved > total`.
+    // Post-patch uses a single query with COUNT(*) FILTER (WHERE resolved
+    // = true) so both counts come from the same atomic scan.
+    expect(SQL).toMatch(/COUNT\(\*\)\s+FILTER\s*\(\s*WHERE\s+resolved\s*=\s*true\s*\)/);
+    // Negative guard: the two separate SELECT COUNT(*) queries are GONE.
+    expect(SQL).not.toMatch(
+      /SELECT\s+COUNT\(\*\)::integer\s+INTO\s+v_resolved_errors\s+FROM\s+error_patterns/
+    );
+  });
+
+  it("Case 14: p_now parameter wired to vocabulary WHERE clause (P3 fix)", () => {
+    // Story 13-2 review-round-1 P3: ensure the new parameter is actually
+    // consumed in the SRS-due-count query, not just declared and ignored.
+    const args = SQL.match(/get_home_aggregate\(\s*p_user_id[\s\S]*?\)\s+RETURNS/);
+    expect(args).not.toBeNull();
+    expect(args![0]).toMatch(/p_now\s+timestamptz/);
+    expect(SQL).toMatch(/next_review\s*<=\s*p_now/);
   });
 });
