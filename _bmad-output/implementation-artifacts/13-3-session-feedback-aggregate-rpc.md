@@ -1,6 +1,6 @@
 # Story 13.3: Session Feedback Aggregate RPC — single `get_session_feedback_aggregate` consolidating 4-effect waterfall
 
-Status: review
+Status: done
 
 ## Story
 
@@ -276,3 +276,57 @@ claude-opus-4-7[1m]
 - `supabase/functions/` — no Edge Function changes.
 - `.github/workflows/` — no CI workflow changes.
 - The downstream JSX consumers of `comparisonMetrics` / `milestone` / `errorJourney` / `nextAction` (the post-feedback panel render path) — destructured names byte-identical; render shape unchanged.
+
+### Senior Developer Review (AI) — Review-Round-1
+
+**Date:** 2026-05-14
+**Outcome:** APPROVE_WITH_NOTES → patches applied
+**Review layers:** Blind Hunter (~22 findings) + Edge Case Hunter (17 findings) + Acceptance Auditor (APPROVE_WITH_NOTES, 0 blocking violations) — run in parallel.
+**Triage:** 13 patches applied (HIGH × 4 + MED × 5 + LOW × 4); 13 deferred; 8 rejected as noise.
+
+**Patches applied:**
+
+- **P1 (HIGH) — Numeric-cast crash on non-numeric `ai_feedback->>'fluencyRating'`.** Pre-patch `MAX((ai_feedback->>'fluencyRating')::numeric)` over `conversations` rows would raise `invalid input syntax for type numeric` if any historical row carried a non-numeric value (string / array / object) for `fluencyRating` or `grammarRating` — killing the **entire RPC** (not just the max). Post-patch wraps the cast in `MAX(CASE WHEN jsonb_typeof(ai_feedback->'fluencyRating') = 'number' THEN (ai_feedback->>'fluencyRating')::numeric ELSE NULL END)` so non-numeric rows are silently skipped; `COALESCE(..., 0)` on the outer preserved. Migration drift Case 10 updated to pin the CASE pattern.
+
+- **P2 (HIGH) — Hook re-fires RPC on every parent re-render.** Pre-patch `useEffect` dep array included `currentFeedback` (a `ConversationFeedback` object); Story 12-1's orchestrator `getState()` returns a `Object.freeze({...})` shallow-cloned snapshot on EVERY observer notification, so `currentFeedback` had a fresh reference each parent render even when contents were identical → useEffect re-fired the RPC unnecessarily (defeats the consolidation win). Post-patch the dep array uses a `feedbackContentKey` string built from `fluencyRating + grammarRating + summary.length` so identity is content-based; RPC fires ONCE per content change.
+
+- **P3 (HIGH) — Same reference-instability bug in `nextAction`.** Pre-patch `nextAction` was driven by `useState` + `useCallback`(applyNextAction) + `useEffect` with `currentFeedback` + `allCorrections` deps; same fresh-reference-per-render issue caused `setNextAction` to re-run every parent render. Post-patch replaced with `useMemo` keyed on the same `feedbackContentKey` + corrections length — derives `nextAction` synchronously from inputs without state machinery (matches Story 12-1's frozen-snapshot semantics by construction). Removed `useCallback` + `useState` + the `applyNextAction` indirection.
+
+- **P4 (HIGH) — Duplicate `captureError`.** Pre-patch both the helper (`getSessionFeedbackAggregate` at the RPC error boundary) AND the hook's catch block fired `captureError(_, "session-feedback-aggregate-fetch")` for the same RPC failure → 2 Sentry events per real-world error. Post-patch hook's catch only sets fallback state; helper retains its single capture (no double-tracking).
+
+- **P5 (MED) — `p_pre_cefr_level` CEFR enum validation.** Pre-patch SQL accepted any text for `p_pre_cefr_level` (Story 12-3 P4 / P7 defense-in-depth pattern not applied). A client-side typo (`'B1.5'` / `'b1'` / `'beg'`) would produce a garbage `from` field in the cefr_promotion blob. Post-patch entry validates `p_pre_cefr_level IS NOT NULL AND p_pre_cefr_level NOT IN ('A1','A2','B1','B2','C1','C2')` and raises with `ERRCODE = 'invalid_parameter_value'`; defends against client-side regression bypassing validators. Migration drift Case 13 NEW pins the validation pattern.
+
+- **P6 (MED) — Dropped `[key: string]: unknown` from `SessionFeedbackAiFeedback`.** Pre-patch the index signature defeated structural typing — consumers could read arbitrary keys without compile errors. Post-patch narrowed to ONLY the 2 fields actually consumed (`fluencyRating` + `grammarRating`); other `ai_feedback` fields (`summary` / `strengths` / `improvements` / `vocabularyUsed`) belong to the full `ConversationFeedback` type at `@/src/types/conversation` and consumers needing those read the source row directly, not via this narrowed RPC-row shape.
+
+- **P7 (MED) — Broadened migration drift Case 9 regex** (Story 12-12 M1 lesson). Pre-patch the negative guard hardcoded `v_resolved_errors` variable name; a benign rename in a future migration would slip past unchecked. Post-patch uses `INTO \w+` so the pre-13-3 two-query pattern is detected regardless of variable name.
+
+- **P8 (MED) — NEW Case 14 deferred-resolve test for `mountedRef`.** Pre-patch the Story 12-9 stale-resolve-after-unmount guard was claimed in JSDoc but no test pinned it. Post-patch Case 14 uses a manually-resolvable Promise (`resolveAggregate` deferred outside the renderer), drives `act(() => renderer.unmount())` BEFORE resolving, then asserts no setState after unmount (no warning, no crash). Defends against a future refactor removing the `mountedRef` guard.
+
+- **P9 (LOW) — JSDoc tightening on `SessionFeedbackAiFeedback`.** Documents the P6 narrowing rationale + points consumers needing other `ai_feedback` fields to the full `ConversationFeedback` type at `@/src/types/conversation`.
+
+- **P10 (MED) — Case 6 stronger milestone assertions.** Pre-patch only checked `milestone?.type`; a future refactor returning the wrong title text (e.g., regression to "New personal best" for a non-best path) would have passed. Post-patch asserts `title` + `subtitle` content for the personal-best milestone path so a content-level regression fails the test.
+
+- **P11 (LOW) — NEW Case 8 NEGATIVE supabase-import guard** in screen source drift. Pre-patch the 5 NEGATIVE supabase.from-guards (Cases 3-5) ensured the 5 direct query forms are gone, but a future refactor re-introducing `import { supabase } from "@/src/lib/supabase"` for an unrelated reason (`supabase.auth.getSession()` etc.) would slip past those guards. Case 8 pins the import line itself.
+
+- **P12 (LOW) — SQL comment documenting 21-day cutoff inclusivity.** `completed_at >= p_now - INTERVAL '21 days'` is inclusive on the boundary day; a conversation exactly 21 days old IS included. Comment makes the implicit invariant explicit so future operator changes consider the semantics.
+
+- **P13 (LOW) — pgTAP test #7 order-independence.** Pre-patch test seeded prev conversations relative to a global setup, so a future test reordering could silently change MAX expectations. Post-patch `DELETE FROM conversations WHERE user_id = ...` before seeding (order-independent); expected MAX changed from 5 to 4 reflecting the deterministic post-DELETE seed.
+
+**Deferred (13):** BH/EC cache-race scenarios already addressed by `mountedRef` / RPC error UI surface (Story 12-11 Edge-only scope) / extra negative guard variants / cross-suite test isolation / vacuous derivation pins / nextAction async-ness back-compat / bracket-property drift bypass / Acceptance Auditor's 4 LOW "no action required" items / 3 perf-wording nits / SQL comment phrasing options.
+
+**Rejected as noise (8):** BH-5 (RPC was already Story 9-9 hardened — false alarm) / BH-9 (memo cache claim) / BH-12 (Sentry tag was already short categorical) / EC-3 (sanitizer dependency speculation) / EC-7 (unreachable-row claim) / EC-9 (TS-narrowing pre-existing) / AA-3 file-size hint / AA-4 test-count +1 drift.
+
+**Tests after round-1:** 1742 / 1742 passing (+3 net 1739 → 1742). All 4 quality gates green (type-check + lint + format-check + test 85 suites).
+
+**Files modified in round-1:**
+
+- `supabase/migrations/20260516000000_get_session_feedback_aggregate_rpc.sql` — P1 CASE wrap on MAX scalars + P5 CEFR enum validation + P12 21-day cutoff inclusivity comment.
+- `src/lib/session-feedback-aggregate.ts` — P6 `SessionFeedbackAiFeedback` narrowed (index signature dropped) + P9 JSDoc.
+- `src/hooks/use-session-feedback-aggregate.ts` — P2 `feedbackContentKey` content-key memoization + P3 `useMemo` for nextAction (deleted `useCallback` + `useState` + `applyNextAction`) + P4 removed duplicate `captureError`.
+- `src/lib/__tests__/get-session-feedback-aggregate-rpc-migration-drift.test.ts` — P1 Case 10 updated for CASE pattern + P5 NEW Case 13 (CEFR validation) + P7 Case 9 regex broadened.
+- `src/hooks/__tests__/use-session-feedback-aggregate.test.tsx` — P10 Case 6 strengthened (title + subtitle) + P8 NEW Case 14 (deferred-resolve mountedRef).
+- `app/(tabs)/conversation/__tests__/sessionId-aggregate-source-drift.test.ts` — P11 NEW Case 8 (supabase-import NEGATIVE guard).
+- `supabase/migrations/__tests__/get_session_feedback_aggregate_test.sql` — P13 test #7 order-independence (DELETE-before-seed + MAX pin).
+- `CLAUDE.md` — Story 13-3 review-round-1 paragraph appended.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — 13-3 round-1 annotation.
+- `_bmad-output/implementation-artifacts/13-3-session-feedback-aggregate-rpc.md` — this Senior Developer Review section.
