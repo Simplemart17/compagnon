@@ -310,9 +310,48 @@ claude-opus-4-7[1m]
 - `src/hooks/__tests__/use-daily-briefing-aggregate-source-drift.test.ts` — 10 source drift cases.
 - `supabase/migrations/__tests__/get_home_aggregate_test.sql` — 7 manual-run pgTAP-style assertions.
 
+### Senior Developer Review (AI) — Review-Round-1
+
+**Date:** 2026-05-14
+**Outcome:** APPROVE_WITH_NOTES → patches applied
+**Review layers:** Blind Hunter (~25 findings) + Edge Case Hunter (16 findings) + Acceptance Auditor (APPROVE_WITH_NOTES, 0 blocking violations) — run in parallel.
+**Triage:** 11 patches applied (HIGH × 3 + MED × 5 + LOW × 3); 12 deferred; 14 rejected as noise.
+
+**Patches applied:**
+
+- **P1 (HIGH) — Embedding-cache concurrent first-call race.** Two concurrent home mounts both observing `dailyGreetingEmbeddingCache === null` would each fire `generateEmbedding("daily greeting")` in parallel — Story 11-4 daily-cost-cap double-charged. Post-patch added `inFlightDailyGreetingEmbedding: Promise<number[]> | null` in-flight gate (mirrors Story 9-6 `flushWriteQueue` idempotency); single Promise shared across concurrent callers. New test Case 9 fires 3 concurrent calls before resolving the embedding + asserts exactly 1 `generateEmbedding` invocation.
+
+- **P2 (HIGH) — `error_counts` two-query race.** Pre-patch two separate `SELECT COUNT(*)` queries (total + resolved=true) could produce `resolved > total` under concurrent UPDATE; UI math `total - resolved` would return negative. Post-patch single query with `COUNT(*) FILTER (WHERE resolved = true)` atomic snapshot. Migration drift Case 13 pins the FILTER pattern + NEGATIVE guard against pre-patch.
+
+- **P3 (HIGH) — `srs_due_count` UTC/local-timezone inconsistency.** Pre-patch used Postgres `now()` UTC for SRS cutoff while `p_date` used client local timezone (Story 9-2 `getLocalDateString()`); near midnight users in non-UTC saw `has_activity_today=false` AND `srs_due_count` reflecting UTC-now in the same payload. Post-patch RPC signature gained `p_now timestamptz DEFAULT now()` parameter; client passes `new Date().toISOString()`; `next_review <= p_now` predicate. DEFAULT preserves 2-arg back-compat. Migration drift Cases 1 + 4 + 10 + 14 updated to pin the new signature + parameter wiring.
+
+- **P4 (MED) — `generateEmbedding` rejection silent.** Pre-patch a rejection propagated via throw → caller swallowed → silent fall-through to `fetchRecentMemories`; embedding failure invisible in production logs. Post-patch wrapped in catch with `captureError(err, "daily-greeting-embedding")` before rethrow inside the in-flight Promise. New test Case 10 asserts the Sentry routing.
+
+- **P5 (MED) — `ErrorPattern[]` unsafe cast.** Pre-patch `BriefingData.errorPatterns: ErrorPattern[]` with `as ErrorPattern[]` cast lied to TypeScript; `HomeAggregateError` omits `user_id` + `last_occurred` + `created_at` that `ErrorPattern` has. Structurally safe today (consumers only read `.id` + `.error_description`) but type-system lie. Post-patch narrowed to `HomeAggregateError[]`; cast removed; unused `ErrorPattern` import deleted.
+
+- **P6 (MED) — Legacy cache invalidation dead code.** Pre-patch `logActivity` invalidated 4 keys (3 legacy + HOME_AGGREGATE); `refreshAndInvalidate` invalidated 7 keys (5 legacy + 2 live). The 8 legacy invalidate calls were dead writes wasting AsyncStorage round-trips. Post-patch invalidates only the keys actually read post-13-2.
+
+- **P7 (MED) — Case 4 per-key rejection matrix.** Pre-patch only verified the generic "malformed shape" error message; a future shape-guard reorder accepting half-malformed payloads would still pass. Post-patch added `it.each` 10-case matrix verifying EVERY top-level key triggers rejection when missing or malformed.
+
+- **P8 (MED) — `isValidHomeAggregate` inner row validation.** Pre-patch only checked outer shape; a future RPC dropping `score` from a row would pass guard then crash on `.toFixed()`. Post-patch added per-row field-presence checks for `skills[*]` (5 fields), `top_errors[*]` (5 fields), `weakest_skill` (2 fields).
+
+- **P9 (LOW) — Case 5 sanitizer-stub.** Pre-patch relied on un-mocked `sanitizeMemoryContent("")` returning empty; a future Story 9-4 patch changing sanitizer behavior would silently break test intent. Post-patch switched to input strings the production sanitizer leaves alone (independent of sanitizer internals).
+
+- **P10 (LOW) — Drift regex `userId` → `\w+`.** Story 12-12 M1 lesson. Cases 3 + 4 in `use-daily-briefing-aggregate-source-drift.test.ts` broadened.
+
+- **P11 (LOW) — `captureError` regex multi-line tolerance.** Pre-patch `[^)]*` stopped at any intermediate `)`. Post-patch matches categorical tag strings directly + requires `captureError\s*\(` somewhere. Cases 4 (use-progress) + Case 9 (use-daily-briefing) updated.
+
+**Deferred (12):** cache race between hooks (BH-7); over-fetch top_errors 5 → slice 3 (BH-8); `mountedRef` guard (EC-5); RPC error leak (EC-11 — Story 12-11 Edge-only scope); BH-13 perf wording clarity; bracket-property drift bypass; vacuous sanitize pin; LIMIT magic numbers; shape-guard asymmetry doc; Fast Refresh quirk; invalidate→refresh 5min window; perf claim wording.
+
+**Rejected as noise (14):** BH-1 `score AS average_score` schema concern (verified column IS `score`); BH-2 / BH-3 / BH-4 / BH-6 (`SkillProgressData` cast — interfaces structurally match); BH-10 (Sentry allowlist verified); BH-13 (perf claim correct re: client wire-count); BH-15 (drift Case 5 regex passes); BH-18 (`@internal` runtime-guard sufficient); BH-21 / EC-2 (duplicate ORDER BY defensive); EC-8 (stale cache default reasonable); EC-15 (Fast Refresh dev-only); AA-1 file size 157 vs ~80 hint (defensible); AA-2 test count +51 vs +50 (`it.each` parameterization).
+
+**Tests after round-1:** 1687 / 1687 passing (+14 net 1673 → 1687). All 4 quality gates green.
+
+### File List
+
 **Modified files:**
 
-- `src/lib/memory.ts` — new `dailyGreetingEmbeddingCache` + `retrieveDailyGreetingMemories` + `__resetDailyGreetingEmbeddingForTests`. `retrieveMemories` byte-identical.
+- `src/lib/memory.ts` — new `dailyGreetingEmbeddingCache` + `retrieveDailyGreetingMemories` + `__resetDailyGreetingEmbeddingForTests`. `retrieveMemories` byte-identical. Round-1: added `inFlightDailyGreetingEmbedding` in-flight gate (P1); added `captureError` import + Sentry routing on rejection (P4).
 - `src/lib/cache.ts` — new `CACHE_KEYS.HOME_AGGREGATE` + `CACHE_TTL.HOME_AGGREGATE`.
 - `src/hooks/use-progress.ts` — 5-query `Promise.all` block replaced with single `cacheWithFallback<HomeAggregate>(...)` call.
 - `src/hooks/use-daily-briefing.ts` — 6-slot `Promise.allSettled` reduced to 2 entries (aggregate + memories).
