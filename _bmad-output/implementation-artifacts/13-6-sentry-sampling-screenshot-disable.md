@@ -1,6 +1,6 @@
 # Story 13.6: Sentry Sampling + Screenshot Disable — verify production-conservative config + tighten the perf-overhead Sentry SDK options
 
-Status: review
+Status: done
 
 ## Story
 
