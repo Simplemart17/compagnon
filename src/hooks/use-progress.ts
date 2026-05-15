@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cacheWithFallback, invalidateCache, CACHE_KEYS, CACHE_TTL } from "@/src/lib/cache";
 import { captureError } from "@/src/lib/sentry";
-import { supabase } from "@/src/lib/supabase";
+import { getHomeAggregate, type HomeAggregate } from "@/src/lib/home-aggregate";
 import { useAuthStore } from "@/src/store/auth-store";
 import { getLocalDateString, incrementDailyActivity, updateStreak } from "@/src/lib/activity";
 import type { TCFSkill } from "@/src/types/cefr";
@@ -75,100 +75,44 @@ export function useProgress(): UseProgressReturn {
     setState((s) => ({ ...s, isLoading: true }));
 
     try {
-      // Fetch all in parallel, each with its own cache fallback
-      const [skillsResult, todayResult, recentResult, errorsResult, streakResult] =
-        await Promise.all([
-          cacheWithFallback<SkillProgressData[]>(
-            user.id,
-            CACHE_KEYS.SKILLS,
-            async () => {
-              const { data, error } = await supabase
-                .from("skill_progress")
-                .select("*")
-                .eq("user_id", user.id);
-              if (error) throw error;
-              return (data ?? []) as SkillProgressData[];
-            },
-            CACHE_TTL.SKILLS
-          ),
-          cacheWithFallback<DailyActivityData | null>(
-            user.id,
-            CACHE_KEYS.DAILY_ACTIVITY_TODAY,
-            async () => {
-              const { data, error } = await supabase
-                .from("daily_activity")
-                .select("*")
-                .eq("user_id", user.id)
-                .eq("date", getLocalDateString())
-                .maybeSingle();
-              if (error) throw error;
-              return (data as DailyActivityData) ?? null;
-            },
-            CACHE_TTL.DAILY_ACTIVITY
-          ),
-          cacheWithFallback<DailyActivityData[]>(
-            user.id,
-            CACHE_KEYS.RECENT_ACTIVITY,
-            async () => {
-              const { data, error } = await supabase
-                .from("daily_activity")
-                .select("*")
-                .eq("user_id", user.id)
-                .order("date", { ascending: false })
-                .limit(7);
-              if (error) throw error;
-              return (data ?? []) as DailyActivityData[];
-            },
-            CACHE_TTL.DAILY_ACTIVITY
-          ),
-          cacheWithFallback<ErrorPatternData[]>(
-            user.id,
-            CACHE_KEYS.TOP_ERRORS,
-            async () => {
-              const { data, error } = await supabase
-                .from("error_patterns")
-                .select("*")
-                .eq("user_id", user.id)
-                .eq("resolved", false)
-                .order("occurrences", { ascending: false })
-                .limit(5);
-              if (error) throw error;
-              return (data ?? []) as ErrorPatternData[];
-            },
-            CACHE_TTL.ERRORS
-          ),
-          cacheWithFallback<number>(
-            user.id,
-            CACHE_KEYS.STREAK,
-            async () => {
-              const { data, error } = await supabase
-                .from("profiles")
-                .select("streak_days")
-                .eq("id", user.id)
-                .single();
-              if (error) throw error;
-              return data?.streak_days ?? 0;
-            },
-            CACHE_TTL.STREAK
-          ),
-        ]);
+      // Story 13-2: single aggregate RPC replaces 5 parallel queries (audit
+      // P2-5 closure). The pre-13-2 per-slot `Promise.all([cacheWithFallback × 5])`
+      // shape is DELETED ("delete don't alias" pattern). Skills + daily
+      // activity (today + recent) + top errors + streak now arrive in one
+      // round-trip. The hook's public `UseProgressReturn` shape is unchanged.
+      const aggregateResult = await cacheWithFallback<HomeAggregate>(
+        user.id,
+        CACHE_KEYS.HOME_AGGREGATE,
+        () => getHomeAggregate(user.id, getLocalDateString()),
+        CACHE_TTL.HOME_AGGREGATE
+      );
 
-      fromCacheRef.current =
-        skillsResult.fromCache ||
-        todayResult.fromCache ||
-        recentResult.fromCache ||
-        errorsResult.fromCache ||
-        streakResult.fromCache;
+      fromCacheRef.current = aggregateResult.fromCache;
 
-      setState({
-        skills: skillsResult.data ?? [],
-        todayActivity: todayResult.data ?? null,
-        recentActivity: recentResult.data ?? [],
-        topErrors: errorsResult.data ?? [],
-        streakDays: streakResult.data ?? 0,
-        isLoading: false,
-        error: fromCacheRef.current ? "Showing cached data (offline)" : null,
-      });
+      const agg = aggregateResult.data;
+      if (agg) {
+        setState({
+          skills: agg.skills as SkillProgressData[],
+          todayActivity: agg.daily_activity_today as DailyActivityData | null,
+          recentActivity: agg.recent_activity as DailyActivityData[],
+          topErrors: agg.top_errors as ErrorPatternData[],
+          streakDays: agg.streak_days,
+          isLoading: false,
+          error: fromCacheRef.current ? "Showing cached data (offline)" : null,
+        });
+      } else {
+        // Aggregate completely unavailable — both network AND cache miss.
+        // Preserve the existing empty-state UX.
+        setState({
+          skills: [],
+          todayActivity: null,
+          recentActivity: [],
+          topErrors: [],
+          streakDays: 0,
+          isLoading: false,
+          error: "Could not load your progress. Pull down to refresh.",
+        });
+      }
     } catch (err) {
       captureError(err, "progress-loading");
       setState((s) => ({
@@ -186,12 +130,14 @@ export function useProgress(): UseProgressReturn {
       try {
         await incrementDailyActivity(user.id, { minutes });
         await updateStreak(user.id);
-        // Invalidate caches that were just mutated
-        await Promise.all([
-          invalidateCache(user.id, CACHE_KEYS.DAILY_ACTIVITY_TODAY),
-          invalidateCache(user.id, CACHE_KEYS.RECENT_ACTIVITY),
-          invalidateCache(user.id, CACHE_KEYS.STREAK),
-        ]);
+        // Story 13-2 review-round-1 P6: only invalidate HOME_AGGREGATE.
+        // Pre-patch this list also invalidated DAILY_ACTIVITY_TODAY +
+        // RECENT_ACTIVITY + STREAK as "backward-compat eviction" — but
+        // those keys are no longer READ by any post-13-2 code path,
+        // making the 3 extra invalidateCache calls dead writes that
+        // wasted AsyncStorage round-trips. If a future refactor re-
+        // introduces those keys, it should re-add invalidation here.
+        await invalidateCache(user.id, CACHE_KEYS.HOME_AGGREGATE);
         await refresh();
       } catch (err) {
         captureError(err, "log-activity");

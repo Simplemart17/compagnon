@@ -12,13 +12,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cacheWithFallback, CACHE_KEYS, CACHE_TTL, invalidateCache } from "@/src/lib/cache";
 import { SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, SKILL_COLORS } from "@/src/lib/design";
-import { getTopErrors } from "@/src/lib/error-tracker";
-import { retrieveMemories, sanitizeMemoryContent } from "@/src/lib/memory";
+import {
+  getHomeAggregate,
+  type HomeAggregate,
+  type HomeAggregateError,
+} from "@/src/lib/home-aggregate";
+import { retrieveDailyGreetingMemories, sanitizeMemoryContent } from "@/src/lib/memory";
 import { captureError } from "@/src/lib/sentry";
-import { supabase } from "@/src/lib/supabase";
 import { getLocalDateString } from "@/src/lib/activity";
 import { useAuthStore } from "@/src/store/auth-store";
-import type { ErrorPattern } from "@/src/lib/error-tracker";
 import type { TCFSkill } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -68,7 +70,17 @@ interface BriefingData {
   memories: string[];
   srsDueCount: number;
   weakestSkill: WeakestSkill | null;
-  errorPatterns: ErrorPattern[];
+  /**
+   * Story 13-2 review-round-1 P5: typed as `HomeAggregateError[]` (the
+   * RPC's own row-shape) rather than the broader `ErrorPattern[]`. Pre-
+   * patch the cast `as ErrorPattern[]` lied to TypeScript — `HomeAggregateError`
+   * omits `user_id`, `last_occurred`, `created_at` that `ErrorPattern` has.
+   * The structural compatibility held today (consumers only read `.id`
+   * + `.error_description`, both in the narrower shape) but a future
+   * consumer reading `.last_occurred` would crash on undefined. Narrowing
+   * here keeps the type honest.
+   */
+  errorPatterns: HomeAggregateError[];
   hasActivityToday: boolean;
   totalErrors: number;
   resolvedErrors: number;
@@ -262,154 +274,72 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
     const userId = user.id;
     const firstName = extractFirstName(profile?.full_name ?? null);
 
-    // Fetch all data in parallel — individual failures don't block others
-    const [
-      memoriesResult,
-      srsResult,
-      weakestResult,
-      errorsResult,
-      activityResult,
-      errorCountsResult,
-    ] = await Promise.allSettled([
-      // 1. Companion memories
+    // Story 13-2: 6-slot Promise.allSettled DELETED ("delete don't alias"
+    // pattern). 5 of the 6 slots (SRS due / weakest skill / errors / today
+    // activity / error counts) are now backed by the single
+    // get_home_aggregate RPC; the memories slot uses retrieveDailyGreetingMemories
+    // with module-level embedding memoization. Net: 6 slots → 2; closes
+    // audit P2-5.
+    const [aggregateResult, memoriesResult] = await Promise.allSettled([
+      // 1. Home aggregate (shared with use-progress.ts via CACHE_KEYS.HOME_AGGREGATE)
+      cacheWithFallback<HomeAggregate>(
+        userId,
+        CACHE_KEYS.HOME_AGGREGATE,
+        () => getHomeAggregate(userId, getLocalDateString()),
+        CACHE_TTL.HOME_AGGREGATE
+      ),
+
+      // 2. Companion memories with module-level embedding cache
       cacheWithFallback<string[]>(
         userId,
         CACHE_KEYS.DAILY_BRIEFING,
-        () => retrieveMemories(userId, "daily greeting", 3),
+        () => retrieveDailyGreetingMemories(userId, 3),
         CACHE_TTL.DAILY_BRIEFING
-      ),
-
-      // 2. SRS due count
-      cacheWithFallback<number>(
-        userId,
-        CACHE_KEYS.SRS_DUE_COUNT,
-        async () => {
-          const { count } = await supabase
-            .from("vocabulary")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", userId)
-            .lte("next_review", new Date().toISOString());
-          return count ?? 0;
-        },
-        CACHE_TTL.SRS_DUE
-      ),
-
-      // 3. Weakest skill
-      cacheWithFallback<WeakestSkill | null>(
-        userId,
-        CACHE_KEYS.WEAKEST_SKILL,
-        async () => {
-          const { data } = await supabase
-            .from("skill_progress")
-            .select("skill, average_score")
-            .eq("user_id", userId)
-            .order("average_score", { ascending: true })
-            .limit(1);
-          if (data && data.length > 0) {
-            return data[0] as WeakestSkill;
-          }
-          return null;
-        },
-        CACHE_TTL.SKILLS
-      ),
-
-      // 4. Error patterns (unresolved)
-      cacheWithFallback<ErrorPattern[]>(
-        userId,
-        CACHE_KEYS.BRIEFING_ERRORS,
-        () => getTopErrors(userId, 3),
-        CACHE_TTL.ERRORS
-      ),
-
-      // 5. Today's activity
-      cacheWithFallback<boolean>(
-        userId,
-        CACHE_KEYS.BRIEFING_ACTIVITY_TODAY,
-        async () => {
-          const today = getLocalDateString();
-          const { data } = await supabase
-            .from("daily_activity")
-            .select("id")
-            .eq("user_id", userId)
-            .eq("date", today)
-            .maybeSingle();
-          return data !== null;
-        },
-        CACHE_TTL.DAILY_ACTIVITY
-      ),
-
-      // 6. Total + resolved error counts (for ErrorJourneyBar)
-      cacheWithFallback<{ total: number; resolved: number }>(
-        userId,
-        CACHE_KEYS.BRIEFING_ERROR_COUNTS,
-        async () => {
-          const [totalResult, resolvedResult] = await Promise.all([
-            supabase
-              .from("error_patterns")
-              .select("id", { count: "exact", head: true })
-              .eq("user_id", userId),
-            supabase
-              .from("error_patterns")
-              .select("id", { count: "exact", head: true })
-              .eq("user_id", userId)
-              .eq("resolved", true),
-          ]);
-          return {
-            total: totalResult.count ?? 0,
-            resolved: resolvedResult.count ?? 0,
-          };
-        },
-        CACHE_TTL.ERROR_COUNTS
       ),
     ]);
 
     if (!mountedRef.current) return;
 
-    // Extract results with graceful degradation
+    // Extract aggregate with graceful degradation. Single Sentry tag
+    // "daily-briefing-aggregate" replaces the pre-13-2 5-tag fan-out
+    // (Story 9-3 telemetry allowlist preserved — no new tags added; the
+    // existing `feature` extras key already accepts categorical strings).
+    const aggregate: HomeAggregate | null =
+      aggregateResult.status === "fulfilled" ? (aggregateResult.value.data ?? null) : null;
+    if (aggregateResult.status === "rejected") {
+      captureError(aggregateResult.reason, "daily-briefing-aggregate");
+    }
+
     const memories = memoriesResult.status === "fulfilled" ? (memoriesResult.value.data ?? []) : [];
     if (memoriesResult.status === "rejected") {
       captureError(memoriesResult.reason, "daily-briefing-memories");
     }
 
-    const srs = srsResult.status === "fulfilled" ? (srsResult.value.data ?? 0) : 0;
-    if (srsResult.status === "rejected") {
-      captureError(srsResult.reason, "daily-briefing-srs");
-    }
-
-    const weakest =
-      weakestResult.status === "fulfilled" ? (weakestResult.value.data ?? null) : null;
-    if (weakestResult.status === "rejected") {
-      captureError(weakestResult.reason, "daily-briefing-weakest-skill");
-    }
-
-    const errors = errorsResult.status === "fulfilled" ? (errorsResult.value.data ?? []) : [];
-    if (errorsResult.status === "rejected") {
-      captureError(errorsResult.reason, "daily-briefing-errors");
-    }
-
-    const hasActivityToday =
-      activityResult.status === "fulfilled" ? (activityResult.value.data ?? false) : false;
-    if (activityResult.status === "rejected") {
-      captureError(activityResult.reason, "daily-briefing-activity");
-    }
-
-    const errorCounts =
-      errorCountsResult.status === "fulfilled"
-        ? (errorCountsResult.value.data ?? { total: 0, resolved: 0 })
-        : { total: 0, resolved: 0 };
-    if (errorCountsResult.status === "rejected") {
-      captureError(errorCountsResult.reason, "daily-briefing-error-counts");
-    }
-
+    // Map the aggregate (or null/empty fallback) to BriefingData. Shape
+    // is byte-identical to pre-13-2 — composeMessage + buildTodayPlan
+    // consumer paths unchanged. Story 9-4 sanitizeMemoryContent calls at
+    // those consumer sites still run at read-time on every memory +
+    // error_description that flows to the UI.
     const briefingData: BriefingData = {
       memories,
-      srsDueCount: srs,
-      weakestSkill: weakest,
-      errorPatterns: errors,
-      hasActivityToday,
-      totalErrors: errorCounts.total,
-      resolvedErrors: errorCounts.resolved,
+      srsDueCount: aggregate?.srs_due_count ?? 0,
+      weakestSkill: aggregate?.weakest_skill
+        ? {
+            skill: aggregate.weakest_skill.skill,
+            average_score: aggregate.weakest_skill.average_score,
+          }
+        : null,
+      errorPatterns: (aggregate?.top_errors ?? []).slice(0, 3),
+      hasActivityToday: aggregate?.has_activity_today ?? false,
+      totalErrors: aggregate?.error_counts?.total ?? 0,
+      resolvedErrors: aggregate?.error_counts?.resolved ?? 0,
     };
+
+    const errorCounts = {
+      total: briefingData.totalErrors,
+      resolved: briefingData.resolvedErrors,
+    };
+    const srs = briefingData.srsDueCount;
 
     setCompanionMessage(composeMessage(firstName, briefingData));
     setTodayPlan(buildTodayPlan(briefingData));
@@ -436,13 +366,18 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
 
   const refreshAndInvalidate = useCallback(async () => {
     if (!user) return;
+    // Story 13-2 review-round-1 P6: only invalidate HOME_AGGREGATE +
+    // DAILY_BRIEFING (the 2 keys this hook actually reads). Pre-patch
+    // the legacy per-slot keys (SRS_DUE_COUNT, WEAKEST_SKILL,
+    // BRIEFING_ERRORS, BRIEFING_ACTIVITY_TODAY, BRIEFING_ERROR_COUNTS)
+    // were also invalidated as "backward-compat eviction" — but those
+    // keys are no longer READ by any post-13-2 code path, making the 5
+    // extra invalidateCache calls dead writes wasting AsyncStorage
+    // round-trips. If a future refactor re-introduces them, it should
+    // re-add invalidation here.
     await Promise.all([
+      invalidateCache(user.id, CACHE_KEYS.HOME_AGGREGATE),
       invalidateCache(user.id, CACHE_KEYS.DAILY_BRIEFING),
-      invalidateCache(user.id, CACHE_KEYS.SRS_DUE_COUNT),
-      invalidateCache(user.id, CACHE_KEYS.WEAKEST_SKILL),
-      invalidateCache(user.id, CACHE_KEYS.BRIEFING_ERRORS),
-      invalidateCache(user.id, CACHE_KEYS.BRIEFING_ACTIVITY_TODAY),
-      invalidateCache(user.id, CACHE_KEYS.BRIEFING_ERROR_COUNTS),
     ]);
     await refresh();
   }, [user, refresh]);

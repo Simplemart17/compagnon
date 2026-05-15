@@ -640,6 +640,8 @@ export const CACHE_KEYS = {
   BRIEFING_ERRORS: "briefing_errors",
   BRIEFING_ACTIVITY_TODAY: "briefing_activity_today",
   BRIEFING_ERROR_COUNTS: "briefing_error_counts",
+  /** Story 13-2: home aggregate — consolidates 9 of 11 home-mount queries. */
+  HOME_AGGREGATE: "home_aggregate",
 } as const;
 
 /**
@@ -686,4 +688,9 @@ export const CACHE_TTL = {
   SRS_DUE: 15 * 60 * 1000, // 15 minutes
   /** Error counts (total/resolved) -- changes after exercises */
   ERROR_COUNTS: 30 * 60 * 1000, // 30 minutes
+  /**
+   * Story 13-2: home aggregate — short TTL so activity logging refreshes
+   * feel current, but long enough to dedup within-session re-mounts.
+   */
+  HOME_AGGREGATE: 5 * 60 * 1000, // 5 minutes
 } as const;
