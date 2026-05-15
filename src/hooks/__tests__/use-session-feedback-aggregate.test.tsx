@@ -203,7 +203,12 @@ describe("useSessionFeedbackAggregate — Story 13-3 hook contract (audit P2-4)"
 
     await flushAsync();
 
+    // Story 13-3 review-round-1 P10: assert ALL milestone fields, not
+    // just `type`. A future regression returning `{ type: "cefr_promotion",
+    // title: "New Personal Best!", subtitle: "..." }` (wrong-shape object
+    // with the right type tag) would slip past a type-only assertion.
     expect(result.current?.milestone?.type).toBe("cefr_promotion");
+    expect(result.current?.milestone?.title).toBe("CEFR Promotion!");
     expect(result.current?.milestone?.subtitle).toBe("Welcome to B1!");
   });
 
@@ -342,13 +347,12 @@ describe("useSessionFeedbackAggregate — Story 13-3 hook contract (audit P2-4)"
     expect(result.current?.nextAction?.label).toBe("Continue Practicing");
   });
 
-  it("Case 13: RPC failure → setState(null); no setState after unmount", async () => {
+  it("Case 13: RPC failure → setState(null) (synchronous reject path)", async () => {
     mockGetSessionFeedbackAggregate.mockRejectedValueOnce(new Error("boom"));
 
     const result: { current: UseSessionFeedbackAggregateReturn | null } = { current: null };
-    let renderer: ReturnType<typeof create>;
     act(() => {
-      renderer = create(
+      create(
         <HookHost
           userId="u"
           conversationId="c"
@@ -366,12 +370,77 @@ describe("useSessionFeedbackAggregate — Story 13-3 hook contract (audit P2-4)"
     expect(result.current?.comparisonMetrics).toBeNull();
     expect(result.current?.milestone).toBeNull();
     expect(result.current?.errorJourney).toBeNull();
+  });
 
-    // Unmount and verify no further state thrash.
+  it("Case 14 (P8): deferred-resolve test — mountedRef guard prevents setState post-unmount", async () => {
+    // Story 13-3 review-round-1 P8: pre-patch Case 13 used
+    // `mockRejectedValueOnce` which rejects synchronously-ish; the
+    // unmount() ran AFTER setState had already fired, so the
+    // mountedRef guard was never actually exercised. A regression
+    // removing the guard would pass the pre-patch test trivially.
+    //
+    // Post-patch: use a manually-resolvable Promise. Mount → confirm
+    // fetch fired but is pending → unmount → resolve the promise →
+    // confirm no setState fires (the renderer's state pieces stay
+    // null because they were never populated AND the mountedRef
+    // guard blocks the setState path).
+    let resolveAggregate: (value: SessionFeedbackAggregate) => void = () => {};
+    const pendingPromise = new Promise<SessionFeedbackAggregate>((resolve) => {
+      resolveAggregate = resolve;
+    });
+    mockGetSessionFeedbackAggregate.mockReturnValueOnce(pendingPromise);
+
+    const result: { current: UseSessionFeedbackAggregateReturn | null } = { current: null };
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(
+        <HookHost
+          userId="u"
+          conversationId="c"
+          preConversationCefrLevel="A2"
+          currentFeedback={baseFeedback}
+          currentDurationSeconds={180}
+          allCorrections={[]}
+          result={result}
+        />
+      );
+    });
+
+    // RPC is pending; state pieces are still initial (null).
+    expect(result.current?.comparisonMetrics).toBeNull();
+    expect(result.current?.milestone).toBeNull();
+    expect(result.current?.errorJourney).toBeNull();
+
+    // Unmount BEFORE the promise resolves.
     act(() => {
       renderer!.unmount();
     });
-    // Even if a late RPC microtask resolves now, mountedRef guards the setState.
+
+    // Now resolve the pending RPC. The hook's effect cleanup set
+    // cancelled=true AND mountedRef.current=false; the setState calls
+    // inside the .then are gated by both. If a regression removed
+    // either guard, this resolve would attempt setState on an
+    // unmounted renderer — react-test-renderer would warn AND the
+    // result.current state would mutate (since result is captured by
+    // closure, not by React's render lifecycle).
+    const validAggregate: SessionFeedbackAggregate = {
+      prev_session: null,
+      cefr_promotion: null,
+      max_fluency_rating: 0,
+      max_grammar_rating: 0,
+      recent_resolved_error: null,
+      error_counts: { total: 0, resolved: 0 },
+    };
+    act(() => {
+      resolveAggregate(validAggregate);
+    });
     await flushAsync();
+
+    // Post-unmount, state pieces still null — neither the cancelled
+    // gate nor the mountedRef guard allowed the resolved-aggregate
+    // setState to surface.
+    expect(result.current?.comparisonMetrics).toBeNull();
+    expect(result.current?.milestone).toBeNull();
+    expect(result.current?.errorJourney).toBeNull();
   });
 });

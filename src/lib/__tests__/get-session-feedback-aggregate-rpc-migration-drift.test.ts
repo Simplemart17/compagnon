@@ -83,20 +83,32 @@ describe("get_session_feedback_aggregate RPC — Story 13-3 migration drift dete
 
   it("Case 9: error_counts uses single-query COUNT(*) FILTER (P2 atomic-snapshot pattern)", () => {
     expect(SQL).toMatch(/COUNT\(\*\)\s+FILTER\s*\(\s*WHERE\s+resolved\s*=\s*true\s*\)/);
-    // NEGATIVE: no separate SELECT COUNT(*) ... INTO v_resolved_errors query.
+    // NEGATIVE: no separate `SELECT COUNT(*) ... WHERE ... AND resolved =
+    // true` second query (matches the pre-13-3 race-prone idiom regardless
+    // of variable name; pre-patch this regex hardcoded `v_resolved_errors`
+    // which would slip past a benign rename — Story 13-2 P6 lesson).
     expect(SQL).not.toMatch(
-      /SELECT\s+COUNT\(\*\)::integer\s+INTO\s+v_resolved_errors\s+FROM\s+error_patterns/
+      /SELECT\s+COUNT\(\*\)::integer\s+INTO\s+\w+\s+FROM\s+error_patterns\s+WHERE\s+user_id\s*=\s*p_user_id\s+AND\s+resolved\s*=\s*true/
     );
   });
 
-  it("Case 10: server-side MAX scalars eliminate the unbounded conversations.select", () => {
+  it("Case 10: server-side MAX scalars eliminate the unbounded conversations.select (P1 JSONB type-guarded)", () => {
     // The audit P2-4 critical win — MAX of ai_feedback->>'fluencyRating' /
     // 'grammarRating' computed server-side; the client receives 2 numbers
     // instead of N JSONB rows.
-    expect(SQL).toMatch(/MAX\(\(ai_feedback->>'fluencyRating'\)::numeric\)/);
-    expect(SQL).toMatch(/MAX\(\(ai_feedback->>'grammarRating'\)::numeric\)/);
-    expect(SQL).toMatch(/COALESCE\(MAX\(\(ai_feedback->>'fluencyRating'\)::numeric\),\s*0\)/);
-    expect(SQL).toMatch(/COALESCE\(MAX\(\(ai_feedback->>'grammarRating'\)::numeric\),\s*0\)/);
+    //
+    // Story 13-3 review-round-1 P1: the cast is wrapped in a CASE checking
+    // `jsonb_typeof = 'number'` so historical rows with non-numeric rating
+    // values (string, array, object) don't crash the entire RPC.
+    expect(SQL).toMatch(
+      /jsonb_typeof\(ai_feedback->'fluencyRating'\)\s*=\s*'number'[\s\S]+?\(ai_feedback->>'fluencyRating'\)::numeric/
+    );
+    expect(SQL).toMatch(
+      /jsonb_typeof\(ai_feedback->'grammarRating'\)\s*=\s*'number'[\s\S]+?\(ai_feedback->>'grammarRating'\)::numeric/
+    );
+    // COALESCE(..., 0) preserved on the outer MAX.
+    expect(SQL).toMatch(/COALESCE\(MAX\(CASE[\s\S]+?fluencyRating[\s\S]+?\),\s*0\)/);
+    expect(SQL).toMatch(/COALESCE\(MAX\(CASE[\s\S]+?grammarRating[\s\S]+?\),\s*0\)/);
   });
 
   it("Case 11: p_now parameter wired to both cutoff predicates (Story 13-2 P3 pattern)", () => {
@@ -110,5 +122,17 @@ describe("get_session_feedback_aggregate RPC — Story 13-3 migration drift dete
     expect(SQL).toMatch(/v_current_cefr_level\s*<>\s*p_pre_cefr_level/);
     expect(SQL).toMatch(/'from',\s*p_pre_cefr_level/);
     expect(SQL).toMatch(/'to',\s*v_current_cefr_level/);
+  });
+
+  it("Case 13 (P5): p_pre_cefr_level validated against 6-level CEFR enum (Story 12-3 P4 defense)", () => {
+    // Story 13-3 review-round-1 P5: pre-patch the SQL accepted any text
+    // for p_pre_cefr_level (typo at call site → garbage `from` field).
+    // Post-patch the function entry validates against the 6-level enum
+    // and raises EXCEPTION on invalid input. Defense-in-depth defends
+    // against a future client-side regression bypassing the validator.
+    expect(SQL).toMatch(
+      /IF\s+p_pre_cefr_level\s+IS\s+NOT\s+NULL[\s\S]+?p_pre_cefr_level\s+NOT\s+IN\s*\(\s*'A1'\s*,\s*'A2'\s*,\s*'B1'\s*,\s*'B2'\s*,\s*'C1'\s*,\s*'C2'\s*\)\s+THEN/
+    );
+    expect(SQL).toMatch(/RAISE EXCEPTION 'invalid CEFR level: %', p_pre_cefr_level/);
   });
 });

@@ -232,10 +232,19 @@ BEGIN
 END $$;
 
 -- ─── 7. MAX ratings across 3 prev conversations: 2/3/4 → MAX=4 ───────────────
+-- Story 13-3 review-round-1 P13: each test cleans + seeds its own fixtures
+-- so the assertion is independent of test execution order. Pre-patch test
+-- #7 relied on leftover 22-day-old data from test #5 (the expected
+-- max=5 came from test #5's seed); the test would fail confusingly if
+-- the file were reordered or split into modular suites. Post-patch test
+-- #7 deletes all conversations first, seeds 3 with ratings 2/3/4,
+-- asserts max=4 (no leftover surprise).
 DO $$
 DECLARE
   v_result jsonb;
 BEGIN
+  DELETE FROM conversations WHERE user_id = '11111111-1111-1111-1111-111111111111'::uuid;
+
   INSERT INTO conversations (id, user_id, mode, topic, status, completed_at, ai_feedback)
   VALUES
     (gen_random_uuid(), '11111111-1111-1111-1111-111111111111'::uuid, 'companion', 't',
@@ -254,11 +263,13 @@ BEGIN
     'B1'
   );
 
-  IF (v_result->>'max_fluency_rating')::numeric != 5 THEN
-    -- Earlier test #5 inserted a 22-day-old @ rating 5; MAX should pick that up.
-    RAISE EXCEPTION 'TEST FAIL #7: expected max_fluency_rating=5 (from 22-day-old) since MAX has no time cutoff; got %', v_result->>'max_fluency_rating';
+  IF (v_result->>'max_fluency_rating')::numeric != 4 THEN
+    RAISE EXCEPTION 'TEST FAIL #7: expected max_fluency_rating=4 (highest of seeded 2/3/4); got %', v_result->>'max_fluency_rating';
   END IF;
-  RAISE NOTICE 'TEST PASS #7: MAX ratings server-side correct (no time cutoff on MAX)';
+  IF (v_result->>'max_grammar_rating')::numeric != 4 THEN
+    RAISE EXCEPTION 'TEST FAIL #7b: expected max_grammar_rating=4; got %', v_result->>'max_grammar_rating';
+  END IF;
+  RAISE NOTICE 'TEST PASS #7: MAX ratings server-side correct (MAX of 2/3/4 = 4); test is order-independent';
 END $$;
 
 -- ─── 8. CEFR promotion: pre != current → from/to populated ────────────────────

@@ -71,4 +71,16 @@ describe("[sessionId].tsx — Story 13-3 source-drift detector (audit P2-4)", ()
       /useState<string\s*\|\s*null>\(null\)\s*;\s*const\s+cefrCapturedRef/
     );
   });
+
+  it("Case 8 (P11): NEGATIVE — `import { supabase }` is GONE from the screen", () => {
+    // Story 13-3 review-round-1 P11: pre-patch the screen imported
+    // `supabase` directly to drive the 4-effect waterfall queries. Post-
+    // patch the 5 direct query forms are gone (Cases 3-5) BUT a future
+    // refactor re-introducing `import { supabase }` for an unrelated
+    // reason (e.g., `supabase.auth.getSession()`) would slip past the
+    // 3 NEGATIVE guards above. This case pins the import line itself.
+    expect(SCREEN_CODE_ONLY).not.toMatch(
+      /import\s*\{[^}]*\bsupabase\b[^}]*\}\s*from\s*["']@\/src\/lib\/supabase["']/
+    );
+  });
 });
