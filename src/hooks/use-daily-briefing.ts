@@ -12,12 +12,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cacheWithFallback, CACHE_KEYS, CACHE_TTL, invalidateCache } from "@/src/lib/cache";
 import { SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, SKILL_COLORS } from "@/src/lib/design";
-import { getHomeAggregate, type HomeAggregate } from "@/src/lib/home-aggregate";
+import {
+  getHomeAggregate,
+  type HomeAggregate,
+  type HomeAggregateError,
+} from "@/src/lib/home-aggregate";
 import { retrieveDailyGreetingMemories, sanitizeMemoryContent } from "@/src/lib/memory";
 import { captureError } from "@/src/lib/sentry";
 import { getLocalDateString } from "@/src/lib/activity";
 import { useAuthStore } from "@/src/store/auth-store";
-import type { ErrorPattern } from "@/src/lib/error-tracker";
 import type { TCFSkill } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -67,7 +70,17 @@ interface BriefingData {
   memories: string[];
   srsDueCount: number;
   weakestSkill: WeakestSkill | null;
-  errorPatterns: ErrorPattern[];
+  /**
+   * Story 13-2 review-round-1 P5: typed as `HomeAggregateError[]` (the
+   * RPC's own row-shape) rather than the broader `ErrorPattern[]`. Pre-
+   * patch the cast `as ErrorPattern[]` lied to TypeScript — `HomeAggregateError`
+   * omits `user_id`, `last_occurred`, `created_at` that `ErrorPattern` has.
+   * The structural compatibility held today (consumers only read `.id`
+   * + `.error_description`, both in the narrower shape) but a future
+   * consumer reading `.last_occurred` would crash on undefined. Narrowing
+   * here keeps the type honest.
+   */
+  errorPatterns: HomeAggregateError[];
   hasActivityToday: boolean;
   totalErrors: number;
   resolvedErrors: number;
@@ -316,7 +329,7 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
             average_score: aggregate.weakest_skill.average_score,
           }
         : null,
-      errorPatterns: ((aggregate?.top_errors ?? []) as ErrorPattern[]).slice(0, 3),
+      errorPatterns: (aggregate?.top_errors ?? []).slice(0, 3),
       hasActivityToday: aggregate?.has_activity_today ?? false,
       totalErrors: aggregate?.error_counts?.total ?? 0,
       resolvedErrors: aggregate?.error_counts?.resolved ?? 0,
@@ -353,19 +366,18 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
 
   const refreshAndInvalidate = useCallback(async () => {
     if (!user) return;
-    // Story 13-2: invalidate the new HOME_AGGREGATE key + the memories key.
-    // The legacy per-slot keys (SRS_DUE_COUNT, WEAKEST_SKILL, BRIEFING_ERRORS,
-    // BRIEFING_ACTIVITY_TODAY, BRIEFING_ERROR_COUNTS) are no longer read but
-    // still invalidated for backward-compatible cache eviction so a future
-    // refactor that re-introduces them doesn't pick up stale data.
+    // Story 13-2 review-round-1 P6: only invalidate HOME_AGGREGATE +
+    // DAILY_BRIEFING (the 2 keys this hook actually reads). Pre-patch
+    // the legacy per-slot keys (SRS_DUE_COUNT, WEAKEST_SKILL,
+    // BRIEFING_ERRORS, BRIEFING_ACTIVITY_TODAY, BRIEFING_ERROR_COUNTS)
+    // were also invalidated as "backward-compat eviction" — but those
+    // keys are no longer READ by any post-13-2 code path, making the 5
+    // extra invalidateCache calls dead writes wasting AsyncStorage
+    // round-trips. If a future refactor re-introduces them, it should
+    // re-add invalidation here.
     await Promise.all([
       invalidateCache(user.id, CACHE_KEYS.HOME_AGGREGATE),
       invalidateCache(user.id, CACHE_KEYS.DAILY_BRIEFING),
-      invalidateCache(user.id, CACHE_KEYS.SRS_DUE_COUNT),
-      invalidateCache(user.id, CACHE_KEYS.WEAKEST_SKILL),
-      invalidateCache(user.id, CACHE_KEYS.BRIEFING_ERRORS),
-      invalidateCache(user.id, CACHE_KEYS.BRIEFING_ACTIVITY_TODAY),
-      invalidateCache(user.id, CACHE_KEYS.BRIEFING_ERROR_COUNTS),
     ]);
     await refresh();
   }, [user, refresh]);

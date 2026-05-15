@@ -130,17 +130,14 @@ export function useProgress(): UseProgressReturn {
       try {
         await incrementDailyActivity(user.id, { minutes });
         await updateStreak(user.id);
-        // Invalidate caches that were just mutated. The per-slot keys
-        // (DAILY_ACTIVITY_TODAY / RECENT_ACTIVITY / STREAK) are retained
-        // because legacy reads may still pick them up; the new
-        // HOME_AGGREGATE key (Story 13-2) is the authoritative cache for
-        // post-13-2 reads.
-        await Promise.all([
-          invalidateCache(user.id, CACHE_KEYS.DAILY_ACTIVITY_TODAY),
-          invalidateCache(user.id, CACHE_KEYS.RECENT_ACTIVITY),
-          invalidateCache(user.id, CACHE_KEYS.STREAK),
-          invalidateCache(user.id, CACHE_KEYS.HOME_AGGREGATE),
-        ]);
+        // Story 13-2 review-round-1 P6: only invalidate HOME_AGGREGATE.
+        // Pre-patch this list also invalidated DAILY_ACTIVITY_TODAY +
+        // RECENT_ACTIVITY + STREAK as "backward-compat eviction" — but
+        // those keys are no longer READ by any post-13-2 code path,
+        // making the 3 extra invalidateCache calls dead writes that
+        // wasted AsyncStorage round-trips. If a future refactor re-
+        // introduces those keys, it should re-add invalidation here.
+        await invalidateCache(user.id, CACHE_KEYS.HOME_AGGREGATE);
         await refresh();
       } catch (err) {
         captureError(err, "log-activity");

@@ -1,5 +1,6 @@
-import { supabase } from "./supabase";
 import { generateEmbedding } from "./openai";
+import { captureError } from "./sentry";
+import { supabase } from "./supabase";
 
 /** Memory types stored in companion_memory table */
 export type MemoryType = "personal_fact" | "preference" | "topic_discussed" | "milestone";
@@ -360,6 +361,17 @@ export async function retrieveMemories(
 let dailyGreetingEmbeddingCache: number[] | null = null;
 
 /**
+ * Story 13-2 review-round-1 P1: in-flight Promise gate to defeat the
+ * concurrent-first-call race. Two concurrent home mounts (use-progress +
+ * use-daily-briefing mounting in parallel) would both observe
+ * `dailyGreetingEmbeddingCache === null` and both call `generateEmbedding`
+ * in parallel — Story 11-4 daily-cost-cap inflated 2x for the embedding
+ * action. Mirrors the Story 9-6 `flushWriteQueue` idempotency pattern:
+ * single in-flight Promise shared across concurrent callers.
+ */
+let inFlightDailyGreetingEmbedding: Promise<number[]> | null = null;
+
+/**
  * Retrieve top memories matching the fixed `"daily greeting"` context.
  * Identical to `retrieveMemories(userId, "daily greeting", limit)` except
  * the embedding is cached at module level across calls (Story 13-2).
@@ -370,13 +382,35 @@ let dailyGreetingEmbeddingCache: number[] | null = null;
  *
  * Same read-time `sanitizeMemoryContent` defense as `retrieveMemories`
  * (Story 9-4 stored-prompt-injection invariant preserved).
+ *
+ * **Story 13-2 review-round-1 P4:** `generateEmbedding` failures are now
+ * routed through `captureError(_, "daily-greeting-embedding")` so a
+ * transient network / cost-cap-exhausted failure is observable in Sentry
+ * before the function throws. Pre-patch the rejection propagated silently
+ * (caller swallowed → user fell through to `fetchRecentMemories`); the
+ * embedding failure was invisible in production logs.
  */
 export async function retrieveDailyGreetingMemories(
   userId: string,
   limit: number = 3
 ): Promise<string[]> {
   if (dailyGreetingEmbeddingCache === null) {
-    dailyGreetingEmbeddingCache = await generateEmbedding("daily greeting");
+    // P1: dedupe concurrent first-callers via in-flight Promise.
+    if (inFlightDailyGreetingEmbedding === null) {
+      inFlightDailyGreetingEmbedding = generateEmbedding("daily greeting")
+        .then((embedding) => {
+          dailyGreetingEmbeddingCache = embedding;
+          return embedding;
+        })
+        .catch((err) => {
+          captureError(err, "daily-greeting-embedding");
+          throw err;
+        })
+        .finally(() => {
+          inFlightDailyGreetingEmbedding = null;
+        });
+    }
+    await inFlightDailyGreetingEmbedding;
   }
 
   const { data, error } = await supabase.rpc("match_memories", {
@@ -413,6 +447,10 @@ export function __resetDailyGreetingEmbeddingForTests(): void {
     throw new Error("__resetDailyGreetingEmbeddingForTests is test-only");
   }
   dailyGreetingEmbeddingCache = null;
+  // Story 13-2 review-round-1 P1: also clear the in-flight Promise gate
+  // so a prior test's queued generateEmbedding doesn't leak across the
+  // suite boundary into the next test's expectations.
+  inFlightDailyGreetingEmbedding = null;
 }
 
 /** Fallback: fetch most recent memories for a user */

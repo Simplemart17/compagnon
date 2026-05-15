@@ -30,9 +30,18 @@
 --
 -- Closes audit P2-5 architecturally.
 
+-- Story 13-2 review-round-1 P3: signature gains `p_now timestamptz`
+-- parameter so the SRS-due cutoff is consistent with the client's
+-- definition of "now" — not Postgres-server-UTC. Pre-patch the function
+-- used `now()` for `srs_due_count` while accepting `p_date` (client local
+-- timezone via Story 9-2 `getLocalDateString()`) for `daily_activity_today`
+-- — mixed definitions near midnight produced UX bugs (user sees
+-- `has_activity_today=false` from local-date filter AND `srs_due_count`
+-- reflecting UTC-now in the same payload).
 CREATE OR REPLACE FUNCTION get_home_aggregate(
   p_user_id uuid,
-  p_date    date
+  p_date    date,
+  p_now     timestamptz DEFAULT now()
 ) RETURNS jsonb
 SECURITY DEFINER
 SET search_path = public
@@ -156,22 +165,29 @@ BEGIN
     v_weakest_skill := 'null'::jsonb;
   END IF;
 
-  -- 7. srs_due_count — vocabulary with next_review <= now().
+  -- 7. srs_due_count — vocabulary with next_review <= p_now. Uses the
+  -- caller-supplied `p_now` (Story 13-2 review-round-1 P3) so the cutoff
+  -- shares the same "now" definition as the client's local-date used for
+  -- `daily_activity_today`. Defaults to Postgres `now()` if omitted, so
+  -- pre-13-2-review callers still work.
   SELECT COUNT(*)::integer
   INTO v_srs_due_count
   FROM vocabulary
-  WHERE user_id = p_user_id AND next_review <= now();
+  WHERE user_id = p_user_id AND next_review <= p_now;
 
-  -- 8. error_counts.total + error_counts.resolved (two scalars).
-  SELECT COUNT(*)::integer
-  INTO v_total_errors
+  -- 8. error_counts.total + error_counts.resolved — Story 13-2 review-
+  -- round-1 P2: single-query with FILTER to eliminate the two-query
+  -- race. Pre-patch a concurrent UPDATE flipping `resolved = false → true`
+  -- between the two scalar COUNTs could produce `resolved > total` (an
+  -- impossible state); UI math like `total - resolved` would return
+  -- negative. Atomic-snapshot via FILTER guarantees both counts come from
+  -- the same WHERE-user scan.
+  SELECT
+    COUNT(*)::integer,
+    COUNT(*) FILTER (WHERE resolved = true)::integer
+  INTO v_total_errors, v_resolved_errors
   FROM error_patterns
   WHERE user_id = p_user_id;
-
-  SELECT COUNT(*)::integer
-  INTO v_resolved_errors
-  FROM error_patterns
-  WHERE user_id = p_user_id AND resolved = true;
 
   -- 9. has_activity_today — derived from daily_activity_today.
   v_has_activity_today := (v_daily_today IS NOT NULL AND v_daily_today != 'null'::jsonb);
@@ -194,5 +210,9 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION get_home_aggregate(uuid, date) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION get_home_aggregate(uuid, date) TO authenticated;
+-- Story 13-2 review-round-1 P3: function signature now `(uuid, date, timestamptz)`.
+-- The 2-arg overload no longer exists (P3 added `p_now` with DEFAULT so
+-- 2-arg callers still resolve to this 3-arg variant; Postgres' default-
+-- argument resolution covers backward compatibility).
+REVOKE EXECUTE ON FUNCTION get_home_aggregate(uuid, date, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION get_home_aggregate(uuid, date, timestamptz) TO authenticated;
