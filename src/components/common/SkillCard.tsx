@@ -20,8 +20,17 @@ import { Colors, Radii, Shadows, Typography, skillTint } from "@/src/lib/design"
 // hidden → overflow "hidden"; flex-row → flexDirection "row"; items-center →
 // alignItems "center"; p-4 → padding 16; gap-[14px] → 14. Shadow uses the
 // Shadows.card design token (Story 14-4 token-enforcement precedent).
-/** @internal — exported for Story 13-7 runtime tests; do NOT import in app code. */
-export const skillCardPressableStaticStyle: ViewStyle = {
+/**
+ * @internal — exported for Story 13-7 runtime tests; do NOT import in app code.
+ *
+ * Review-round-1 P1: spread `Shadows.card` FIRST so explicit `padding`/`gap`/
+ * `backgroundColor`/`borderRadius` etc. always win over future token-additions
+ * to `Shadows.card`. Pre-patch the spread was LAST and a token-internal regression
+ * (e.g., `Shadows.card` adding a `padding` key) would have silently clobbered
+ * the explicit settings. Frozen for runtime mutation defense (P2).
+ */
+export const skillCardPressableStaticStyle: ViewStyle = Object.freeze({
+  ...Shadows.card,
   backgroundColor: Colors.surfaceWhite,
   borderRadius: Radii.card,
   overflow: "hidden",
@@ -29,8 +38,7 @@ export const skillCardPressableStaticStyle: ViewStyle = {
   alignItems: "center",
   padding: 16,
   gap: 14,
-  ...Shadows.card,
-};
+}) as ViewStyle;
 
 export interface SkillCardProps {
   emoji: string;

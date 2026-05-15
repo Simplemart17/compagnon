@@ -26,8 +26,13 @@ export interface StatTileProps {
 // paddingHorizontal 10; py-3.5 → paddingVertical 14. Shadow tuple preserved
 // verbatim from pre-13-7 (does NOT match Shadows.card — uses Colors.shadow
 // with a heavier elevation than the card default).
-/** @internal — exported for Story 13-7 runtime tests; do NOT import in app code. */
-export const statTileStaticStyle: ViewStyle = {
+/**
+ * @internal — exported for Story 13-7 runtime tests; do NOT import in app code.
+ *
+ * Frozen at module-load (review-round-1 P2) — same defense as
+ * `conversationCardStaticStyle` in `app/(tabs)/home/index.tsx`.
+ */
+export const statTileStaticStyle: ViewStyle = Object.freeze({
   flex: 1,
   alignItems: "center",
   borderRadius: Radii.card,
@@ -39,7 +44,7 @@ export const statTileStaticStyle: ViewStyle = {
   shadowOpacity: 0.1,
   shadowRadius: 8,
   elevation: 6,
-};
+}) as ViewStyle;
 
 export const StatTile = React.memo(function StatTile({ value, unit, label, delay }: StatTileProps) {
   const opacity = useSharedValue(0);

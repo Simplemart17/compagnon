@@ -124,7 +124,7 @@ describe("Story 13-7 — animated-wrapper className+style source-drift detector"
       // Module-level (not useMemo) — render-invariant; zero allocations per
       // render. Story 12-5 / 12-7 module-level constant precedent.
       expect(HOME_INDEX_CODE).toMatch(
-        /const\s+conversationCardStaticStyle\s*:\s*ViewStyle\s*=\s*\{/
+        /const\s+conversationCardStaticStyle\s*:\s*ViewStyle\s*=\s*(?:Object\.freeze\(\s*)?\{/
       );
     });
 
@@ -145,7 +145,9 @@ describe("Story 13-7 — animated-wrapper className+style source-drift detector"
 
   describe("StatTile (src/components/common/StatTile.tsx)", () => {
     it("Case 3: POSITIVE — declares `statTileStaticStyle` module-level ViewStyle constant", () => {
-      expect(STAT_TILE_CODE).toMatch(/const\s+statTileStaticStyle\s*:\s*ViewStyle\s*=\s*\{/);
+      expect(STAT_TILE_CODE).toMatch(
+        /const\s+statTileStaticStyle\s*:\s*ViewStyle\s*=\s*(?:Object\.freeze\(\s*)?\{/
+      );
     });
 
     it("Case 4: NEGATIVE — `<Animated.View>` opening tag does NOT carry a `className` prop", () => {
@@ -160,7 +162,7 @@ describe("Story 13-7 — animated-wrapper className+style source-drift detector"
   describe("SkillCard inner Pressable (src/components/common/SkillCard.tsx)", () => {
     it("Case 5: POSITIVE — declares `skillCardPressableStaticStyle` module-level ViewStyle constant", () => {
       expect(SKILL_CARD_CODE).toMatch(
-        /const\s+skillCardPressableStaticStyle\s*:\s*ViewStyle\s*=\s*\{/
+        /const\s+skillCardPressableStaticStyle\s*:\s*ViewStyle\s*=\s*(?:Object\.freeze\(\s*)?\{/
       );
     });
 
@@ -175,6 +177,24 @@ describe("Story 13-7 — animated-wrapper className+style source-drift detector"
       // animated; the parent Animated.View owns the scale-transform via
       // useAnimatedStyle).
       expect(tag).toMatch(/style\s*=\s*\{\s*skillCardPressableStaticStyle\s*\}/);
+    });
+
+    it("Case 6b: review-round-1 P4 — exactly ONE `<Pressable>` element in SkillCard.tsx", () => {
+      // `extractOpeningTag` returns the FIRST match. If a future refactor
+      // adds a SECOND <Pressable> inside SkillCard (e.g., a nested wrapper
+      // around the icon circle), a `className` regression on the SECOND
+      // Pressable would silently pass Case 6. This case asserts uniqueness
+      // so any future second Pressable trips CI and forces the test author
+      // to update the scope (e.g., switch to extractOpeningTag-by-line or
+      // add an explicit Case 6c for the new wrapper).
+      //
+      // Regex anchors on `<Pressable` followed by a word-boundary so it
+      // doesn't match `<AnimatedPressable` (created via
+      // `Animated.createAnimatedComponent(Pressable)` in other files, none
+      // in SkillCard today).
+      const matches = SKILL_CARD_CODE.match(/<Pressable\b/g);
+      expect(matches).not.toBeNull();
+      expect(matches).toHaveLength(1);
     });
   });
 
@@ -207,7 +227,13 @@ describe("Story 13-7 — animated-wrapper className+style source-drift detector"
       // (Story 14-4 token-enforcement precedent). The check extracts each
       // constant body and scans for `#` followed by hex chars.
       const extractConstantBody = (source: string, constName: string): string | null => {
-        const re = new RegExp(`const\\s+${constName}\\s*:\\s*ViewStyle\\s*=\\s*\\{`);
+        // Review-round-1 P2: tolerate optional `Object.freeze(` wrap so the
+        // post-freeze declarations still parse. Regex matches either:
+        //   - `const X: ViewStyle = {` (pre-P2 unwrapped form)
+        //   - `const X: ViewStyle = Object.freeze({` (post-P2 wrapped form)
+        const re = new RegExp(
+          `const\\s+${constName}\\s*:\\s*ViewStyle\\s*=\\s*(?:Object\\.freeze\\(\\s*)?\\{`
+        );
         const match = re.exec(source);
         if (!match) return null;
         // Walk balanced braces from the first `{` after the match.
@@ -246,7 +272,12 @@ describe("Story 13-7 — animated-wrapper className+style source-drift detector"
 
     it("Case 10: POSITIVE invariant — all 3 new *StaticStyle constants use `Radii.*` for `borderRadius` (no raw numeric magic)", () => {
       const extractConstantBody = (source: string, constName: string): string | null => {
-        const re = new RegExp(`const\\s+${constName}\\s*:\\s*ViewStyle\\s*=\\s*\\{`);
+        // Review-round-1 P2: tolerate optional `Object.freeze(` wrap (matches
+        // the Case 9 walker — kept consistent so a future change to either
+        // copy must touch both).
+        const re = new RegExp(
+          `const\\s+${constName}\\s*:\\s*ViewStyle\\s*=\\s*(?:Object\\.freeze\\(\\s*)?\\{`
+        );
         const match = re.exec(source);
         if (!match) return null;
         let i = match.index + match[0].length;

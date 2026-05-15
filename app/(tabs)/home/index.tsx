@@ -52,8 +52,15 @@ interface ConversationCardProps {
 // rounded-2xl → Radii.card (16); p-4 → padding 16; gap-4 → 16. Shadow tuple
 // preserved verbatim from pre-13-7 (does NOT match Shadows.card — a card-
 // specific elevated tone).
-/** @internal — exported for Story 13-7 runtime tests; do NOT import in app code. */
-export const conversationCardStaticStyle: ViewStyle = {
+/**
+ * @internal — exported for Story 13-7 runtime tests; do NOT import in app code.
+ *
+ * Frozen at module-load (review-round-1 P2) so a debug session, runtime A/B
+ * test, or future theming code path can't mutate this object and silently
+ * change EVERY ConversationCard instance for the rest of the JS session.
+ * Mirror of Story 12-1's `Object.freeze({...})` getState() defense.
+ */
+export const conversationCardStaticStyle: ViewStyle = Object.freeze({
   backgroundColor: Colors.primary,
   borderRadius: Radii.card,
   padding: 16,
@@ -65,7 +72,7 @@ export const conversationCardStaticStyle: ViewStyle = {
   shadowOpacity: 0.25,
   shadowRadius: 12,
   elevation: 6,
-};
+}) as ViewStyle;
 
 /** @internal — exported for Story 13-7 runtime tests; do NOT import in app code. */
 export function ConversationCard({ onPress }: ConversationCardProps) {

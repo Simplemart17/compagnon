@@ -62,6 +62,19 @@ jest.mock("@react-native-community/netinfo", () => ({
   addEventListener: jest.fn(() => () => undefined),
 }));
 
+// Review-round-1 P5: explicit `expo-secure-store` mock. The transitive
+// import chain `home/index.tsx` → `useDailyBriefing` → `memory.ts` →
+// `supabase.ts` → `expo-secure-store` is currently auto-mocked by the
+// jest-expo preset, but relying on the preset is brittle to future jest-
+// config changes. Defense-in-depth: explicit no-op mock here.
+jest.mock("expo-secure-store", () => ({
+  __esModule: true,
+  getItemAsync: jest.fn().mockResolvedValue(null),
+  setItemAsync: jest.fn().mockResolvedValue(undefined),
+  deleteItemAsync: jest.fn().mockResolvedValue(undefined),
+  WHEN_UNLOCKED_THIS_DEVICE_ONLY: "WHEN_UNLOCKED_THIS_DEVICE_ONLY",
+}));
+
 jest.mock("@/src/lib/haptics", () => ({
   __esModule: true,
   hapticLight: jest.fn(),
@@ -92,6 +105,14 @@ interface MinimalTestInstance {
 }
 
 const activeRenderers: ReturnType<typeof create>[] = [];
+
+// Review-round-1 P6: clear AsyncStorage / NetInfo / SecureStore / Sentry mock
+// call history between cases so a future regression in `home/index.tsx`'s
+// module-load behavior (e.g., transitive cache reads) cannot leak call
+// history into the next test's assertions. Pattern: Story 12-7 / 12-8.
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 afterEach(() => {
   for (const renderer of activeRenderers) {
@@ -152,13 +173,21 @@ describe("Story 13-7 — animated-wrappers runtime smoke tests", () => {
     const renderer = mount(<ConversationCard onPress={() => {}} />);
     // Outer animated wrapper: under the file-level reanimated mock,
     // `Animated.createAnimatedComponent(Pressable)` returns Pressable
-    // as-is. Find the top-level node carrying the Colors.primary
-    // background — that's our converted ConversationCard outer wrapper.
+    // as-is. Review-round-1 P3: anchor on (Colors.primary background) AND
+    // (accessibilityRole === "button"); react-test-renderer's findAll
+    // returns multiple nodes for one logical Pressable (composite +
+    // forwardRef + host levels in the fiber tree), so we don't enforce
+    // `length === 1` — instead we verify all matches describe the SAME
+    // logical element by comparing their `accessibilityLabel`s, which
+    // catches the future-regression case where a different element gets
+    // `Colors.primary` background.
     const candidates = findAllNodes(renderer, (node) => {
       const flat = flattenStyle(node.props.style);
-      return flat.backgroundColor === Colors.primary;
+      return flat.backgroundColor === Colors.primary && node.props.accessibilityRole === "button";
     });
     expect(candidates.length).toBeGreaterThan(0);
+    const labels = new Set(candidates.map((c) => c.props.accessibilityLabel));
+    expect(labels).toEqual(new Set(["Talk with Companion"]));
     const outer = candidates[0];
     const flat = flattenStyle(outer.props.style);
     expect(flat.backgroundColor).toBe(Colors.primary);
@@ -181,7 +210,14 @@ describe("Story 13-7 — animated-wrappers runtime smoke tests", () => {
       const label = node.props.accessibilityLabel;
       return flat.flex === 1 && typeof label === "string" && label.startsWith("Today:");
     });
+    // Review-round-1 P3: assert all candidates describe ONE logical element
+    // (react-test-renderer surfaces composite + host fiber-tree levels per
+    // logical node, so cardinality > 1 is normal — uniqueness of label
+    // catches the regression where a different element matches the
+    // predicate).
     expect(candidates.length).toBeGreaterThan(0);
+    const labels = new Set(candidates.map((c) => c.props.accessibilityLabel));
+    expect(labels.size).toBe(1);
     const outer = candidates[0];
     const flat = flattenStyle(outer.props.style);
     expect(flat.flex).toBe(1);
@@ -212,7 +248,11 @@ describe("Story 13-7 — animated-wrappers runtime smoke tests", () => {
         flat.backgroundColor === Colors.surfaceWhite && node.props.accessibilityRole === "button"
       );
     });
+    // Review-round-1 P3: assert all candidates describe ONE logical element
+    // (fiber-tree levels — see Case 1 explanation).
     expect(candidates.length).toBeGreaterThan(0);
+    const labels = new Set(candidates.map((c) => c.props.accessibilityLabel));
+    expect(labels.size).toBe(1);
     const inner = candidates[0];
     const flat = flattenStyle(inner.props.style);
     expect(flat.backgroundColor).toBe(Colors.surfaceWhite);
@@ -234,5 +274,28 @@ describe("Story 13-7 — animated-wrappers runtime smoke tests", () => {
     expect(statTileStaticStyle.backgroundColor).toBe(Colors.surfaceWhite);
     expect(skillCardPressableStaticStyle.backgroundColor).toBe(Colors.surfaceWhite);
     expect(skillCardPressableStaticStyle.borderRadius).toBe(Radii.card);
+  });
+
+  it("Case 5: review-round-1 P2 — all 3 *StaticStyle constants are frozen against runtime mutation", () => {
+    // Story 12-1's `getState() = Object.freeze({...})` precedent applied here.
+    // A debug-session / runtime A/B test / future theming code path mutating
+    // `conversationCardStaticStyle.backgroundColor = ...` would silently
+    // change EVERY instance globally for the rest of the JS session. The
+    // freeze defense at module-load prevents this.
+    expect(Object.isFrozen(conversationCardStaticStyle)).toBe(true);
+    expect(Object.isFrozen(statTileStaticStyle)).toBe(true);
+    expect(Object.isFrozen(skillCardPressableStaticStyle)).toBe(true);
+    // Belt-and-suspenders: attempted mutation must throw (strict mode under
+    // Jest) or silently no-op. Either way, the value MUST stay unchanged.
+    // The `as ViewStyle` cast at the constant declaration strips the
+    // Readonly<> shape, so the runtime mutation compiles cleanly — the
+    // freeze is the runtime guard, not the type system.
+    const originalBackground = conversationCardStaticStyle.backgroundColor;
+    try {
+      conversationCardStaticStyle.backgroundColor = "#FF0000";
+    } catch {
+      /* expected under strict mode */
+    }
+    expect(conversationCardStaticStyle.backgroundColor).toBe(originalBackground);
   });
 });
