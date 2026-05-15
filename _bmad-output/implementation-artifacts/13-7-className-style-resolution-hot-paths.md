@@ -431,3 +431,45 @@ claude-opus-4-7[1m]
 - `tailwind.config.js` — no new utility classes.
 - `package.json` + `package-lock.json` — no new deps.
 - `supabase/migrations/` + `supabase/functions/` + `.github/workflows/` — zero-diff.
+
+### Senior Developer Review (AI) — Review-Round-1
+
+**Date:** 2026-05-15
+**Outcome:** APPROVE → 6 patches applied (3 HIGH correctness + 3 MED defense-in-depth)
+**Review layers:** Blind Hunter (~30 findings, 11 self-withdrawn) + Edge Case Hunter (27 findings) + Acceptance Auditor (APPROVE, 0 blocking) — run in parallel. Acceptance Auditor's clean verdict was defensible against the spec literal AND held up under Blind + Edge Case scrutiny — the 6 patches are reinforcement, NOT spec violations.
+**Triage:** 6 patches applied (HIGH × 3 + MED × 3); 15 deferred; ~20 rejected as noise (mostly self-withdrawn by reviewers).
+
+**Patches applied:**
+
+- **P1 (HIGH) — `Shadows.card` spread last in `skillCardPressableStaticStyle` could clobber explicit `padding`/`gap`/etc.** (Edge Case Hunter EH-5). Pre-patch: `Shadows.card` spread was the LAST key — if a future `design.ts` change ever added e.g. `padding` to `Shadows.card`, it would silently override the explicit `padding: 16`. Post-patch: spread moved to TOP so explicit settings always win. The drift detector + runtime tests don't catch token-internal regressions; spread-first is the canonical defense. — [`src/components/common/SkillCard.tsx`](src/components/common/SkillCard.tsx).
+
+- **P2 (HIGH) — `*StaticStyle` constants are mutable — runtime mutation could silently change EVERY instance globally for the rest of the JS session.** (Edge Case Hunter EH-4 + EH-27). Module-level `ViewStyle` constants were plain objects, not `Object.freeze`'d. A debug session, runtime A/B test, or future theming code path could write `conversationCardStaticStyle.backgroundColor = ...` and silently corrupt global state. Story 12-1's `getState() = Object.freeze({...})` precedent applied: all 3 `*StaticStyle` constants now wrapped in `Object.freeze(...) as ViewStyle`. NEW Case 5 in [`animated-wrappers-render.test.tsx`](src/components/__tests__/animated-wrappers-render.test.tsx) pins `Object.isFrozen(constant) === true` for all 3 + verifies runtime-mutation-attempt is a no-op. — [`app/(tabs)/home/index.tsx`](<app/(tabs)/home/index.tsx>), [`src/components/common/StatTile.tsx`](src/components/common/StatTile.tsx), [`src/components/common/SkillCard.tsx`](src/components/common/SkillCard.tsx).
+
+- **P3 (HIGH) — Runtime Cases 1 + 2 + 3 predicates anchored only on single design-token values; could mis-target a future child node with same color** (Blind Hunter BH#2 + BH#5 + Edge Case Hunter EH-10). Initial post-patch attempt used `toHaveLength(1)` but react-test-renderer's `findAll` returns multiple fiber-tree levels per logical Pressable (composite + forwardRef wrap + host) — `length === 1` is too strict. Final post-patch: Case 1 adds `accessibilityRole === "button"` to its predicate; all 3 cases assert that all matching candidates describe ONE logical element by checking the `accessibilityLabel` set size is 1 (catches the regression where a different element matches the predicate, without over-tightening on cardinality). — [`src/components/__tests__/animated-wrappers-render.test.tsx`](src/components/__tests__/animated-wrappers-render.test.tsx).
+
+- **P4 (MED) — Source-drift Case 6 `<Pressable>` regex returns FIRST match; future second `<Pressable>` in SkillCard would mask a `className` regression** (Edge Case Hunter EH-2). NEW Case 6b counts `<Pressable\b` occurrences in `SKILL_CARD_CODE` via `match(/<Pressable\b/g)` and asserts exactly 1 — any future second Pressable trips CI and forces the test author to update Case 6's scope. — [`src/components/__tests__/animated-wrapper-className-style-source-drift.test.ts`](src/components/__tests__/animated-wrapper-className-style-source-drift.test.ts).
+
+- **P5 (MED) — Runtime smoke test relies on jest-expo auto-mocking `expo-secure-store`; brittle to future jest-config changes** (Edge Case Hunter EH-13). The transitive import chain `home/index.tsx` → `useDailyBriefing` → `memory.ts` → `supabase.ts` → `expo-secure-store` is currently auto-mocked by jest-expo's preset. A future jest-config change could silently break the chain. Post-patch: explicit `jest.mock("expo-secure-store", ...)` at file-level for defense-in-depth. — [`src/components/__tests__/animated-wrappers-render.test.tsx`](src/components/__tests__/animated-wrappers-render.test.tsx).
+
+- **P6 (MED) — No `beforeEach(jest.clearAllMocks)` — AsyncStorage / NetInfo / SecureStore / Sentry call history leaks across cases** (Edge Case Hunter EH-19). Post-patch: `beforeEach(() => jest.clearAllMocks())` added (Story 12-7 / 12-8 precedent). — [`src/components/__tests__/animated-wrappers-render.test.tsx`](src/components/__tests__/animated-wrappers-render.test.tsx).
+
+**Additional fixes triggered by P1/P2 (drift-detector regex tolerance):**
+
+- Cases 1 / 3 / 5 / 9 / 10 source-drift regexes loosened to accept the optional `Object.freeze(` wrap that P2 introduced: `const X: ViewStyle = (?:Object\.freeze\(\s*)?\{` — accepts BOTH `= {` (pre-P2 unwrapped) AND `= Object.freeze({` (post-P2 wrapped) shapes. The `extractConstantBody` walker (both Case 9 + Case 10 copies) gets the same regex tolerance + a JSDoc note documenting the kept-consistent invariant.
+
+**Deferred (15):** D1 StatTile style-array order reversal (intentional per spec; future static-`transform` keys would be clobbered by worklet — Story 14-X) / D2 `extractOpeningTag` doesn't track angle-bracket depth (typed-generic JSX `<Animated.View<Props>>` — no current usage) / D3 Drift detector can't see into `Shadows.card` spread (token-internal regression out-of-scope) / D4 `findAllNodes` `root.findAll` cast type-unsafe (pre-existing pattern Story 12-9 / 13-5) / D5 `afterEach` cleanup swallows non-double-unmount errors (pre-existing) / D6 Case 9 hex regex doesn't match 4/8-digit hex (no current usage) / D7 Magic numbers `padding: 16` / `gap: 16` not tokenized to `Spacing.*` (Story 14-4 scope) / D8 `MinimalTestInstance` repeated shim across test files / D9 `Object.freeze` test pin for other pre-existing constants (out-of-scope) / D10 `StatTile` accessibilityLabel `startsWith("Today:")` brittle against i18n / D11 NativeWind jest-mode behavior (defensive only) / D12 Expo Router named-export-with-React-Compiler interaction (Story 13-5 `Bubble` precedent confirms safety) / D13 `gap` cross-platform RN ≥ 0.71 (pre-13-7 NativeWind same code path — not a regression) / D14 Reanimated mock immediate-call + useEffect timing footguns (defensive) / D15 `expo-router` not mocked + cross-bundle `Colors.primary` identity (currently safe).
+
+**Rejected as noise (~20):** Self-withdrawn by reviewers (BH#4 regex word-boundary, BH#15 regex escape, BH#20 dead imports, BH#26 flattenStyle null-safe, BH#32 ConversationCard order preserved, BH#33 gap semantic match, EH-16 boolean shorthand, EH-22 stripComments JSX-comment safe, EH-25 Pressable regex safe), out-of-scope (EH-24 control-case discipline scope-creep), pre-existing non-regressions (BH#11 RN `gap` version, BH#12 press-state coalescing, BH#22 magic shadow opacity), false positives (BH#9 Expo Router named exports — Story 13-5 precedent proven, BH#10 module-level spread evaluation canonical JS), documentation drift (BH#17 eslint-disable, BH#18 ViewStyle import style, BH#27 Polish phrasing, BH#30 comment-block bytes), confirmed safe (BH#16 mock factory overhead, BH#23 test count math, BH#24 candidates[0] safe, BH#31 react/no-multi-comp lint config, EH-23 HMR identity).
+
+**Tests after round-1:** 1842 / 1842 passing (+2 round-1 net 1840 → 1842; +16 net since story start vs 1826 baseline). All 4 quality gates green (type-check 0 errors / lint 0 warnings / prettier clean / jest 93 suites / 1842 cases).
+
+**Files modified in round-1:**
+
+- `app/(tabs)/home/index.tsx` — P2 `Object.freeze` wrap on `conversationCardStaticStyle`.
+- `src/components/common/StatTile.tsx` — P2 `Object.freeze` wrap on `statTileStaticStyle`.
+- `src/components/common/SkillCard.tsx` — P1 spread-first + P2 `Object.freeze` wrap on `skillCardPressableStaticStyle`.
+- `src/components/__tests__/animated-wrappers-render.test.tsx` — P3 predicate strengthening, P5 explicit `expo-secure-store` mock, P6 `beforeEach(jest.clearAllMocks)`, NEW Case 5 (P2 freeze pin).
+- `src/components/__tests__/animated-wrapper-className-style-source-drift.test.ts` — P2 regex tolerance for `Object.freeze(` wrap (Cases 1/3/5/9/10 + 2 extractConstantBody walkers), NEW Case 6b (P4 Pressable uniqueness pin).
+- `CLAUDE.md` — review-round-1 paragraph appended.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — 13-7 round-1 annotation.
+- `_bmad-output/implementation-artifacts/13-7-className-style-resolution-hot-paths.md` — this Senior Developer Review section.
