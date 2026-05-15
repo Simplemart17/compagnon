@@ -74,8 +74,26 @@ BEGIN
     RAISE EXCEPTION 'auth.uid() must match p_user_id';
   END IF;
 
+  -- Story 13-3 review-round-1 P5: validate p_pre_cefr_level against the
+  -- 6-level CEFR enum. Pre-patch a typo at the call site (`'B11'`, `'b1'`,
+  -- `'xyz'`) would flow verbatim into the cefr_promotion `from` field,
+  -- producing a UI banner with garbage data. NULL is allowed (the caller
+  -- explicitly passes null when no pre-conversation level was captured).
+  -- Mirrors Story 12-3 review-round-1 P4 defense-in-depth on CEFR input.
+  IF p_pre_cefr_level IS NOT NULL
+     AND p_pre_cefr_level NOT IN ('A1', 'A2', 'B1', 'B2', 'C1', 'C2') THEN
+    RAISE EXCEPTION 'invalid CEFR level: %', p_pre_cefr_level
+      USING ERRCODE = 'invalid_parameter_value';
+  END IF;
+
   -- 1. prev_session — most-recent OTHER completed conversation, gated on
   --    21-day cutoff (server-side; pre-13-3 was client-side post-fetch).
+  --
+  --    Story 13-3 review-round-1 P12: cutoff is INCLUSIVE (`>=`). A
+  --    conversation at exactly `p_now - 21 days` is INCLUDED in the
+  --    prev_session window. A future maintainer changing to exclusive
+  --    `>` should also update the pgTAP test #5 (currently seeds at
+  --    22 days to land OUTSIDE the inclusive window).
   SELECT to_jsonb(ps.*)
   INTO v_prev_session
   FROM (
@@ -115,9 +133,24 @@ BEGIN
   --        instead of N JSONB rows (the unbounded-query elimination
   --        that drives the audit P2-4 win). COALESCE to 0 when no
   --        previous conversations exist.
+  --
+  --        Story 13-3 review-round-1 P1: defensive JSONB type-check.
+  --        Pre-patch `(ai_feedback->>'fluencyRating')::numeric` would
+  --        raise `invalid_text_representation` if ANY historical row
+  --        stored the rating as a non-numeric string (e.g., a future
+  --        schema drift, malformed write, or AI-emitted "four") or as
+  --        a JSONB array/object — and the entire aggregate RPC would
+  --        fail, forcing the client into the catch-arm setState(null)
+  --        path. Post-patch the CASE filters to JSONB-typed numbers
+  --        ONLY; non-numeric entries are skipped per-row. Mirrors
+  --        Story 12-3 P17 NaN-guard defense-in-depth pattern.
   SELECT
-    COALESCE(MAX((ai_feedback->>'fluencyRating')::numeric), 0),
-    COALESCE(MAX((ai_feedback->>'grammarRating')::numeric), 0)
+    COALESCE(MAX(CASE WHEN jsonb_typeof(ai_feedback->'fluencyRating') = 'number'
+                       THEN (ai_feedback->>'fluencyRating')::numeric
+                       ELSE NULL END), 0),
+    COALESCE(MAX(CASE WHEN jsonb_typeof(ai_feedback->'grammarRating') = 'number'
+                       THEN (ai_feedback->>'grammarRating')::numeric
+                       ELSE NULL END), 0)
   INTO v_max_fluency_rating, v_max_grammar_rating
   FROM conversations
   WHERE user_id = p_user_id

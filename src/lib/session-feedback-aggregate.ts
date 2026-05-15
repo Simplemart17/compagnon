@@ -37,13 +37,19 @@ import { supabase } from "./supabase";
 // Types — mirror the SQL function's JSONB output shape exactly.
 // ---------------------------------------------------------------------------
 
+/**
+ * Story 13-3 review-round-1 P6: narrowed to ONLY the two fields the
+ * Story 13-3 derivation helpers actually consume. Pre-patch the
+ * `[key: string]: unknown` index signature defeated structural typing —
+ * any consumer could read arbitrary keys without compile errors. Other
+ * fields on `conversations.ai_feedback` (summary / strengths /
+ * improvements / vocabularyUsed) belong to the full `ConversationFeedback`
+ * type at `@/src/types/conversation`; consumers needing those should
+ * read the source row directly, not via this narrowed RPC-row shape.
+ */
 export interface SessionFeedbackAiFeedback {
   fluencyRating?: number;
   grammarRating?: number;
-  // Other fields exist on conversations.ai_feedback but are not
-  // structurally required for milestone/comparison logic — left as
-  // permissive partial.
-  [key: string]: unknown;
 }
 
 export interface SessionFeedbackPrevSession {

@@ -14,13 +14,12 @@
  * client-side max/filter computations).
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getSessionFeedbackAggregate,
   type SessionFeedbackAggregate,
 } from "@/src/lib/session-feedback-aggregate";
-import { captureError } from "@/src/lib/sentry";
 import type { Correction, ConversationFeedback } from "@/src/types/conversation";
 import type {
   MilestoneBannerProps,
@@ -272,27 +271,10 @@ export function useSessionFeedbackAggregate(
     total: number;
     resolved: number;
   } | null>(null);
-  const [nextAction, setNextAction] = useState<{
-    label: string;
-    route: string;
-    params?: Record<string, string>;
-  } | null>(null);
+  // Story 13-3 review-round-1 P3: nextAction is now a useMemo'd derived
+  // value below (not useState). See the P3 comment for rationale.
 
   const mountedRef = useRef(true);
-
-  // Derive next-action synchronously from feedback + corrections — it
-  // doesn't depend on the aggregate (pre-13-3 Effect 4 was its own
-  // useEffect because the screen split logic into 4 effects; post-13-3
-  // we centralize but next-action can resolve before the RPC returns).
-  const applyNextAction = useCallback(() => {
-    if (!currentFeedback) return;
-    if (!mountedRef.current) return;
-    setNextAction(deriveNextAction(currentFeedback, allCorrections));
-  }, [currentFeedback, allCorrections]);
-
-  useEffect(() => {
-    applyNextAction();
-  }, [applyNextAction]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -300,6 +282,31 @@ export function useSessionFeedbackAggregate(
       mountedRef.current = false;
     };
   }, []);
+
+  // Story 13-3 review-round-1 P3: nextAction derived synchronously in render
+  // body via useMemo. Pre-patch the separate `applyNextAction` useCallback
+  // + useEffect re-fired on every parent re-render due to dep-instability
+  // cascade (Story 12-1 P15 frozen-snapshot semantics produce a fresh
+  // `currentFeedback` reference on every observer notification even when
+  // content is byte-identical). Post-patch the memo keys on a stable
+  // content identity; reference instability no longer triggers setState.
+  const nextActionContentKey = currentFeedback
+    ? `${currentFeedback.summary ?? ""}|${(currentFeedback.improvements ?? []).join("\n")}|${(allCorrections ?? []).length}`
+    : null;
+  const nextAction = useMemo(() => {
+    if (!currentFeedback) return null;
+    return deriveNextAction(currentFeedback, allCorrections);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- content-key memoization (P3)
+  }, [nextActionContentKey]);
+
+  // Story 13-3 review-round-1 P2: stable content-identity key for the RPC
+  // effect. Same dep-instability concern as P3 — `currentFeedback` is a
+  // fresh-reference object on every parent re-render. Post-patch the
+  // effect keys on a content hash; reference instability no longer fires
+  // the RPC.
+  const feedbackContentKey = currentFeedback
+    ? `${currentFeedback.fluencyRating ?? "x"}|${currentFeedback.grammarRating ?? "x"}|${currentFeedback.summary ?? ""}`
+    : null;
 
   useEffect(() => {
     if (!userId || !conversationId || !currentFeedback) return;
@@ -320,13 +327,15 @@ export function useSessionFeedbackAggregate(
         );
         setMilestone(deriveMilestone(aggregate, currentFeedback));
         setErrorJourney(deriveErrorJourney(aggregate));
-      } catch (err) {
+      } catch {
         if (cancelled || !mountedRef.current) return;
-        // The RPC layer already captured to Sentry with feature tag
-        // "session-feedback-aggregate-fetch"; we just log a separate
-        // hook-context breadcrumb here for the failure path. Pre-13-3
-        // had 5 distinct catch sites; post-13-3 collapses to one.
-        captureError(err, "session-feedback-aggregate-fetch");
+        // Story 13-3 review-round-1 P4: the RPC helper already captured
+        // this error to Sentry with feature tag
+        // "session-feedback-aggregate-fetch" — re-capturing here would
+        // produce a duplicate Sentry event for the same error. We just
+        // reset the 3 RPC-derived state pieces (pre-13-3 byte-faithful
+        // — each of the 4 useEffects had its own catch-then-setState-null
+        // path) and let the helper's Sentry record stand alone.
         setComparisonMetrics(null);
         setMilestone(null);
         setErrorJourney(null);
@@ -336,7 +345,14 @@ export function useSessionFeedbackAggregate(
     return () => {
       cancelled = true;
     };
-  }, [userId, conversationId, currentFeedback, currentDurationSeconds, preConversationCefrLevel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- content-key memoization (P2)
+  }, [
+    userId,
+    conversationId,
+    feedbackContentKey,
+    currentDurationSeconds,
+    preConversationCefrLevel,
+  ]);
 
   return { comparisonMetrics, milestone, errorJourney, nextAction };
 }
