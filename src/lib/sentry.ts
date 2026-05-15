@@ -196,6 +196,57 @@ export function getSentryInitConfig(): Parameters<typeof Sentry.init>[0] {
     enableAutoSessionTracking: true,
     // GDPR: never auto-attach screenshots — they contain transcript text and companion memory output.
     attachScreenshot: false,
+    // Story 13-6 (Epic 13 P2-x performance) — perf-conservative SDK flags.
+    //
+    // Story 13-6 review-round-1 P1 + P3 correction: pre-patch the inline
+    // comments + spec claimed "all 3 default to ENABLED" + "JS work runs
+    // BEFORE sample-out decision." Verified against
+    // node_modules/@sentry/react-native@7.11.0/dist/js/options.d.ts:
+    //   - enableAutoPerformanceTracing: docs say "Enable auto performance
+    //     tracking by default" → defaults to true ✓
+    //   - enableNativeFramesTracking: `@default true` ✓
+    //   - enableUserInteractionTracing: `@default false` — defensive no-op
+    //     for SDK 7.11.0, kept as a forward-compat pin against a future
+    //     SDK that flips the default (P6)
+    //   - enableStallTracking: `@default true` (sibling — P2 addition)
+    //   - enableAppStartTracking: `@default true` (sibling — P2 addition)
+    //   - profilesSampleRate: undocumented default; when > 0 activates the
+    //     profiler with CPU + battery overhead (P2 addition; pin at 0)
+    //
+    // Accurate perf model (P3): setting these flags to `false` skips the
+    // auto-instrumentation INSTALLATION at SDK init time (the SDK doesn't
+    // wrap fetch/HTTP/touch-handlers/native-frames-tracking at all);
+    // tracesSampleRate filters out 95% of MANUALLY-created transactions at
+    // emit time. Disabling the auto-instrumentation moves the overhead from
+    // linear-in-activity to zero — explicit captureError() calls remain the
+    // telemetry surface (Story 9-3 feature-tag pattern).
+    enableAutoPerformanceTracing: false,
+    // Slow/frozen-frame measurements emit native-bridge round-trips per
+    // transaction. We don't dashboard mobile FPS via Sentry — Stories
+    // 13-1 / 13-2 / 13-3 / 13-4 / 13-5 measure perf architecturally.
+    enableNativeFramesTracking: false,
+    // JS event-loop stall measurements are added to ALL transactions
+    // (Story 13-6 review-round-1 P2 — sibling flag missed in the initial
+    // story scope). Sibling of enableNativeFramesTracking; same cost model
+    // (native-bridge measurement per transaction). Default ENABLED.
+    enableStallTracking: false,
+    // App-start auto-transaction is created on every cold launch (Story
+    // 13-6 P2 sibling addition). The cold-start window is exactly when
+    // every other JS module is initializing — Sentry's app-start tracking
+    // adds bridge work on the critical path. Default ENABLED.
+    enableAppStartTracking: false,
+    // SDK 7.11.0 default for enableUserInteractionTracing is already
+    // `false` (verified at node_modules path above). The explicit pin is
+    // defensive against a future SDK upgrade that flips the default —
+    // matches the "explicit-over-implicit" discipline at every other
+    // privacy flag in this config (sendDefaultPii, attachScreenshot, etc.).
+    enableUserInteractionTracing: false,
+    // Profiling activation knob — `profilesSampleRate > 0` enables CPU
+    // profiling on sampled transactions (battery + CPU overhead even if a
+    // subset). Pin at 0 to disable explicitly; combined with the auto-
+    // performance-tracing/stall/app-start disables above, no automatic
+    // perf surface remains active in production.
+    profilesSampleRate: 0,
     // GDPR: failed-request capture serializes URL/headers/body and may include OpenAI prompts.
     // We capture upstream errors via captureError() with statusCode/code only.
     enableCaptureFailedRequests: false,
