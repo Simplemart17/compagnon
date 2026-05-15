@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Text } from "react-native";
+import { Text, type ViewStyle } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,7 +8,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { Colors, Typography } from "@/src/lib/design";
+import { Colors, Radii, Typography } from "@/src/lib/design";
 
 export interface StatTileProps {
   value: string;
@@ -16,6 +16,30 @@ export interface StatTileProps {
   label: string;
   delay: number;
 }
+
+// Story 13-7: hoisted off the `<Animated.View>` to remove the per-frame
+// `className`+`style` merge cost while the entry-fade worklet writes
+// `opacity` + `translateY` from the Reanimated UI thread for ~400ms on every
+// home-screen mount (3 tiles in parallel via the StatNumbers row). Tailwind→
+// inline mapping: flex-1 → flex 1; items-center → alignItems "center";
+// rounded-2xl → Radii.card (16); bg-white → Colors.surfaceWhite; px-2.5 →
+// paddingHorizontal 10; py-3.5 → paddingVertical 14. Shadow tuple preserved
+// verbatim from pre-13-7 (does NOT match Shadows.card — uses Colors.shadow
+// with a heavier elevation than the card default).
+/** @internal — exported for Story 13-7 runtime tests; do NOT import in app code. */
+export const statTileStaticStyle: ViewStyle = {
+  flex: 1,
+  alignItems: "center",
+  borderRadius: Radii.card,
+  backgroundColor: Colors.surfaceWhite,
+  paddingHorizontal: 10,
+  paddingVertical: 14,
+  shadowColor: Colors.shadow,
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.1,
+  shadowRadius: 8,
+  elevation: 6,
+};
 
 export const StatTile = React.memo(function StatTile({ value, unit, label, delay }: StatTileProps) {
   const opacity = useSharedValue(0);
@@ -39,18 +63,8 @@ export const StatTile = React.memo(function StatTile({ value, unit, label, delay
 
   return (
     <Animated.View
-      className="flex-1 items-center rounded-2xl bg-white px-2.5 py-3.5"
       accessibilityLabel={`${label}: ${value}${unit.length > 0 ? ` ${unit}` : ""}`}
-      style={[
-        animStyle,
-        {
-          shadowColor: Colors.shadow,
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 6,
-        },
-      ]}
+      style={[statTileStaticStyle, animStyle]}
     >
       <Text className="text-2xl font-extrabold text-primary">{value}</Text>
       {unit.length > 0 ? (

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, type ViewStyle } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -7,7 +7,30 @@ import Animated, {
   withDelay,
 } from "react-native-reanimated";
 
-import { Colors, Shadows, Typography, skillTint } from "@/src/lib/design";
+import { Colors, Radii, Shadows, Typography, skillTint } from "@/src/lib/design";
+
+// Story 13-7: hoisted off the inner `<Pressable>` to remove the per-frame
+// `className`+`style` merge cost. The outer `<Animated.View style={entryStyle}>`
+// is already canonical (single `style` prop). The Pressable rerenders in JS on
+// press-state change AND its parent transforms via worklet on every press cycle
+// of `scale.value`; converting to a single `style` constant collapses the
+// pre-13-7 merge cost AND amortizes static-style allocation across all 5
+// SkillCard instances rendered on the home screen. Tailwind→inline mapping:
+// bg-white → Colors.surfaceWhite; rounded-2xl → Radii.card (16); overflow-
+// hidden → overflow "hidden"; flex-row → flexDirection "row"; items-center →
+// alignItems "center"; p-4 → padding 16; gap-[14px] → 14. Shadow uses the
+// Shadows.card design token (Story 14-4 token-enforcement precedent).
+/** @internal — exported for Story 13-7 runtime tests; do NOT import in app code. */
+export const skillCardPressableStaticStyle: ViewStyle = {
+  backgroundColor: Colors.surfaceWhite,
+  borderRadius: Radii.card,
+  overflow: "hidden",
+  flexDirection: "row",
+  alignItems: "center",
+  padding: 16,
+  gap: 14,
+  ...Shadows.card,
+};
 
 export interface SkillCardProps {
   emoji: string;
@@ -56,10 +79,7 @@ export const SkillCard = React.memo(function SkillCard({
         accessibilityRole="button"
         accessibilityLabel={`${titleFr} - ${titleEn}. ${description}`}
         accessibilityHint={`Double tap to start ${titleEn} practice`}
-        className="bg-white rounded-2xl overflow-hidden flex-row items-center p-4 gap-[14px]"
-        style={{
-          ...Shadows.card,
-        }}
+        style={skillCardPressableStaticStyle}
       >
         {/* Left accent strip */}
         <View
