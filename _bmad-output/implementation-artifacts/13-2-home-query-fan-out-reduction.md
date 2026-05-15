@@ -1,6 +1,6 @@
 # Story 13.2: Home Query Fan-Out Reduction — single `get_home_aggregate` RPC + memoized "daily greeting" embedding
 
-Status: review
+Status: done
 
 ## Story
 
