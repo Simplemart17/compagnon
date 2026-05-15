@@ -8,14 +8,11 @@
  * Writing — Epic 10.6, Speaking — story 9-8.
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { chatCompletionJSON } from "@/src/lib/openai";
-import { mockTestSectionSchema } from "@/src/lib/schemas/ai-responses";
-import { buildMockTestPrompt } from "@/src/lib/prompts/mock-test";
 import { ALL_QCM_SECTIONS, TCF_QCM_SECTIONS } from "@/src/lib/tcf";
 import { rawPercentToListeningReadingScore } from "@/src/lib/scoring";
 import { levelFromScore } from "@/src/types/cefr";
@@ -28,6 +25,7 @@ import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { hapticLight } from "@/src/lib/haptics";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
+import { useMockTestGeneration } from "@/src/hooks/use-mock-test-generation";
 import type { MCQContent } from "@/src/types/exercise";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -57,6 +55,11 @@ interface TestState {
   answers: Record<string, string>; // `${section}_${index}` -> answerId
   timeRemaining: number;
   status: "loading" | "active" | "finished";
+  // Story 13-4 review-round-1 P4 — true when the user opted to "Skip to
+  // Results" because a section permanently failed mid-test. Flows into
+  // `calculateResultsFromState` so the results screen reports the test as
+  // partial-due-to-failure rather than as a normal completion.
+  skippedDueToFailure?: boolean;
 }
 
 // Per-section runtime metadata is provided by `TCF_QCM_SECTIONS` in
@@ -129,7 +132,15 @@ export default function MockTestSessionScreen() {
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
 
-  const sections: Section[] = testId === "full" ? [...ALL_QCM_SECTIONS] : [testId as Section];
+  // Story 13-4: memoize the sections array so the hook's content-key
+  // memoization (sectionsKey = sections.join(",")) sees a stable input
+  // across re-renders. Without useMemo, every parent render produces a
+  // fresh array reference; the hook would still de-dupe via sectionsKey
+  // but useMemo is the standard React idiom.
+  const sections = useMemo<Section[]>(
+    () => (testId === "full" ? [...ALL_QCM_SECTIONS] : [testId as Section]),
+    [testId]
+  );
 
   const [state, setState] = useState<TestState>({
     sections,
@@ -144,10 +155,14 @@ export default function MockTestSessionScreen() {
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<string>>(new Set());
-  const [activeTestId, setActiveTestId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef<number>(0);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Story 13-4 — guards against firing the all-failed / corrupt-resume
+  // Alert more than once per (story 13-4 hook signal) transition.
+  const allFailedAlertFiredRef = useRef(false);
+  const corruptResumeAlertFiredRef = useRef(false);
+  const stateInitializedRef = useRef(false);
 
   const cefrLevel = (profile?.target_cefr_level ??
     profile?.current_cefr_level ??
@@ -161,6 +176,19 @@ export default function MockTestSessionScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInvalidTestId]);
+
+  // Story 13-4: parallel per-section AI generation via the dedicated hook.
+  // Closes audit P2-6. The hook owns: parallel fan-out, resume detection,
+  // DB INSERT on first-section-ready, DB UPDATE on subsequent-section-ready,
+  // mountedRef guard, single-fire INSERT guard, retry(). The screen owns:
+  // state transitions + Alert UX dispatch in response to hook signals.
+  const generation = useMockTestGeneration({
+    sections,
+    cefrLevel,
+    testIdParam: testId,
+    enabled: !isInvalidTestId,
+  });
+  const activeTestId = generation.activeTestId;
 
   const currentSection = state.sections[state.currentSectionIndex];
   const currentQuestions = state.questions[currentSection] ?? [];
@@ -194,224 +222,139 @@ export default function MockTestSessionScreen() {
     [activeTestId]
   );
 
-  // Generate test questions or resume from saved state
+  // Story 13-4: resume-data hydration. When the hook detects a saved in-
+  // progress test, the screen consumes the resumeData payload to hydrate
+  // local state (answers + answeredQuestions + currentQuestionIndex +
+  // status). Pre-13-4 these setState calls lived inline in initTest;
+  // post-13-4 they react to the resumeData signal.
   useEffect(() => {
-    async function initTest() {
-      // Bail early on invalid route params (e.g., a stale /mock-test/grammar
-      // deep link). The redirect effect above will navigate away on next
-      // render; running the DB query here would otherwise hydrate state from
-      // a legacy row whose section is no longer in the Section union.
-      if (isInvalidTestId) return;
-
-      const userId = useAuthStore.getState().user?.id;
-      const expectedTotalSeconds =
-        sections.reduce((sum, s) => sum + TCF_QCM_SECTIONS[s].minutes, 0) * 60;
-
-      // Check for an in-progress test to resume
-      if (userId) {
-        const { data: existing } = await supabase
-          .from("mock_tests")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("test_type", testId === "full" ? "full" : testId)
-          .eq("status", "in_progress")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (existing?.questions && existing?.section_scores?.answers) {
-          try {
-            // Resume from saved state
-            const saved = existing.section_scores;
-            const rawQuestions = (existing.questions ?? {}) as Record<string, MCQContent[]>;
-
-            // Filter out any keys that aren't in the current Section union
-            // (e.g., legacy "grammar" rows from before the TCF Canada pivot).
-            const resumedQuestions: Record<Section, MCQContent[]> = {
-              listening: Array.isArray(rawQuestions.listening) ? rawQuestions.listening : [],
-              reading: Array.isArray(rawQuestions.reading) ? rawQuestions.reading : [],
-            };
-
-            // Validate saved state is not corrupt
-            const hasValidQuestions = sections.some(
-              (s) => Array.isArray(resumedQuestions[s]) && resumedQuestions[s].length > 0
-            );
-            if (!hasValidQuestions) throw new Error("Corrupt saved state: no valid questions");
-
-            // Clamp currentSectionIndex against the *current* sections array.
-            // Legacy 3-section "full" rows could land at index 2 (grammar)
-            // which is out of range for the new 2-section run.
-            const safeSectionIndex = Math.min(
-              Math.max(0, saved.currentSectionIndex ?? 0),
-              sections.length - 1
-            );
-
-            // Subtract elapsed time since last save to prevent gaining time.
-            // Also clamp against the new spec total — a legacy 85-min budget
-            // should not entitle a resumed run to more than the new 95-min cap.
-            let adjustedTimeRemaining = saved.timeRemaining ?? 0;
-            if (saved.savedAt && adjustedTimeRemaining > 0) {
-              const elapsedMs = Date.now() - saved.savedAt;
-              const elapsedSeconds = Math.floor(elapsedMs / 1000);
-              adjustedTimeRemaining = Math.max(0, adjustedTimeRemaining - elapsedSeconds);
-            }
-            adjustedTimeRemaining = Math.min(adjustedTimeRemaining, expectedTotalSeconds);
-
-            setActiveTestId(existing.id);
-            setAnsweredQuestions(new Set(saved.answeredQuestions ?? []));
-            setCurrentQuestionIndex(Math.max(0, saved.currentQuestionIndex ?? 0));
-            setState({
-              sections,
-              currentSectionIndex: safeSectionIndex,
-              questions: resumedQuestions,
-              answers: saved.answers ?? {},
-              timeRemaining: adjustedTimeRemaining,
-              status: adjustedTimeRemaining <= 0 ? "finished" : "active",
-            });
-            return;
-          } catch (err) {
-            captureError(err, "mock-test-resume");
-            // Corrupt saved state — offer to start fresh
-            Alert.alert(
-              "Resume Failed",
-              "Your saved test data appears to be corrupted. Would you like to start a new test?",
-              [
-                { text: "Go Back", style: "cancel", onPress: () => router.back() },
-                {
-                  text: "Start New Test",
-                  onPress: async () => {
-                    try {
-                      await supabase.from("mock_tests").delete().eq("id", existing.id);
-                    } catch (deleteErr) {
-                      captureError(deleteErr, "mock-test-delete-corrupt");
-                    }
-                    // Re-run initTest to generate fresh questions
-                    void initTest();
-                  },
-                },
-              ]
-            );
-            return;
-          }
-        }
-      }
-
-      // Generate new test
-      const allQuestions: Record<Section, MCQContent[]> = {
-        listening: [],
-        reading: [],
-      };
-
-      let generationFailed = false;
-      for (const section of sections) {
-        try {
-          const prompt = buildMockTestPrompt({
-            section,
-            targetLevel: cefrLevel,
-            questionCount: TCF_QCM_SECTIONS[section].questions,
-          });
-
-          const result = await chatCompletionJSON(
-            [{ role: "system", content: prompt }],
-            mockTestSectionSchema,
-            { temperature: 0.4, maxTokens: 4096, feature: `mock-test-${section}` }
-          );
-
-          // Schema's `mcqQuestionSchema.superRefine` already enforced 4
-          // options + 1 correct per question; the inline filter that did
-          // this manually was deleted by story 9-7. We still need to attach
-          // passage text to questions that reference a passageId.
-          //
-          // We must mutate locally because each question is `Readonly<...>`
-          // after Zod's parse. Cast to a mutable shape, then write the
-          // domain-level question count vs section-undercount Sentry signal
-          // under its own context tag (`mock-test-undercount`) so it doesn't
-          // collide with the parse-failure tag.
-          const questions = result.questions.map((q) => ({ ...q })) as {
-            question: string;
-            passage?: string;
-            passageId?: string;
-            options: { id: string; text: string; isCorrect: boolean }[];
-            explanation: string;
-          }[];
-
-          if (result.passages && result.passages.length > 0) {
-            const passageMap = new Map(result.passages.map((p) => [p.id, p.text]));
-            for (const q of questions) {
-              if (q.passageId && !q.passage) {
-                q.passage = passageMap.get(q.passageId) ?? undefined;
-              }
-            }
-          }
-
-          // Domain-level undercount alert. Story 9-7 review (P3): the prior
-          // `> 0` clause silently suppressed the empty-section case, letting
-          // a fully-empty test navigate to the active screen with zero
-          // questions. The empty case now ALSO captures, so observability
-          // is preserved end-to-end.
-          const expected = TCF_QCM_SECTIONS[section].questions;
-          if (questions.length < Math.ceil(expected * 0.5)) {
-            captureError(
-              new Error(
-                `Section ${section}: only ${questions.length}/${expected} questions generated`
-              ),
-              "mock-test-undercount"
-            );
-          }
-
-          allQuestions[section] = questions;
-        } catch (err) {
-          captureError(err, `mock-test-generate-${section}`);
-          allQuestions[section] = [];
-          generationFailed = true;
-        }
-      }
-
-      // Abort if all sections failed to generate
-      const emptySections = sections.filter((s) => allQuestions[s].length === 0);
-      if (generationFailed && emptySections.length === sections.length) {
-        Alert.alert(
-          "Could not load test",
-          "We were unable to generate test questions. Please check your internet connection and try again.",
-          [
-            { text: "Go Back", onPress: () => router.back() },
-            {
-              text: "Retry",
-              onPress: () => void initTest(),
-            },
-          ]
-        );
-        return;
-      }
-
-      const totalMinutes = sections.reduce((sum, s) => sum + TCF_QCM_SECTIONS[s].minutes, 0);
-
-      // Create in-progress record in DB
-      if (userId) {
-        const { data: newTest } = await supabase
-          .from("mock_tests")
-          .insert({
-            user_id: userId,
-            test_type: testId === "full" ? "full" : testId,
-            questions: allQuestions,
-            status: "in_progress",
-          })
-          .select("id")
-          .single();
-        if (newTest) setActiveTestId(newTest.id);
-      }
-
-      setState((s) => ({
-        ...s,
-        questions: allQuestions,
-        timeRemaining: totalMinutes * 60,
-        status: "active",
-      }));
-    }
-
-    void initTest();
+    if (stateInitializedRef.current) return;
+    const data = generation.resumeData;
+    if (!data || data.corrupt) return;
+    setAnsweredQuestions(new Set(data.savedAnsweredQuestions));
+    setCurrentQuestionIndex(data.savedQuestionIndex);
+    setState({
+      sections,
+      currentSectionIndex: data.savedSectionIndex,
+      questions: data.resumedQuestions,
+      answers: data.savedAnswers,
+      timeRemaining: data.adjustedTimeRemaining,
+      status: data.adjustedTimeRemaining <= 0 ? "finished" : "active",
+    });
+    stateInitializedRef.current = true;
+    // Reactive on generation.resumeData ONLY. `sections` reference is
+    // memoized via the useMemo above; adding it as a dep would not change
+    // semantics but would clutter the dep array.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [generation.resumeData]);
+
+  // Story 13-4: first-section-ready signal — transitions status loading
+  // → active as soon as the FIRST section's questions are available,
+  // even while section 2 is still generating (audit P2-6 "first-section-
+  // playable progressive UI"). Subsequent section settles merge into
+  // state.questions via the next effect.
+  //
+  // Story 13-4 review-round-1 P6 — gate on `!generation.resumeData`. Pre-
+  // patch: when resume + firstSectionReady fired in the same render (both
+  // set true by the hook's resume branch), whichever effect ran first won.
+  // If firstSectionReady ran first, it set `state.timeRemaining =
+  // totalMinutes * 60` which CLOBBERED the resume's adjusted-time-
+  // remaining. Post-patch resume always wins.
+  useEffect(() => {
+    if (stateInitializedRef.current) return;
+    if (generation.resumeData) return; // P6: resume effect wins
+    if (!generation.firstSectionReady) return;
+    const totalMinutes = sections.reduce((sum, s) => sum + TCF_QCM_SECTIONS[s].minutes, 0);
+    setState((s) => ({
+      ...s,
+      questions: generation.questions,
+      timeRemaining: totalMinutes * 60,
+      status: "active",
+    }));
+    stateInitializedRef.current = true;
+    // Reactive on firstSectionReady + resumeData ONLY; full deps would re-
+    // trigger on `generation.questions` shape change (covered by the next
+    // effect) and `sections` reference change (memoized via useMemo above).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generation.firstSectionReady, generation.resumeData]);
+
+  // Story 13-4: merge late-arriving section questions into state once we're
+  // already "active" (the user is answering section 1 while section 2 lands).
+  useEffect(() => {
+    if (state.status !== "active") return;
+    setState((s) => ({ ...s, questions: generation.questions }));
+    // Reactive on generation.questions ONLY; state.status read inside the
+    // effect body (intentionally not in deps to avoid re-firing when state
+    // transitions). The hook returns a fresh `questions` object only when
+    // a section's questions actually changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generation.questions]);
+
+  // Story 13-4: all-failed signal → render "Could not load test" Alert with
+  // Retry + Go Back. Pre-13-4 this lived inside initTest's body; post-13-4
+  // the hook surfaces `allFailed` and the screen owns the Alert dispatch.
+  //
+  // Story 13-4 review-round-1 P12 — fire the `mock-test-generation-aborted`
+  // Sentry tag declared in the spec (AC #10 + "What the new hook owns"
+  // item 7). Pre-patch only per-section `mock-test-generate-${section}`
+  // tags fired; operators couldn't aggregate "% of mock-test sessions that
+  // aborted entirely" without correlating multiple events. Post-patch one
+  // categorical event fires per aborted test.
+  useEffect(() => {
+    if (!generation.allFailed) return;
+    if (allFailedAlertFiredRef.current) return;
+    allFailedAlertFiredRef.current = true;
+    captureError(new Error("All mock-test sections failed"), "mock-test-generation-aborted");
+    Alert.alert(
+      "Could not load test",
+      "We were unable to generate test questions. Please check your internet connection and try again.",
+      [
+        { text: "Go Back", onPress: () => router.back() },
+        {
+          text: "Retry",
+          onPress: () => {
+            allFailedAlertFiredRef.current = false;
+            generation.retry();
+          },
+        },
+      ]
+    );
+    // Reactive on generation.allFailed signal ONLY. `generation.retry` and
+    // `router` are stable identity from their respective hooks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generation.allFailed]);
+
+  // Story 13-4: corrupt-resume signal → render "Resume Failed" Alert
+  // mirroring pre-13-4 lines 273-294. Retry calls generation.retry()
+  // which clears the corrupt row + fires fresh generation.
+  useEffect(() => {
+    if (!generation.resumeData?.corrupt) return;
+    if (corruptResumeAlertFiredRef.current) return;
+    corruptResumeAlertFiredRef.current = true;
+    const corruptRowId = generation.resumeData.activeTestId;
+    Alert.alert(
+      "Resume Failed",
+      "Your saved test data appears to be corrupted. Would you like to start a new test?",
+      [
+        { text: "Go Back", style: "cancel", onPress: () => router.back() },
+        {
+          text: "Start New Test",
+          onPress: async () => {
+            try {
+              await supabase.from("mock_tests").delete().eq("id", corruptRowId);
+            } catch (deleteErr) {
+              captureError(deleteErr, "mock-test-delete-corrupt");
+            }
+            corruptResumeAlertFiredRef.current = false;
+            generation.retry();
+          },
+        },
+      ]
+    );
+    // Reactive on generation.resumeData ONLY. `router` + `generation.retry`
+    // identity-stable; supabase singleton always fresh-fetched at call time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generation.resumeData]);
 
   // Timer countdown -- uses absolute endTime to avoid drift from setInterval
   useEffect(() => {
@@ -572,12 +515,28 @@ export default function MockTestSessionScreen() {
       const allScores = Object.values(sectionResults).map((s) => s.tcfScore);
       const overallTcfScore = Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length);
 
+      // Story 13-4 review-round-1 P4 — `isPartialTest` now flags ANY of:
+      // (a) single-section run (pre-13-4 semantic), (b) full run where a
+      // section was skipped due to permanent generation failure
+      // (skippedDueToFailure), or (c) full run with a section's total === 0
+      // (defense-in-depth — empty-section indicates either failure or an
+      // unexpected zero-question generation). Pre-patch only (a) was
+      // checked; the Skip-to-Results path produced a "normal" completion
+      // record whose TCF score was computed on a single section masquerading
+      // as a 2-section run.
+      const anySectionEmpty = testState.sections.some(
+        (s) => (testState.questions[s]?.length ?? 0) === 0
+      );
       return {
         sections: sectionResults,
         overallTcfScore,
         overallCefrLevel: levelFromScore(overallTcfScore) ?? "Below A1",
         testType: testId,
-        isPartialTest: testState.sections.length < ALL_QCM_SECTIONS.length,
+        isPartialTest:
+          testState.sections.length < ALL_QCM_SECTIONS.length ||
+          testState.skippedDueToFailure === true ||
+          anySectionEmpty,
+        skippedDueToFailure: testState.skippedDueToFailure === true,
       };
     },
     [testId]
@@ -605,6 +564,46 @@ export default function MockTestSessionScreen() {
 
   const handleNextSection = useCallback(() => {
     if (state.currentSectionIndex < state.sections.length - 1) {
+      const nextSection = state.sections[state.currentSectionIndex + 1];
+      const nextStatus = generation.sectionStatus[nextSection];
+      // Story 13-4: if the next section is still generating (pending) we
+      // advance the section index optimistically so the
+      // "Préparation de la section suivante..." overlay renders (it gates
+      // on `currentSectionStatus !== "ready" && currentQuestions.length === 0`,
+      // which is true post-advance because the pending section's
+      // questions blob is still []). The merge effect will populate
+      // state.questions[nextSection] when the AI call lands, dismissing
+      // the overlay naturally. If it failed permanently, offer to skip
+      // straight to results so the user isn't trapped.
+      //
+      // Story 13-4 review-round-1 P1 — pre-patch the pending branch
+      // returned void WITHOUT advancing, which left the overlay condition
+      // false (currentSection unchanged, currentQuestions non-empty), so
+      // the user's tap appeared dead. Post-patch we advance unconditionally
+      // (unless the section explicitly failed); the overlay handles the
+      // pending case as the visual feedback.
+      if (nextStatus === "failed") {
+        Alert.alert(
+          "Section Unavailable",
+          "We couldn't load this section. Would you like to skip to your results?",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Skip to Results",
+              // Story 13-4 review-round-1 P4 — track skipped-due-to-fail so
+              // the results screen can flag the test as partial. The
+              // skippedDueToFailure flag flows through completion via
+              // `calculateResultsFromState`.
+              onPress: () =>
+                setState((s) => ({ ...s, status: "finished", skippedDueToFailure: true })),
+            },
+          ]
+        );
+        return;
+      }
+      // P1: advance index even when pending — the overlay below renders
+      // for that case (currentQuestions.length === 0 + currentSectionStatus
+      // !== "ready"), giving the user explicit visual feedback.
       setState((s) => ({
         ...s,
         currentSectionIndex: s.currentSectionIndex + 1,
@@ -613,7 +612,7 @@ export default function MockTestSessionScreen() {
     } else {
       setState((s) => ({ ...s, status: "finished" }));
     }
-  }, [state.currentSectionIndex, state.sections.length]);
+  }, [state.currentSectionIndex, state.sections, generation.sectionStatus]);
 
   const handleFinish = useCallback(() => {
     // Flush any pending debounced save
@@ -657,6 +656,30 @@ export default function MockTestSessionScreen() {
   // Loading screen — skeleton loader
   if (state.status === "loading") {
     return <MockTestSkeleton isSlow={isSlow} />;
+  }
+
+  // Story 13-4: "Preparing next section..." overlay. Architecturally rare
+  // (under normal usage section 2 has been generating for ≥35 minutes while
+  // the user works through section 1) but the correctness backstop matters
+  // when a user races through section 1 faster than ~6-10s of section-2
+  // generation. Empty `currentQuestions` while `state.status === "active"`
+  // and the current section is not yet "ready" is the exact race condition.
+  const currentSectionStatus = generation.sectionStatus[currentSection];
+  if (
+    state.status === "active" &&
+    currentSectionStatus !== "ready" &&
+    currentQuestions.length === 0
+  ) {
+    return (
+      <SafeAreaView className="flex-1 bg-surface items-center justify-center px-6">
+        <Text style={[Typography.cardTitle, { textAlign: "center", marginBottom: 8 }]}>
+          Préparation de la section suivante...
+        </Text>
+        <Text style={[Typography.bodySecondary, { textAlign: "center" }]}>
+          Preparing next section...
+        </Text>
+      </SafeAreaView>
+    );
   }
 
   const isLastQuestion = currentQuestionIndex >= currentQuestions.length - 1;
