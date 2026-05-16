@@ -8,16 +8,16 @@
  *
  * Load-bearing assertions:
  *   (a) Masked email renders for `userEmail="alice@example.com"`.
- *   (b) French fallback `"votre adresse e-mail"` renders for undefined email.
+ *   (b) Fallback `"your email address"` renders for undefined email.
  *   (c) Resend button dispatches `onResendVerification(email)` exactly
  *       once per tap; tap during cooldown is dropped (synchronous
  *       double-tap guard).
  *   (d) Post-resend cooldown: button is disabled + label shows
- *       `"Renvoyer dans Xs"` countdown.
+ *       `"Resend in Xs"` countdown.
  *   (e) After 60s (`jest.advanceTimersByTime`), button re-enables.
  *   (f) Resend error path: `captureError` is called with the
- *       `"email-verification-resend"` feature tag AND a French Alert
- *       fires AND the email is NOT in extras.
+ *       `"email-verification-resend"` feature tag AND an Alert fires
+ *       AND the email is NOT in extras.
  *   (g) Refresh button dispatches `onRefreshSession` once.
  *   (h) Sign-out button dispatches `onSignOut` once.
  *   (i) Gate-shown breadcrumb (`feature: "email-verification-gate"`)
@@ -167,10 +167,10 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
     expect(text).toContain("a***@example.com");
   });
 
-  it('Case 2: renders the French fallback "votre adresse e-mail" for undefined email', () => {
+  it('Case 2: renders the fallback "your email address" for undefined email', () => {
     const { renderer } = renderGate({ userEmail: undefined });
     const text = getAllTextContent(renderer).join(" ");
-    expect(text).toContain("votre adresse e-mail");
+    expect(text).toContain("your email address");
   });
 
   it("Case 3: tapping Resend dispatches onResendVerification exactly once with the email arg", async () => {
@@ -183,7 +183,7 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
     expect(onResendVerification).toHaveBeenCalledWith("alice@example.com");
   });
 
-  it("Case 4: after a successful resend, the button is disabled + shows `Renvoyer dans Xs`", async () => {
+  it("Case 4: after a successful resend, the button is disabled + shows `Resend in Xs`", async () => {
     const { renderer } = renderGate();
     const resendBtn = findPressableByLabel(renderer, "Resend verification email");
     await act(async () => {
@@ -193,7 +193,7 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
     const resendBtnAfter = findPressableByLabel(renderer, "Resend verification email");
     expect(resendBtnAfter.props.accessibilityState).toMatchObject({ disabled: true });
     const text = getAllTextContent(renderer).join(" ");
-    expect(text).toMatch(/Renvoyer dans \d+s/);
+    expect(text).toMatch(/Resend in \d+s/);
   });
 
   it("Case 5: after 60s elapse, the resend button re-enables", async () => {
@@ -209,7 +209,7 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
     const resendBtnAfter = findPressableByLabel(renderer, "Resend verification email");
     expect(resendBtnAfter.props.accessibilityState).toMatchObject({ disabled: false });
     const text = getAllTextContent(renderer).join(" ");
-    expect(text).toContain("Renvoyer l'e-mail");
+    expect(text).toContain("Resend email");
   });
 
   it("Case 6: resend error path — captureError fires with `email-verification-resend` tag AND Alert AND email NOT in extras", async () => {
@@ -232,8 +232,8 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
     }
     expect(alertSpy).toHaveBeenCalledTimes(1);
     const [alertTitle, alertBody] = alertSpy.mock.calls[0];
-    expect(alertTitle).toBe("Erreur");
-    expect(alertBody).toMatch(/Veuillez réessayer/);
+    expect(alertTitle).toBe("Error");
+    expect(alertBody).toMatch(/try again/);
   });
 
   it("Case 7: tapping Refresh dispatches onRefreshSession exactly once", async () => {
@@ -312,7 +312,7 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
 
   // Review-round-1 H1 patches — handleRefresh trio.
 
-  it("Case 11 (H1): refresh error → captureError fires with `email-verification-refresh` tag + French Alert", async () => {
+  it("Case 11 (H1): refresh error → captureError fires with `email-verification-refresh` tag + Alert", async () => {
     const fakeError = { name: "AuthApiError", message: "network blip" };
     const { renderer } = renderGate({
       onRefreshSession: jest.fn(async () => ({ error: fakeError })),
@@ -331,10 +331,10 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
     }
     expect(alertSpy).toHaveBeenCalledTimes(1);
     const [alertTitle] = alertSpy.mock.calls[0];
-    expect(alertTitle).toBe("Erreur");
+    expect(alertTitle).toBe("Error");
   });
 
-  it('Case 12 (H1): refresh success BUT email still unverified → "not yet confirmed" French Alert', async () => {
+  it('Case 12 (H1): refresh success BUT email still unverified → "not yet confirmed" Alert', async () => {
     // User taps Refresh BEFORE clicking the email link. refreshSession()
     // resolves successfully but the user object still has
     // `email_confirmed_at: undefined`. Post-patch: we surface this.
@@ -346,8 +346,8 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
     });
     expect(alertSpy).toHaveBeenCalledTimes(1);
     const [alertTitle, alertBody] = alertSpy.mock.calls[0];
-    expect(alertTitle).toBe("Vérification non confirmée");
-    expect(alertBody).toMatch(/cliqué sur le lien/i);
+    expect(alertTitle).toBe("Not verified yet");
+    expect(alertBody).toMatch(/clicked the link/i);
     // captureError did NOT fire — this isn't an error, it's a UX-explicable
     // mismatch the user can recover from.
     expect(mockCaptureError).not.toHaveBeenCalled();
@@ -399,7 +399,7 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
 
   // Review-round-1 L1 patches — handleSignOut guard + error handling.
 
-  it("Case 15 (L1): sign-out error → captureError fires with `email-verification-signout` tag + French Alert", async () => {
+  it("Case 15 (L1): sign-out error → captureError fires with `email-verification-signout` tag + Alert", async () => {
     const fakeError = { name: "AuthApiError", message: "signout failed" };
     const { renderer } = renderGate({
       onSignOut: jest.fn(async () => ({ error: fakeError })),
@@ -413,7 +413,7 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
     expect(errorArg).toBe(fakeError);
     expect(contextArg).toBe("email-verification-signout");
     expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(alertSpy.mock.calls[0][0]).toBe("Erreur");
+    expect(alertSpy.mock.calls[0][0]).toBe("Error");
   });
 
   it("Case 16 (L1): concurrent sign-out taps → onSignOut dispatched only ONCE", async () => {
@@ -475,13 +475,13 @@ describe("EmailVerificationGate — Story 12-9 runtime contract", () => {
   });
 
   // Review-round-1 M3 — userEmail undefined produces distinct "missing
-  // email" label, NOT "Renvoyer dans 0s" forever-disabled UX.
+  // email" label, NOT "Resend in 0s" forever-disabled UX.
 
-  it('Case 18 (M3): userEmail === undefined → resend label "Adresse e-mail manquante" + disabled', () => {
+  it('Case 18 (M3): userEmail === undefined → resend label "Email address missing" + disabled', () => {
     const { renderer } = renderGate({ userEmail: undefined });
     const text = getAllTextContent(renderer).join(" ");
-    expect(text).toContain("Adresse e-mail manquante");
-    expect(text).not.toMatch(/Renvoyer dans \d+s/);
+    expect(text).toContain("Email address missing");
+    expect(text).not.toMatch(/Resend in \d+s/);
     const resendBtn = findPressableByLabel(renderer, "Resend verification email");
     expect(resendBtn.props.accessibilityState).toMatchObject({ disabled: true });
   });
