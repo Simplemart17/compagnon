@@ -1,15 +1,20 @@
 /**
  * Shared test utilities for `react-test-renderer` (Epic 13 retrospective AI #7).
  *
- * Three test files previously duplicated the same local `MinimalTestInstance`
- * shim + `findAllNodes` / `flattenStyle` helpers:
- * - `src/components/__tests__/animated-wrappers-render.test.tsx` (Story 13-7)
- * - `src/components/auth/__tests__/EmailVerificationGate.test.tsx` (Story 12-9)
- * - `app/(tabs)/conversation/__tests__/history-flatlist-virtualization.test.tsx` (Story 13-5)
+ * Pre-AI-#7 duplication:
+ * - `MinimalTestInstance` was declared inline in two files:
+ *   `src/components/__tests__/animated-wrappers-render.test.tsx` (Story 13-7)
+ *   and `src/components/auth/__tests__/EmailVerificationGate.test.tsx` (Story 12-9).
+ * - `findAllNodes` + `flattenStyle` helpers were declared inline only in
+ *   `animated-wrappers-render.test.tsx` (Story 13-7).
+ * - The `react-native-reanimated` jest.mock factory was duplicated inline in
+ *   `animated-wrappers-render.test.tsx` + `app/(tabs)/conversation/__tests__/history-flatlist-virtualization.test.tsx`
+ *   (the reanimated factory lives at `@/src/test-utils/mocks/reanimated`).
  *
- * This module extracts the canonical shapes. Future test authors should
- * import from `@/src/test-utils/react-test-renderer` rather than re-declaring
- * the type locally.
+ * `EmailVerificationGate.test.tsx` declared `MinimalTestInstance` locally
+ * but uses its own inline `findPressableByLabel` helper (a Pressable-specific
+ * predicate walker); it does NOT consume `findAllNodes` or `flattenStyle`
+ * post-AI-#7. It now imports just the `MinimalTestInstance` type.
  *
  * Why: the project ships a minimal `react-test-renderer` type shim at
  * `src/types/react-test-renderer.d.ts` (Story 12-1 P8) without a full
