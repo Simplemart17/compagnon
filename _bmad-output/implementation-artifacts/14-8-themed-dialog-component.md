@@ -1,6 +1,6 @@
 # Story 14.8: Themed Dialog Component — replace `Alert.alert` for high-traffic flows (sign-out, level change, daily-goal change, delete-account stage-1) with a custom design-token-styled dialog matching the Companion visual identity
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
