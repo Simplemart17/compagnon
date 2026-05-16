@@ -68,7 +68,8 @@ export type IconName =
   | "message-circle"
   | "award"
   | "smile"
-  | "settings";
+  | "settings"
+  | "play-circle"; // resume CTA chrome (Story 14-7 — mock-test landing "Resume in-progress")
 
 export interface IconProps {
   name: IconName;

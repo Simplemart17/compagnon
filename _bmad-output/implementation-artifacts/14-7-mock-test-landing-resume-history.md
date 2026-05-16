@@ -1,6 +1,6 @@
 # Story 14.7: Mock-test landing — "Resume in-progress" + "Past results" sections so users can continue an abandoned test or revisit prior scores without navigating into a test runner
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -210,43 +210,43 @@ Story 13-2's `get_home_aggregate` RPC consolidated 11 round-trips into 1 for the
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create `src/lib/mock-test-results.ts`** (AC: E1)
-  - [ ] 1.1 Define `MockTestRow` type matching the supabase row shape (`id`, `user_id`, `test_type`, `total_score`, `section_scores`, `cefr_result`, `duration_seconds`, `questions`, `status`, `created_at`, `completed_at`).
-  - [ ] 1.2 Export `formatTimeRemaining(seconds)` with boundary cases: `<= 0 → "Time's up"`, `< 60 → "<1 min remaining"`, `>= 60 → "~{round(seconds/60)} min remaining"`.
-  - [ ] 1.3 Export `formatPastResultDate(iso)` using `toLocaleDateString("en", {month:"short", day:"numeric"})`; return `"—"` on `isNaN(Date.parse(iso))`.
-  - [ ] 1.4 Export `formatPastResultDuration(seconds)` — null → `"—"`; else `\`\${Math.max(0, Math.round(seconds/60))} min\``.
-  - [ ] 1.5 Export `reconstructTestResultsFromMockTestRow(row)` — Zod-style shape validation on `section_scores` JSONB; returns the `TestResults` shape consumed by `results.tsx` (lines 24-29 reference); returns `null` if validation fails. `addBreadcrumb({ category: "mock-test", level: "warning", message: "Landing: reconstructTestResultsFromMockTestRow validation failed", data: { mockTestId } })` on null path.
-- [ ] **Task 2: Create `src/hooks/use-mock-test-landing.ts`** (AC: A1-A7)
-  - [ ] 2.1 Define `MockTestInProgressSummary` + `MockTestPastResult` interfaces per AC-A2 + AC-A3.
-  - [ ] 2.2 Hook returns `{ inProgress, pastResults, loading, error, refetch }` matching AC-A1.
-  - [ ] 2.3 `useEffect` keyed on user.id fires `Promise.all([inProgressQuery, pastResultsQuery])` via `supabase.from(...)`.
-  - [ ] 2.4 Validate in-progress row via Story 13-4's `corrupt` detection — if `questions` JSONB is missing or empty for the test's expected sections, return `inProgress: null` + breadcrumb (AC-A5).
-  - [ ] 2.5 Limit past-results to 10 rows; breadcrumb at exactly 10 rows (AC-A6).
-  - [ ] 2.6 Wrap entire fetch in try/catch; route errors through `captureError(err, "mock-test-landing-fetch")` (Story 9-3 allowlist).
-  - [ ] 2.7 Expose `refetch` that re-fires both queries (consumed by `useFocusEffect` in the screen).
-- [ ] **Task 3: Wire the landing screen** (AC: B1-B4 + C1-C5 + D1-D4)
-  - [ ] 3.1 `app/(tabs)/mock-test/index.tsx` import `useMockTestLanding`, the 3 formatter helpers, `ListItemCard`, `Icon`, `useFocusEffect`.
-  - [ ] 3.2 Inside `MockTestIndex` (or rename to add hooks if needed), call `useMockTestLanding()` + wrap `refetch` in `useFocusEffect`.
-  - [ ] 3.3 ABOVE the existing `<FullSimCard />` (line 198) — conditionally render the Resume section per AC-B1 to B4.
-  - [ ] 3.4 BELOW the existing Production section (after line 261) — conditionally render the Past Results section per AC-C1 to C5.
-  - [ ] 3.5 Loading skeletons per AC-D3 — `Colors.primary5` background, `Radii.card`, ~76pt height.
-  - [ ] 3.6 Verify no `className` + `style` mix on the new ListItemCards (Story 13-7 invariant) — but `ListItemCard` itself handles this internally; consumers just pass props.
-- [ ] **Task 4: Past-result tap → results screen with reconstructed payload** (AC: C3-onPress)
-  - [ ] 4.1 NEW helper hook `useMockTestResultsLoader()` exported from `src/hooks/use-mock-test-results-loader.ts` (or co-located in `use-mock-test-landing.ts` if scope stays small). On `loadAndNavigate(mockTestId)`: (a) fetch the full row, (b) call `reconstructTestResultsFromMockTestRow`, (c) on success → `router.push({pathname:"/(tabs)/mock-test/results", params:{data: JSON.stringify(reconstructed)}})`, (d) on failure → `Alert.alert("Couldn't load result", "This past result has a malformed score record and can't be displayed.")` + `captureError`.
-  - [ ] 4.2 Wire the past-result `<ListItemCard onPress={...}>` to call this hook's loader.
-- [ ] **Task 5: Pure-helper tests** (AC: E4)
-  - [ ] 5.1 Create `src/lib/__tests__/mock-test-results.test.ts` with the 12-15 boundary cases per AC-E4.
-- [ ] **Task 6: Hook runtime tests** (AC: E2)
-  - [ ] 6.1 Create `src/hooks/__tests__/use-mock-test-landing.test.tsx` with the 7-10 cases per AC-E2; mock supabase + sentry per Story 13-2 / 13-3 precedent.
-- [ ] **Task 7: Source-drift tests** (AC: E3)
-  - [ ] 7.1 Create `src/lib/__tests__/mock-test-landing-source-drift.test.ts` with the 6-8 cases per AC-E3 + Story 12-2 P12 comment-stripped readFile + Story 13-2 P11 paired POSITIVE+NEGATIVE pins.
-- [ ] **Task 8: Quality gates** (AC: Z)
-  - [ ] 8.1 `npm run type-check` — 0 errors.
-  - [ ] 8.2 `npm run lint` — 0 errors / 0 warnings.
-  - [ ] 8.3 `npm run format:check` — pass.
-  - [ ] 8.4 `npm test -- --no-coverage` — full suite + new test files pass. Spec target: **+25-33 net Jest cases** (1982 → 2007-2015).
-  - [ ] 8.5 `npm run check:tokens` — Story 14-4 gate passes (no new raw tokens; the new sections use `Radii.*` / `Shadows.*` exclusively via `ListItemCard`).
-  - [ ] 8.6 `npm run check:colors` — same pre-existing failures from `14-4-followup`; verify 14-7 adds NO new hex literals in production code.
+- [x] **Task 1: Create `src/lib/mock-test-results.ts`** (AC: E1)
+  - [x] 1.1 Define `MockTestRow` type matching the supabase row shape (`id`, `user_id`, `test_type`, `total_score`, `section_scores`, `cefr_result`, `duration_seconds`, `questions`, `status`, `created_at`, `completed_at`).
+  - [x] 1.2 Export `formatTimeRemaining(seconds)` with boundary cases: `<= 0 → "Time's up"`, `< 60 → "<1 min remaining"`, `>= 60 → "~{round(seconds/60)} min remaining"`.
+  - [x] 1.3 Export `formatPastResultDate(iso)` using `toLocaleDateString("en", {month:"short", day:"numeric"})`; return `"—"` on `isNaN(Date.parse(iso))`.
+  - [x] 1.4 Export `formatPastResultDuration(seconds)` — null → `"—"`; else `\`\${Math.max(0, Math.round(seconds/60))} min\``.
+  - [x] 1.5 Export `reconstructTestResultsFromMockTestRow(row)` — Zod-style shape validation on `section_scores` JSONB; returns the `TestResults` shape consumed by `results.tsx` (lines 24-29 reference); returns `null` if validation fails. `addBreadcrumb({ category: "mock-test", level: "warning", message: "Landing: reconstructTestResultsFromMockTestRow validation failed", data: { mockTestId } })` on null path.
+- [x] **Task 2: Create `src/hooks/use-mock-test-landing.ts`** (AC: A1-A7)
+  - [x] 2.1 Define `MockTestInProgressSummary` + `MockTestPastResult` interfaces per AC-A2 + AC-A3.
+  - [x] 2.2 Hook returns `{ inProgress, pastResults, loading, error, refetch }` matching AC-A1.
+  - [x] 2.3 `useEffect` keyed on user.id fires `Promise.all([inProgressQuery, pastResultsQuery])` via `supabase.from(...)`.
+  - [x] 2.4 Validate in-progress row via Story 13-4's `corrupt` detection — if `questions` JSONB is missing or empty for the test's expected sections, return `inProgress: null` + breadcrumb (AC-A5).
+  - [x] 2.5 Limit past-results to 10 rows; breadcrumb at exactly 10 rows (AC-A6).
+  - [x] 2.6 Wrap entire fetch in try/catch; route errors through `captureError(err, "mock-test-landing-fetch")` (Story 9-3 allowlist).
+  - [x] 2.7 Expose `refetch` that re-fires both queries (consumed by `useFocusEffect` in the screen).
+- [x] **Task 3: Wire the landing screen** (AC: B1-B4 + C1-C5 + D1-D4)
+  - [x] 3.1 `app/(tabs)/mock-test/index.tsx` import `useMockTestLanding`, the 3 formatter helpers, `ListItemCard`, `Icon`, `useFocusEffect`.
+  - [x] 3.2 Inside `MockTestIndex` (or rename to add hooks if needed), call `useMockTestLanding()` + wrap `refetch` in `useFocusEffect`.
+  - [x] 3.3 ABOVE the existing `<FullSimCard />` (line 198) — conditionally render the Resume section per AC-B1 to B4.
+  - [x] 3.4 BELOW the existing Production section (after line 261) — conditionally render the Past Results section per AC-C1 to C5.
+  - [x] 3.5 Loading skeletons per AC-D3 — `Colors.primary5` background, `Radii.card`, ~76pt height.
+  - [x] 3.6 Verify no `className` + `style` mix on the new ListItemCards (Story 13-7 invariant) — but `ListItemCard` itself handles this internally; consumers just pass props.
+- [x] **Task 4: Past-result tap → results screen with reconstructed payload** (AC: C3-onPress)
+  - [x] 4.1 NEW helper hook `useMockTestResultsLoader()` exported from `src/hooks/use-mock-test-results-loader.ts` (or co-located in `use-mock-test-landing.ts` if scope stays small). On `loadAndNavigate(mockTestId)`: (a) fetch the full row, (b) call `reconstructTestResultsFromMockTestRow`, (c) on success → `router.push({pathname:"/(tabs)/mock-test/results", params:{data: JSON.stringify(reconstructed)}})`, (d) on failure → `Alert.alert("Couldn't load result", "This past result has a malformed score record and can't be displayed.")` + `captureError`.
+  - [x] 4.2 Wire the past-result `<ListItemCard onPress={...}>` to call this hook's loader.
+- [x] **Task 5: Pure-helper tests** (AC: E4)
+  - [x] 5.1 Create `src/lib/__tests__/mock-test-results.test.ts` with the 12-15 boundary cases per AC-E4.
+- [x] **Task 6: Hook runtime tests** (AC: E2)
+  - [x] 6.1 Create `src/hooks/__tests__/use-mock-test-landing.test.tsx` with the 7-10 cases per AC-E2; mock supabase + sentry per Story 13-2 / 13-3 precedent.
+- [x] **Task 7: Source-drift tests** (AC: E3)
+  - [x] 7.1 Create `src/lib/__tests__/mock-test-landing-source-drift.test.ts` with the 6-8 cases per AC-E3 + Story 12-2 P12 comment-stripped readFile + Story 13-2 P11 paired POSITIVE+NEGATIVE pins.
+- [x] **Task 8: Quality gates** (AC: Z)
+  - [x] 8.1 `npm run type-check` — 0 errors.
+  - [x] 8.2 `npm run lint` — 0 errors / 0 warnings.
+  - [x] 8.3 `npm run format:check` — pass.
+  - [x] 8.4 `npm test -- --no-coverage` — full suite + new test files pass. Spec target: **+25-33 net Jest cases** (1982 → 2007-2015).
+  - [x] 8.5 `npm run check:tokens` — Story 14-4 gate passes (no new raw tokens; the new sections use `Radii.*` / `Shadows.*` exclusively via `ListItemCard`).
+  - [x] 8.6 `npm run check:colors` — same pre-existing failures from `14-4-followup`; verify 14-7 adds NO new hex literals in production code.
 
 ## Operator-decision items (resolve before/during implementation)
 
@@ -335,8 +335,79 @@ claude-opus-4-7[1m]
 
 ### Debug Log References
 
+- Mid-implementation: `useFocusEffect` import path verified at `expo-router/build/exports.d.ts` — exported as `{ useFocusEffect, EffectCallback } from './useFocusEffect'`. Direct import from `"expo-router"` works.
+- Mid-implementation: `IconName` typed union from Story 14-3 lacked `"refresh-cw"` / `"play"`. Added `"play-circle"` to the union as a small additive change (Feather supports it; matches "resume/start" semantic).
+- Mid-implementation: lint flagged `import/no-duplicates` warning on 2 sentry imports (`captureError` + `addBreadcrumb` imported separately) — consolidated to single named-import line.
+- Mid-implementation: prettier auto-formatted 4 files post-write (long lines split / multi-line arrow formatting) — committed as part of final commit.
+- Branch setup: branched from `origin/main` per Memory rule (do NOT stack on 14-6's still-open PR #106). Resolved sprint-status.yaml merge conflict by keeping 14-6 status as `review` (PR #106 not merged yet) on this branch.
+
 ### Completion Notes List
+
+**Q1 (operator-decision) — Section ordering:** recommended layout applied verbatim — Resume section ABOVE Full Simulation hero; Past results section BELOW Written and spoken production. Both sections are conditional (zero vertical space when empty — no "Empty: no tests in progress" placeholder for first-time users).
+
+**Q2 (operator-decision) — Past-results limit:** 10 rows, hardcoded as `PAST_RESULTS_LIMIT = 10` in `use-mock-test-landing.ts`. Truncation breadcrumb fires at exactly 10 rows (heuristic — exact count would require a `count()` query, out of scope per spec). Pagination + full-history modal filed for `14-7-followup-past-results-pagination`.
+
+**Q3 (operator-decision) — Speaking past-results:** INCLUDED in the same list. `iconNode` per `test_type` (full=award, listening=headphones, reading=book-open, speaking=message-circle). Speaking rows show CEFR badge only — no TCF score (publisher 0-20 scale would be misleading next to TCF 0-699). The screen's `PastResultRow` component renders `result.testType !== "speaking" && <Text>{totalScore}/699</Text>` to suppress the score line for speaking.
+
+**Q4 (operator-decision) — Resume CTA chevron:** right-aligned chevron `→` in `Colors.accent` via the `rightContent` slot (NOT a full Pressable button) — matches `ListItemCard` rhythm with other past-results rows. The full row is the press target (default `onPress` of `ListItemCard`).
+
+**Q5 (operator-decision) — Abandoned rows:** ignored entirely. Both queries filter by `status` IN (`in_progress`, `completed`); abandoned never matches. No special handling needed.
+
+**Implementation summary:**
+
+- NEW `src/lib/mock-test-results.ts` (~210 lines incl. JSDoc): 4 pure helpers (`formatTimeRemaining` + `formatPastResultDate` + `formatPastResultDuration` + `reconstructTestResultsFromMockTestRow`) + `MockTestRow` interface + `TestResultsPayload` interface.
+- NEW `src/hooks/use-mock-test-landing.ts` (~330 lines): hook with 2 parallel supabase queries via `Promise.all`; corrupt-row detection mirrors Story 13-4's `hasValidQuestions` heuristic; `PAST_RESULTS_LIMIT = 10` truncation with operator-visible breadcrumb; fail-safe `captureError(_, "mock-test-landing-fetch")`. Exports `validateInProgressRow` + `toPastResult` as pure helpers for runtime tests.
+- NEW `src/hooks/use-mock-test-results-loader.ts` (~85 lines): on-tap loader that fetches the full `mock_tests` row by id, runs `reconstructTestResultsFromMockTestRow`, then navigates to `/(tabs)/mock-test/results` with the JSON-encoded payload. Surfaces malformed-row failures via French-free Alert.
+- MODIFIED `app/(tabs)/mock-test/index.tsx`: added 2 conditional sections (Resume + Past results); added `useFocusEffect`-driven refetch; introduced helper components `ResumeInProgressRow`, `PastResultRow`, `LandingSkeletonRow` (all in-file — they're tightly coupled to the landing surface). The pre-14-7 hero + FullSimCard + Individual sections + Production sections are UNCHANGED.
+- MODIFIED `src/components/common/Icon.tsx`: added `"play-circle"` to `IconName` union for the Resume CTA.
+
+**Tests (3 new files; +43 net Jest cases since 1981 baseline):**
+
+- `src/lib/__tests__/mock-test-results.test.ts` — 22 pure-helper boundary cases (formatTimeRemaining × 7, formatPastResultDate × 3, formatPastResultDuration × 5, reconstructTestResultsFromMockTestRow × 7)
+- `src/hooks/__tests__/use-mock-test-landing.test.tsx` — 13 hook-runtime cases (happy + empty + error + corrupt-in-progress + speaking-pass-through + truncation breadcrumb + refetch + non-QCM-skip + below-threshold + 3 pure-helper cases)
+- `src/lib/__tests__/mock-test-landing-source-drift.test.ts` — 8 drift cases (screen imports + Resume Colors.accent strip + ListItemCard for past-results + formatter delete-don't-alias + useFocusEffect invoked + helper exports + en-only locale + Promise.all + captureError tag)
+
+**Cross-story invariants preserved by construction:**
+
+- Story 9-3 telemetry — new `feature` tag `"mock-test-landing-fetch"` + `"mock-test-results-loader"` are short categorical (< 80 chars) on the existing `feature` extras key (no allowlist change). New breadcrumb category `"mock-test"` (already used by Story 13-4) — no new allowlist entry.
+- Story 13-2 home aggregate — orthogonal (mock-test landing has only 2 queries; no RPC consolidation per spec rationale).
+- Story 13-4 mock-test parallel generation — in-progress detection uses the SAME `hasValidQuestions` heuristic (manually replicated in `validateInProgressRow` rather than imported, to keep `use-mock-test-generation.ts` zero-diff). A behavioral divergence between the two callers is structurally possible — flagged for code-review.
+- Story 14-1 chrome rule — all chrome strings in EN; `formatPastResultDate` calls `toLocaleDateString("en", ...)` NEVER `"fr"`. FR pedagogical reinforcement (`"Compréhension orale"` / `"Expression orale"` etc.) lives in `titleSecondary`.
+- Story 14-2 ListItemCard — both Resume and Past-results rows consume `ListItemCard` (0 new card components).
+- Story 14-3 Icon system — all icons via `<Icon name={...} />`; `IconName` union extended with `"play-circle"` (1 line addition).
+- Story 14-4 design-token enforcement — all colors `Colors.*`; all radii `Radii.*`; no raw `shadowOpacity`. `check:tokens` gate clean.
+- Story 14-5 accent-color split — Resume row uses `Colors.accent` (CTA-cluster); past-results uses `LEVEL_COLORS[cefrResult]` (per-CEFR band). No streak/progress token usage.
+- Story 14-6 post-onboarding tour — orthogonal (different screen).
+
+**Quality gates:**
+
+- ✅ `npm run type-check` — 0 errors
+- ✅ `npm run lint` — 0 errors / 0 warnings
+- ✅ `npm run format:check` — pass
+- ✅ `npm test -- --no-coverage` — 106 suites / **2024 tests** pass (+43 net since 1981 baseline; exceeds spec target +25-33 by 10)
+- ✅ `npm run check:tokens` — clean
+- ⚠️ `npm run check:colors` — pre-existing failures from `14-4-followup-test-fixture-hex-exemption`; 14-7 introduces zero new hex literals (drift detector NEGATIVE-pins `leftStripColor=` raw hex)
+
+**Audit P2-13 closed architecturally.**
 
 ### File List
 
+**New files (4):**
+
+- `src/lib/mock-test-results.ts` — pure helpers + types
+- `src/hooks/use-mock-test-landing.ts` — landing-screen data hook
+- `src/hooks/use-mock-test-results-loader.ts` — on-tap loader
+- `src/lib/__tests__/mock-test-results.test.ts` — 22 pure-helper cases
+- `src/hooks/__tests__/use-mock-test-landing.test.tsx` — 13 hook-runtime cases
+- `src/lib/__tests__/mock-test-landing-source-drift.test.ts` — 8 drift cases
+
+**Modified files (3 source + 2 housekeeping):**
+
+- `app/(tabs)/mock-test/index.tsx` — 2 new conditional sections + useFocusEffect refresh
+- `src/components/common/Icon.tsx` — added `"play-circle"` to `IconName` union
+- `_bmad-output/implementation-artifacts/14-7-mock-test-landing-resume-history.md` — this story file
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — status `ready-for-dev` → `in-progress` → `review`
+
 ### Change Log
+
+- 2026-05-16: Story 14-7 implementation. Branch `feature/14-7-mock-test-landing-resume-history` off `main` (14-6 PR #106 still open; branched from main per Memory rule). 4 new source files + 2 modified source files + 2 housekeeping. Tests: 1981 → 2024 (+43 net; exceeds spec target +25-33 by 10). All 5 design-system gates green; pre-existing `check:colors` failure tracked under `14-4-followup`. Audit P2-13 + Epic 14 deliverable 14.7 architecturally satisfied.
