@@ -1,6 +1,6 @@
 # Story 14.1: Language Strategy Rewrite — convert all UI chrome to English while preserving French content
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
