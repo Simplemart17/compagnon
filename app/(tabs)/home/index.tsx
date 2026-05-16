@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Pressable,
   StatusBar,
+  type ViewStyle,
 } from "react-native";
 import { useRouter } from "expo-router";
 import NetInfo from "@react-native-community/netinfo";
@@ -25,7 +26,7 @@ import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { useDailyBriefing } from "@/src/hooks/use-daily-briefing";
 import { useProgress } from "@/src/hooks/use-progress";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
-import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { Colors, Radii, Shadows, Typography } from "@/src/lib/design";
 import { ActivityBar } from "@/src/components/common/ActivityBar";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
@@ -44,7 +45,37 @@ interface ConversationCardProps {
   onPress: () => void;
 }
 
-function ConversationCard({ onPress }: ConversationCardProps) {
+// Story 13-7: hoisted off the `<AnimatedPressable>` to remove the per-frame
+// `className`+`style` merge cost while `animStyle` writes from a Reanimated
+// worklet on every press transition. Module-level constant = zero allocations
+// per render. Tailwind→inline mapping: bg-primary → Colors.primary;
+// rounded-2xl → Radii.card (16); p-4 → padding 16; gap-4 → 16. Shadow tuple
+// preserved verbatim from pre-13-7 (does NOT match Shadows.card — a card-
+// specific elevated tone).
+/**
+ * @internal — exported for Story 13-7 runtime tests; do NOT import in app code.
+ *
+ * Frozen at module-load (review-round-1 P2) so a debug session, runtime A/B
+ * test, or future theming code path can't mutate this object and silently
+ * change EVERY ConversationCard instance for the rest of the JS session.
+ * Mirror of Story 12-1's `Object.freeze({...})` getState() defense.
+ */
+export const conversationCardStaticStyle: ViewStyle = Object.freeze({
+  backgroundColor: Colors.primary,
+  borderRadius: Radii.card,
+  padding: 16,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 16,
+  shadowColor: Colors.primary,
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.25,
+  shadowRadius: 12,
+  elevation: 6,
+}) as ViewStyle;
+
+/** @internal — exported for Story 13-7 runtime tests; do NOT import in app code. */
+export function ConversationCard({ onPress }: ConversationCardProps) {
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -63,17 +94,7 @@ function ConversationCard({ onPress }: ConversationCardProps) {
       accessibilityRole="button"
       accessibilityLabel="Talk with Companion"
       accessibilityHint="Start a real-time AI voice conversation"
-      className="bg-primary rounded-2xl p-4 flex-row items-center gap-4"
-      style={[
-        {
-          shadowColor: Colors.primary,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.25,
-          shadowRadius: 12,
-          elevation: 6,
-        },
-        animStyle,
-      ]}
+      style={[conversationCardStaticStyle, animStyle]}
     >
       {/* Mic icon circle */}
       <View
