@@ -544,7 +544,7 @@ export default function PronunciationScreen() {
                 shadowColor: pronunciation.isRecording ? Colors.error : Colors.primary,
                 shadowOpacity: 0.4, // eslint-disable-line no-restricted-syntax -- design-token-exempt: active-recording mic CTA glow per Q6
                 shadowRadius: 16, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with active-recording mic glow above
-                shadowOffset: { width: 0, height: 6 },
+                shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                 elevation: 8,
                 opacity: pronunciation.isAssessing ? 0.5 : 1,
               }}

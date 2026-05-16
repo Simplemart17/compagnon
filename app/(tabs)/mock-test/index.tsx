@@ -41,7 +41,7 @@ function FullSimCard({ onPress }: FullSimCardProps) {
       style={[
         {
           shadowColor: Colors.textPrimary,
-          shadowOffset: { width: 0, height: 8 },
+          shadowOffset: { width: 0, height: 8 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
           shadowOpacity: 0.25, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke prominent hero CTA shadow for FullSimCard
           shadowRadius: 16, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with hero CTA above
           elevation: 10,

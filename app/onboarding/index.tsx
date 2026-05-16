@@ -200,7 +200,7 @@ export default function OnboardingScreen() {
           shadowColor: Colors.bgDark,
           shadowOpacity: 0.35, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke onboarding selected/hero shadow per Q6
           shadowRadius: 20, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke onboarding shadow above
-          shadowOffset: { width: 0, height: 8 },
+          shadowOffset: { width: 0, height: 8 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
           elevation: 12,
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
@@ -271,7 +271,7 @@ export default function OnboardingScreen() {
                       shadowColor: Colors.primary,
                       shadowOpacity: isSelected ? 0.18 : 0.05,
                       shadowRadius: 8, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke onboarding shadow above
-                      shadowOffset: { width: 0, height: 3 },
+                      shadowOffset: { width: 0, height: 3 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                       elevation: isSelected ? 4 : 1,
                     }}
                   >
@@ -334,7 +334,7 @@ export default function OnboardingScreen() {
                   shadowColor: Colors.primary,
                   shadowOpacity: selectedLevel === null ? 0.18 : 0.05,
                   shadowRadius: 8, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke onboarding shadow above
-                  shadowOffset: { width: 0, height: 3 },
+                  shadowOffset: { width: 0, height: 3 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                   elevation: selectedLevel === null ? 4 : 1,
                 }}
               >
@@ -400,7 +400,7 @@ export default function OnboardingScreen() {
                       shadowColor: Colors.primary,
                       shadowOpacity: isSelected ? 0.18 : 0.05,
                       shadowRadius: 8, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke onboarding shadow above
-                      shadowOffset: { width: 0, height: 3 },
+                      shadowOffset: { width: 0, height: 3 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                       elevation: isSelected ? 4 : 1,
                     }}
                   >
@@ -463,7 +463,7 @@ export default function OnboardingScreen() {
                       shadowColor: Colors.primary,
                       shadowOpacity: isSelected ? 0.2 : 0.05,
                       shadowRadius: 10, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke onboarding shadow above
-                      shadowOffset: { width: 0, height: 4 },
+                      shadowOffset: { width: 0, height: 4 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                       elevation: isSelected ? 5 : 1,
                     }}
                   >
@@ -519,7 +519,7 @@ export default function OnboardingScreen() {
             shadowColor: Colors.primary,
             shadowOpacity: 0.2, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke onboarding selected/hero shadow per Q6
             shadowRadius: 12, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke onboarding shadow above
-            shadowOffset: { width: 0, height: 6 },
+            shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
             elevation: 6,
           }}
         >
