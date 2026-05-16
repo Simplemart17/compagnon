@@ -1,6 +1,6 @@
 # Story 14.9: Hero Pattern Unification — collapse the five bespoke hero headers (home, conversation, practice, mock-test, profile) into one `<HeroHeader>` component sourced from a single set of design tokens
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
