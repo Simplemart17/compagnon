@@ -173,7 +173,12 @@ function CEFRProgressionChartInner({
                 style={{
                   fontSize: 11,
                   fontWeight: level === currentLevel ? "700" : "400",
-                  color: level === currentLevel ? Colors.progress : Colors.textTertiary,
+                  // Story 14-5 R1-P4: Y-axis label is TEXT on white chart background.
+                  // Colors.progress (#CA8A04) gives 2.94:1 contrast — fails WCAG AA.
+                  // Colors.progressText (#713F12) gives 7.93:1 — passes AAA. Reserve
+                  // Colors.progress for bar/dot/marker FILLS; use Colors.progressText
+                  // for any TEXT color on light backgrounds.
+                  color: level === currentLevel ? Colors.progressText : Colors.textTertiary,
                 }}
               >
                 {level}
