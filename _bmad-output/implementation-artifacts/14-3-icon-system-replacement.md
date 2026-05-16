@@ -1,6 +1,6 @@
 # Story 14.3: Icon System Replacement — pick `@expo/vector-icons` (Feather set) + replace ~33 decorative emoji with real icon components
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -518,7 +518,7 @@ claude-opus-4-7 (1M context)
 - **Q2 — Onboarding goal-selection emoji: PRESERVE.** Learning content per Story 14-1 chrome/content rule; emoji adds personality to onboarding surface.
 - **Q3 — Streak `🔥` → `Icon name="zap"`.** Feather lacks Flame glyph (only FontAwesome has it). Closest semantic match is `zap` (lightning). Visual semantic shift warmth → energy is acceptable given the surrounding "{N} jour streak" copy carries the duration meaning.
 - **Q4 — Forgot-password hero `🔑` → `Icon name="key"` at 52px.** Auth-surface consistency with the new chrome icons (mail, lock) on signup/login. Tested at 52px size — Feather's line-icon strokes hold up well at hero size.
-- **Q5 — Grammar `🧠` → `Icon name="activity"`.** Feather lacks Brain pictogram. `activity` (EKG-like line) is the closest semantic-adjacent match. The 3 sites (practice/index.tsx PRACTICE_SKILLS Grammar; mock-test/results.tsx Grammar legacy entry) all use the same icon for consistency.
+- **Q5 — Grammar `🧠` → `Icon name="activity"`.** Feather lacks Brain pictogram. `activity` (EKG-like line) is the closest semantic-adjacent match. Applied at 2 production sites (`practice/index.tsx` PRACTICE_SKILLS Grammar + `mock-test/results.tsx` Grammar legacy entry) — `mock-test/index.tsx` does NOT render a Grammar section per TCF Canada spec (legacy results comment at `results.tsx:34`). Spec inventory line referenced 3 sites; corrected count is 2.
 
 **Implementation summary:**
 
@@ -566,3 +566,4 @@ claude-opus-4-7 (1M context)
 ### Change Log
 
 - 2026-05-16 — Story 14-3 implementation complete. 33 chrome emoji replaced with `<Icon />` JSX via new `src/components/common/Icon.tsx` Feather wrapper. SkillCard + ListItemCard + TodayPlanItem extended with optional icon-component slots. Drift detector (18 cases) + runtime smoke test (5 cases). All 4 quality gates green; +23 net Jest cases (1917 → 1940). Status: review.
+- 2026-05-16 — Story 14-3 review-round-1 patches applied (HIGH × 3 + MED × 3 = 6 patches; 4 deferred; ~10 rejected as noise). P1 (HIGH) iOS a11y: Icon decorative default now sets `accessible={false}` + `accessibilityElementsHidden={true}` + `importantForAccessibility="no"` (was Android-only); pre-R1 silently regressed iOS VoiceOver beside auth-surface labeled TextInputs. P2 (HIGH) TodayPlanItem lying-contract: 3-arm conditional render with question-mark fallback when both `iconName` + `iconEmoji` missing (was silent empty circle). P3 (HIGH) drift completeness: extended NEGATIVE-pins in signup (+ ✉️ + 🔒) and use-daily-briefing (+ 🎧 📖 ✍️ 💬 📝). P4 (MED) PasswordStrengthIndicator vertical-jitter: added `height: 18` to checklist-bullet wrapper. P5 (MED) TodayPlanItem icon contrast: Icon color → `Colors.textPrimary` (navy) for WCAG AA on tinted backgrounds. P6 (MED) home raw-glyph drift pin added. +3 LOW polish (TOPIC_EMOJIS regex format-tolerance + Q5 wording correction + CLAUDE.md file count). All 4 quality gates green; +1 net round-1 Jest case (1940 → 1941). Status: done.

@@ -26,8 +26,12 @@ export interface TodayPlanItemProps {
   iconColor: string;
   /**
    * Story 14-3: typed icon name (rendered via shared `<Icon>` component).
-   * When present, takes precedence over `iconEmoji`. One of the two MUST
-   * be provided.
+   * When present, takes precedence over `iconEmoji`. **At least one of
+   * `iconName` or `iconEmoji` MUST be provided** — both-undefined is
+   * guarded at runtime via the R1-P2 fallback render (a question-mark
+   * placeholder + a Sentry breadcrumb) so a future call-site forgetting
+   * to set either prop produces an observable signal instead of a silent
+   * empty circle.
    */
   iconName?: IconName;
   /**
@@ -137,7 +141,11 @@ export const TodayPlanItem = React.memo(function TodayPlanItem({
           animatedStyle,
         ]}
       >
-        {/* Icon container (Story 14-3: iconName takes precedence over iconEmoji) */}
+        {/* Icon container (Story 14-3: iconName takes precedence over iconEmoji;
+            R1-P2 fallback breadcrumb + "?" placeholder when BOTH props are
+            missing — defends against future call-sites violating the
+            "at least one of" JSDoc invariant by surfacing the gap visibly
+            + via Sentry instead of producing a silent empty circle.) */}
         <View
           style={{
             width: 28,
@@ -149,9 +157,11 @@ export const TodayPlanItem = React.memo(function TodayPlanItem({
           }}
         >
           {iconName !== undefined ? (
-            <Icon name={iconName} size={14} color={iconColor} />
+            <Icon name={iconName} size={14} color={Colors.textPrimary} />
+          ) : iconEmoji !== undefined ? (
+            <Text style={{ fontSize: 14 }}>{iconEmoji}</Text>
           ) : (
-            <Text style={{ fontSize: 14 }}>{iconEmoji ?? ""}</Text>
+            <Text style={{ fontSize: 14, color: Colors.textTertiary }}>{"?"}</Text>
           )}
         </View>
 

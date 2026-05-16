@@ -97,16 +97,36 @@ describe("Story 14-3 — Icon component", () => {
     expect(props.importantForAccessibility).toBeUndefined();
   });
 
-  // Case 5: defaults to decorative-of-text when accessibilityLabel omitted
-  // (Story 14-2 R1-H1 a11y-regression lesson applied)
-  it('Case 5: sets importantForAccessibility="no" when accessibilityLabel omitted', () => {
+  // Case 5: defaults to decorative-of-text when accessibilityLabel omitted.
+  // Story 14-3 review-round-1 P1: pins ALL THREE cross-platform a11y flags
+  // (Android `importantForAccessibility="no"` + iOS canonical
+  // `accessible={false}` + iOS-strong-hide `accessibilityElementsHidden={true}`).
+  // Pre-R1 only Android flag was set; iOS VoiceOver still focused the icon
+  // — silent a11y regression on auth-surface mail/lock/user icons.
+  it("Case 5: decorative default sets all 3 cross-platform a11y flags when accessibilityLabel omitted", () => {
     let renderer: ReturnType<typeof create>;
     act(() => {
       renderer = create(<Icon name="headphones" />);
     });
     const props = findFeatherProps(renderer!);
     expect(props.importantForAccessibility).toBe("no");
+    expect(props.accessible).toBe(false);
+    expect(props.accessibilityElementsHidden).toBe(true);
     // Belt-and-suspenders: no stray accessibilityLabel.
     expect(props.accessibilityLabel).toBeUndefined();
+  });
+
+  // Case 6 (R1-P1): when accessibilityLabel IS provided, the decorative
+  // a11y flags are NOT set (consumer-controlled announcement).
+  it("Case 6: when accessibilityLabel provided, decorative a11y flags are NOT set", () => {
+    let renderer: ReturnType<typeof create>;
+    act(() => {
+      renderer = create(<Icon name="check" accessibilityLabel="Password requirement met" />);
+    });
+    const props = findFeatherProps(renderer!);
+    expect(props.accessibilityLabel).toBe("Password requirement met");
+    expect(props.accessible).toBeUndefined();
+    expect(props.accessibilityElementsHidden).toBeUndefined();
+    expect(props.importantForAccessibility).toBeUndefined();
   });
 });

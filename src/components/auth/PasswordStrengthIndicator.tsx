@@ -154,7 +154,13 @@ function PasswordStrengthIndicatorImpl({ password }: PasswordStrengthIndicatorPr
                 importantForAccessibility="no"
                 accessibilityElementsHidden={true}
                 style={{
+                  // Story 14-3 R1-P5: fixed height pins both met/unmet
+                  // child heights to the same vertical slot — the Icon
+                  // path (12pt-tall glyph) and the Text path (caption
+                  // line-height ~16-18pt) would otherwise jiggle the
+                  // checklist row height on every keystroke.
                   width: 14,
+                  height: 18,
                   alignItems: "center",
                   justifyContent: "center",
                 }}

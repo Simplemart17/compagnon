@@ -76,12 +76,20 @@ describe("Story 14-3 — icon-system replacement source-drift", () => {
     expect(src).toMatch(/<Feather\b/);
   });
 
-  test('Icon.tsx defaults `accessibilityLabel`-omitted icons to importantForAccessibility="no"', () => {
-    // Story 14-2 R1-H1 a11y-regression lesson applied: omitted label
-    // means decorative-of-text; the wrapper must explicitly set
-    // `importantForAccessibility="no"` so screen-readers skip
-    // pronouncing the icon's Unicode codepoint name.
+  test("Icon.tsx decorative default sets all 3 cross-platform a11y flags", () => {
+    // Story 14-3 review-round-1 P1 (HIGH): the omitted-label branch MUST
+    // set 3 flags so screen-readers skip the icon on BOTH iOS and Android:
+    //   - `accessible={false}` (iOS canonical decorative flag)
+    //   - `accessibilityElementsHidden={true}` (iOS-strong hide; VoiceOver
+    //     tree-walker skips this node + descendants)
+    //   - `importantForAccessibility="no"` (Android canonical)
+    // Pre-R1 only the Android flag was set; iOS VoiceOver still focused
+    // the icon beside labeled TextInputs (auth-surface mail/lock/user).
+    // Mirrors the same defensive pattern Story 14-2 used in
+    // PasswordStrengthIndicator.tsx:152-156.
     const src = readScreen("src/components/common/Icon.tsx");
+    expect(src).toMatch(/accessible=\{false\}/);
+    expect(src).toMatch(/accessibilityElementsHidden=\{true\}/);
     expect(src).toMatch(/importantForAccessibility\s*=\s*"no"/);
   });
 
@@ -121,7 +129,13 @@ describe("Story 14-3 — icon-system replacement source-drift", () => {
     expect(src).toMatch(/<Icon\s+name="user"/);
     expect(src).toMatch(/<Icon\s+name="mail"/);
     expect(src).toMatch(/<Icon\s+name="lock"/);
+    // R1-P3 (drift completeness): signup pre-14-3 had ALL 3 chrome emoji
+    // — `👤` user + `✉️` mail + `🔒` lock. Pre-R1 only `👤` was
+    // negative-pinned; `✉️` and `🔒` could be silently re-introduced.
+    // Paired NEGATIVE+POSITIVE pin discipline (Story 13-2 P11 lesson).
     expect(src).not.toMatch(/<Text[^>]*>\s*👤\s*<\/Text>/);
+    expect(src).not.toMatch(/<Text[^>]*>\s*✉️\s*<\/Text>/);
+    expect(src).not.toMatch(/<Text[^>]*>\s*🔒\s*<\/Text>/);
   });
 
   test("forgot-password.tsx imports Icon + renders key hero + mail input (Q4 + chrome rewrite)", () => {
@@ -138,8 +152,13 @@ describe("Story 14-3 — icon-system replacement source-drift", () => {
     const src = readScreen("app/(tabs)/home/index.tsx");
     expect(src).toMatch(/from\s+"@\/src\/components\/common\/Icon"/);
     expect(src).toMatch(/<Icon\s+name="mic"/);
-    // NEGATIVE: pre-14-3 studio-mic emoji escape sequence absent.
+    // R1-P4 (drift completeness): pre-14-3 source used the JS escape
+    // sequence form `🎙️` for the studio-mic glyph. A
+    // regression could re-introduce the SAME glyph in the raw-character
+    // form `🎙️` (4-byte UTF-8) AND still keep the Icon — passing the
+    // escape-form-only negative pin. Pin both forms.
     expect(src).not.toMatch(/\\uD83C\\uDF99\\uFE0F/);
+    expect(src).not.toMatch(/🎙️/);
   });
 
   test("conversation/index.tsx CONVERSATION_MODES uses typed IconName for companion mode (Q1)", () => {
@@ -206,9 +225,19 @@ describe("Story 14-3 — icon-system replacement source-drift", () => {
     // fallback paths). Tolerates Prettier wrap.
     const iconNameAssigns = src.match(/iconName:\s*"[a-z][a-z-]+"/g) ?? [];
     expect(iconNameAssigns.length).toBeGreaterThanOrEqual(3);
-    // NEGATIVE: legacy iconEmoji assignments gone from TodayPlanItem builds.
+    // R1-P3 (drift completeness): pre-14-3 file had iconEmoji assignments
+    // for ALL 5 emoji-map entries (📚 🎯 + the per-skill 🎧 📖 ✍️ 💬 📝
+    // map). Pre-R1 only the FIRST 2 were negative-pinned. A regression
+    // re-introducing any of the other 5 would silently pass. TypeScript
+    // catches it via `iconName: IconName` on TodayPlanItem interface but
+    // belt-and-suspenders pins all 7 here.
     expect(src).not.toMatch(/iconEmoji:\s*"📚"/);
     expect(src).not.toMatch(/iconEmoji:\s*"🎯"/);
+    expect(src).not.toMatch(/iconEmoji:\s*"🎧"/);
+    expect(src).not.toMatch(/iconEmoji:\s*"📖"/);
+    expect(src).not.toMatch(/iconEmoji:\s*"✍️"/);
+    expect(src).not.toMatch(/iconEmoji:\s*"💬"/);
+    expect(src).not.toMatch(/iconEmoji:\s*"📝"/);
   });
 
   test('profile/index.tsx streak chrome 🔥 → Icon name="zap" (Q3)', () => {
@@ -238,13 +267,15 @@ describe("Story 14-3 — icon-system replacement source-drift", () => {
     // conversation/index.tsx without reading the rule fails CI.
     const src = readScreen("app/(tabs)/conversation/index.tsx");
     expect(src).toMatch(/const\s+TOPIC_EMOJIS\s*:\s*Record<string,\s*string>\s*=\s*\{/);
-    // Pin at least 5 specific topic-emoji entries by their FR topic name
-    // (which is content, not chrome — the user is learning to discuss
-    // these topics in French).
-    expect(src).toMatch(/"Se pr\\u00e9senter"\s*:/);
-    expect(src).toMatch(/"Commander au caf\\u00e9"\s*:/);
+    // R1-P6 (regex robustness): pin 5 specific topic keys whose FR names
+    // contain accented chars. The pre-R1 regex used ONLY the JS escape
+    // form (`\\u00e9` matches `é` in source). Today's source uses
+    // escape sequences but a future Prettier / format-pass could convert
+    // to literal `é` at any time — the regex now accepts EITHER form.
+    expect(src).toMatch(/"Se pr(?:\\u00e9|é)senter"\s*:/);
+    expect(src).toMatch(/"Commander au caf(?:\\u00e9|é)"\s*:/);
     expect(src).toMatch(/"Plans du week-end"\s*:/);
     expect(src).toMatch(/"Au travail"\s*:/);
-    expect(src).toMatch(/"Cin\\u00e9ma et culture"\s*:/);
+    expect(src).toMatch(/"Cin(?:\\u00e9|é)ma et culture"\s*:/);
   });
 });

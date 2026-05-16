@@ -28,10 +28,23 @@ import { Colors } from "@/src/lib/design";
  * defends against unnecessary re-renders.
  *
  * **Accessibility default**: when `accessibilityLabel` is omitted, the icon
- * is treated as decorative-of-text (`importantForAccessibility="no"`) so
- * screen-readers don't announce "envelope, U+2709" beside an "Email"
- * TextInput that already has its own label. Consumers that need the icon
- * announced as its own element pass `accessibilityLabel` explicitly.
+ * is treated as decorative-of-text so screen-readers don't announce
+ * "envelope, U+2709" beside an "Email" TextInput that already has its own
+ * label.
+ *
+ * **Story 14-3 review-round-1 P1 (HIGH) — cross-platform a11y**:
+ * `importantForAccessibility` is an Android-only prop in React Native; on
+ * iOS it's a no-op. VoiceOver would still discover the icon as a focusable
+ * element. The pre-R1 implementation only set `importantForAccessibility="no"`
+ * which silently regressed iOS a11y (auth-surface mail/lock/user icons
+ * announced beside the labeled TextInput). Post-R1 the decorative branch
+ * sets THREE props: `accessible={false}` (iOS canonical decorative flag),
+ * `accessibilityElementsHidden={true}` (iOS-strong hide; tree-walked by
+ * VoiceOver), `importantForAccessibility="no"` (Android canonical). Mirrors
+ * the same pattern Story 14-2 used in `PasswordStrengthIndicator.tsx:152-156`.
+ *
+ * Consumers that need the icon announced as its own element pass
+ * `accessibilityLabel` explicitly.
  */
 export type IconName =
   | "mail"
@@ -78,7 +91,16 @@ export const Icon = React.memo(function Icon({
   accessibilityLabel,
 }: IconProps) {
   if (accessibilityLabel === undefined) {
-    return <Feather name={name} size={size} color={color} importantForAccessibility="no" />;
+    return (
+      <Feather
+        name={name}
+        size={size}
+        color={color}
+        accessible={false}
+        accessibilityElementsHidden={true}
+        importantForAccessibility="no"
+      />
+    );
   }
   return <Feather name={name} size={size} color={color} accessibilityLabel={accessibilityLabel} />;
 });
