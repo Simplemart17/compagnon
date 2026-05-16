@@ -30,6 +30,16 @@ module.exports = defineConfig([
       // from `@/src/lib/design` instead. Escape hatch: add an inline
       // `// design-token-exempt: <rationale>` comment AND wrap the line in
       // `// eslint-disable-next-line no-restricted-syntax`.
+      // Story 14-4 R1-P7 + R1-P10: extend the selector with 3 sibling branches
+      // so the rule fires on the full Property-key + Property-value cross-product:
+      //   - Identifier key + Literal value (canonical `shadowOpacity: 0.5`)
+      //   - Identifier key + UnaryExpression-Literal value (negative-numeric, e.g. `shadowOpacity: -0.5`)
+      //   - Literal-string key + Literal value (quoted-key form, e.g. `{"shadowOpacity": 0.5}`)
+      //   - Literal-string key + UnaryExpression-Literal value
+      // Note: computed-key with non-literal identifier (`{[SHADOW_KEY]: 0.5}`)
+      // remains an enforcement gap by design — the bash gate covers the literal-key
+      // surface and computed-keys are unconventional enough that runtime drift
+      // would be visible in code review.
       "no-restricted-syntax": [
         "error",
         {
@@ -37,14 +47,33 @@ module.exports = defineConfig([
           message:
             "Use Shadows.* tokens from @/src/lib/design instead of raw shadowOpacity/shadowRadius literals (Story 14-4).",
         },
+        {
+          selector:
+            "Property[key.name=/^shadow(Opacity|Radius)$/][value.type='UnaryExpression'][value.argument.type='Literal']",
+          message:
+            "Use Shadows.* tokens from @/src/lib/design instead of raw shadowOpacity/shadowRadius numeric literals (Story 14-4 R1-P7).",
+        },
+        {
+          selector:
+            "Property[key.type='Literal'][key.value=/^shadow(Opacity|Radius)$/][value.type='Literal']",
+          message:
+            "Use Shadows.* tokens from @/src/lib/design instead of raw shadowOpacity/shadowRadius literals (Story 14-4 R1-P10).",
+        },
+        {
+          selector:
+            "Property[key.type='Literal'][key.value=/^shadow(Opacity|Radius)$/][value.type='UnaryExpression'][value.argument.type='Literal']",
+          message:
+            "Use Shadows.* tokens from @/src/lib/design instead of raw shadowOpacity/shadowRadius numeric literals (Story 14-4 R1-P10).",
+        },
       ],
     },
   },
   {
-    // The token definitions themselves live in design.ts — exempt from
-    // the no-restricted-syntax shadow-literal rule. The two design-token
-    // scripts already exclude this file from their pattern scan.
-    files: ["src/lib/design.ts"],
+    // The token definitions themselves live in design.ts AND the drift detector
+    // test asserts the patterns as literal strings inside describe/it descriptions.
+    // Both are exempt from the no-restricted-syntax shadow-literal rule (Story 14-4
+    // R1-P9). The bash gate's EXEMPT_PATHS array mirrors this set.
+    files: ["src/lib/design.ts", "src/lib/__tests__/design-token-enforcement-source-drift.test.ts"],
     rules: {
       "no-restricted-syntax": "off",
     },

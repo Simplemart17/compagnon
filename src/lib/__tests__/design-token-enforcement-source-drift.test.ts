@@ -50,7 +50,7 @@ describe("Story 14-4 — design-token enforcement source drift", () => {
       expect(ci).toMatch(/- name:\s*Design token check\b/);
     });
 
-    it("Case 3: `Design token check` run line is EXACTLY `npm run check:tokens`", () => {
+    it("Case 3: `Design token check` run line invokes `npm run check:tokens`", () => {
       const ci = readFile(".github/workflows/ci.yml");
       // Extract the step block from `- name: Design token check` to the next sibling `- name:`.
       const startIdx = ci.search(/- name:\s*Design token check\b/);
@@ -60,7 +60,10 @@ describe("Story 14-4 — design-token enforcement source drift", () => {
       const block = nextStepIdx === -1 ? after : after.slice(0, nextStepIdx + 1);
       const runMatch = block.match(/^\s*run:\s*(.+)$/m);
       expect(runMatch).not.toBeNull();
-      expect(runMatch![1].trim()).toBe("npm run check:tokens");
+      // Story 14-4 R1-P16: use `.toContain()` instead of strict `.toBe()` so a
+      // benign trailing inline comment (`run: npm run check:tokens # CI`) or
+      // a future multi-line `run: |` block doesn't trip the assertion.
+      expect(runMatch![1]).toContain("npm run check:tokens");
     });
 
     it("Case 4: ordering — `Design token check` appears AFTER `Hex color check`", () => {
@@ -72,18 +75,25 @@ describe("Story 14-4 — design-token enforcement source drift", () => {
       expect(tokensIdx).toBeGreaterThan(hexIdx);
     });
 
-    it("Case 5: `scripts/check-design-tokens.sh` has the expected enforcement surface", () => {
+    it("Case 5: `scripts/check-design-tokens.sh` has the expected enforcement surface (post-R1 hardening)", () => {
       const script = readFile("scripts/check-design-tokens.sh");
       // Shebang + safety flags
       expect(script).toMatch(/^#!\/usr\/bin\/env bash\b/);
       expect(script).toMatch(/set -euo pipefail/);
-      // Both enforcement patterns
-      expect(script).toContain("rounded-\\[[0-9]+px\\]");
-      expect(script).toContain("(shadowOpacity|shadowRadius)\\s*:\\s*[0-9.]+");
-      // Magic-comment escape hatch
+      // R1-P11: `rounded-[Nunit]` pattern accepts decimal + unit variation (px / pt / rem / em / %)
+      expect(script).toContain("rounded-\\[[0-9]+(\\.[0-9]+)?(px|pt|rem|em|%)\\]");
+      // R1-P7: shadow-primitive pattern accepts negative numerics
+      expect(script).toContain("(shadowOpacity|shadowRadius)\\s*:\\s*-?[0-9.]+");
+      // R1-P9: shadowOffset object form covered
+      expect(script).toContain("shadowOffset\\s*:\\s*\\{");
+      // R1-P6: magic-comment escape hatch is comment-context-anchored
       expect(script).toContain("design-token-exempt");
-      // Exclude the design.ts token-definition file
-      expect(script).toContain("--exclude=design.ts");
+      expect(script).toMatch(/\(\/\/\|\/\\\*\|\\\{\/\\\*\)\[\^"\]\*design-token-exempt/);
+      // R1-P8: path-based exemption (NOT filename `--exclude=design.ts`)
+      expect(script).toContain("EXEMPT_PATHS=");
+      expect(script).toContain("src/lib/design.ts");
+      // R1-P15: scans entire src/ (NOT only src/components/+src/hooks/+src/store/+src/lib/)
+      expect(script).toContain("DIRS=(app/ src/)");
     });
   });
 
@@ -92,10 +102,20 @@ describe("Story 14-4 — design-token enforcement source drift", () => {
       const design = readFile("src/lib/design.ts");
       // Token block present
       expect(design).toMatch(/bottomSheet:\s*{/);
+      // Story 14-4 R1-P19: bound the slice to the bottomSheet token's
+      // closing `} as ViewStyle,` (the canonical closer for all `Shadows.*`
+      // tokens). Pre-R1 the slice ran to EOF, so a future token added AFTER
+      // bottomSheet that happened to contain `height: -4` or `shadowOpacity: 0.06`
+      // would have passed Case 6 vacuously. We use `} as ViewStyle,` to skip the
+      // inner `shadowOffset: { ... }` brace which would close prematurely.
+      const start = design.indexOf("bottomSheet:");
+      const fromStart = design.slice(start);
+      const closerIdx = fromStart.indexOf("} as ViewStyle,");
+      expect(closerIdx).toBeGreaterThan(-1);
+      const bottomSheetBlock = fromStart.slice(0, closerIdx);
       // Negative-height invariant — the load-bearing semantic that distinguishes
       // this from `Shadows.hero` / `Shadows.subtle` / `Shadows.card`. A future
       // refactor that flips the sign breaks the auth-screen sheet illusion.
-      const bottomSheetBlock = design.slice(design.indexOf("bottomSheet:"));
       expect(bottomSheetBlock).toMatch(/height:\s*-4\b/);
       expect(bottomSheetBlock).toMatch(/shadowOpacity:\s*0\.06\b/);
       expect(bottomSheetBlock).toMatch(/shadowRadius:\s*12\b/);
@@ -118,13 +138,29 @@ describe("Story 14-4 — design-token enforcement source drift", () => {
 
     it("Case 8: `eslint.config.js` exempts `src/lib/design.ts` from `no-restricted-syntax`", () => {
       const eslintConfig = readFile("eslint.config.js");
-      // The override block scoping the off-rule to design.ts
-      expect(eslintConfig).toMatch(/files:\s*\[\s*["']src\/lib\/design\.ts["']\s*\]/);
+      // The override block scoping the off-rule to design.ts (R1-P9: the drift
+      // detector test file itself is also exempt — included in the same files: array).
+      expect(eslintConfig).toContain("src/lib/design.ts");
       // Whose rules turn no-restricted-syntax off
-      const designOverride = eslintConfig.slice(
-        eslintConfig.search(/files:\s*\[\s*["']src\/lib\/design\.ts["']\s*\]/)
-      );
-      expect(designOverride).toMatch(/"no-restricted-syntax":\s*"off"/);
+      const offRuleIdx = eslintConfig.indexOf('"no-restricted-syntax": "off"');
+      expect(offRuleIdx).toBeGreaterThan(-1);
+    });
+  });
+
+  describe("Workflow-level disable guard (Story 14-4 R1-P13 / Story 12-10 R1-H2)", () => {
+    it("Case 9: `Design token check` step does NOT carry `continue-on-error: true` or `if:` keys (silent-disable patterns)", () => {
+      // A future PR could silently disable the gate by adding `continue-on-error: true`
+      // or `if: ${{ false }}` to the step block — the `run:` line stays intact but the
+      // step becomes a no-op. Story 12-10 R1-H2 surfaced this pattern; applying the
+      // same defense here.
+      const ci = readFile(".github/workflows/ci.yml");
+      const startIdx = ci.search(/- name:\s*Design token check\b/);
+      expect(startIdx).toBeGreaterThan(-1);
+      const after = ci.slice(startIdx);
+      const nextStepIdx = after.slice(1).search(/\n\s*- name:\s/);
+      const block = nextStepIdx === -1 ? after : after.slice(0, nextStepIdx + 1);
+      expect(block).not.toMatch(/^\s*continue-on-error:\s*true\b/m);
+      expect(block).not.toMatch(/^\s*if:\s/m);
     });
   });
 });
