@@ -168,6 +168,10 @@ describe("signup.tsx — Story 12-8 source drift detector", () => {
     expect(SIGNUP_CODE_ONLY).not.toMatch(/min\.\s*6\s*caract[eè]res/i);
   });
 
+  it("Case 4b: NEGATIVE — Story 14-1 — French `caractères` is gone from signup placeholder (EN-UI rule)", () => {
+    expect(SIGNUP_CODE_ONLY).not.toMatch(/caract[eè]res/i);
+  });
+
   it("Case 5: NEGATIVE — captureError is NEVER passed the password variable (Story 9-3 contract; string-literal-aware walker)", () => {
     const captureErrorCalls = extractCaptureErrorCalls(SIGNUP_CODE_ONLY);
     // Sanity: there IS at least one captureError call in this file
@@ -219,28 +223,30 @@ describe("signup.tsx — Story 12-8 source drift detector", () => {
     }
   });
 
-  it("Case 6: post-12-8 placeholder uses MIN_PASSWORD_LENGTH constant via template literal (R2-P13 Prettier-tolerant)", () => {
-    // Pre-R1 this test was an OR — accepting either the literal
-    // `min. 10 caractères` OR a bare `MIN_PASSWORD_LENGTH` import.
+  it("Case 6: post-12-8 placeholder uses MIN_PASSWORD_LENGTH constant via template literal (Story 14-1 EN canonical)", () => {
+    // Pre-R1 this test was an OR — accepting either a literal
+    // `min. X caractères` OR a bare `MIN_PASSWORD_LENGTH` import.
     // R1-P6 made it strict but used a tight regex that failed if
     // Prettier wrapped the JSX attribute across lines.
     // Post-R2-P13 the regex tolerates `[\s\S]*?` between key segments
     // so any reformat preserving the constant-inside-placeholder
     // semantic passes.
+    // Story 14-1: placeholder converted from "caractères" to "characters"
+    // under the EN-UI rule (Decision Matrix row D1).
     expect(SIGNUP_CODE_ONLY).toMatch(
-      /placeholder=\s*\{\s*`[\s\S]*?\$\{\s*MIN_PASSWORD_LENGTH\s*\}[\s\S]*?caract[eè]res[\s\S]*?`\s*\}/
+      /placeholder=\s*\{\s*`[\s\S]*?\$\{\s*MIN_PASSWORD_LENGTH\s*\}[\s\S]*?characters[\s\S]*?`\s*\}/
     );
   });
 
   it("Case 7: review-round-2 R2-P12 — isPwnedRejection MUST be called BEFORE mapSupabaseWeakPasswordError in the catch-block", () => {
     // The signup catch-block contract: if the rejection is HIBP-pwned,
-    // surface the pwned-specific French message ("Ce mot de passe a
-    // été divulgué..."). Otherwise fall through to the always-merge
-    // mapper. If a future refactor flips the order, a `["pwned"]`
-    // rejection would silently surface the generic French message
-    // ("Mot de passe trop faible. Veuillez en choisir un autre.")
-    // instead of the pwned-specific one because mapSupabaseWeakPasswordError
-    // returns `[]` for pwned-only reasons (P1 contract).
+    // surface the pwned-specific message ("This password has been
+    // exposed in a data breach."). Otherwise fall through to the
+    // always-merge mapper. If a future refactor flips the order, a
+    // `["pwned"]` rejection would silently surface the generic message
+    // ("Password is too weak. Please choose another.") instead of the
+    // pwned-specific one because mapSupabaseWeakPasswordError returns
+    // `[]` for pwned-only reasons (P1 contract).
     //
     // Anchor on the CALL-SITE form (`identifier(`) — not the bare
     // identifier — so the alphabetically-sorted import block doesn't

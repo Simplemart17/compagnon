@@ -15,7 +15,7 @@
  *       rounds UP via `Math.ceil` so 1.1s remaining displays as "2s" — never
  *       displays "0s remaining" while still actually waiting.
  *   (e) `formatVerificationEmailMask` preserves first char + domain; falls back
- *       to `"votre adresse e-mail"` on undefined/empty/no-@/`@` at index 0
+ *       to `"your email address"` on undefined/empty/no-@/`@` at index 0
  *       (defensive against malformed input).
  */
 
@@ -206,21 +206,21 @@ describe("email-verification: formatVerificationEmailMask — privacy mask", () 
     expect(formatVerificationEmailMask("a@example.com")).toBe("a***@example.com");
   });
 
-  it('Case 21: undefined → "votre adresse e-mail" (French fallback)', () => {
-    expect(formatVerificationEmailMask(undefined)).toBe("votre adresse e-mail");
+  it('Case 21: undefined → "your email address" (fallback)', () => {
+    expect(formatVerificationEmailMask(undefined)).toBe("your email address");
   });
 
-  it('Case 22: "not-an-email" (no `@`) → French fallback', () => {
-    expect(formatVerificationEmailMask("not-an-email")).toBe("votre adresse e-mail");
+  it('Case 22: "not-an-email" (no `@`) → fallback', () => {
+    expect(formatVerificationEmailMask("not-an-email")).toBe("your email address");
   });
 
-  it('Case 23: "" (empty) → French fallback', () => {
-    expect(formatVerificationEmailMask("")).toBe("votre adresse e-mail");
+  it('Case 23: "" (empty) → fallback', () => {
+    expect(formatVerificationEmailMask("")).toBe("your email address");
   });
 
-  it('Case 24: "@example.com" (@ at index 0) → French fallback (no local part)', () => {
+  it('Case 24: "@example.com" (@ at index 0) → fallback (no local part)', () => {
     // Defensive: a malformed email with @ at index 0 has zero local-part to mask.
-    expect(formatVerificationEmailMask("@example.com")).toBe("votre adresse e-mail");
+    expect(formatVerificationEmailMask("@example.com")).toBe("your email address");
   });
 
   // Review-round-1 L3 patch: trim before processing so a leading whitespace
@@ -234,13 +234,13 @@ describe("email-verification: formatVerificationEmailMask — privacy mask", () 
     expect(formatVerificationEmailMask("alice@example.com ")).toBe("a***@example.com");
   });
 
-  it('Case 24d: L3 — whitespace-only input ("   ") → French fallback', () => {
-    expect(formatVerificationEmailMask("   ")).toBe("votre adresse e-mail");
+  it('Case 24d: L3 — whitespace-only input ("   ") → fallback', () => {
+    expect(formatVerificationEmailMask("   ")).toBe("your email address");
   });
 
-  it('Case 24e: L3 — " @example.com" (space-then-@) → French fallback (trimmed @-at-index-0)', () => {
+  it('Case 24e: L3 — " @example.com" (space-then-@) → fallback (trimmed @-at-index-0)', () => {
     // After trim, "@example.com" has @ at index 0; the existing
     // <=0 check fires.
-    expect(formatVerificationEmailMask(" @example.com")).toBe("votre adresse e-mail");
+    expect(formatVerificationEmailMask(" @example.com")).toBe("your email address");
   });
 });

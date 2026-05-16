@@ -30,7 +30,7 @@
  *   (i) Trimmed-length check (review-round-1 P5) — whitespace-padding
  *       tricks like `"Aa1Aa1Aa1\t"` (10 raw chars) fail length because
  *       the trimmed length is 9.
- *   (j) `getGenericWeakPasswordFrenchMessage` returns canonical fallback
+ *   (j) `getGenericWeakPasswordMessage` returns canonical fallback
  *       used by signup.tsx when server returns `weak_password` with no
  *       parseable itemized reasons (review-round-1 P7).
  */
@@ -39,11 +39,11 @@ import {
   MIN_PASSWORD_LENGTH,
   __THRESHOLDS_FOR_TESTS,
   computePasswordStrengthLabel,
-  getGenericWeakPasswordFrenchMessage,
-  getPwnedFrenchMessage,
+  getGenericWeakPasswordMessage,
+  getPwnedMessage,
   isPwnedRejection,
   mapSupabaseWeakPasswordError,
-  passwordPolicyReasonToFrenchMessage,
+  passwordPolicyReasonToMessage,
   validatePasswordStrength,
   type PasswordPolicyReason,
   type PasswordPolicyResult,
@@ -206,27 +206,28 @@ describe("password-policy: validatePasswordStrength()", () => {
   );
 });
 
-describe("password-policy: passwordPolicyReasonToFrenchMessage()", () => {
-  it("Case 12: 'length' → 'Au moins 10 caractères' (template literal sourced from MIN_PASSWORD_LENGTH)", () => {
-    // review-round-1 P4: the message MUST be derived from
-    // MIN_PASSWORD_LENGTH via template literal so a future bump
-    // propagates atomically. The literal string assertion below
-    // remains correct as long as MIN_PASSWORD_LENGTH === 10.
-    expect(passwordPolicyReasonToFrenchMessage("length")).toBe(
-      `Au moins ${MIN_PASSWORD_LENGTH} caractères`
+describe("password-policy: passwordPolicyReasonToMessage()", () => {
+  it("Case 12: 'length' → 'At least 10 characters' (template literal sourced from MIN_PASSWORD_LENGTH)", () => {
+    // Story 12-8 review-round-1 P4 + Story 14-1 EN conversion: the
+    // message MUST be derived from MIN_PASSWORD_LENGTH via template
+    // literal so a future bump propagates atomically. The literal
+    // string assertion below remains correct as long as
+    // MIN_PASSWORD_LENGTH === 10.
+    expect(passwordPolicyReasonToMessage("length")).toBe(
+      `At least ${MIN_PASSWORD_LENGTH} characters`
     );
   });
 
-  it("Case 13: 'lowercase' → 'Au moins une minuscule' (canonical)", () => {
-    expect(passwordPolicyReasonToFrenchMessage("lowercase")).toBe("Au moins une minuscule");
+  it("Case 13: 'lowercase' → 'At least one lowercase letter' (canonical)", () => {
+    expect(passwordPolicyReasonToMessage("lowercase")).toBe("At least one lowercase letter");
   });
 
-  it("Case 14: 'uppercase' → 'Au moins une majuscule' (canonical)", () => {
-    expect(passwordPolicyReasonToFrenchMessage("uppercase")).toBe("Au moins une majuscule");
+  it("Case 14: 'uppercase' → 'At least one uppercase letter' (canonical)", () => {
+    expect(passwordPolicyReasonToMessage("uppercase")).toBe("At least one uppercase letter");
   });
 
-  it("Case 15: 'digit' → 'Au moins un chiffre' (canonical)", () => {
-    expect(passwordPolicyReasonToFrenchMessage("digit")).toBe("Au moins un chiffre");
+  it("Case 15: 'digit' → 'At least one digit' (canonical)", () => {
+    expect(passwordPolicyReasonToMessage("digit")).toBe("At least one digit");
   });
 });
 
@@ -376,19 +377,19 @@ describe("password-policy: mapSupabaseWeakPasswordError()", () => {
     }
   });
 
-  it("Case 20d: review-round-1 P7 — weak_password with NO reasons field + valid password returns empty (caller surfaces generic French)", () => {
+  it("Case 20d: review-round-1 P7 — weak_password with NO reasons field + valid password returns empty (caller surfaces generic)", () => {
     // Defensive case: the server omits the `reasons` field entirely.
     // With a passing password, we have nothing client-side to add, so
     // the result is `[]` — caller (signup.tsx) treats `[]` as
-    // "show getGenericWeakPasswordFrenchMessage()".
+    // "show getGenericWeakPasswordMessage()".
     const result = mapSupabaseWeakPasswordError({ code: "weak_password" }, "Abcdefghi1");
     expect(result).toEqual([]);
   });
 
   it("Case 20e: review-round-1 P8 — `password` arg omitted + reasons=['characters'] returns empty (caller responsibility to surface generic)", () => {
     // Without `password`, the mapper cannot itemize "characters". It
-    // returns `[]` and the caller falls back to the generic French
-    // message. Production callers MUST pass `password` per JSDoc.
+    // returns `[]` and the caller falls back to the generic message.
+    // Production callers MUST pass `password` per JSDoc.
     const result = mapSupabaseWeakPasswordError({
       code: "weak_password",
       reasons: ["characters"],
@@ -397,7 +398,7 @@ describe("password-policy: mapSupabaseWeakPasswordError()", () => {
   });
 });
 
-describe("password-policy: isPwnedRejection() + getPwnedFrenchMessage() + getGenericWeakPasswordFrenchMessage()", () => {
+describe("password-policy: isPwnedRejection() + getPwnedMessage() + getGenericWeakPasswordMessage()", () => {
   it("Case 21: isPwnedRejection true when reasons includes 'pwned' (code path)", () => {
     expect(isPwnedRejection({ code: "weak_password", reasons: ["pwned"] })).toBe(true);
     expect(isPwnedRejection({ code: "weak_password", reasons: ["length", "pwned"] })).toBe(true);
@@ -416,16 +417,12 @@ describe("password-policy: isPwnedRejection() + getPwnedFrenchMessage() + getGen
     expect(isPwnedRejection(undefined)).toBe(false);
   });
 
-  it("Case 21c: review-round-2 R2-P9 — getPwnedFrenchMessage ends with trailing period (symmetric with generic message)", () => {
-    expect(getPwnedFrenchMessage()).toBe(
-      "Ce mot de passe a été divulgué dans une fuite de données."
-    );
+  it("Case 21c: review-round-2 R2-P9 — getPwnedMessage ends with trailing period (symmetric with generic message)", () => {
+    expect(getPwnedMessage()).toBe("This password has been exposed in a data breach.");
   });
 
-  it("Case 21d: review-round-1 P7 — getGenericWeakPasswordFrenchMessage returns canonical fallback", () => {
-    expect(getGenericWeakPasswordFrenchMessage()).toBe(
-      "Mot de passe trop faible. Veuillez en choisir un autre."
-    );
+  it("Case 21d: review-round-1 P7 — getGenericWeakPasswordMessage returns canonical fallback", () => {
+    expect(getGenericWeakPasswordMessage()).toBe("Password is too weak. Please choose another.");
   });
 });
 

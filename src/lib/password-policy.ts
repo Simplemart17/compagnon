@@ -83,8 +83,8 @@
  * reason in addition to `"length"` and `"characters"`. HIBP is a
  * Supabase Pro Plan feature; when the operator flips the dashboard
  * toggle on Pro upgrade, no code change is needed — the existing
- * `isPwnedRejection` + `getPwnedFrenchMessage` helpers surface the
- * leaked-password rejection in French to the user.
+ * `isPwnedRejection` + `getPwnedMessage` helpers surface the
+ * leaked-password rejection to the user.
  *
  * **Cross-story invariants preserved:**
  * - Story 9-3 Sentry — the password is never passed to `captureError`
@@ -160,53 +160,52 @@ export function validatePasswordStrength(password: string): PasswordPolicyResult
 }
 
 /**
- * French user-facing requirement messages, one per reason. Built lazily
+ * English user-facing requirement messages, one per reason. Built lazily
  * via template literals so a future bump to `MIN_PASSWORD_LENGTH`
- * propagates atomically (review-round-1 P4) — the source-of-truth lives
- * exactly once in the constant above.
+ * propagates atomically — the source-of-truth lives exactly once in the
+ * constant above. Story 14-1 converted the messages from French to
+ * English under the EN-UI / FR-content rule (Decision Matrix row D1).
  */
-const FRENCH_MESSAGES: Record<PasswordPolicyReason, string> = {
-  length: `Au moins ${MIN_PASSWORD_LENGTH} caractères`,
-  lowercase: "Au moins une minuscule",
-  uppercase: "Au moins une majuscule",
-  digit: "Au moins un chiffre",
+const MESSAGES: Record<PasswordPolicyReason, string> = {
+  length: `At least ${MIN_PASSWORD_LENGTH} characters`,
+  lowercase: "At least one lowercase letter",
+  uppercase: "At least one uppercase letter",
+  digit: "At least one digit",
 };
 
 /**
- * Localizer for a single failing reason. Returns the canonical French
+ * Localizer for a single failing reason. Returns the canonical English
  * imperative-mood phrase. Used by both the live strength indicator
  * checklist AND the post-submit Alert.
  */
-export function passwordPolicyReasonToFrenchMessage(reason: PasswordPolicyReason): string {
-  return FRENCH_MESSAGES[reason];
+export function passwordPolicyReasonToMessage(reason: PasswordPolicyReason): string {
+  return MESSAGES[reason];
 }
 
-// R2-P9: trailing-period punctuation is symmetric across both message
-// constants so Alert dialogs render consistent sentence terminators.
-const PWNED_FRENCH_MESSAGE = "Ce mot de passe a été divulgué dans une fuite de données.";
+// Trailing-period punctuation is symmetric across both message constants
+// so Alert dialogs render consistent sentence terminators.
+const PWNED_MESSAGE = "This password has been exposed in a data breach.";
 
-const GENERIC_WEAK_PASSWORD_FRENCH_MESSAGE =
-  "Mot de passe trop faible. Veuillez en choisir un autre.";
+const GENERIC_WEAK_PASSWORD_MESSAGE = "Password is too weak. Please choose another.";
 
 /**
- * Canonical French message for HIBP (HaveIBeenPwned) leaked-password
+ * Canonical English message for HIBP (HaveIBeenPwned) leaked-password
  * rejections. Surfaced when `isPwnedRejection(error) === true`.
  * Forward-compatible — fires when the operator flips the Supabase Pro
  * Plan HIBP toggle without any code change.
  */
-export function getPwnedFrenchMessage(): string {
-  return PWNED_FRENCH_MESSAGE;
+export function getPwnedMessage(): string {
+  return PWNED_MESSAGE;
 }
 
 /**
- * Generic French fallback for `weak_password` rejections that have no
+ * Generic English fallback for `weak_password` rejections that have no
  * itemized reasons (server returned malformed/empty `reasons` array OR
  * an unrecognized reason taxonomy). Used by `signup.tsx` to ensure the
- * French UI never surfaces an English Supabase engineering message
- * (review-round-1 P7).
+ * UI never surfaces a raw Supabase engineering message.
  */
-export function getGenericWeakPasswordFrenchMessage(): string {
-  return GENERIC_WEAK_PASSWORD_FRENCH_MESSAGE;
+export function getGenericWeakPasswordMessage(): string {
+  return GENERIC_WEAK_PASSWORD_MESSAGE;
 }
 
 /**
@@ -275,7 +274,7 @@ export function isPwnedRejection(error: unknown): boolean {
  * password (in scope at the call site) and returns the actually-failing
  * client-side reasons. The `"pwned"` reason is intentionally NOT
  * returned in the `PasswordPolicyReason[]` (it is not a client-checkable
- * rule); callers handle pwned via `isPwnedRejection` + `getPwnedFrenchMessage`.
+ * rule); callers handle pwned via `isPwnedRejection` + `getPwnedMessage`.
  *
  * **Review-round-1 P1 — always-merge-client-reasons:** When `password`
  * is provided, this function ALWAYS merges `validatePasswordStrength`'s
@@ -291,9 +290,9 @@ export function isPwnedRejection(error: unknown): boolean {
  * the server returns `weak_password` without a parseable `reasons`
  * array AND `password` is provided, this function still returns the
  * client-derived itemized reasons. The caller (`signup.tsx`) treats an
- * empty result as "show generic French fallback" via
- * `getGenericWeakPasswordFrenchMessage`, never falling through to the
- * English `error.message`.
+ * empty result as "show generic fallback" via
+ * `getGenericWeakPasswordMessage`, never falling through to the raw
+ * Supabase `error.message`.
  *
  * **Review-round-1 P8 — `password` arg is required for itemized
  * feedback:** If `password` is omitted, this function returns whatever
