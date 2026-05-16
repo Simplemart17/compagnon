@@ -122,7 +122,7 @@ function VocabularyCard({ onPress }: VocabularyCardProps) {
         }}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel="Vocabulaire - Vocabulary. Review with spaced repetition"
+        accessibilityLabel="Vocabulary. Review with spaced repetition."
         className="rounded-2xl flex-row items-center p-[18px] gap-4 overflow-hidden"
         style={{
           backgroundColor: Colors.accent10,
@@ -130,9 +130,9 @@ function VocabularyCard({ onPress }: VocabularyCardProps) {
           borderColor: Colors.accent,
         }}
       >
-        {/* VEDETTE badge */}
+        {/* FEATURED badge */}
         <View className="absolute top-2 right-2 bg-accent rounded-md px-[7px] py-[3px]">
-          <Text className="text-white text-[9px] font-bold tracking-[1px]">VEDETTE</Text>
+          <Text className="text-white text-[9px] font-bold tracking-[1px]">FEATURED</Text>
         </View>
 
         {/* Icon circle */}
@@ -149,10 +149,7 @@ function VocabularyCard({ onPress }: VocabularyCardProps) {
 
         {/* Labels */}
         <View className="flex-1">
-          <Text className="text-base font-bold text-primary">Vocabulaire</Text>
-          <Text className="text-[13px] mt-[2px]" style={{ color: Colors.textSecondary }}>
-            Vocabulary
-          </Text>
+          <Text className="text-base font-bold text-primary">Vocabulary</Text>
           <Text className="text-xs mt-1" style={{ color: Colors.textTertiary }}>
             Review with spaced repetition
           </Text>
@@ -183,9 +180,9 @@ export default function PracticeScreen() {
           ...Shadows.hero,
         }}
       >
-        <Text className="text-[26px] font-extrabold text-white mb-[6px]">Entraînement</Text>
+        <Text className="text-[26px] font-extrabold text-white mb-[6px]">Practice</Text>
         <Text className="text-sm mb-5" style={{ color: Colors.textOnDarkSecondary }}>
-          Choisissez une compétence à pratiquer.
+          Choose a skill to practice.
         </Text>
 
         {/* Decorative colored dots */}

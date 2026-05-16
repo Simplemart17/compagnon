@@ -110,9 +110,9 @@ export function ConversationCard({ onPress }: ConversationCardProps) {
 
       {/* Text content */}
       <View className="flex-1">
-        <Text className="text-white font-bold text-base">Parlez avec Compagnon</Text>
+        <Text className="text-white font-bold text-base">Talk with Companion</Text>
         <Text className="text-[13px] mt-[3px]" style={{ color: Colors.textOnDarkMuted }}>
-          Conversez en temps réel avec votre IA
+          Real-time conversation with your AI
         </Text>
       </View>
 
@@ -243,7 +243,7 @@ export default function HomeScreen() {
       >
         {/* Row 1: brand label + notification bell */}
         <View className="flex-row justify-between items-center mb-[14px]">
-          <Text className="text-[10px] font-bold text-accent tracking-[3px]">COMPAGNON</Text>
+          <Text className="text-[10px] font-bold text-accent tracking-[3px]">COMPANION</Text>
           <View
             className="w-[34px] h-[34px] rounded-[17px] justify-center items-center"
             style={{
@@ -258,7 +258,7 @@ export default function HomeScreen() {
 
         {/* Row 2: greeting */}
         <Text className="text-[28px] font-extrabold text-white mb-3">
-          Bonjour{firstName ? `, ${firstName}` : ""} !
+          Hello{firstName ? `, ${firstName}` : ""}!
         </Text>
 
         {/* Row 3: chips */}
@@ -291,7 +291,7 @@ export default function HomeScreen() {
             accessibilityLabel={`Target level: ${targetLevel}`}
           >
             <Text className="text-[11px]" style={{ color: Colors.textOnDarkSecondary }}>
-              Objectif
+              Target
             </Text>
             <Text className="text-xs font-bold text-white">{targetLevel}</Text>
           </View>
@@ -375,14 +375,14 @@ export default function HomeScreen() {
         {briefing.isLoading ? (
           <Animated.View style={cardEntryStyle} className="mt-5">
             <Text style={Typography.sectionHeader} className="mb-3" accessibilityRole="header">
-              Aujourd{"'"}hui
+              Today
             </Text>
             <TodayPlanSkeleton />
           </Animated.View>
         ) : briefing.todayPlan.length > 0 ? (
           <Animated.View style={cardEntryStyle} className="mt-5">
             <Text style={Typography.sectionHeader} className="mb-3" accessibilityRole="header">
-              Aujourd{"'"}hui
+              Today
             </Text>
             <View style={{ gap: 8 }}>
               {briefing.todayPlan.map((item) => (
@@ -402,7 +402,7 @@ export default function HomeScreen() {
         ) : briefing.error ? (
           <Animated.View style={cardEntryStyle} className="mt-5">
             <Text style={Typography.sectionHeader} className="mb-3" accessibilityRole="header">
-              Aujourd{"'"}hui
+              Today
             </Text>
             <TouchableOpacity
               onPress={briefing.refresh}
@@ -420,7 +420,7 @@ export default function HomeScreen() {
                 className="text-[13px] text-center leading-[19px]"
                 style={{ color: Colors.error }}
               >
-                Impossible de charger le plan. Appuyez pour réessayer.
+                Could not load the plan. Tap to retry.
               </Text>
             </TouchableOpacity>
           </Animated.View>
@@ -443,7 +443,7 @@ export default function HomeScreen() {
             className="text-lg font-bold text-primary mt-7 mb-[10px]"
             accessibilityRole="header"
           >
-            Mes compétences
+            My skills
           </Text>
           {progress.skills.length > 0 ? (
             <ScrollView
@@ -454,7 +454,7 @@ export default function HomeScreen() {
               {progress.skills.map((skill) => (
                 <View
                   key={skill.skill}
-                  accessibilityLabel={`${SKILL_LABELS[skill.skill]?.fr ?? skill.skill}: level ${skill.cefr_level}`}
+                  accessibilityLabel={`${SKILL_LABELS[skill.skill]?.en ?? skill.skill}: level ${skill.cefr_level}`}
                   className="bg-white rounded-xl px-3 py-2 flex-row items-center gap-2"
                   style={{
                     borderWidth: 1,
@@ -463,7 +463,7 @@ export default function HomeScreen() {
                   }}
                 >
                   <Text className="text-xs" style={{ color: Colors.gray700 }}>
-                    {SKILL_LABELS[skill.skill]?.fr}
+                    {SKILL_LABELS[skill.skill]?.en}
                   </Text>
                   <View
                     className="px-[6px] py-[2px] rounded-md"
@@ -489,7 +489,7 @@ export default function HomeScreen() {
                 className="text-[13px] text-center leading-[19px]"
                 style={{ color: Colors.textTertiary }}
               >
-                Commencez un exercice ou une conversation pour{"\n"}voir vos compétences ici.
+                Start an exercise or conversation to{"\n"}see your skills here.
               </Text>
             </View>
           )}
@@ -522,7 +522,7 @@ export default function HomeScreen() {
                       Math.min(48, (day.minutes_practiced / maxMinutes) * 48)
                     );
                     const isGoalMet = day.minutes_practiced >= maxMinutes;
-                    const dayLabel = new Date(day.date).toLocaleDateString("fr", {
+                    const dayLabel = new Date(day.date).toLocaleDateString("en", {
                       weekday: "narrow",
                     });
                     return (
@@ -549,7 +549,7 @@ export default function HomeScreen() {
                 className="text-[13px] text-center leading-[19px]"
                 style={{ color: Colors.textTertiary }}
               >
-                Pratiquez chaque jour pour voir{"\n"}votre activité hebdomadaire ici.
+                Practice daily to see your{"\n"}weekly activity here.
               </Text>
             </View>
           )}
