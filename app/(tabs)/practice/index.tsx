@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, Shadows } from "@/src/lib/design";
 import { SkillCard } from "@/src/components/common/SkillCard";
+import { Icon, type IconName } from "@/src/components/common/Icon";
 
 // ---------------------------------------------------------------------------
 // Data
@@ -29,57 +30,65 @@ const PRACTICE_LABELS: Record<PracticeSkill, { en: string; fr: string }> = {
   translation: { en: "Translation", fr: "Traduction" },
 };
 
+/**
+ * Story 14-3: emoji strings replaced with typed `IconName` values. Renders
+ * through SkillCard's new `iconNode` slot. The `emoji` prop on SkillCard
+ * stays required by the component API (the 12 conversation topic cards still
+ * pass content emoji); we pass an empty string here because `iconNode`
+ * overrides the rendered child. Grammar \uD83E\uDDE0 \u2192 `activity` per Q5 (Feather
+ * lacks Brain).
+ */
 const PRACTICE_SKILLS: {
   skill: PracticeSkill;
-  emoji: string;
+  iconName: IconName;
   color: string;
   description: string;
 }[] = [
   {
     skill: "listening",
-    emoji: "\uD83C\uDFA7",
+    iconName: "headphones",
     color: Colors.skillListening,
     description: "Listen to passages and answer comprehension questions",
   },
   {
     skill: "reading",
-    emoji: "\uD83D\uDCD6",
+    iconName: "book-open",
     color: Colors.skillReading,
     description: "Read texts and test your comprehension",
   },
   {
     skill: "writing",
-    emoji: "\u270D\uFE0F",
+    iconName: "edit-3",
     color: Colors.skillWriting,
     description: "Write essays and get AI-powered feedback",
   },
   {
     skill: "grammar",
-    emoji: "\uD83E\uDDE0",
+    iconName: "activity",
     color: Colors.skillGrammar,
     description: "Master French grammar and vocabulary",
   },
   {
     skill: "pronunciation",
-    emoji: "\uD83C\uDF99",
+    iconName: "mic",
     color: Colors.skillPronunciation,
     description: "Read aloud and get phoneme-level pronunciation feedback",
   },
   {
     skill: "dictation",
-    emoji: "\uD83D\uDCDD",
+    iconName: "file-text",
     color: Colors.skillDictation,
     description: "Listen to French sentences and type what you hear",
   },
   {
     skill: "echo",
-    emoji: "\uD83C\uDF99\uFE0F",
+    iconName: "repeat",
     color: Colors.skillListening,
     description: "Listen, repeat aloud, then type what you heard",
   },
   {
     skill: "translation",
-    emoji: "\uD83C\uDF10",
+    iconName: "globe",
     color: Colors.skillTranslation,
     description: "Hear a sentence, speak the French translation",
   },
@@ -137,7 +146,8 @@ export default function PracticeScreen() {
       >
         {/* Vocabulary featured card (Story 14-2: consolidated to SkillCard featured variant) */}
         <SkillCard
-          emoji={"📚"}
+          emoji=""
+          iconNode={<Icon name="book" size={24} color={Colors.accent} />}
           titleFr="Vocabulaire"
           titleEn="Vocabulary"
           description="Review with spaced repetition"
@@ -147,11 +157,12 @@ export default function PracticeScreen() {
           featured
         />
 
-        {/* Skill cards */}
-        {PRACTICE_SKILLS.map(({ skill, emoji, color, description }, index) => (
+        {/* Skill cards (Story 14-3: emoji → Icon via iconNode slot) */}
+        {PRACTICE_SKILLS.map(({ skill, iconName, color, description }, index) => (
           <SkillCard
             key={skill}
-            emoji={emoji}
+            emoji=""
+            iconNode={<Icon name={iconName} size={24} color={color} />}
             titleFr={PRACTICE_LABELS[skill].fr}
             titleEn={PRACTICE_LABELS[skill].en}
             description={description}

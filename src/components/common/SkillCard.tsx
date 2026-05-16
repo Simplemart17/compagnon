@@ -89,6 +89,15 @@ export interface SkillCardProps {
    * skill's primary color.
    */
   accent?: string;
+  /**
+   * Story 14-3: optional icon-circle override. When provided, renders this
+   * React node in the icon circle in place of the `emoji` `<Text>` element.
+   * Consumers pass `<Icon name="headphones" />` JSX directly. The `emoji`
+   * prop stays required (for the 12 conversation topic cards that preserve
+   * `TOPIC_EMOJIS` as learning content per Story 14-1 chrome/content rule);
+   * `iconNode` simply overrides the rendered child when present.
+   */
+  iconNode?: React.ReactNode;
 }
 
 export const SkillCard = React.memo(function SkillCard({
@@ -102,6 +111,7 @@ export const SkillCard = React.memo(function SkillCard({
   featured = false,
   disabled = false,
   accent,
+  iconNode,
 }: SkillCardProps) {
   const stripColor = accent ?? accentColor;
   const containerStyle = featured ? skillCardFeaturedStaticStyle : skillCardPressableStaticStyle;
@@ -153,12 +163,16 @@ export const SkillCard = React.memo(function SkillCard({
           style={{ backgroundColor: stripColor }}
         />
 
-        {/* Icon circle */}
+        {/* Icon circle (Story 14-3: iconNode overrides emoji when provided) */}
         <View
           className="w-14 h-14 rounded-[28px] justify-center items-center"
           style={{ backgroundColor: skillTint(stripColor, 0.09) }}
         >
-          <Text style={{ fontSize: Typography.statNumber.fontSize }}>{emoji}</Text>
+          {iconNode !== undefined ? (
+            iconNode
+          ) : (
+            <Text style={{ fontSize: Typography.statNumber.fontSize }}>{emoji}</Text>
+          )}
         </View>
 
         {/* Labels (EN primary per Story 14-1 chrome rule; FR as pedagogical reinforcement) */}

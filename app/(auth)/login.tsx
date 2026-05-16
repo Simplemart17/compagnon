@@ -22,6 +22,7 @@ import Reanimated, {
 import { useAuth } from "@/src/hooks/use-auth";
 import { Colors } from "@/src/lib/design";
 import { captureError } from "@/src/lib/sentry";
+import { Icon } from "@/src/components/common/Icon";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const HERO_HEIGHT = SCREEN_HEIGHT * 0.38;
@@ -162,9 +163,9 @@ export default function LoginScreen() {
                 borderColor: emailFocused ? Colors.accent : Colors.gray200,
               }}
             >
-              <Text className="text-base mr-[10px]" style={{ opacity: emailFocused ? 1 : 0.4 }}>
-                ✉️
-              </Text>
+              <View style={{ marginRight: 10, opacity: emailFocused ? 1 : 0.4 }}>
+                <Icon name="mail" size={18} color={Colors.textTertiary} />
+              </View>
               <TextInput
                 placeholder="Email address"
                 placeholderTextColor={Colors.textTertiary}
@@ -190,9 +191,9 @@ export default function LoginScreen() {
                 borderColor: passwordFocused ? Colors.accent : Colors.gray200,
               }}
             >
-              <Text className="text-base mr-[10px]" style={{ opacity: passwordFocused ? 1 : 0.4 }}>
-                🔒
-              </Text>
+              <View style={{ marginRight: 10, opacity: passwordFocused ? 1 : 0.4 }}>
+                <Icon name="lock" size={18} color={Colors.textTertiary} />
+              </View>
               <TextInput
                 placeholder="Password"
                 placeholderTextColor={Colors.textTertiary}

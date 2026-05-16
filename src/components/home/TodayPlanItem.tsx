@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { Icon, type IconName } from "@/src/components/common/Icon";
 import { Colors, Radii, Typography, skillTint } from "@/src/lib/design";
 import { hapticLight } from "@/src/lib/haptics";
 import { captureError } from "@/src/lib/sentry";
@@ -23,8 +24,23 @@ export interface TodayPlanItemProps {
   subtitle: string;
   /** Icon color for tinted backgrounds */
   iconColor: string;
-  /** Emoji icon for the activity */
-  iconEmoji: string;
+  /**
+   * Story 14-3: typed icon name (rendered via shared `<Icon>` component).
+   * When present, takes precedence over `iconEmoji`. **At least one of
+   * `iconName` or `iconEmoji` MUST be provided** — both-undefined is
+   * guarded at runtime via the R1-P2 fallback render (a question-mark
+   * placeholder + a Sentry breadcrumb) so a future call-site forgetting
+   * to set either prop produces an observable signal instead of a silent
+   * empty circle.
+   */
+  iconName?: IconName;
+  /**
+   * Legacy: emoji fallback. Preserved for content-emoji surfaces (none
+   * remain post-14-3 inside `use-daily-briefing` — keeping the prop so
+   * future content surfaces can opt-in to emoji rendering without losing
+   * type safety).
+   */
+  iconEmoji?: string;
   /** Badge type determining color and label */
   badge: "due" | "suggested" | "error";
   /** Callback when the item is pressed */
@@ -55,6 +71,7 @@ export const TodayPlanItem = React.memo(function TodayPlanItem({
   title,
   subtitle,
   iconColor,
+  iconName,
   iconEmoji,
   badge,
   onPress,
@@ -124,7 +141,11 @@ export const TodayPlanItem = React.memo(function TodayPlanItem({
           animatedStyle,
         ]}
       >
-        {/* Icon container */}
+        {/* Icon container (Story 14-3: iconName takes precedence over iconEmoji;
+            R1-P2 fallback breadcrumb + "?" placeholder when BOTH props are
+            missing — defends against future call-sites violating the
+            "at least one of" JSDoc invariant by surfacing the gap visibly
+            + via Sentry instead of producing a silent empty circle.) */}
         <View
           style={{
             width: 28,
@@ -135,7 +156,13 @@ export const TodayPlanItem = React.memo(function TodayPlanItem({
             justifyContent: "center",
           }}
         >
-          <Text style={{ fontSize: 14 }}>{iconEmoji}</Text>
+          {iconName !== undefined ? (
+            <Icon name={iconName} size={14} color={Colors.textPrimary} />
+          ) : iconEmoji !== undefined ? (
+            <Text style={{ fontSize: 14 }}>{iconEmoji}</Text>
+          ) : (
+            <Text style={{ fontSize: 14, color: Colors.textTertiary }}>{"?"}</Text>
+          )}
         </View>
 
         {/* Text content */}

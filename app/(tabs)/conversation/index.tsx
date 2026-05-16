@@ -9,12 +9,24 @@ import type { ConversationTopic, ConversationMode } from "@/src/types/conversati
 import type { CEFRLevel } from "@/src/types/cefr";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import { Colors, skillTint } from "@/src/lib/design";
+import { Icon, type IconName } from "@/src/components/common/Icon";
 import { ListItemCard } from "@/src/components/common/ListItemCard";
 
-const CONVERSATION_MODES: { key: ConversationMode; label: string; icon: string }[] = [
-  { key: "companion", label: "Companion", icon: "\uD83D\uDCAC" },
-  { key: "debate", label: "Debate", icon: "\u2694\uFE0F" },
-  { key: "tcf_simulation", label: "TCF Sim", icon: "\uD83C\uDFAF" },
+/**
+ * Story 14-3: `icon` is either a typed IconName (rendered via `<Icon />`) or
+ * an emoji string (rendered as `<Text>`). The companion mode's pre-14-3
+ * `\uD83D\uDCAC` chat emoji is replaced with a typed `message-circle` icon
+ * per the icon-system unification. Debate `\u2694\uFE0F` + TCF Sim
+ * `\uD83C\uDFAF` stay as emoji since Feather lacks a crossed-swords glyph
+ * (debate semantic) and `target` would be visually noisy in the small mode
+ * pill (TCF Sim is a content-ish reference anyway).
+ */
+type ModeIcon = { kind: "icon"; name: IconName } | { kind: "emoji"; value: string };
+
+const CONVERSATION_MODES: { key: ConversationMode; label: string; icon: ModeIcon }[] = [
+  { key: "companion", label: "Companion", icon: { kind: "icon", name: "message-circle" } },
+  { key: "debate", label: "Debate", icon: { kind: "emoji", value: "\u2694\uFE0F" } },
+  { key: "tcf_simulation", label: "TCF Sim", icon: { kind: "emoji", value: "\uD83C\uDFAF" } },
 ];
 
 const TOPIC_EMOJIS: Record<string, string> = {
@@ -260,12 +272,28 @@ export default function ConversationTopicsScreen() {
                 borderWidth: 1,
               }}
             >
-              <Text
-                className="text-[13px]"
-                style={{ color: isActive ? Colors.surfaceWhite : Colors.textSecondary }}
-              >
-                {m.icon} {m.label}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {m.icon.kind === "icon" ? (
+                  <Icon
+                    name={m.icon.name}
+                    size={14}
+                    color={isActive ? Colors.surfaceWhite : Colors.textSecondary}
+                  />
+                ) : (
+                  <Text
+                    className="text-[13px]"
+                    style={{ color: isActive ? Colors.surfaceWhite : Colors.textSecondary }}
+                  >
+                    {m.icon.value}
+                  </Text>
+                )}
+                <Text
+                  className="text-[13px]"
+                  style={{ color: isActive ? Colors.surfaceWhite : Colors.textSecondary }}
+                >
+                  {m.label}
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         })}

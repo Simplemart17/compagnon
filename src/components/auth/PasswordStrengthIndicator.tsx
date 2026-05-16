@@ -47,6 +47,7 @@ import React, { useMemo } from "react";
 import { View, Text } from "react-native";
 
 import { Colors, Typography } from "@/src/lib/design";
+import { Icon } from "@/src/components/common/Icon";
 import {
   computePasswordStrengthLabel,
   passwordPolicyReasonToMessage,
@@ -149,20 +150,37 @@ function PasswordStrengthIndicatorImpl({ password }: PasswordStrengthIndicatorPr
               importantForAccessibility="yes"
               style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
             >
-              <Text
+              <View
                 importantForAccessibility="no"
                 accessibilityElementsHidden={true}
-                style={[
-                  Typography.caption,
-                  {
-                    color: met ? Colors.success : Colors.textTertiary,
-                    fontWeight: "700",
-                    width: 14,
-                  },
-                ]}
+                style={{
+                  // Story 14-3 R1-P5: fixed height pins both met/unmet
+                  // child heights to the same vertical slot — the Icon
+                  // path (12pt-tall glyph) and the Text path (caption
+                  // line-height ~16-18pt) would otherwise jiggle the
+                  // checklist row height on every keystroke.
+                  width: 14,
+                  height: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                {met ? "✓" : "·"}
-              </Text>
+                {met ? (
+                  <Icon name="check" size={12} color={Colors.success} />
+                ) : (
+                  <Text
+                    style={[
+                      Typography.caption,
+                      {
+                        color: Colors.textTertiary,
+                        fontWeight: "700",
+                      },
+                    ]}
+                  >
+                    {"·"}
+                  </Text>
+                )}
+              </View>
               <Text
                 importantForAccessibility="no"
                 accessibilityElementsHidden={true}

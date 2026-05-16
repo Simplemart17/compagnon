@@ -22,6 +22,7 @@ import { captureError } from "@/src/lib/sentry";
 import { getLocalDateString } from "@/src/lib/activity";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { TCFSkill } from "@/src/types/cefr";
+import type { IconName } from "@/src/components/common/Icon";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,7 +33,8 @@ export interface TodayPlanItem {
   title: string;
   subtitle: string;
   iconColor: string;
-  iconEmoji: string;
+  /** Story 14-3: typed icon name (rendered via shared `<Icon>` component). */
+  iconName: IconName;
   badge: "due" | "suggested" | "error";
   route: string;
   params?: Record<string, string>;
@@ -176,7 +178,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
       title: `Review ${data.srsDueCount} words`,
       subtitle: "Vocabulary SRS review",
       iconColor: Colors.skillVocabulary,
-      iconEmoji: "📚",
+      iconName: "book",
       badge: "due",
       route,
     });
@@ -197,7 +199,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
         title: `Fix: ${truncatedDesc}`,
         subtitle: "Targeted micro-drill",
         iconColor: Colors.error,
-        iconEmoji: "🎯",
+        iconName: "target",
         badge: "error",
         route,
         params: { errorId: topError.id },
@@ -211,12 +213,12 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
     const skill = data.weakestSkill.skill;
     // speaking has no practice screen — route to conversation instead
     const route = skill === "speaking" ? "/(tabs)/conversation" : `/(tabs)/practice/${skill}`;
-    const emojiMap: Record<TCFSkill, string> = {
-      listening: "🎧",
-      reading: "📖",
-      writing: "✍️",
-      speaking: "💬",
-      grammar: "📝",
+    const iconMap: Record<TCFSkill, IconName> = {
+      listening: "headphones",
+      reading: "book-open",
+      writing: "edit-3",
+      speaking: "message-circle",
+      grammar: "file-text",
     };
     if (!usedRoutes.has(route)) {
       items.push({
@@ -224,7 +226,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
         title: `Practice ${SKILL_LABELS[skill].en}`,
         subtitle: "Your weakest skill this week",
         iconColor: SKILL_COLORS[skill],
-        iconEmoji: emojiMap[skill],
+        iconName: iconMap[skill],
         badge: "suggested",
         route,
       });
@@ -241,7 +243,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
         title: "Daily conversation",
         subtitle: "Practice speaking with your companion",
         iconColor: Colors.skillConversation,
-        iconEmoji: "💬",
+        iconName: "message-circle",
         badge: "suggested",
         route,
       });

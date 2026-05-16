@@ -6,6 +6,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-na
 import { TCF } from "@/src/lib/constants";
 import { Colors, Shadows, skillTint } from "@/src/lib/design";
 import { SkillCard } from "@/src/components/common/SkillCard";
+import { Icon, type IconName } from "@/src/components/common/Icon";
 import { SPEAKING_TASK_NUMBERS } from "@/src/lib/prompts/speaking";
 import { TCF_QCM_SECTIONS, roundToNearestFive } from "@/src/lib/tcf";
 
@@ -125,7 +126,7 @@ const SECTIONS: {
   nameSub: string;
   questions: number;
   minutes: number | null;
-  emoji: string;
+  iconName: IconName;
   color: string;
 }[] = [
   {
@@ -134,7 +135,7 @@ const SECTIONS: {
     nameSub: TCF_QCM_SECTIONS.listening.nameEn,
     questions: TCF_QCM_SECTIONS.listening.questions,
     minutes: TCF_QCM_SECTIONS.listening.minutes,
-    emoji: "\uD83C\uDFA7",
+    iconName: "headphones",
     color: Colors.skillListening,
   },
   {
@@ -143,7 +144,7 @@ const SECTIONS: {
     nameSub: TCF_QCM_SECTIONS.reading.nameEn,
     questions: TCF_QCM_SECTIONS.reading.questions,
     minutes: TCF_QCM_SECTIONS.reading.minutes,
-    emoji: "\uD83D\uDCD6",
+    iconName: "book-open",
     color: Colors.skillReading,
   },
 ];
@@ -211,7 +212,8 @@ export default function MockTestScreen() {
             return (
               <SkillCard
                 key={section.id}
-                emoji={section.emoji}
+                emoji=""
+                iconNode={<Icon name={section.iconName} size={24} color={section.color} />}
                 titleFr={section.nameFr}
                 titleEn={section.nameSub}
                 description={meta.join(" | ")}
@@ -229,7 +231,8 @@ export default function MockTestScreen() {
         </Text>
         <View className="px-5 gap-3">
           <SkillCard
-            emoji="✍️"
+            emoji=""
+            iconNode={<Icon name="edit-3" size={24} color={Colors.skillWriting} />}
             titleFr="Expression Écrite"
             titleEn="Writing"
             description={`${TCF.WRITING_MINUTES} min · Coming soon · Epic 10`}
@@ -245,7 +248,8 @@ export default function MockTestScreen() {
             disabled
           />
           <SkillCard
-            emoji="🎤"
+            emoji=""
+            iconNode={<Icon name="mic" size={24} color={Colors.skillPronunciation} />}
             titleFr="Expression Orale"
             titleEn="Speaking"
             description={`${SPEAKING_TASK_NUMBERS.length} tasks | ${TCF.SPEAKING_MINUTES} min`}
