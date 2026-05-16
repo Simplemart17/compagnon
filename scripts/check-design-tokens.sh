@@ -104,7 +104,12 @@ filter_comments_and_exempts() {
 # R1-P11: accept decimal values + unit suffix variation (px / pt / rem / em / %).
 # Pre-R1 the regex required integer-px only; `rounded-[1.5px]` / `rounded-[10pt]` /
 # `rounded-[1rem]` / `rounded-[50%]` all bypassed.
-radius_pattern='rounded-\[[0-9]+(\.[0-9]+)?(px|pt|rem|em|%)\]'
+# Story 14-9: extend to ALSO catch side-specific variants
+# (rounded-b-[N] / rounded-t-[N] / rounded-l-[N] / rounded-r-[N] /
+# rounded-tl-[N] / rounded-tr-[N] / rounded-bl-[N] / rounded-br-[N]).
+# Pre-14-9 the un-prefixed form `rounded-[N]` was caught but every hero
+# screen used `rounded-b-[28px]` which silently bypassed the gate.
+radius_pattern='rounded(-(b|t|l|r|tl|tr|bl|br))?-\[[0-9]+(\.[0-9]+)?(px|pt|rem|em|%)\]'
 radius_raw=$(grep -rn --include='*.ts' --include='*.tsx' -E "$radius_pattern" "${DIRS[@]}" 2>/dev/null || true)
 radius_violations=""
 if [ -n "$radius_raw" ]; then

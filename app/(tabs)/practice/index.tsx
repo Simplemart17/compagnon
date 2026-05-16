@@ -1,11 +1,11 @@
 import { View, Text, ScrollView, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SKILL_LABELS } from "@/src/lib/constants";
-import { Colors, Shadows } from "@/src/lib/design";
+import { Colors } from "@/src/lib/design";
 import { SkillCard } from "@/src/components/common/SkillCard";
 import { Icon, type IconName } from "@/src/components/common/Icon";
+import { HeroHeader } from "@/src/components/common/HeroHeader";
 
 // ---------------------------------------------------------------------------
 // Data
@@ -100,21 +100,14 @@ const PRACTICE_SKILLS: {
 
 export default function PracticeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   return (
     <View className="flex-1 bg-surface">
       <StatusBar barStyle="light-content" />
       {/* ------------------------------------------------------------------ */}
-      {/* Hero header                                                          */}
+      {/* Hero header — Story 14-9: canonical HeroHeader (paddingBottom=28).   */}
       {/* ------------------------------------------------------------------ */}
-      <View
-        className="bg-primary pb-7 px-6 rounded-b-[28px]"
-        style={{
-          paddingTop: insets.top + 16,
-          ...Shadows.hero,
-        }}
-      >
+      <HeroHeader paddingBottom={28}>
         <Text className="text-[26px] font-extrabold text-white mb-[6px]">Practice</Text>
         <Text className="text-sm mb-5" style={{ color: Colors.textOnDarkSecondary }}>
           Choose a skill to practice.
@@ -134,7 +127,7 @@ export default function PracticeScreen() {
             <View key={i} className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
           ))}
         </View>
-      </View>
+      </HeroHeader>
 
       {/* ------------------------------------------------------------------ */}
       {/* Scrollable content                                                   */}

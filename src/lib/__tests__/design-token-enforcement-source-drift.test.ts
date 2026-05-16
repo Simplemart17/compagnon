@@ -80,8 +80,12 @@ describe("Story 14-4 — design-token enforcement source drift", () => {
       // Shebang + safety flags
       expect(script).toMatch(/^#!\/usr\/bin\/env bash\b/);
       expect(script).toMatch(/set -euo pipefail/);
-      // R1-P11: `rounded-[Nunit]` pattern accepts decimal + unit variation (px / pt / rem / em / %)
-      expect(script).toContain("rounded-\\[[0-9]+(\\.[0-9]+)?(px|pt|rem|em|%)\\]");
+      // R1-P11: `rounded-[Nunit]` pattern accepts decimal + unit variation (px / pt / rem / em / %).
+      // Story 14-9: extended to ALSO catch side-specific variants
+      // (rounded-b-[N] / rounded-t-[N] / etc.) that pre-14-9 silently bypassed.
+      expect(script).toContain(
+        "rounded(-(b|t|l|r|tl|tr|bl|br))?-\\[[0-9]+(\\.[0-9]+)?(px|pt|rem|em|%)\\]"
+      );
       // R1-P7: shadow-primitive pattern accepts negative numerics
       expect(script).toContain("(shadowOpacity|shadowRadius)\\s*:\\s*-?[0-9.]+");
       // R1-P9: shadowOffset object form covered

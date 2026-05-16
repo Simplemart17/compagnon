@@ -12,7 +12,7 @@ import Animated, {
 
 import { useAuth } from "@/src/hooks/use-auth";
 import { CEFR_ORDER, CEFR_LEVELS } from "@/src/types/cefr";
-import { Colors } from "@/src/lib/design";
+import { Colors, Radii } from "@/src/lib/design";
 import { captureError } from "@/src/lib/sentry";
 import { LEVEL_COLORS } from "@/src/lib/constants";
 import type { CEFRLevel } from "@/src/types/cefr";
@@ -193,9 +193,14 @@ export default function OnboardingScreen() {
 
   return (
     <View className="flex-1 bg-surface">
-      {/* -- Header -- */}
+      {/* -- Header --
+          Story 14-9: redundant Tailwind side-radius className dropped; the inline
+          borderBottomLeftRadius/RightRadius below already sets Radii.heroBottom.
+          Onboarding hero stays bespoke (out of 14-9 migration scope) because its
+          shadow is intentionally heavier than Shadows.hero per the Story 14-4
+          R1 escape-hatch. */}
       <View
-        className="bg-primary px-6 pb-7 rounded-b-[28px]"
+        className="bg-primary px-6 pb-7"
         style={{
           paddingTop: insets.top + 20,
           // Shadow kept inline -- NativeWind shadow support is limited on native
@@ -204,8 +209,8 @@ export default function OnboardingScreen() {
           shadowRadius: 20, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke onboarding shadow above
           shadowOffset: { width: 0, height: 8 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
           elevation: 12,
-          borderBottomLeftRadius: 28,
-          borderBottomRightRadius: 28,
+          borderBottomLeftRadius: Radii.heroBottom,
+          borderBottomRightRadius: Radii.heroBottom,
         }}
       >
         {/* Brand */}
