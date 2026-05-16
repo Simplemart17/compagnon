@@ -1,6 +1,6 @@
 # Story 13.8: Prompt Truncation Perf Verification — pin the end-to-end `buildConversationPrompt` size bound + per-CEFR base size + 25× tail-reduction claim from Story 11-7
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
