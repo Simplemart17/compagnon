@@ -85,7 +85,7 @@ export const SkillCard = React.memo(function SkillCard({
         }}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`${titleFr} - ${titleEn}. ${description}`}
+        accessibilityLabel={`${titleEn}. ${description}`}
         accessibilityHint={`Double tap to start ${titleEn} practice`}
         style={skillCardPressableStaticStyle}
       >
@@ -103,11 +103,11 @@ export const SkillCard = React.memo(function SkillCard({
           <Text style={{ fontSize: Typography.statNumber.fontSize }}>{emoji}</Text>
         </View>
 
-        {/* Labels */}
+        {/* Labels (EN primary per Story 14-1 chrome rule; FR as pedagogical reinforcement) */}
         <View className="flex-1">
-          <Text className="text-base font-bold text-primary">{titleFr}</Text>
+          <Text className="text-base font-bold text-primary">{titleEn}</Text>
           <Text className="text-xs mt-[2px]" style={{ color: Colors.textSecondary }}>
-            {titleEn}
+            {titleFr}
           </Text>
           <Text className="text-xs mt-1" style={{ color: Colors.textTertiary }}>
             {description}

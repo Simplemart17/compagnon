@@ -137,7 +137,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
           textAlign: isUser ? "right" : "left",
         }}
       >
-        {isUser ? "Vous" : "Compagnon"}
+        {isUser ? "You" : "Companion"}
       </Text>
 
       {/* Bubble */}
@@ -202,7 +202,7 @@ function TypingIndicator() {
         className="mb-0.5 text-[10px] font-bold"
         style={{ color: skillTint(Colors.surfaceWhite, 0.4) }}
       >
-        Compagnon
+        Companion
       </Text>
       <View
         className="flex-row items-center gap-1.5 rounded-[20px] border px-4 py-3.5"
@@ -243,7 +243,7 @@ function PendingAiBubble({ text }: { text: string }) {
         className="mb-0.5 text-[10px] font-bold"
         style={{ color: skillTint(Colors.surfaceWhite, 0.4) }}
       >
-        Compagnon
+        Companion
       </Text>
       <View
         className="rounded-[20px] border px-3.5 py-[11px]"
