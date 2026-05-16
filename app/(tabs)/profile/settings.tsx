@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Alert,
   Platform,
   Share,
   Switch,
@@ -19,11 +18,13 @@ import { useAuth } from "@/src/hooks/use-auth";
 import { useAuthStore } from "@/src/store/auth-store";
 import { useToast } from "@/src/hooks/use-toast";
 import { useNotificationPreferences } from "@/src/hooks/use-notifications";
+import { useThemedDialog } from "@/src/hooks/use-themed-dialog";
 import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors } from "@/src/lib/design";
+import { ThemedDialog } from "@/src/components/common/ThemedDialog";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -108,6 +109,11 @@ export default function SettingsScreen() {
   const { showToast } = useToast();
   const { preferences, updatePreference, permissionStatus } = useNotificationPreferences();
   const router = useRouter();
+  // Story 14-8: themed dialog for high-traffic confirmation flows
+  // (sign-out, change level/target/daily-goal, delete-account stage-1).
+  // Replaces the OS-default Alert.alert chrome with design-token-styled
+  // dialog matching the rest of the app's visual identity.
+  const dialog = useThemedDialog();
   const insets = useSafeAreaInsets();
 
   const [editingName, setEditingName] = useState(false);
@@ -120,65 +126,83 @@ export default function SettingsScreen() {
 
   function handleUpdateLevel(level: CEFRLevel) {
     if (level === currentLevel) return;
-    Alert.alert(
-      "Change Level",
-      `Set your current level to ${level}? This may affect exercise difficulty.`,
-      [
-        { text: "Cancel", style: "cancel" },
+    // Story 14-8: themed dialog (was Alert.alert pre-14-8).
+    dialog.show({
+      title: "Change Level",
+      message: `Set your current level to ${level}? This may affect exercise difficulty.`,
+      buttons: [
+        { label: "Cancel", style: "cancel", onPress: () => dialog.hide() },
         {
-          text: "Confirm",
-          onPress: async () => {
-            const { error } = await updateProfile({ current_cefr_level: level });
-            if (error) {
-              showToast({ type: "error", message: "Failed to update level. Please try again." });
-            } else {
-              showToast({ type: "success", message: `Level updated to ${level}` });
-            }
+          label: "Confirm",
+          style: "default",
+          onPress: () => {
+            dialog.hide();
+            void updateProfile({ current_cefr_level: level }).then(({ error }) => {
+              if (error) {
+                showToast({ type: "error", message: "Failed to update level. Please try again." });
+              } else {
+                showToast({ type: "success", message: `Level updated to ${level}` });
+              }
+            });
           },
         },
-      ]
-    );
+      ],
+    });
   }
 
   function handleUpdateTarget(level: CEFRLevel) {
     if (level === targetLevel) return;
-    Alert.alert("Change Target", `Set your target level to ${level}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Confirm",
-        onPress: () => {
-          void updateProfile({ target_cefr_level: level }).then(({ error }) => {
-            if (error) {
-              showToast({ type: "error", message: "Failed to update target. Please try again." });
-            } else {
-              showToast({ type: "success", message: `Target level set to ${level}` });
-            }
-          });
+    // Story 14-8: themed dialog (was Alert.alert pre-14-8).
+    dialog.show({
+      title: "Change Target",
+      message: `Set your target level to ${level}?`,
+      buttons: [
+        { label: "Cancel", style: "cancel", onPress: () => dialog.hide() },
+        {
+          label: "Confirm",
+          style: "default",
+          onPress: () => {
+            dialog.hide();
+            void updateProfile({ target_cefr_level: level }).then(({ error }) => {
+              if (error) {
+                showToast({ type: "error", message: "Failed to update target. Please try again." });
+              } else {
+                showToast({ type: "success", message: `Target level set to ${level}` });
+              }
+            });
+          },
         },
-      },
-    ]);
+      ],
+    });
   }
 
   function handleUpdateDailyGoal(minutes: number) {
     if (minutes === dailyGoal) return;
-    Alert.alert("Change Daily Goal", `Set your daily goal to ${minutes} minutes?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Confirm",
-        onPress: () => {
-          void updateProfile({ daily_goal_minutes: minutes }).then(({ error }) => {
-            if (error) {
-              showToast({
-                type: "error",
-                message: "Failed to update daily goal. Please try again.",
-              });
-            } else {
-              showToast({ type: "success", message: `Daily goal set to ${minutes} minutes` });
-            }
-          });
+    // Story 14-8: themed dialog (was Alert.alert pre-14-8).
+    dialog.show({
+      title: "Change Daily Goal",
+      message: `Set your daily goal to ${minutes} minutes?`,
+      buttons: [
+        { label: "Cancel", style: "cancel", onPress: () => dialog.hide() },
+        {
+          label: "Confirm",
+          style: "default",
+          onPress: () => {
+            dialog.hide();
+            void updateProfile({ daily_goal_minutes: minutes }).then(({ error }) => {
+              if (error) {
+                showToast({
+                  type: "error",
+                  message: "Failed to update daily goal. Please try again.",
+                });
+              } else {
+                showToast({ type: "success", message: `Daily goal set to ${minutes} minutes` });
+              }
+            });
+          },
         },
-      },
-    ]);
+      ],
+    });
   }
 
   async function handleSaveName() {
@@ -244,22 +268,28 @@ export default function SettingsScreen() {
   }
 
   function handleDeleteAccount() {
-    // Step 1: Initial warning dialog
-    Alert.alert(
-      "Delete Account",
-      "This will permanently delete ALL your data including vocabulary, conversations, exercises, and progress. This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
+    // Story 14-8: themed dialog stage-1 (was Alert.alert pre-14-8).
+    // Stage-2 inline "type DELETE" confirmation is a separate inline UI
+    // (showDeleteConfirm + TextInput below) and remains unchanged — only
+    // the initial warning Alert is migrated. Multi-step dialog support
+    // is deferred to 14-8-followup-multi-step-confirm.
+    dialog.show({
+      title: "Delete Account",
+      message:
+        "This will permanently delete ALL your data including vocabulary, conversations, exercises, and progress. This action cannot be undone.",
+      buttons: [
+        { label: "Cancel", style: "cancel", onPress: () => dialog.hide() },
         {
-          text: "Continue",
+          label: "Continue",
+          style: "destructive",
           onPress: () => {
-            // Step 2: Show inline confirmation where user types "DELETE"
+            dialog.hide();
             setDeleteConfirmText("");
             setShowDeleteConfirm(true);
           },
         },
-      ]
-    );
+      ],
+    });
   }
 
   async function confirmDeleteAccount() {
@@ -296,17 +326,23 @@ export default function SettingsScreen() {
     }
   }
 
-  async function handleSignOut() {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await signOut();
+  function handleSignOut() {
+    // Story 14-8: themed dialog (was Alert.alert pre-14-8).
+    dialog.show({
+      title: "Sign Out",
+      message: "Are you sure you want to sign out?",
+      buttons: [
+        { label: "Cancel", style: "cancel", onPress: () => dialog.hide() },
+        {
+          label: "Sign Out",
+          style: "destructive",
+          onPress: () => {
+            dialog.hide();
+            void signOut();
+          },
         },
-      },
-    ]);
+      ],
+    });
   }
 
   return (
@@ -758,6 +794,9 @@ export default function SettingsScreen() {
           </SettingsCard>
         </ScrollView>
       </View>
+      {/* Story 14-8: themed dialog for sign-out + level/target/daily-goal
+          changes + delete-account stage-1 warning (replaces Alert.alert). */}
+      {dialog.config !== null && <ThemedDialog visible={dialog.visible} {...dialog.config} />}
     </>
   );
 }

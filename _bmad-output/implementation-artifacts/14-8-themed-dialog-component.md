@@ -1,6 +1,6 @@
 # Story 14.8: Themed Dialog Component — replace `Alert.alert` for high-traffic flows (sign-out, level change, daily-goal change, delete-account stage-1) with a custom design-token-styled dialog matching the Companion visual identity
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -225,37 +225,37 @@ Story 14-3's `IconName` union doesn't include `"alert-triangle"`, `"info"`, or `
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create `src/components/common/ThemedDialog.tsx`** (AC: A1-A11)
-  - [ ] 1.1 Define `ThemedDialogButton` + `ThemedDialogProps` interfaces.
-  - [ ] 1.2 Define `themedDialogCardStaticStyle` + button-style constants (frozen) at module level.
-  - [ ] 1.3 Define `THEMED_DIALOG_ANIM_DURATION_MS = 180` constant exported `@internal`.
-  - [ ] 1.4 Implement the component: native `<Modal transparent animationType="none">` + Reanimated `useAnimatedStyle` for fade+scale + backdrop View with 3-prop decorative a11y.
-  - [ ] 1.5 Implement button layouts: 1 / 2-horizontal / 3-vertical.
-  - [ ] 1.6 Per-button synchronous re-entrancy guard via `useRef<boolean>`.
-  - [ ] 1.7 Backdrop-tap dismissal logic — only when `onRequestClose` provided AND no destructive button.
-  - [ ] 1.8 Wrap in `React.memo`.
-- [ ] **Task 2: Create `src/hooks/use-themed-dialog.ts`** (AC: B1-B2)
-  - [ ] 2.1 Define `UseThemedDialogReturn` + `ThemedDialogConfig` types.
-  - [ ] 2.2 `useState<{visible: boolean, config: ThemedDialogConfig | null}>` shape; `show(config)` sets both; `hide()` clears visible immediately, clears config after `THEMED_DIALOG_ANIM_DURATION_MS` via setTimeout (cleared on unmount via cleanup effect).
-- [ ] **Task 3: Migrate `profile/index.tsx` sign-out flow** (AC: C1)
-- [ ] **Task 4: Migrate `profile/settings.tsx` 5 flows** (AC: C2-C6)
-  - [ ] 4.1 Sign-out
-  - [ ] 4.2 Change current level
-  - [ ] 4.3 Change target level
-  - [ ] 4.4 Change daily goal
-  - [ ] 4.5 Delete-account stage-1 warning
-- [ ] **Task 5: Runtime tests for ThemedDialog** (AC: D1)
-  - [ ] 5.1 Create `src/components/common/__tests__/themed-dialog.test.tsx` with 9-12 runtime cases per AC-D1.
-- [ ] **Task 6: Runtime tests for `useThemedDialog`** (AC: D2)
-  - [ ] 6.1 Create `src/hooks/__tests__/use-themed-dialog.test.tsx` with 5-7 cases per AC-D2.
-- [ ] **Task 7: Source-drift tests** (AC: D3)
-  - [ ] 7.1 Create `src/lib/__tests__/themed-dialog-migration-source-drift.test.ts` with 8-10 cases per AC-D3.
-- [ ] **Task 8: Quality gates** (AC: Z)
-  - [ ] 8.1 `npm run type-check` — 0 errors.
-  - [ ] 8.2 `npm run lint` — 0 errors / 0 warnings.
-  - [ ] 8.3 `npm run format:check` — pass.
-  - [ ] 8.4 `npm test -- --no-coverage` — full suite + new test files pass. Spec target: **+22-29 net Jest cases** (2032 → 2054-2061).
-  - [ ] 8.5 `npm run check:tokens` — Story 14-4 gate passes (no new raw tokens; the backdrop's `rgba(0,0,0,0.5)` is on the exempt-set as documented in AC-A4 inline comment).
+- [x] **Task 1: Create `src/components/common/ThemedDialog.tsx`** (AC: A1-A11)
+  - [x] 1.1 Define `ThemedDialogButton` + `ThemedDialogProps` interfaces.
+  - [x] 1.2 Define `themedDialogCardStaticStyle` + button-style constants (frozen) at module level.
+  - [x] 1.3 Define `THEMED_DIALOG_ANIM_DURATION_MS = 180` constant exported `@internal`.
+  - [x] 1.4 Implement the component: native `<Modal transparent animationType="none">` + Reanimated `useAnimatedStyle` for fade+scale + backdrop View with 3-prop decorative a11y.
+  - [x] 1.5 Implement button layouts: 1 / 2-horizontal / 3-vertical.
+  - [x] 1.6 Per-button synchronous re-entrancy guard via `useRef<boolean>`.
+  - [x] 1.7 Backdrop-tap dismissal logic — only when `onRequestClose` provided AND no destructive button.
+  - [x] 1.8 Wrap in `React.memo`.
+- [x] **Task 2: Create `src/hooks/use-themed-dialog.ts`** (AC: B1-B2)
+  - [x] 2.1 Define `UseThemedDialogReturn` + `ThemedDialogConfig` types.
+  - [x] 2.2 `useState<{visible: boolean, config: ThemedDialogConfig | null}>` shape; `show(config)` sets both; `hide()` clears visible immediately, clears config after `THEMED_DIALOG_ANIM_DURATION_MS` via setTimeout (cleared on unmount via cleanup effect).
+- [x] **Task 3: Migrate `profile/index.tsx` sign-out flow** (AC: C1)
+- [x] **Task 4: Migrate `profile/settings.tsx` 5 flows** (AC: C2-C6)
+  - [x] 4.1 Sign-out
+  - [x] 4.2 Change current level
+  - [x] 4.3 Change target level
+  - [x] 4.4 Change daily goal
+  - [x] 4.5 Delete-account stage-1 warning
+- [x] **Task 5: Runtime tests for ThemedDialog** (AC: D1)
+  - [x] 5.1 Create `src/components/common/__tests__/themed-dialog.test.tsx` with 9-12 runtime cases per AC-D1.
+- [x] **Task 6: Runtime tests for `useThemedDialog`** (AC: D2)
+  - [x] 6.1 Create `src/hooks/__tests__/use-themed-dialog.test.tsx` with 5-7 cases per AC-D2.
+- [x] **Task 7: Source-drift tests** (AC: D3)
+  - [x] 7.1 Create `src/lib/__tests__/themed-dialog-migration-source-drift.test.ts` with 8-10 cases per AC-D3.
+- [x] **Task 8: Quality gates** (AC: Z)
+  - [x] 8.1 `npm run type-check` — 0 errors.
+  - [x] 8.2 `npm run lint` — 0 errors / 0 warnings.
+  - [x] 8.3 `npm run format:check` — pass.
+  - [x] 8.4 `npm test -- --no-coverage` — full suite + new test files pass. Spec target: **+22-29 net Jest cases** (2032 → 2054-2061).
+  - [x] 8.5 `npm run check:tokens` — Story 14-4 gate passes (no new raw tokens; the backdrop's `rgba(0,0,0,0.5)` is on the exempt-set as documented in AC-A4 inline comment).
 
 ## Operator-decision items (resolve before/during implementation)
 
@@ -331,8 +331,77 @@ claude-opus-4-7[1m]
 
 ### Debug Log References
 
+- Mid-implementation: `Typography.ctaLabel` was assumed to exist (Story 14-6 spec referenced it) but was never actually committed to `main`. Added the preset to `design.ts` as part of Story 14-8 (additive change; documented inline). Drift detector Case 5 pins the preset.
+- Test mock: `findAllNodes` returns multiple fiber-tree levels per logical Pressable. Applied Story 13-7 R1-P3 lesson — dedupe by `accessibilityLabel` via Map for accurate button-count assertions.
+- Hook test: transitively imports `react-native-reanimated` via `THEMED_DIALOG_ANIM_DURATION_MS` re-export. Added the canonical Reanimated mock factory (Epic 13 AI #7).
+- 14-7 PR #107 was merged earlier in the session — `git pull origin main` brought in those changes before the 14-8 branch was created (branched off 14-7-merged main per the Memory rule).
+
 ### Completion Notes List
+
+**5 operator decisions resolved per spec recommendations:**
+
+- Q1: Backdrop dim = `rgba(0,0,0,0.5)` (50% black, iOS Alert default)
+- Q2: 2-button layout = cancel-LEFT, action-RIGHT (input array order = visual order)
+- Q3: NO icons in v1 (IconName union doesn't include `alert-triangle` / `info` / `help-circle`; defer to `14-8-followup-add-dialog-icons`)
+- Q4: Backdrop tap SUPPRESSED when any button has `style: "destructive"` (force explicit choice on irreversible actions)
+- Q5: Stage-2 "type DELETE" inline confirmation OUT OF SCOPE (multi-step dialogs are `14-8-followup-multi-step-confirm`); only stage-1 warning Alert migrated
+
+**Implementation summary:**
+
+- **NEW** `src/components/common/ThemedDialog.tsx` (~412 lines incl. JSDoc) — native `<Modal transparent animationType="none">` + Reanimated 180ms fade+scale entry/exit + 3 frozen-static-style constants (`themedDialogCardStaticStyle` + per-intent button styles) + `Object.freeze` on all (Story 13-7 R1-P2). Backdrop with Story 14-3 R1-P1 3-prop decorative a11y. Button intents: `default` (Colors.accent), `destructive` (Colors.error), `cancel` (transparent + Colors.textSecondary). Layouts: 1-button full-width / 2-button horizontal / 3-button vertical-stack. Synchronous `useRef`-based re-entrancy guard on press handlers (Story 12-9 / 14-7 R1-P6 pattern). `React.memo`-wrapped.
+- **NEW** `src/hooks/use-themed-dialog.ts` (~95 lines) — declarative state helper. `show(config)` / `hide()` / `visible` / `config`. Hide retains config briefly for exit animation (cleared after `THEMED_DIALOG_ANIM_DURATION_MS`); `show()` during hide-window cancels the pending clear-timeout. Cleanup effect prevents post-unmount setState.
+- **MODIFIED** `src/lib/design.ts` — added `Typography.ctaLabel` preset (17pt 700-weight `Colors.textOnDark`); Story 14-8's CTA-button label style.
+- **MODIFIED** `app/(tabs)/profile/index.tsx` — `handleSignOut` migrated from `Alert.alert` to `dialog.show(...)`. Removed `Alert` from `react-native` imports. `<ThemedDialog>` rendered at end of root fragment.
+- **MODIFIED** `app/(tabs)/profile/settings.tsx` — 5 handlers migrated: `handleUpdateLevel`, `handleUpdateTarget`, `handleUpdateDailyGoal`, `handleDeleteAccount` (stage-1 only — stage-2 inline TextInput confirmation preserved), `handleSignOut`. Removed `Alert` import. `<ThemedDialog>` rendered at end.
+
+**Tests (3 new files, 29 net Jest cases):**
+
+- `src/components/common/__tests__/themed-dialog.test.tsx` — 11 runtime cases via react-test-renderer + canonical reanimated mock: constants/frozen-style pins (×2) + 1/2/3 button layouts (×3) + backdrop dismissal with/without destructive button (×2) + button re-entrancy guard (×1) + 3-prop decorative a11y (×1) + role=alert + accessibilityLabel default + override (×2)
+- `src/hooks/__tests__/use-themed-dialog.test.tsx` — 6 cases via fake-timers + react-test-renderer: initial state + show + hide+animation-retention + show-while-visible-replaces-config + hide-then-show-cancels-clear-timeout + unmount-cleanup-no-setState-warnings
+- `src/lib/__tests__/themed-dialog-migration-source-drift.test.ts` — 12 cases via Story 12-2 P12 comment-stripped readFile + Story 13-2 P11 paired POSITIVE+NEGATIVE pins + Story 13-7 R1-P4 `extractFunctionBody` balanced-brace walker for scoped assertions: component exports + frozen Shadows.hero-first + R1-P1 3-prop a11y + useRef guard + Typography.ctaLabel preset + per-file migration pins (imports + Alert.alert NEGATIVE in 5 handler bodies + react-native import does NOT include Alert + confirmDeleteAccount still uses showToast — stage-2 unchanged)
+
+**Cross-story invariants preserved by construction:**
+
+- Story 9-3 telemetry — no new feature tags or extras keys (ThemedDialog has no telemetry surface; consumers handle their own errors)
+- Story 13-1 transcript render-storm fix — `useAnimatedStyle` + `withTiming` pattern (no setState-driven animation values)
+- Story 13-7 frozen-static-style — all 5 style constants `Object.freeze`'d; `Shadows.hero` spread FIRST (R1-P1); mutation defense via R1-P2 + drift Case 2 pin
+- Story 14-1 chrome rule — all default chrome strings in English (Sign Out, Cancel, Change Level, etc.); no `toLocaleDateString` use
+- Story 14-2 ListItemCard pattern — ThemedDialog is a SEPARATE primitive (not a ListItemCard consumer); the migration pattern (Alert.alert → useThemedDialog) mirrors Story 14-2's inline-card → ListItemCard migration
+- Story 14-3 Icon system — v1 ships text-only dialogs (per Q3); IconName union NOT extended; Story 14-3 R1-P1 3-prop decorative a11y applied to backdrop
+- Story 14-4 token enforcement — all colors `Colors.*`; backdrop `rgba(0,0,0,0.5)` is the single raw RGBA (documented as token-derived from `Colors.shadow = "#000000"`); `check:tokens` gate clean
+- Story 14-5 accent-color split — `default` button uses `Colors.accent` (CTA-cluster); `destructive` uses `Colors.error`; no streak/progress token usage
+- Story 14-6 (Typography.ctaLabel) — preset ADDED in 14-8 (was missing from main despite 14-6 spec reference); used by action buttons
+- Story 14-7 mock-test landing — orthogonal (different surface; PR #107 merged before 14-8 work began)
+
+**Quality gates:**
+
+- ✅ `npm run type-check` — 0 errors
+- ✅ `npm run lint` — 0 errors / 0 warnings
+- ✅ `npm run format:check` — pass
+- ✅ `npm test -- --no-coverage` — 109 suites / **2061 tests** pass (+29 net since 2032 baseline; matches spec target +22-29 exactly at upper bound)
+- ✅ `npm run check:tokens` — clean
+- ⚠️ `npm run check:colors` — pre-existing failures from `14-4-followup-test-fixture-hex-exemption`; 14-8 introduces zero new hex literals outside the documented `rgba(0,0,0,0.5)` backdrop
+
+**Audit P2-x ui-ux (Alert.alert chrome inconsistency) — high-traffic flows closed architecturally.** 39+ remaining Alert.alert call sites filed for `14-8-followup-alert-migration-completion`.
 
 ### File List
 
+**New files (3 source + 3 tests):**
+
+- `src/components/common/ThemedDialog.tsx`
+- `src/hooks/use-themed-dialog.ts`
+- `src/components/common/__tests__/themed-dialog.test.tsx`
+- `src/hooks/__tests__/use-themed-dialog.test.tsx`
+- `src/lib/__tests__/themed-dialog-migration-source-drift.test.ts`
+
+**Modified files (3 source + 2 housekeeping):**
+
+- `src/lib/design.ts` — added `Typography.ctaLabel` preset
+- `app/(tabs)/profile/index.tsx` — migrated `handleSignOut`; removed `Alert` import
+- `app/(tabs)/profile/settings.tsx` — migrated 5 handlers; removed `Alert` import
+- `_bmad-output/implementation-artifacts/14-8-themed-dialog-component.md` — this story file
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — status `ready-for-dev` → `in-progress` → `review`
+
 ### Change Log
+
+- 2026-05-16: Story 14-8 implementation. Branch `feature/14-8-themed-dialog-component` off main post-14-7 PR #107 merge. 3 new source files + 3 new test files + 3 modified source files + 2 housekeeping. Tests: 2032 → 2061 (+29 net; matches spec target +22-29 at upper bound). All 4 quality gates green. Audit P2-x ui-ux (Alert.alert chrome) high-traffic-flows portion closed architecturally; 39+ remaining sites deferred to `14-8-followup-alert-migration-completion`.
