@@ -29,17 +29,11 @@ import { Alert } from "react-native";
 import { act, create } from "react-test-renderer";
 
 import { useAuthStore } from "@/src/store/auth-store";
+// Shared `MinimalTestInstance` from `@/src/test-utils/react-test-renderer`
+// (Epic 13 retro AI #7). Pre-AI-#7 this file declared the type locally.
+import type { MinimalTestInstance } from "@/src/test-utils/react-test-renderer";
 
 import { EmailVerificationGate, __resetGateBreadcrumbForTests } from "../EmailVerificationGate";
-
-// The project ships a minimal `react-test-renderer` type shim
-// (`src/types/react-test-renderer.d.ts`) without `MinimalTestInstance`; the
-// shape we need is a small subset of the real type — declare it locally.
-interface MinimalTestInstance {
-  type: unknown;
-  props: Record<string, unknown> & { onPress?: (...args: unknown[]) => unknown };
-  children: unknown;
-}
 
 // Spy on Alert.alert + Sentry helpers. The component imports these from
 // `@/src/lib/sentry`, so jest.mock catches the actual call site.

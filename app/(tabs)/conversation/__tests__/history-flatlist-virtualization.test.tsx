@@ -23,18 +23,11 @@
 // worklets. history.tsx imports react-native-reanimated for the skeleton
 // animations, which crashes under Jest because the native worklets module
 // isn't initialized — mock with a no-op stub before importing.
-jest.mock("react-native-reanimated", () => ({
-  __esModule: true,
-  default: {
-    View: "View",
-    Text: "Text",
-    createAnimatedComponent: (c: unknown) => c,
-  },
-  useSharedValue: (v: unknown) => ({ value: v }),
-  useAnimatedStyle: (fn: () => Record<string, unknown>) => fn(),
-  withRepeat: (v: unknown) => v,
-  withTiming: (v: unknown) => v,
-}));
+// Reanimated mock factory shared with other test files (Epic 13 retro AI #7).
+jest.mock("react-native-reanimated", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock hoisting requires require() inside the callback
+  require("@/src/test-utils/mocks/reanimated").reanimatedMockFactory()
+);
 
 jest.mock("@/src/lib/sentry", () => ({
   __esModule: true,
