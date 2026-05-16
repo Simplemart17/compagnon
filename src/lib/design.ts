@@ -42,6 +42,85 @@ export const Colors = {
   accentLight: "#FFD180",
   warning: "#9A6400", // darkened from #FF9500 — 4.6:1 on surface (WCAG AA)
 
+  /**
+   * Streak warmth — warmer amber for informational chrome (streak chip,
+   * day-count badge, "zap" icon color).
+   *
+   * **Semantic:** non-interactive warmth indicator. The user reads this
+   * color as "personal energy / progress over time", NOT as "tap me".
+   *
+   * **Do NOT use for:** primary CTAs, tappable buttons, active-state markers
+   * on Pressable / TouchableOpacity — those stay on `Colors.accent` (the
+   * cooler amber that means "interact with me"). The whole point of the
+   * Story 14-5 split is to keep the streak warmth distinguishable from
+   * CTA-amber on the same screen.
+   *
+   * **Surface contract (Story 14-5 R1-P2 + R1-P19):**
+   *
+   * - Light backgrounds (`Colors.surface` / `surfaceWhite`): use
+   *   `Colors.streakText` (#92400E, 6.48:1 AA-compliant) for text.
+   * - **Dark composites** (home / profile hero on `Colors.bgDark` /
+   *   `Colors.primary` + streak20/skillTint backgrounds): use
+   *   `Colors.streak` base hue itself (~8:1 on `Colors.bgDark`); the dark
+   *   `streakText` variant fails WCAG AA on dark composites (~1.23-1.59:1).
+   *
+   * Hue: Tailwind v3.4 amber-500. The diff from `Colors.accent` is primarily
+   * a saturation/brightness shift (both hover around HSL hue 38°); the
+   * empirically-distinguishable difference comes from the brighter amber tone.
+   * Story 14-5 + P2-12.
+   */
+  streak: "#F59E0B",
+  /**
+   * WCAG-AA-compliant text variant for streak chrome ON LIGHT BACKGROUNDS ONLY
+   * (`Colors.surface = #F5F5F0` → 6.48:1; `Colors.surfaceWhite = #FFFFFF` → 6.95:1).
+   *
+   * **Do NOT use on dark composites** (home/profile hero, conversation bg, etc.) —
+   * the dark-brown gives ~1.2-1.6:1 contrast against those backgrounds and fails
+   * WCAG AA badly. For text on dark composites, use `Colors.streak` (the base
+   * lighter amber) which gives ~8:1 on `Colors.bgDark`.
+   *
+   * Tailwind v3.4 amber-800. Story 14-5 R1-P2 + R1-P19.
+   */
+  streakText: "#92400E",
+  streak10: "rgba(245,158,11,0.1)",
+  streak15: "rgba(245,158,11,0.15)",
+  streak20: "rgba(245,158,11,0.2)",
+  streak30: "rgba(245,158,11,0.3)",
+
+  /**
+   * Progress feedback — cooler gold for non-interactive visual feedback
+   * (rating-bar fills, progress-bar fills, chart-marker dots, fillPercent
+   * indicators).
+   *
+   * **Semantic:** data-feedback indicator. The user reads this color as
+   * "this is the value/level being shown", NOT as "tap me" and NOT as
+   * "streak warmth".
+   *
+   * **Do NOT use for:** primary CTAs (use `Colors.accent`); streak chrome
+   * (use `Colors.streak`); success/correct-answer states (use `Colors.success`);
+   * **text on light backgrounds** (use `Colors.progressText` — `Colors.progress`
+   * itself gives ~2.94:1 on white, fails WCAG AA).
+   *
+   * The 3-token split (accent/streak/progress) decouples Story 14-5 / P2-12's
+   * 3 conflated semantic roles so each can render distinctly on the same screen.
+   *
+   * Tailwind v3.4 yellow-600. Modest hue shift toward yellow + lower saturation
+   * vs `Colors.accent`. Story 14-5 + P2-12.
+   */
+  progress: "#CA8A04",
+  /**
+   * WCAG-AAA-compliant text variant for progress chrome on light backgrounds
+   * (`Colors.surface` 7.93:1; `Colors.surfaceWhite` 8.59:1). Used by the
+   * cefr-progression-chart Y-axis current-level label (white chart bg).
+   *
+   * Tailwind v3.4 yellow-900. Story 14-5 R1-P3.
+   */
+  progressText: "#713F12",
+  progress10: "rgba(202,138,4,0.1)",
+  progress15: "rgba(202,138,4,0.15)",
+  progress20: "rgba(202,138,4,0.2)",
+  progress30: "rgba(202,138,4,0.3)",
+
   // Success tints
   success10: "rgba(52,199,89,0.1)",
   success12: "rgba(52,199,89,0.12)",

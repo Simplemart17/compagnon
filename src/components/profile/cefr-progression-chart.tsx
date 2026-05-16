@@ -173,7 +173,12 @@ function CEFRProgressionChartInner({
                 style={{
                   fontSize: 11,
                   fontWeight: level === currentLevel ? "700" : "400",
-                  color: level === currentLevel ? Colors.accent : Colors.textTertiary,
+                  // Story 14-5 R1-P4: Y-axis label is TEXT on white chart background.
+                  // Colors.progress (#CA8A04) gives 2.94:1 contrast — fails WCAG AA.
+                  // Colors.progressText (#713F12) gives 7.93:1 — passes AAA. Reserve
+                  // Colors.progress for bar/dot/marker FILLS; use Colors.progressText
+                  // for any TEXT color on light backgrounds.
+                  color: level === currentLevel ? Colors.progressText : Colors.textTertiary,
                 }}
               >
                 {level}
@@ -272,7 +277,7 @@ function CEFRProgressionChartInner({
                       left,
                       width,
                       height: 2,
-                      backgroundColor: Colors.accent,
+                      backgroundColor: Colors.progress, // Story 14-5: chart-data feedback (NOT a CTA)
                     }}
                   />
                 );
@@ -290,7 +295,7 @@ function CEFRProgressionChartInner({
                     left: line.x1 - 1,
                     width: 2,
                     height,
-                    backgroundColor: Colors.accent,
+                    backgroundColor: Colors.progress, // Story 14-5: chart-data feedback
                   }}
                 />
               );
@@ -311,9 +316,9 @@ function CEFRProgressionChartInner({
                   borderRadius: POINT_RADIUS,
                   backgroundColor: Colors.surfaceWhite,
                   borderWidth: 2.5,
-                  borderColor: Colors.accent,
+                  borderColor: Colors.progress, // Story 14-5: chart-marker (data feedback)
                   // Shadow for depth
-                  shadowColor: Colors.accent,
+                  shadowColor: Colors.progress,
                   shadowOffset: { width: 0, height: 1 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                   shadowOpacity: 0.3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke chart-marker dot shadow per Q6
                   shadowRadius: 3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with chart-marker dot shadow above
@@ -330,7 +335,7 @@ function CEFRProgressionChartInner({
                   position: "absolute",
                   top: chartLayout.points[chartLayout.points.length - 1].y - POINT_RADIUS - 22,
                   left: chartLayout.points[chartLayout.points.length - 1].x - 16,
-                  backgroundColor: Colors.accent,
+                  backgroundColor: Colors.progress, // Story 14-5: chart-data badge (NOT a CTA)
                   paddingHorizontal: 8,
                   paddingVertical: 3,
                   borderRadius: 8,

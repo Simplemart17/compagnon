@@ -810,12 +810,12 @@ export default function ConversationSessionScreen() {
                       isPersonalBest={isFluencyBest}
                     />
 
-                    {/* Grammar bar */}
+                    {/* Grammar bar — Story 14-5 progress-cluster (data feedback, NOT a CTA) */}
                     <View style={{ marginTop: 12 }}>
                       <RatingBar
                         label="Grammar"
                         value={conversation.feedback.grammarRating}
-                        fillColor={Colors.accent}
+                        fillColor={Colors.progress}
                         isPersonalBest={isGrammarBest}
                       />
                     </View>

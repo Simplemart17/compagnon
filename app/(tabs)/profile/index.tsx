@@ -211,19 +211,24 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Streak chip */}
+            {/* Streak chip — Story 14-5 streak-cluster (informational chrome, NOT tappable).
+                Icon + text use Colors.streak base hue (NOT streakText) because the chip
+                renders on the profile hero's dark composite (skillTint(streak, 0.18) over
+                bg-primary) where streakText's dark-brown gives ~1.23:1 contrast (fails WCAG
+                AA badly). Colors.streak on the same composite passes AA. streakText is
+                reserved for text-on-LIGHT-bg only per Story 14-5 R1-P2. */}
             {progress.streakDays > 0 ? (
               <View
                 className="mt-3 flex-row items-center gap-[5px] rounded-full border px-3.5 py-1.5"
                 style={{
-                  backgroundColor: skillTint(Colors.accent, 0.18),
-                  borderColor: skillTint(Colors.accent, 0.35),
+                  backgroundColor: skillTint(Colors.streak, 0.18),
+                  borderColor: skillTint(Colors.streak, 0.35),
                 }}
                 accessibilityLabel={`${progress.streakDays} day streak`}
               >
                 {/* Story 14-3 Q3: streak chrome 🔥 → Icon name="zap" (Feather lacks Flame). */}
-                <Icon name="zap" size={14} color={Colors.accentText} />
-                <Text style={{ color: Colors.accentText }} className="text-[13px] font-bold">
+                <Icon name="zap" size={14} color={Colors.streak} />
+                <Text style={{ color: Colors.streak }} className="text-[13px] font-bold">
                   {progress.streakDays} jour{progress.streakDays !== 1 ? "s" : ""}
                 </Text>
               </View>

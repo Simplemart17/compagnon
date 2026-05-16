@@ -273,15 +273,22 @@ export default function HomeScreen() {
             <Text className="text-accent font-bold text-[13px]">{level}</Text>
           </View>
 
-          {/* Streak chip */}
+          {/* Streak chip \u2014 Story 14-5 streak-cluster (informational chrome, NOT tappable).
+              Text color uses Colors.streak (base hue, NOT streakText) because the chip
+              renders on a DARK composite (home hero bgDark) where streakText's dark-brown
+              (#92400E) gives ~1.59:1 contrast (fails WCAG AA). Colors.streak (#F59E0B)
+              on the same composite gives ~8:1 (passes AA). streakText is reserved for
+              text-on-LIGHT-bg only per Story 14-5 R1-P2. */}
           {progress.streakDays > 0 && (
             <View
               className="flex-row items-center px-[9px] py-1 rounded-full gap-1"
-              style={{ backgroundColor: Colors.accent20 }}
+              style={{ backgroundColor: Colors.streak20 }}
               accessibilityLabel={`${progress.streakDays} day streak`}
             >
               <Text className="text-xs">{"\uD83D\uDD25"}</Text>
-              <Text className="text-xs font-bold text-accent">{progress.streakDays}j</Text>
+              <Text className="text-xs font-bold" style={{ color: Colors.streak }}>
+                {progress.streakDays}j
+              </Text>
             </View>
           )}
 
@@ -308,7 +315,10 @@ export default function HomeScreen() {
             <View
               className="h-1 rounded-sm"
               style={{
-                backgroundColor: goalPercent >= 100 ? Colors.success : Colors.accent,
+                // Story 14-5 R1-P1: daily-goal progress bar is non-interactive
+                // data feedback → Colors.progress (not Colors.accent which is
+                // now CTA-cluster-only). Completed state stays on Colors.success.
+                backgroundColor: goalPercent >= 100 ? Colors.success : Colors.progress,
                 width: `${goalPercent}%`,
               }}
             />

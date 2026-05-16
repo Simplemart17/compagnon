@@ -334,7 +334,7 @@ function AnimatedProgressBar({ progress }: ProgressBarProps) {
         style={[
           {
             height: 4,
-            backgroundColor: Colors.accent,
+            backgroundColor: Colors.progress, // Story 14-5 Q7: placement-test progress-bar fill (non-interactive feedback)
             borderRadius: 2,
           },
           animatedStyle,
