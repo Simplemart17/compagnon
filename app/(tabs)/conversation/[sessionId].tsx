@@ -561,7 +561,7 @@ export default function ConversationSessionScreen() {
                   shadowColor: Colors.success,
                   shadowOpacity: 0.5, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke start-conversation glow per Q6
                   shadowRadius: 20, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with start-conversation glow above
-                  shadowOffset: { width: 0, height: 6 },
+                  shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                   elevation: 10,
                 }}
               >
@@ -611,7 +611,7 @@ export default function ConversationSessionScreen() {
                   shadowColor: Colors.error,
                   shadowOpacity: 0.45, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke end-conversation glow per Q6
                   shadowRadius: 14, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with end-conversation glow above
-                  shadowOffset: { width: 0, height: 4 },
+                  shadowOffset: { width: 0, height: 4 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                   elevation: 8,
                 }}
               >

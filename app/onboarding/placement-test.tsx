@@ -31,7 +31,7 @@ import {
 import { placementTestSchema } from "@/src/lib/schemas/ai-responses";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { LEVEL_COLORS } from "@/src/lib/constants";
-import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { Colors, Typography } from "@/src/lib/design";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { CEFR_LEVELS } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
@@ -612,7 +612,7 @@ export default function PlacementTestScreen() {
             shadowColor: Colors.error,
             shadowOpacity: 0.35, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke failed-test icon glow per Q6
             shadowRadius: 16, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with failed-test glow above
-            shadowOffset: { width: 0, height: 6 },
+            shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
             elevation: 8,
           }}
         >
@@ -655,7 +655,7 @@ export default function PlacementTestScreen() {
               shadowColor: Colors.primary,
               shadowOpacity: 0.25, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke colored CTA glow per Q6
               shadowRadius: 12, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with colored CTA glow above
-              shadowOffset: { width: 0, height: 5 },
+              shadowOffset: { width: 0, height: 5 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
               elevation: 6,
             }}
           >
@@ -690,7 +690,7 @@ export default function PlacementTestScreen() {
             shadowColor: Colors.bgDark,
             shadowOpacity: 0.3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke onboarding hero shadow per Q6
             shadowRadius: 20, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with onboarding hero shadow above
-            shadowOffset: { width: 0, height: 8 },
+            shadowOffset: { width: 0, height: 8 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
             elevation: 10,
           }}
         >
@@ -708,7 +708,7 @@ export default function PlacementTestScreen() {
               shadowColor: levelColor,
               shadowOpacity: 0.5, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke determined-level icon glow per Q6
               shadowRadius: 20, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with determined-level icon glow above
-              shadowOffset: { width: 0, height: 6 },
+              shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
               elevation: 10,
             }}
           >
@@ -738,7 +738,15 @@ export default function PlacementTestScreen() {
           {/* Summary card */}
           <View
             className="bg-white rounded-2xl p-5 mb-4"
-            style={[{ borderWidth: 1, borderColor: Colors.border }, Shadows.card]}
+            style={{
+              borderWidth: 1,
+              borderColor: Colors.border,
+              shadowColor: Colors.primary,
+              shadowOffset: { width: 0, height: 3 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+              shadowOpacity: 0.07, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke placement-test summary-card shadow (radius 10 / offset h:3) preserved per Story 14-4 R1-P3
+              shadowRadius: 10, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke summary-card shadow above
+              elevation: 3,
+            }}
           >
             <Text
               className="text-[13px] font-extrabold text-primary tracking-[1px] mb-3"
@@ -783,7 +791,15 @@ export default function PlacementTestScreen() {
           {/* Performance per-level card */}
           <View
             className="bg-white rounded-2xl p-5 mb-5"
-            style={[{ borderWidth: 1, borderColor: Colors.border }, Shadows.card]}
+            style={{
+              borderWidth: 1,
+              borderColor: Colors.border,
+              shadowColor: Colors.primary,
+              shadowOffset: { width: 0, height: 3 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+              shadowOpacity: 0.07, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke placement-test summary-card shadow preserved per Story 14-4 R1-P3
+              shadowRadius: 10, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke summary-card shadow above
+              elevation: 3,
+            }}
           >
             <Text
               className="text-[13px] font-extrabold text-primary tracking-[1px] mb-4"
@@ -889,7 +905,7 @@ export default function PlacementTestScreen() {
               shadowColor: Colors.accent,
               shadowOpacity: 0.35, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke colored CTA glow per Q6
               shadowRadius: 12, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with colored CTA glow above
-              shadowOffset: { width: 0, height: 6 },
+              shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
               elevation: 6,
             }}
           >
@@ -915,7 +931,7 @@ export default function PlacementTestScreen() {
           shadowColor: Colors.bgDark,
           shadowOpacity: 0.3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke onboarding hero shadow per Q6
           shadowRadius: 16, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with onboarding hero shadow above
-          shadowOffset: { width: 0, height: 6 },
+          shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
           elevation: 10,
         }}
       >
@@ -1005,7 +1021,7 @@ export default function PlacementTestScreen() {
               shadowColor: stoppedEarly ? Colors.accent : Colors.primary,
               shadowOpacity: 0.25, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke colored CTA glow per Q6
               shadowRadius: 12, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with colored CTA glow above
-              shadowOffset: { width: 0, height: 6 },
+              shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
               elevation: 6,
             }}
           >

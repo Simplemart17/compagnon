@@ -69,7 +69,7 @@ export const conversationCardStaticStyle: ViewStyle = Object.freeze({
   alignItems: "center",
   gap: 16,
   shadowColor: Colors.primary,
-  shadowOffset: { width: 0, height: 4 },
+  shadowOffset: { width: 0, height: 4 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
   shadowOpacity: 0.25, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke colored CTA shadow tone preserved verbatim by Story 13-7 P22
   shadowRadius: 12, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke colored CTA shadow above
   elevation: 6,

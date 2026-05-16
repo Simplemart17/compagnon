@@ -23,7 +23,7 @@ import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
-import { Colors, Shadows } from "@/src/lib/design";
+import { Colors } from "@/src/lib/design";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -63,7 +63,11 @@ function SettingsCard({ children, marginBottom = 12 }: SettingsCardProps) {
       className="rounded-2xl bg-white p-4"
       style={{
         marginBottom,
-        ...Shadows.card,
+        shadowColor: Colors.shadow,
+        shadowOffset: { width: 0, height: 2 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+        shadowOpacity: 0.07, // eslint-disable-line no-restricted-syntax -- design-token-exempt: SettingsCard bespoke shadowColor (Colors.shadow gray, not Shadows.card navy) preserved per Story 14-4 R1-P4
+        shadowRadius: 8, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with SettingsCard bespoke shadow above
+        elevation: 3,
       }}
     >
       {children}

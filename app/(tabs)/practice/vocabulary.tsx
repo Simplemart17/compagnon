@@ -30,7 +30,7 @@ import { captureError } from "@/src/lib/sentry";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/lib/supabase";
 import { LEVEL_COLORS } from "@/src/lib/constants";
-import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { Colors, Typography } from "@/src/lib/design";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { Icon } from "@/src/components/common/Icon";
 import { calculateNextReview } from "@/src/lib/srs";
@@ -531,7 +531,14 @@ export default function VocabularyScreen() {
               : `${word.french_word}. Tap to reveal translation`
           }
           className="bg-white rounded-2xl border border-surface-300 p-8 justify-center items-center"
-          style={[{ minHeight: 280 }, Shadows.card]}
+          style={{
+            minHeight: 280,
+            shadowColor: Colors.textPrimary,
+            shadowOffset: { width: 0, height: 2 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+            shadowOpacity: 0.05, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke vocabulary flashcard shadow (0.05 opacity / Colors.textPrimary) preserved per Story 14-4 R1-P5
+            shadowRadius: 8, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke flashcard shadow above
+            elevation: 2,
+          }}
         >
           {/* French word */}
           <Text className="text-[32px] font-bold text-primary text-center mb-2">
