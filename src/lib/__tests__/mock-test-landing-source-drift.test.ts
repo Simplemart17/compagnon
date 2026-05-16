@@ -130,6 +130,36 @@ describe("Story 14-7 — mock-test landing source drift", () => {
       expect(hook).toMatch(/PAST_RESULTS_LIMIT\s*=\s*10/);
       // POSITIVE: captureError tag matches Story 9-3 allowlist contract
       expect(hook).toMatch(/captureError\([^)]*,\s*["']mock-test-landing-fetch["']/);
+      // R1-P5: in-progress query also filters by completed_at IS NULL —
+      // defense-in-depth against the test runner's fire-and-forget
+      // completion UPDATE racing with landing refetch.
+      expect(hook).toMatch(/\.is\(["']completed_at["'],\s*null\)/);
+    });
+  });
+
+  describe("Loader integration (R1-P16)", () => {
+    const screenRaw = readFile("app/(tabs)/mock-test/index.tsx");
+    const screen = stripComments(screenRaw);
+    const loaderRaw = readFile("src/hooks/use-mock-test-results-loader.ts");
+    const loader = stripComments(loaderRaw);
+
+    it("Case 9 (R1-P16): screen wires loadAndNavigate to PastResultRow.onPress (vacuous-import defense)", () => {
+      // POSITIVE: screen imports `loadAndNavigate` via destructure
+      expect(screen).toMatch(/const\s*\{\s*loadAndNavigate\s*\}\s*=\s*useMockTestResultsLoader/);
+      // POSITIVE: screen passes `loadAndNavigate` as `onPress` prop to
+      // PastResultRow (catches a refactor that imports the hook but
+      // forgets to wire the press handler)
+      expect(screen).toMatch(/onPress=\{loadAndNavigate\}/);
+    });
+
+    it("Case 10 (R1-P14): loader filters by status='completed' (defense-in-depth against in-progress row leakage)", () => {
+      expect(loader).toMatch(/\.eq\(["']status["'],\s*["']completed["']/);
+    });
+
+    it("Case 11 (R1-P6): loader uses synchronous re-entrancy guard (loadingRef) to prevent double-tap double-push", () => {
+      expect(loader).toMatch(/loadingRef\.current/);
+      // POSITIVE: guard fires BEFORE the supabase call (synchronous gate)
+      expect(loader).toMatch(/if\s*\(\s*loadingRef\.current\s*\)\s*return/);
     });
   });
 });

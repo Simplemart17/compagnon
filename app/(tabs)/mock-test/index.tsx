@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { View, Text, ScrollView, Pressable, StatusBar } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -37,6 +37,13 @@ const QCM_PILL_MINUTES = roundToNearestFive(QCM_TOTAL_MINUTES);
 
 // Per-test-type chrome for past-results rows (Story 14-1 chrome rule:
 // titlePrimary EN, titleSecondary FR pedagogical reinforcement).
+//
+// R1-P2: speaking entry removed. Speaking past-results are excluded from
+// the v1 landing because `reconstructTestResultsFromMockTestRow` can't
+// handle the per-task `section_scores: {speaking:{task1,task2,task3,
+// compositeOverall}}` shape Story 9-8 persists. When a speaking-results
+// detail screen ships, restore the entry + add a speaking branch in the
+// reconstruction helper.
 const PAST_RESULT_LABELS: Record<
   PastResultTestType,
   {
@@ -63,12 +70,6 @@ const PAST_RESULT_LABELS: Record<
     titleSecondary: "Compréhension écrite",
     iconName: "book-open",
     iconColor: Colors.skillReading,
-  },
-  speaking: {
-    titlePrimary: "Speaking",
-    titleSecondary: "Expression orale",
-    iconName: "message-circle",
-    iconColor: Colors.skillPronunciation,
   },
 };
 
@@ -185,13 +186,18 @@ function ResumeInProgressRow({
   inProgress: MockTestInProgressSummary;
   onPress: () => void;
 }) {
-  // 1-indexed for human display
+  // R1-P15: changed from "Question ${savedQuestionIndex+1} of
+  // ${totalQuestionsAcrossSections}" (misleading — mixed section-relative
+  // numerator with across-sections denominator; rendered as "Question 5 of
+  // 78" when user was on Reading section question 5) to an answered-count
+  // formulation: "${answered} of ${total} answered". This is user-meaningful
+  // ("how close to done am I?") and the two numbers share the same scope.
   const sectionLabel = `Section ${inProgress.savedSectionIndex + 1}`;
-  const questionLabel =
+  const progressLabel =
     inProgress.totalQuestionsAcrossSections > 0
-      ? `Question ${inProgress.savedQuestionIndex + 1} of ${inProgress.totalQuestionsAcrossSections}`
-      : `Question ${inProgress.savedQuestionIndex + 1}`;
-  const progressLine = `${sectionLabel} · ${questionLabel}`;
+      ? `${inProgress.totalQuestionsAnswered} of ${inProgress.totalQuestionsAcrossSections} answered`
+      : `${inProgress.totalQuestionsAnswered} answered`;
+  const progressLine = `${sectionLabel} · ${progressLabel}`;
   const timeLine = formatTimeRemaining(inProgress.adjustedTimeRemaining);
 
   return (
@@ -203,7 +209,16 @@ function ResumeInProgressRow({
       iconColor={Colors.accent}
       leftStripColor={Colors.accent}
       rightContent={
-        <Text style={[Typography.cardTitle, { color: Colors.accent }]} accessibilityElementsHidden>
+        // R1-P10: Story 14-3 R1-P1 cross-platform decorative pattern.
+        // `accessibilityElementsHidden` alone is iOS-only — Android
+        // TalkBack still focuses + announces "right arrow". The 3-prop
+        // combination is required for both platforms.
+        <Text
+          style={[Typography.cardTitle, { color: Colors.accent }]}
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        >
           →
         </Text>
       }
@@ -249,11 +264,13 @@ function PastResultRow({
           {result.cefrResult ?? "—"}
         </Text>
       </View>
-      {result.testType !== "speaking" && (
-        <Text style={[Typography.caption, { color: Colors.textSecondary }]}>
-          {result.totalScore !== null ? `${result.totalScore}/699` : "—"}
-        </Text>
-      )}
+      {/* R1-P2: All past-result test_types in v1 use the TCF 0-699 scale
+          (speaking was excluded; see PastResultTestType JSDoc). When
+          speaking is restored, branch this back to suppress the score
+          line for `testType === "speaking"`. */}
+      <Text style={[Typography.caption, { color: Colors.textSecondary }]}>
+        {result.totalScore !== null ? `${result.totalScore}/699` : "—"}
+      </Text>
     </View>
   );
 
@@ -331,10 +348,33 @@ export default function MockTestScreen() {
   const { inProgress, pastResults, loading, refetch } = useMockTestLanding();
   const { loadAndNavigate } = useMockTestResultsLoader();
 
-  // Refresh landing data when the tab comes into focus — catches the case
-  // where the user just finished a mock test on the runner / results screen.
+  // R1-P7 + R1-P8: track whether we've completed at least one fetch so
+  // skeletons only render during the COLD load — subsequent refetches
+  // (from focus events, etc.) keep displaying the previously-loaded data
+  // without flickering through skeletons. First-time users with zero data
+  // see skeletons briefly then transitioning sections collapse cleanly
+  // instead of phantom-row flashes; returning users see their previous
+  // data immediately on tab focus, then quietly updated by the background
+  // refetch.
+  const hasFetchedOnceRef = useRef(false);
+  const showSkeletons = loading && !hasFetchedOnceRef.current;
+  if (!loading && !hasFetchedOnceRef.current) {
+    hasFetchedOnceRef.current = true;
+  }
+
+  // R1-P3: skip the FIRST focus invocation to prevent a double-fetch with
+  // the hook's own initial-mount `useEffect`. `useFocusEffect` fires on
+  // first focus (which on a tab screen coincides with mount). The hook
+  // already dispatches the initial fetch in its `useEffect`; we only want
+  // useFocusEffect to refresh on SUBSEQUENT focus events (e.g., returning
+  // from the test runner / results screen).
+  const firstFocusRef = useRef(true);
   useFocusEffect(
     useCallback(() => {
+      if (firstFocusRef.current) {
+        firstFocusRef.current = false;
+        return;
+      }
       void refetch();
     }, [refetch])
   );
@@ -390,9 +430,10 @@ export default function MockTestScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Resume in-progress section (Story 14-7) — renders ABOVE the
-            FullSimCard when an in-progress test exists. Skeleton while
-            landing data loads; hidden entirely when no in-progress test. */}
-        {loading ? (
+            FullSimCard when an in-progress test exists. Skeleton during
+            COLD load only (R1-P7+P8 — `showSkeletons`); hidden entirely
+            when no in-progress test. */}
+        {showSkeletons ? (
           <View className="mx-5 mt-[15px]">
             <LandingSkeletonRow />
           </View>
@@ -471,9 +512,10 @@ export default function MockTestScreen() {
         </View>
 
         {/* Past results section (Story 14-7) — renders BELOW production when
-            at least one completed test exists. Skeleton while loading;
-            hidden entirely when no completed tests. */}
-        {loading ? (
+            at least one completed test exists. Skeleton during COLD load
+            only (R1-P7+P8 — `showSkeletons`); hidden entirely when no
+            completed tests. */}
+        {showSkeletons ? (
           <View className="px-5 gap-3 mt-7">
             <LandingSkeletonRow />
             <LandingSkeletonRow />

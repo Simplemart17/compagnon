@@ -16,7 +16,7 @@
  * is loaded ON DEMAND when the user actually wants to see the breakdown.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -42,8 +42,18 @@ export function useMockTestResultsLoader(): UseMockTestResultsLoaderReturn {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  // R1-P6: synchronous re-entrancy guard so rapid taps on a past-result
+  // row can't double-fire `loadAndNavigate` → double `router.push` →
+  // 3-deep nav stack from one logical tap. `setLoading(true)` is async
+  // (next render); `useRef` mutation is synchronous so the second tap in
+  // the same JS tick is caught (mirrors Story 12-9 EmailVerificationGate
+  // `retryingRef` pattern).
+  const loadingRef = useRef(false);
+
   const loadAndNavigate = useCallback(
     async (mockTestId: string) => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
       setLoading(true);
       try {
         const { data, error } = await supabase
@@ -52,6 +62,13 @@ export function useMockTestResultsLoader(): UseMockTestResultsLoaderReturn {
             "id, user_id, test_type, total_score, section_scores, cefr_result, duration_seconds, questions, status, created_at, completed_at"
           )
           .eq("id", mockTestId)
+          // R1-P14: defense-in-depth — only load completed rows. Protects
+          // against future code paths that pass an in-progress row's id to
+          // this loader (would surface "malformed score record" Alert
+          // because section_scores stores save-state shape, not result
+          // shape). Also defends against the EC-3 race where a row's
+          // status hasn't UPDATEd to "completed" yet.
+          .eq("status", "completed")
           .maybeSingle();
 
         if (error) throw error;
@@ -83,6 +100,7 @@ export function useMockTestResultsLoader(): UseMockTestResultsLoaderReturn {
           "Something went wrong while loading this past result. Please try again."
         );
       } finally {
+        loadingRef.current = false;
         setLoading(false);
       }
     },

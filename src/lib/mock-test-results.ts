@@ -184,11 +184,27 @@ export function reconstructTestResultsFromMockTestRow(row: MockTestRow): TestRes
   }
 
   // overallCefrLevel: prefer the row's `cefr_result` column; fall back to
-  // the highest CEFR level found across sections (alphabetical ordering
-  // accidentally matches CEFR ordering A1→C2 — but we use the explicit
-  // CEFR_LEVELS index for correctness).
-  const cefrFromRow =
-    row.cefr_result !== null && VALID_CEFR_LEVELS.has(row.cefr_result) ? row.cefr_result : null;
+  // `"A1"` when null or not in the canonical A1-C2 set.
+  //
+  // R1-P11: when `cefr_result` is non-null but malformed (e.g.,
+  // `"INVALID_LEVEL"` from a legacy schema migration), the fallback to
+  // `"A1"` produces a logically-inconsistent results screen (TCF 450 B2-
+  // range score next to A1 CEFR badge). Breadcrumb the malformed case so
+  // operators can grep for legacy/corrupt rows; the fallback itself is
+  // preserved to keep the screen renderable.
+  let cefrFromRow: string | null = null;
+  if (row.cefr_result !== null) {
+    if (VALID_CEFR_LEVELS.has(row.cefr_result)) {
+      cefrFromRow = row.cefr_result;
+    } else {
+      addBreadcrumb({
+        category: "mock-test",
+        level: "warning",
+        message: "Landing: reconstructTestResultsFromMockTestRow invalid cefr_result",
+        data: { mockTestId: row.id, observedCefr: row.cefr_result },
+      });
+    }
+  }
   const overallCefrLevel = cefrFromRow ?? "A1";
 
   // overallTcfScore: prefer the row's `total_score` column; fall back to

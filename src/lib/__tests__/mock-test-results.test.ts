@@ -225,5 +225,37 @@ describe("Story 14-7 — mock-test-results pure helpers", () => {
       expect(result).not.toBeNull();
       expect(result!.overallCefrLevel).toBe("A1");
     });
+
+    it("Case 23 (R1-P11): invalid cefr_result fires a warning breadcrumb (operator visibility)", () => {
+      // Pre-R1 the silent fallback hid logical inconsistencies (e.g.,
+      // TCF 450 B2-range score next to A1 CEFR badge). The fallback is
+      // preserved (screen stays renderable) but operators get a breadcrumb
+      // to grep for corrupted historical rows.
+      mockAddBreadcrumb.mockClear();
+      reconstructTestResultsFromMockTestRow(makeRow({ cefr_result: "INVALID_LEVEL" }));
+      expect(mockAddBreadcrumb).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: "mock-test",
+          level: "warning",
+          message: "Landing: reconstructTestResultsFromMockTestRow invalid cefr_result",
+          data: expect.objectContaining({
+            mockTestId: "test-row-1",
+            observedCefr: "INVALID_LEVEL",
+          }),
+        })
+      );
+    });
+
+    it("Case 24 (R1-P11): null cefr_result does NOT fire the invalid-cefr breadcrumb", () => {
+      // The breadcrumb is for MALFORMED non-null values, not for legitimate
+      // null. Null is a clean "score wasn't computed" signal.
+      mockAddBreadcrumb.mockClear();
+      reconstructTestResultsFromMockTestRow(makeRow({ cefr_result: null }));
+      expect(mockAddBreadcrumb).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Landing: reconstructTestResultsFromMockTestRow invalid cefr_result",
+        })
+      );
+    });
   });
 });

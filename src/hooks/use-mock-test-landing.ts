@@ -61,7 +61,14 @@ export interface MockTestInProgressSummary {
   createdAt: string;
 }
 
-export type PastResultTestType = "full" | "listening" | "reading" | "speaking";
+// R1-P2: Speaking past-results are EXCLUDED from v1 — Story 9-8 stores
+// section_scores in a per-task shape (`{speaking:{task1,task2,task3,compositeOverall}}`)
+// that `reconstructTestResultsFromMockTestRow` can't handle. Including them
+// would surface "malformed score record" Alerts on every tap. When a
+// speaking-results detail screen ships, add `"speaking"` back to
+// `PastResultTestType` + `PAST_RESULT_TEST_TYPES` below + add a speaking
+// branch in `reconstructTestResultsFromMockTestRow`.
+export type PastResultTestType = "full" | "listening" | "reading";
 
 export interface MockTestPastResult {
   id: string;
@@ -93,12 +100,8 @@ export interface UseMockTestLandingReturn {
 
 const PAST_RESULTS_LIMIT = 10;
 const RESUME_TEST_TYPES: ReadonlySet<string> = new Set(["full", "listening", "reading"]);
-const PAST_RESULT_TEST_TYPES: ReadonlySet<string> = new Set([
-  "full",
-  "listening",
-  "reading",
-  "speaking",
-]);
+// R1-P2: speaking excluded — see PastResultTestType JSDoc above.
+const PAST_RESULT_TEST_TYPES: ReadonlySet<string> = new Set(["full", "listening", "reading"]);
 const VALID_CEFR_LEVELS: ReadonlySet<string> = new Set<CEFRLevel>([
   "A1",
   "A2",
@@ -176,6 +179,24 @@ export function validateInProgressRow(row: {
         })
       : {};
 
+  // R1-P1: save-state gate — Story 13-4's resume detection at
+  // `use-mock-test-generation.ts:302` requires BOTH `questions` AND
+  // `section_scores.answers` to be present before resuming. A row with
+  // `questions: [...]` but `section_scores: null` (user started a test and
+  // backed out before answering) would otherwise show as resumable on
+  // landing, but tapping triggers Story 13-4 to re-generate from scratch —
+  // silent data loss + orphan in-progress rows. Hiding these rows here
+  // matches the runner's eligibility rule.
+  const hasSaveState =
+    typeof ss === "object" &&
+    ss !== null &&
+    "answers" in ss &&
+    typeof ss.answers === "object" &&
+    ss.answers !== null;
+  if (!hasSaveState) {
+    return { summary: null, corrupt: false };
+  }
+
   const safeSectionIndex = Math.min(Math.max(0, ss.currentSectionIndex ?? 0), sections.length - 1);
   const safeQuestionIndex = Math.max(0, ss.currentQuestionIndex ?? 0);
 
@@ -191,6 +212,18 @@ export function validateInProgressRow(row: {
   const totalQuestionsAnswered = Array.isArray(ss.answeredQuestions)
     ? ss.answeredQuestions.length
     : 0;
+
+  // R1-P9: expired-time gate — when the saved timer has expired AND the
+  // user hasn't answered any questions, hide the row. Tapping Resume on a
+  // "Time's up" row sends the user to a test that immediately transitions
+  // to results with zero answers — bad UX. If the user DID answer
+  // questions, still surface the row so they can view partial progress
+  // (the runner's expired-time path will show the results screen with their
+  // partial answers).
+  if (adjustedTimeRemaining === 0 && totalQuestionsAnswered === 0) {
+    return { summary: null, corrupt: false };
+  }
+
   const totalQuestionsAcrossSections = sections.reduce(
     (sum, s) => sum + (Array.isArray(resumedQuestions[s]) ? resumedQuestions[s].length : 0),
     0
@@ -227,7 +260,20 @@ export function toPastResult(row: {
   completed_at: string | null;
 }): MockTestPastResult | null {
   if (row.completed_at === null) return null;
-  if (!PAST_RESULT_TEST_TYPES.has(row.test_type)) return null;
+  if (!PAST_RESULT_TEST_TYPES.has(row.test_type)) {
+    // R1-P12: legacy / future test_types are silently dropped from history.
+    // Fire a breadcrumb so operators can grep for users with historical
+    // test_types not surfaced in v1 landing (e.g., legacy `"grammar"` or
+    // future `"writing"` rows pending detail-screen support). No PII; only
+    // mockTestId + observed test_type categorical string.
+    addBreadcrumb({
+      category: "mock-test",
+      level: "info",
+      message: "Landing: past result test_type not surfaced in v1",
+      data: { mockTestId: row.id, observedTestType: row.test_type },
+    });
+    return null;
+  }
   const cefrResult =
     row.cefr_result !== null && VALID_CEFR_LEVELS.has(row.cefr_result)
       ? (row.cefr_result as CEFRLevel)
@@ -277,11 +323,18 @@ export function useMockTestLanding(): UseMockTestLandingReturn {
     if (mountedRef.current) setLoading(true);
 
     try {
+      // R1-P5: also filter by `completed_at IS NULL` — defense-in-depth
+      // against the test-runner's fire-and-forget completion UPDATE racing
+      // with the landing's refetch. A row marked `completed_at = now()`
+      // but with `status` still `"in_progress"` (UPDATE pending) is excluded
+      // here, preventing the just-completed test from being shown as
+      // resumable simultaneously with appearing in past-results.
       const inProgressPromise = supabase
         .from("mock_tests")
         .select("id, test_type, questions, section_scores, created_at")
         .eq("user_id", userId)
         .eq("status", "in_progress")
+        .is("completed_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -350,6 +403,10 @@ export function useMockTestLanding(): UseMockTestLandingReturn {
     }
   }, [userId]);
 
+  // Initial-mount fetch. Consumers using `useFocusEffect(refetch)` should
+  // ALSO skip the first focus invocation to prevent a double-fire (Story
+  // 14-7 R1-P3) — see `app/(tabs)/mock-test/index.tsx`'s `firstFocusRef`
+  // gate.
   useEffect(() => {
     void fetchLandingData();
   }, [fetchLandingData]);

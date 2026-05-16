@@ -71,6 +71,10 @@ jest.mock("@/src/lib/supabase", () => ({
         select: jest.fn(() => chain),
         eq: jest.fn(() => chain),
         not: jest.fn(() => chain),
+        // R1-P5: in-progress query chains `.is("completed_at", null)`
+        // (defense-in-depth against the completion-UPDATE race). Mock
+        // must support `.is(...)` returning the chain.
+        is: jest.fn(() => chain),
         order: jest.fn(() => chain),
         limit: jest.fn(() => chain),
         maybeSingle: () => mockInProgressMaybeSingle(),
@@ -162,6 +166,9 @@ describe("Story 14-7 — useMockTestLanding hook", () => {
           reading: [{ question: "Q1" }],
         },
         section_scores: {
+          // R1-P1 save-state gate: `answers` MUST be present (typeof "object")
+          // for the row to be treated as resumable.
+          answers: { listening_0: "a", listening_1: "b", reading_0: "c" },
           currentSectionIndex: 1,
           currentQuestionIndex: 17,
           timeRemaining: 1500,
@@ -255,7 +262,13 @@ describe("Story 14-7 — useMockTestLanding hook", () => {
     );
   });
 
-  it("Case 5: speaking past-result with null totalScore passes through correctly", async () => {
+  it("Case 5 (R1-P2): speaking past-result is EXCLUDED from v1 + R1-P12 breadcrumb fires", async () => {
+    // Story 9-8 stores Speaking section_scores in a per-task shape
+    // (`{speaking:{task1,task2,task3,compositeOverall}}`) that
+    // `reconstructTestResultsFromMockTestRow` can't handle. R1-P2 removes
+    // "speaking" from `PAST_RESULT_TEST_TYPES` so the row is filtered out
+    // at `toPastResult`. R1-P12 fires a breadcrumb for the filtered row so
+    // operators can see speaking tests are excluded (informational).
     mockPastResultsRows.mockResolvedValueOnce({
       data: [
         {
@@ -273,10 +286,18 @@ describe("Story 14-7 — useMockTestLanding hook", () => {
     const { result } = renderHost();
     await flushAsync();
 
-    expect(result.current?.pastResults).toHaveLength(1);
-    expect(result.current?.pastResults[0].testType).toBe("speaking");
-    expect(result.current?.pastResults[0].totalScore).toBeNull();
-    expect(result.current?.pastResults[0].cefrResult).toBe("B2");
+    expect(result.current?.pastResults).toHaveLength(0);
+    expect(mockAddBreadcrumb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "mock-test",
+        level: "info",
+        message: "Landing: past result test_type not surfaced in v1",
+        data: expect.objectContaining({
+          mockTestId: "speaking-1",
+          observedTestType: "speaking",
+        }),
+      })
+    );
   });
 
   it("Case 6: past-results truncation at exactly 10 rows fires info breadcrumb", async () => {
@@ -306,22 +327,27 @@ describe("Story 14-7 — useMockTestLanding hook", () => {
     );
   });
 
-  it("Case 7: refetch() re-fires both queries", async () => {
+  it("Case 7 (R1-P13): refetch() re-fires both queries — exact call-count assertions", async () => {
+    // R1-P13: pre-patch this asserted only `>` initial counts; a regression
+    // that fires the queries 2× per render would have passed. Post-patch we
+    // assert EXACT counts to catch double-fire bugs (incl. the EC-1
+    // useEffect + useFocusEffect double-fetch which is now gated by
+    // `firstFocusRef` in the screen).
     const { result } = renderHost();
     await flushAsync();
 
-    // Initial fetch fired
-    const initialInProgressCalls = mockInProgressMaybeSingle.mock.calls.length;
-    const initialPastCalls = mockPastResultsRows.mock.calls.length;
-    expect(initialInProgressCalls).toBeGreaterThan(0);
-    expect(initialPastCalls).toBeGreaterThan(0);
+    // Initial mount fires the in-hook `useEffect` once. The hook itself
+    // does NOT receive a `useFocusEffect` invocation in this test (no
+    // navigation container) — that's verified at the screen layer.
+    expect(mockInProgressMaybeSingle).toHaveBeenCalledTimes(1);
+    expect(mockPastResultsRows).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       await result.current?.refetch();
     });
 
-    expect(mockInProgressMaybeSingle.mock.calls.length).toBeGreaterThan(initialInProgressCalls);
-    expect(mockPastResultsRows.mock.calls.length).toBeGreaterThan(initialPastCalls);
+    expect(mockInProgressMaybeSingle).toHaveBeenCalledTimes(2);
+    expect(mockPastResultsRows).toHaveBeenCalledTimes(2);
   });
 
   it("Case 8: NON-QCM in-progress test_type (e.g., speaking) returns inProgress null without breadcrumb", async () => {
@@ -380,6 +406,8 @@ describe("Story 14-7 — useMockTestLanding hook", () => {
           reading: [{ question: "Q1" }],
         },
         section_scores: {
+          // R1-P1 save-state gate requires `answers` to be present.
+          answers: { listening_0: "a" },
           currentSectionIndex: 99, // out-of-bounds — should clamp
           currentQuestionIndex: 5,
           timeRemaining: 1500,
@@ -410,7 +438,7 @@ describe("Story 14-7 — useMockTestLanding hook", () => {
       expect(result).toBeNull();
     });
 
-    it("Case 12: unknown test_type is excluded", () => {
+    it("Case 12 (R1-P12): unknown test_type is excluded + fires telemetry breadcrumb", () => {
       const result = toPastResult({
         id: "x",
         test_type: "writing", // not in PAST_RESULT_TEST_TYPES
@@ -420,6 +448,17 @@ describe("Story 14-7 — useMockTestLanding hook", () => {
         completed_at: "2026-05-14T10:00:00Z",
       });
       expect(result).toBeNull();
+      expect(mockAddBreadcrumb).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: "mock-test",
+          level: "info",
+          message: "Landing: past result test_type not surfaced in v1",
+          data: expect.objectContaining({
+            mockTestId: "x",
+            observedTestType: "writing",
+          }),
+        })
+      );
     });
 
     it("Case 13: invalid cefr_result is nulled out (not erroneously surfaced)", () => {
@@ -433,6 +472,87 @@ describe("Story 14-7 — useMockTestLanding hook", () => {
       });
       expect(result).not.toBeNull();
       expect(result!.cefrResult).toBeNull();
+    });
+
+    it("Case 14 (R1-P1): in-progress row WITHOUT `answers` is hidden (save-state gate)", () => {
+      // A row with questions but no save-state (user started a test +
+      // backed out before answering any question) would silently show as
+      // resumable pre-R1, but Story 13-4's resume path requires
+      // `section_scores.answers` to be truthy. The save-state gate hides
+      // these rows from the landing's Resume surface.
+      const result = validateInProgressRow({
+        id: "ip-no-saves",
+        test_type: "full",
+        questions: {
+          listening: [{ question: "Q1" }],
+          reading: [{ question: "Q1" }],
+        },
+        section_scores: {
+          // NO `answers` field
+          currentSectionIndex: 0,
+          currentQuestionIndex: 0,
+          timeRemaining: 5700,
+          savedAt: Date.now(),
+        },
+        created_at: "2026-05-14T10:00:00Z",
+      });
+
+      expect(result.summary).toBeNull();
+      expect(result.corrupt).toBe(false); // NOT corrupt — just not resumable
+    });
+
+    it("Case 15 (R1-P9): in-progress row with adjustedTimeRemaining=0 AND zero answers is hidden (expired gate)", () => {
+      // Saved 10000s ago with 60s timeRemaining → adjusted = max(0, 60 -
+      // 10000) = 0. With 0 answers, the user has no partial progress to
+      // resume — hide the row instead of sending them to an immediately-
+      // finished test.
+      const result = validateInProgressRow({
+        id: "ip-expired",
+        test_type: "full",
+        questions: {
+          listening: [{ question: "Q1" }],
+          reading: [{ question: "Q1" }],
+        },
+        section_scores: {
+          answers: {}, // empty answers — no progress to resume
+          currentSectionIndex: 0,
+          currentQuestionIndex: 0,
+          timeRemaining: 60,
+          savedAt: Date.now() - 10_000_000, // 10000+ seconds ago
+          answeredQuestions: [],
+        },
+        created_at: "2026-05-14T10:00:00Z",
+      });
+
+      expect(result.summary).toBeNull();
+      expect(result.corrupt).toBe(false);
+    });
+
+    it("Case 16 (R1-P9): expired test WITH answers still surfaces (user can view partial progress)", () => {
+      // User answered some questions then ran out of time. They should
+      // still see the row so they can navigate into it (the runner's
+      // expired-time path shows their results with partial answers).
+      const result = validateInProgressRow({
+        id: "ip-expired-with-answers",
+        test_type: "full",
+        questions: {
+          listening: [{ question: "Q1" }],
+          reading: [{ question: "Q1" }],
+        },
+        section_scores: {
+          answers: { listening_0: "a", listening_1: "b" },
+          currentSectionIndex: 0,
+          currentQuestionIndex: 2,
+          timeRemaining: 60,
+          savedAt: Date.now() - 10_000_000,
+          answeredQuestions: ["listening_0", "listening_1"],
+        },
+        created_at: "2026-05-14T10:00:00Z",
+      });
+
+      expect(result.summary).not.toBeNull();
+      expect(result.summary!.adjustedTimeRemaining).toBe(0);
+      expect(result.summary!.totalQuestionsAnswered).toBe(2);
     });
   });
 });
