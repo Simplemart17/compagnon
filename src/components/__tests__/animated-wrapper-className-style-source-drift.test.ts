@@ -172,11 +172,24 @@ describe("Story 13-7 — animated-wrapper className+style source-drift detector"
       const tag = extractOpeningTag(SKILL_CARD_CODE, "Pressable");
       expect(tag).not.toBeNull();
       expect(tag).not.toMatch(/\bclassName\s*=/);
-      // POSITIVE: the inner Pressable carries a single style prop = the
-      // static-style constant (NOT an array — the Pressable is not itself
-      // animated; the parent Animated.View owns the scale-transform via
-      // useAnimatedStyle).
-      expect(tag).toMatch(/style\s*=\s*\{\s*skillCardPressableStaticStyle\s*\}/);
+      // POSITIVE: the inner Pressable carries a style prop driven by a
+      // frozen-static-style constant. Story 14-2 update: SkillCard now
+      // routes to one of `skillCardPressableStaticStyle` (default) or
+      // `skillCardFeaturedStaticStyle` (featured variant) via a local
+      // `containerStyle` ternary. Accept either the pre-14-2 literal
+      // constant form OR the post-14-2 `[containerStyle, ...]` array form
+      // (which spreads a frozen constant + optional disabled-opacity).
+      expect(tag).toMatch(
+        /style\s*=\s*\{\s*(skillCardPressableStaticStyle|\[\s*containerStyle\s*,)/
+      );
+      // Story 14-2 review-round-1 M11 / Story 13-7 R1-EC-17: hybrid-form
+      // negative guard. A future regression that writes
+      // `style={[skillCardPressableStaticStyle, animStyle]}` would bypass
+      // the `containerStyle` indirection and the new conditional
+      // `disabled ? { opacity: 0.6 } : null`. Pin against it explicitly so
+      // the variant-routing-via-containerStyle contract stays load-bearing.
+      expect(tag).not.toMatch(/style\s*=\s*\{\s*\[\s*skillCardPressableStaticStyle\b/);
+      expect(tag).not.toMatch(/style\s*=\s*\{\s*\[\s*skillCardFeaturedStaticStyle\b/);
     });
 
     it("Case 6b: review-round-1 P4 — exactly ONE `<Pressable>` element in SkillCard.tsx", () => {
