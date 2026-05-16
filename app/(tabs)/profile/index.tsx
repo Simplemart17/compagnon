@@ -1,13 +1,5 @@
 import { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  RefreshControl,
-  StatusBar,
-} from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, RefreshControl, StatusBar } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -15,6 +7,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { useAuth } from "@/src/hooks/use-auth";
 import { useCefrHistory } from "@/src/hooks/use-cefr-history";
 import { useProgress } from "@/src/hooks/use-progress";
+import { useThemedDialog } from "@/src/hooks/use-themed-dialog";
 import { CEFRProgressionChart } from "@/src/components/profile/cefr-progression-chart";
 import { CEFR_LEVELS } from "@/src/types/cefr";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
@@ -23,6 +16,7 @@ import { Icon } from "@/src/components/common/Icon";
 import { ListItemCard } from "@/src/components/common/ListItemCard";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { StatTile } from "@/src/components/common/StatTile";
+import { ThemedDialog } from "@/src/components/common/ThemedDialog";
 import type { CEFRLevel, TCFSkill } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -66,6 +60,8 @@ export default function ProfileScreen() {
   const progress = useProgress();
   const cefrHistory = useCefrHistory();
   const [refreshing, setRefreshing] = useState(false);
+  // Story 14-8: themed sign-out confirmation (replaces native Alert.alert).
+  const dialog = useThemedDialog();
 
   const level = (profile?.current_cefr_level ?? "A1") as CEFRLevel;
   const target = (profile?.target_cefr_level ?? "C1") as CEFRLevel;
@@ -79,17 +75,29 @@ export default function ProfileScreen() {
     setRefreshing(false);
   }, [progress, cefrHistory]);
 
-  async function handleSignOut() {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await signOut();
+  function handleSignOut() {
+    // Story 14-8: themed dialog (was Alert.alert pre-14-8).
+    dialog.show({
+      title: "Sign Out",
+      message: "Are you sure you want to sign out?",
+      buttons: [
+        {
+          label: "Cancel",
+          style: "cancel",
+          onPress: () => {
+            dialog.hide();
+          },
         },
-      },
-    ]);
+        {
+          label: "Sign Out",
+          style: "destructive",
+          onPress: () => {
+            dialog.hide();
+            void signOut();
+          },
+        },
+      ],
+    });
   }
 
   const initials = (profile?.full_name ?? "U")[0].toUpperCase();
@@ -411,6 +419,8 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </ScrollView>
       </View>
+      {/* Story 14-8: themed sign-out confirmation dialog (replaces Alert.alert). */}
+      {dialog.config !== null && <ThemedDialog visible={dialog.visible} {...dialog.config} />}
     </>
   );
 }

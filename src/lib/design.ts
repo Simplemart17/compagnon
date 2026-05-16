@@ -259,6 +259,17 @@ export const Typography = {
     color: Colors.textPrimary,
   } as TextStyle,
 
+  /**
+   * Primary CTA button label (Story 14-8 — themed dialog action buttons +
+   * any other prominent action button needing a 17pt 700-weight white
+   * label on a filled colored background).
+   */
+  ctaLabel: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: Colors.textOnDark,
+  } as TextStyle,
+
   /** Body text */
   body: {
     fontSize: 15,
