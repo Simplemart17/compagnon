@@ -234,6 +234,37 @@ describe("Story 14-8 — ThemedDialog", () => {
       expect(backdropPressables.length).toBe(0);
       expect(onRequestClose).not.toHaveBeenCalled();
     });
+
+    it("Case 12: Android hardware back (onRequestClose) is NOT wired on the Modal when any button is destructive (R1-P1)", () => {
+      // R1-P1: the Modal's onRequestClose prop must be undefined for destructive
+      // dialogs so Android hardware back cannot bypass the forced-explicit-choice
+      // invariant (Q4). Only the backdrop Pressable path is guarded by
+      // backdropDismissable — the Modal prop must be separately suppressed.
+      const onRequestClose = jest.fn();
+      const renderer = renderDialog({
+        visible: true,
+        title: "Sign Out",
+        message: "Are you sure?",
+        buttons: [
+          { label: "Cancel", style: "cancel" },
+          { label: "Sign Out", style: "destructive" },
+        ],
+        onRequestClose,
+      });
+
+      // The Modal node is the root element — find it by checking for the
+      // `transparent` prop which is unique to the Modal.
+      const modalNodes = findAllNodes(
+        renderer,
+        (n: MinimalTestInstance) => n.props.transparent === true
+      );
+      expect(modalNodes.length).toBeGreaterThan(0);
+      // When a destructive button is present, onRequestClose must be undefined
+      // on the Modal so Android hardware back cannot dismiss the dialog.
+      expect(modalNodes[0].props.onRequestClose).toBeUndefined();
+      // And calling it directly must not fire the consumer's handler.
+      expect(onRequestClose).not.toHaveBeenCalled();
+    });
   });
 
   describe("Button re-entrancy guard", () => {

@@ -1,5 +1,13 @@
 import React, { useEffect, useRef } from "react";
-import { Modal, View, Text, Pressable, type ViewStyle, type TextStyle } from "react-native";
+import {
+  Modal,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  type ViewStyle,
+  type TextStyle,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -162,7 +170,8 @@ function ThemedDialogImpl({
         easing: Easing.in(Easing.quad),
       });
     }
-  }, [visible, opacity, scale]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- opacity/scale are stable Reanimated refs
+  }, [visible]);
 
   const animatedBackdropStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -185,62 +194,54 @@ function ThemedDialogImpl({
       transparent
       animationType="none"
       visible={visible}
-      onRequestClose={onRequestClose}
+      // R1-P1: suppress Android hardware back on destructive dialogs so
+      // users cannot bypass the forced-explicit-choice invariant (Q4).
+      onRequestClose={hasDestructive ? undefined : onRequestClose}
       // accessibilityViewIsModal helps iOS VoiceOver focus only on the
       // dialog (rest of screen becomes inaccessible while modal is open)
       accessibilityViewIsModal
     >
-      {/* Backdrop — dim 50% black (Q1 default per spec). Tap to dismiss
-          when no destructive button. The `rgba(0,0,0,0.5)` literal is
-          token-derived (Colors.shadow is "#000000"); documented in spec
-          AC-A4. */}
+      {/* R1-P2: dim overlay is a separate absolute sibling so Story 14-3
+          R1-P1 decorative a11y props only suppress the overlay itself — NOT
+          the dialog card below. Using accessibilityElementsHidden on a
+          parent that also contains the card would hide the card from
+          VoiceOver (iOS) and TalkBack (Android). */}
       <Animated.View
-        style={[
-          {
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            alignItems: "center",
-          },
-          animatedBackdropStyle,
-        ]}
-        // Story 14-3 R1-P1 3-prop decorative a11y — backdrop must not
-        // appear as a focusable element to screen-readers. The dialog
-        // content (below) is the focus surface.
+        style={[StyleSheet.absoluteFill, themedDialogDimLayerBaseStyle, animatedBackdropStyle]}
+        // Story 14-3 R1-P1 3-prop decorative a11y — dim overlay must not
+        // appear as a focusable element to screen-readers.
         accessible={false}
         accessibilityElementsHidden={true}
         importantForAccessibility="no-hide-descendants"
-      >
-        {/* Backdrop press-target — overlays the dim layer; only tappable
-            when backdrop-dismiss is allowed (no destructive button + an
-            onRequestClose handler exists). */}
-        {backdropDismissable && (
-          <Pressable
-            style={{ ...themedDialogBackdropPressableStyle }}
-            onPress={onRequestClose}
-            accessible={false}
-            accessibilityElementsHidden={true}
-            importantForAccessibility="no-hide-descendants"
-          />
-        )}
+        pointerEvents="none"
+      />
 
+      {/* Backdrop press-target — only present when backdrop-dismiss is
+          allowed (no destructive button + an onRequestClose handler). */}
+      {backdropDismissable && (
+        <Pressable
+          style={themedDialogBackdropPressableStyle}
+          onPress={onRequestClose}
+          accessible={false}
+          accessibilityElementsHidden={true}
+          importantForAccessibility="no-hide-descendants"
+        />
+      )}
+
+      {/* Card container — flex centering; carries no a11y suppression so
+          the card and its children are reachable by VoiceOver / TalkBack. */}
+      <View style={themedDialogCardContainerStyle} pointerEvents="box-none">
         {/* Dialog card */}
         <Animated.View
           style={[themedDialogCardStaticStyle, animatedCardStyle]}
           accessible
           accessibilityRole="alert"
           accessibilityLabel={computedAccessibilityLabel}
-          // iOS VoiceOver — make the dialog content the active focus surface.
-          // The `accessibilityViewIsModal` on the Modal does most of this,
-          // but explicit `accessible` here ensures the card itself is
-          // announced as a single element when focus first lands.
         >
-          <Text
-            style={titleTextStyle}
-            accessibilityRole="header"
-            numberOfLines={3}
-            allowFontScaling={true}
-          >
+          {/* R1-P5: removed accessibilityRole="header" — the parent alert
+              container's accessibilityLabel already covers title + message;
+              header role inside an alert is semantically incorrect. */}
+          <Text style={titleTextStyle} numberOfLines={3} allowFontScaling={true}>
             {title}
           </Text>
           <Text style={messageTextStyle} numberOfLines={20} allowFontScaling={true}>
@@ -249,7 +250,7 @@ function ThemedDialogImpl({
 
           <ThemedDialogButtonRow buttons={buttons} />
         </Animated.View>
-      </Animated.View>
+      </View>
     </Modal>
   );
 }
@@ -265,6 +266,12 @@ interface ThemedDialogButtonRowProps {
 }
 
 function ThemedDialogButtonRow({ buttons }: ThemedDialogButtonRowProps): React.ReactElement {
+  // R1-P7: spec supports 1–3 buttons; 4+ produces squished horizontal layout.
+  if (__DEV__ && buttons.length > 3) {
+    console.warn(
+      `ThemedDialog: received ${buttons.length} buttons — spec supports 1–3. Extra buttons will overflow the card.`
+    );
+  }
   const vertical = buttons.length === 3;
   return (
     <View
@@ -321,7 +328,15 @@ function ThemedDialogButtonImpl({
         ? themedDialogCancelButtonStyle
         : themedDialogDefaultButtonStyle;
 
-  const textStyle = intent === "cancel" ? themedDialogCancelTextStyle : themedDialogActionTextStyle;
+  // R1-P3: split text style by intent — default uses Colors.primary (navy)
+  // for 5.8:1 contrast on amber; destructive uses Colors.textOnDark (white)
+  // for 3.55:1 contrast on red (passes WCAG AA for large/bold text).
+  const textStyle =
+    intent === "cancel"
+      ? themedDialogCancelTextStyle
+      : intent === "destructive"
+        ? themedDialogDestructiveTextStyle
+        : themedDialogDefaultTextStyle;
 
   return (
     <Pressable
@@ -354,6 +369,22 @@ const themedDialogCancelButtonStyle: ViewStyle = Object.freeze({
   backgroundColor: "transparent",
 }) as ViewStyle;
 
+// R1-P2: absolute-fill overlay for the dim background; separate from the
+// card container so decorative a11y props don't swallow the dialog card.
+const themedDialogDimLayerBaseStyle: ViewStyle = Object.freeze({
+  backgroundColor: "rgba(0,0,0,0.5)",
+}) as ViewStyle;
+
+// Full-screen flex container that centers the card; carries no a11y
+// suppression so VoiceOver/TalkBack can reach the card.
+const themedDialogCardContainerStyle: ViewStyle = Object.freeze({
+  flex: 1,
+  justifyContent: "center" as const,
+  alignItems: "center" as const,
+}) as ViewStyle;
+
+// R1-P4: pass the frozen constant directly — no spread to avoid per-render
+// object allocation (Story 13-7 pattern).
 const themedDialogBackdropPressableStyle: ViewStyle = Object.freeze({
   position: "absolute" as const,
   top: 0,
@@ -364,10 +395,20 @@ const themedDialogBackdropPressableStyle: ViewStyle = Object.freeze({
 
 // ---------------------------------------------------------------------------
 // Per-intent text styles (Story 14-6 Typography.ctaLabel)
+// R1-P3: split by intent — default (amber bg) needs dark text for contrast;
+// destructive (red bg) and cancel (transparent) have their own overrides.
 // ---------------------------------------------------------------------------
 
-const themedDialogActionTextStyle: TextStyle = Object.freeze({
+// Navy on amber (#F5A623): ~5.8:1 WCAG AA contrast for normal text.
+const themedDialogDefaultTextStyle: TextStyle = Object.freeze({
   ...Typography.ctaLabel,
+  color: Colors.primary,
+}) as TextStyle;
+
+// White on red (#FF3B30): ~3.55:1 — passes WCAG AA for large/bold text (17px bold).
+const themedDialogDestructiveTextStyle: TextStyle = Object.freeze({
+  ...Typography.ctaLabel,
+  color: Colors.textOnDark,
 }) as TextStyle;
 
 const themedDialogCancelTextStyle: TextStyle = Object.freeze({
