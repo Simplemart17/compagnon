@@ -5,6 +5,7 @@ export default function OnboardingLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="placement-test" />
+      <Stack.Screen name="tour" />
     </Stack>
   );
 }

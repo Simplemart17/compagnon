@@ -158,7 +158,9 @@ export default function OnboardingScreen() {
       if (needsPlacementTest) {
         router.push("/onboarding/placement-test");
       } else {
-        router.replace("/(tabs)/home");
+        // Story 14-6: post-onboarding tour interstitial between completion + home.
+        // `as never` per typed-routes-bypass pattern at `_layout.tsx:129`.
+        router.replace("/onboarding/tour" as never);
       }
     } catch (err) {
       captureError(err, "onboarding-complete");

@@ -532,7 +532,10 @@ export default function PlacementTestScreen() {
         throw updateError;
       }
 
-      router.replace("/(tabs)/home");
+      // Story 14-6: post-onboarding tour interstitial between completion + home.
+      // `as never` matches the typed-routes-bypass pattern at `_layout.tsx:129`;
+      // the literal is valid at runtime, typed routes regenerate on next dev start.
+      router.replace("/onboarding/tour" as never);
     } catch (err: unknown) {
       captureError(err, "placement-test-save");
       // PostgrestError is not an Error instance but has a message property

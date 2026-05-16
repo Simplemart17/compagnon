@@ -147,6 +147,14 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboarding = segments[0] === "onboarding";
+    // Story 14-6: post-onboarding tour route — onboarded users can navigate
+    // here from the onboarding-finish handlers without being bounced back to
+    // home by the `isOnboarded && inOnboarding → home` redirect below.
+    // `segments[1]` is typed as `"placement-test" | undefined` by Expo Router's
+    // typed-routes generator — the `tour` literal isn't in the union until typed
+    // routes regenerate. Widening via `String(...)` keeps the comparison
+    // type-safe + survives the next typed-routes regeneration cleanly.
+    const inTour = inOnboarding && String(segments[1]) === "tour";
 
     // Story 12-9: unverified-but-session-bearing users must NOT be routed
     // into onboarding or the tabs. The render-branch below shows the gate.
@@ -178,7 +186,10 @@ function RootLayoutNav() {
       router.replace("/(auth)/login");
     } else if (session && !isOnboarded && !inOnboarding) {
       router.replace("/onboarding");
-    } else if (session && isOnboarded && (inAuthGroup || inOnboarding)) {
+    } else if (session && isOnboarded && (inAuthGroup || (inOnboarding && !inTour))) {
+      // Story 14-6 carve-out: `!inTour` lets the post-onboarding tour render
+      // for onboarded users (route accessed via `router.replace("/onboarding/tour")`
+      // from onboarding/index.tsx + placement-test.tsx handlers).
       router.replace("/(tabs)/home");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
