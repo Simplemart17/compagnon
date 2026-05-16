@@ -1,5 +1,5 @@
 import React from "react";
-import { View, type ViewStyle } from "react-native";
+import { View, type StyleProp, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors, Radii, Shadows, skillTint } from "@/src/lib/design";
@@ -27,7 +27,8 @@ import { Colors, Radii, Shadows, skillTint } from "@/src/lib/design";
  * **Cross-story invariants:**
  *  - Story 13-7 R1-P1 frozen-static-style + Shadows-spread-FIRST pattern.
  *  - Story 14-3 R1-P1 3-prop decorative a11y on overlays.
- *  - Story 14-4 token enforcement: all colors `Colors.*`; all radii `Radii.*`.
+ *  - Story 14-4 token enforcement: all colors `Colors.*`; all radii `Radii.*`
+ *    (with documented overlay exemption — see overlay style constants below).
  *  - Story 14-1 chrome rule: HeroHeader renders no text — content is fully
  *    delegated to `children`.
  *
@@ -65,11 +66,19 @@ export interface HeroHeaderProps {
    */
   overlay?: "depth-glow" | "inner-dim";
   /**
-   * Escape hatch for one-off per-screen tweaks. Passed through to the outer
-   * `<View>` style array. **Use sparingly** — every consumer should be
-   * addressable by the documented props.
+   * **R1-P2 contract:** consumer-provided base style is rendered FIRST in the
+   * style array. The canonical fingerprint (`Colors.primary` bg,
+   * `Radii.heroBottom` corners, `paddingHorizontal: 24`, `Shadows.hero`) plus
+   * the prop-controlled `paddingTop` / `paddingBottom` / `centered` toggle
+   * are layered ON TOP. This means consumers can ADD properties (margins,
+   * borderWidth, etc.) via `style`, but they CANNOT silently override the
+   * canonical fingerprint or the documented prop-controlled values — the
+   * "single canonical hero" goal of Story 14-9 is structurally enforced.
+   *
+   * Typed as `StyleProp<ViewStyle>` (R1-P5) so consumers can pass arrays,
+   * registered styles, or falsy entries (matches `<View>`'s native surface).
    */
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +102,18 @@ export const heroHeaderContainerStaticStyle: ViewStyle = Object.freeze({
   paddingHorizontal: 24,
 }) as ViewStyle;
 
-/** @internal — conversation depth-glow overlay (bottom 50%, primaryDark 0.4). */
+/**
+ * @internal — conversation depth-glow overlay (bottom 50%, primaryDark 0.4).
+ *
+ * design-token-exempt (R1-P6): the 32px bottom-corner radius INTENTIONALLY
+ * extends ~4px beyond the hero's `Radii.heroBottom` (28) so the glow's
+ * bottom edge peeks below the hero corner — a subtle depth effect. Adding a
+ * `Radii.heroOverlayDepth = 32` token for a single consumer would be
+ * over-engineering; the literal stays local to this constant.
+ *
+ * R1-P1: `pointerEvents: "none"` moved off the JSX prop (deprecated in RN
+ * 0.74+) into the style field per the canonical RN migration path.
+ */
 const heroHeaderDepthGlowOverlayStyle: ViewStyle = Object.freeze({
   position: "absolute" as const,
   bottom: 0,
@@ -103,9 +123,19 @@ const heroHeaderDepthGlowOverlayStyle: ViewStyle = Object.freeze({
   backgroundColor: skillTint(Colors.primaryDark, 0.4),
   borderBottomLeftRadius: 32,
   borderBottomRightRadius: 32,
+  pointerEvents: "none" as const,
 }) as ViewStyle;
 
-/** @internal — profile inner-dim overlay (absolute fill, bgDark 0.35). */
+/**
+ * @internal — profile inner-dim overlay (absolute fill, bgDark 0.35).
+ *
+ * design-token-exempt (R1-P6): the 40px bottom-corner radius INTENTIONALLY
+ * extends ~12px beyond `Radii.heroBottom` for a softer dim edge that bleeds
+ * past the hero corner. Same rationale as `heroHeaderDepthGlowOverlayStyle`
+ * — single-use literal, no shared token.
+ *
+ * R1-P1: `pointerEvents: "none"` moved off the JSX prop into the style field.
+ */
 const heroHeaderInnerDimOverlayStyle: ViewStyle = Object.freeze({
   position: "absolute" as const,
   top: 0,
@@ -115,6 +145,19 @@ const heroHeaderInnerDimOverlayStyle: ViewStyle = Object.freeze({
   backgroundColor: skillTint(Colors.bgDark, 0.35),
   borderBottomLeftRadius: 40,
   borderBottomRightRadius: 40,
+  pointerEvents: "none" as const,
+}) as ViewStyle;
+
+/**
+ * @internal — `centered` toggle keeps the prop-driven branch allocation-free.
+ *
+ * R1-P4: declared ABOVE the component (alongside the 3 other frozen-static
+ * constants) for placement consistency. Pre-R1 this lived after the
+ * component function and worked by hoisting, but the inconsistent placement
+ * was an HMR / module-evaluation footgun.
+ */
+const heroHeaderCenteredStyle: ViewStyle = Object.freeze({
+  alignItems: "center" as const,
 }) as ViewStyle;
 
 // ---------------------------------------------------------------------------
@@ -134,11 +177,16 @@ function HeroHeaderImpl({
 
   return (
     <View
+      // R1-P2: consumer `style` is rendered FIRST so the canonical fingerprint
+      // + prop-controlled padding + centered toggle always win over consumer
+      // overrides. Consumers can ADD properties (margins, borderWidth) but
+      // cannot silently OVERRIDE canonical ones — the unification invariant
+      // of Story 14-9 is structurally enforced.
       style={[
+        style,
         heroHeaderContainerStaticStyle,
         { paddingTop: computedPaddingTop, paddingBottom },
         centered ? heroHeaderCenteredStyle : null,
-        style,
       ]}
     >
       {overlay === "depth-glow" && (
@@ -146,11 +194,10 @@ function HeroHeaderImpl({
           style={heroHeaderDepthGlowOverlayStyle}
           // Story 14-3 R1-P1 3-prop decorative a11y — overlay must not appear
           // as a focusable element to screen-readers; children carry the
-          // actual chrome.
+          // actual chrome. `pointerEvents: "none"` lives in the style (R1-P1).
           accessible={false}
           accessibilityElementsHidden={true}
           importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
         />
       )}
       {overlay === "inner-dim" && (
@@ -159,18 +206,12 @@ function HeroHeaderImpl({
           accessible={false}
           accessibilityElementsHidden={true}
           importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
         />
       )}
       {children}
     </View>
   );
 }
-
-/** @internal — `centered` toggle keeps the prop-driven branch allocation-free. */
-const heroHeaderCenteredStyle: ViewStyle = Object.freeze({
-  alignItems: "center" as const,
-}) as ViewStyle;
 
 // ---------------------------------------------------------------------------
 // Exported memo wrapper (Story 14-2 / 14-3 / 14-7 / 14-8 precedent)

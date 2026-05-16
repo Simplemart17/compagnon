@@ -77,11 +77,15 @@ describe("Story 14-9 -- Hero pattern unification source drift", () => {
 
     it("Case 2e: overlay variants both carry Story 14-3 R1-P1 3-prop decorative a11y + pointerEvents:none", () => {
       // Verify ALL three a11y props + pointerEvents appear in the file (the
-      // runtime test pins per-overlay-branch specifics).
+      // runtime test pins per-overlay-branch specifics). R1-P1: pointerEvents
+      // moved from JSX prop (deprecated in RN 0.74+) into the style field.
       expect(component).toMatch(/accessible=\{false\}/);
       expect(component).toMatch(/accessibilityElementsHidden=\{true\}/);
       expect(component).toMatch(/importantForAccessibility="no-hide-descendants"/);
-      expect(component).toMatch(/pointerEvents="none"/);
+      // pointerEvents now lives inside the frozen overlay style constants
+      // as `pointerEvents: "none"` (style field) rather than the deprecated
+      // JSX prop form `pointerEvents="none"`.
+      expect(component).toMatch(/pointerEvents:\s*["']none["']/);
     });
   });
 

@@ -199,7 +199,8 @@ describe("Story 14-9 — HeroHeader", () => {
       expect(overlay.props.accessible).toBe(false);
       expect(overlay.props.accessibilityElementsHidden).toBe(true);
       expect(overlay.props.importantForAccessibility).toBe("no-hide-descendants");
-      expect(overlay.props.pointerEvents).toBe("none");
+      // R1-P1: `pointerEvents: "none"` lives in the style (was a JSX prop pre-R1).
+      expect(overlayStyle.pointerEvents).toBe("none");
     });
 
     it('Case 5b: overlay="inner-dim" renders bgDark absolute-fill overlay with 3-prop decorative a11y', () => {
@@ -231,7 +232,8 @@ describe("Story 14-9 — HeroHeader", () => {
       expect(overlay.props.accessible).toBe(false);
       expect(overlay.props.accessibilityElementsHidden).toBe(true);
       expect(overlay.props.importantForAccessibility).toBe("no-hide-descendants");
-      expect(overlay.props.pointerEvents).toBe("none");
+      // R1-P1: `pointerEvents: "none"` lives in the style (was a JSX prop pre-R1).
+      expect(overlayStyle.pointerEvents).toBe("none");
     });
 
     it("Case 5c: overlay=undefined renders no overlay node", () => {
@@ -255,6 +257,52 @@ describe("Story 14-9 — HeroHeader", () => {
         );
       });
       expect(overlayMatches.length).toBe(0);
+    });
+
+    it("Case 5d: overlay node is rendered BEFORE children (RN z-order = JSX order; children visually ON TOP of overlay) — R1-P3", () => {
+      // Sentinel child via testID so we can find it by props.testID rather
+      // than fragile string matching on <Text> contents.
+      let renderer!: ReturnType<typeof create>;
+      act(() => {
+        renderer = create(
+          <HeroHeader overlay="depth-glow">
+            <View testID="hero-sentinel-child">
+              <Text>sentinel</Text>
+            </View>
+          </HeroHeader>
+        );
+      });
+
+      // Use renderer.toJSON() to walk the host-component tree directly. The
+      // root is the outer <View> container; its `children` array preserves
+      // JSX order. Overlay (depth-glow tint) MUST appear before the sentinel
+      // child so RN paints children ON TOP.
+      type JsonNode = { type: string; props: Record<string, unknown>; children: JsonNode[] | null };
+      const root = renderer.toJSON() as JsonNode | JsonNode[] | null;
+      expect(root).not.toBeNull();
+      const container = (Array.isArray(root) ? root[0] : root) as JsonNode;
+      expect(container).not.toBeNull();
+      const directChildren = (container.children ?? []) as JsonNode[];
+      expect(directChildren.length).toBeGreaterThan(0);
+
+      const overlayColor = skillTint(Colors.primaryDark, 0.4);
+      const overlayIdx = directChildren.findIndex((child) => {
+        if (!child || typeof child !== "object") return false;
+        const merged = flattenStyle(child.props?.style);
+        return merged.backgroundColor === overlayColor;
+      });
+      const sentinelIdx = directChildren.findIndex((child) => {
+        if (!child || typeof child !== "object") return false;
+        return child.props?.testID === "hero-sentinel-child";
+      });
+
+      expect(overlayIdx).toBeGreaterThanOrEqual(0);
+      expect(sentinelIdx).toBeGreaterThanOrEqual(0);
+      // The load-bearing invariant: overlay MUST appear before children in the
+      // render tree. A future refactor that moves `{children}` above the overlay
+      // would visually hide content behind the dim/glow and silently pass every
+      // other test in this file.
+      expect(overlayIdx).toBeLessThan(sentinelIdx);
     });
   });
 
