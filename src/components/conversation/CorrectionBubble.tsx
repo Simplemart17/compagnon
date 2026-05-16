@@ -95,7 +95,7 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
   return (
     <Reanimated.View style={animStyle}>
       <View
-        className="rounded-full border p-3.5"
+        className="rounded-2xl border p-3.5"
         style={{
           backgroundColor: skillTint(Colors.surfaceWhite, 0.09),
           borderColor: Colors.accent30,
