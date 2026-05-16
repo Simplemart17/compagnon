@@ -71,7 +71,7 @@ function WordChip({ wordScore }: { wordScore: WordScore }) {
       </View>
 
       {expanded && (
-        <View className="bg-white rounded-[10px] p-2.5 mt-1 border border-surface-300 gap-1">
+        <View className="bg-white rounded-lg p-2.5 mt-1 border border-surface-300 gap-1">
           {wordScore.errorType !== "None" && (
             <Text className="text-[11px] text-error font-semibold">
               Error: {wordScore.errorType}
@@ -486,13 +486,7 @@ export default function PronunciationScreen() {
         {sentence && (
           <View
             className="bg-white rounded-2xl p-6 border border-surface-300 mb-8"
-            style={{
-              shadowColor: Colors.primary,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.07,
-              shadowRadius: 8,
-              elevation: 3,
-            }}
+            style={Shadows.card}
           >
             <Text
               className="text-[11px] font-semibold tracking-wider uppercase mb-3"
@@ -548,8 +542,8 @@ export default function PronunciationScreen() {
               style={{
                 backgroundColor: pronunciation.isRecording ? Colors.error : Colors.primary,
                 shadowColor: pronunciation.isRecording ? Colors.error : Colors.primary,
-                shadowOpacity: 0.4,
-                shadowRadius: 16,
+                shadowOpacity: 0.4, // eslint-disable-line no-restricted-syntax -- design-token-exempt: active-recording mic CTA glow per Q6
+                shadowRadius: 16, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with active-recording mic glow above
                 shadowOffset: { width: 0, height: 6 },
                 elevation: 8,
                 opacity: pronunciation.isAssessing ? 0.5 : 1,

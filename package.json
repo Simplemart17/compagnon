@@ -15,6 +15,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "check:colors": "bash scripts/check-hex-colors.sh",
+    "check:tokens": "bash scripts/check-design-tokens.sh",
     "prepare": "husky"
   },
   "lint-staged": {

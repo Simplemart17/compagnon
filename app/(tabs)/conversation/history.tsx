@@ -414,7 +414,7 @@ export const Bubble = React.memo(function Bubble({ msg, msgMatches, activeMatchI
       {/* Corrections — bounded by Story 11-1 MAX_PENDING_CORRECTIONS = 50 */}
       {msg.corrections && msg.corrections.length > 0 && (
         <View
-          className="rounded-[10px] p-2.5 mt-1 border"
+          className="rounded-lg p-2.5 mt-1 border"
           style={{
             backgroundColor: Colors.accent10,
             borderColor: Colors.accent30,
@@ -1076,7 +1076,7 @@ export default function ConversationHistoryScreen() {
             style={{ borderBottomWidth: 1, borderBottomColor: Colors.border }}
           >
             <View
-              className="flex-row items-center bg-white rounded-[10px] border border-surface-300 px-2.5"
+              className="flex-row items-center bg-white rounded-lg border border-surface-300 px-2.5"
               style={{ minHeight: 40 }}
             >
               <Text className="text-sm mr-1.5" style={{ color: Colors.textTertiary }}>

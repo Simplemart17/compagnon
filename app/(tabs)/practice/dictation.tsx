@@ -693,14 +693,8 @@ export default function DictationScreen() {
         <Animated.View
           key={`instruction-${d.currentIndex}`}
           entering={SlideInRight.duration(300)}
-          className="bg-white rounded-[20px] p-6 border border-surface-300 mb-6 items-center"
-          style={{
-            shadowColor: PRIMARY,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.07,
-            shadowRadius: 8,
-            elevation: 3,
-          }}
+          className="bg-white rounded-2xl p-6 border border-surface-300 mb-6 items-center"
+          style={Shadows.card}
         >
           <Text
             style={{ color: Colors.accentText }}
@@ -718,7 +712,7 @@ export default function DictationScreen() {
               accessibilityRole="button"
               accessibilityState={{ disabled: d.isPlayingAudio }}
               accessibilityHint="Double tap to play the audio clip"
-              className="rounded-[14px] px-6 py-3.5 flex-row items-center gap-2"
+              className="rounded-2xl px-6 py-3.5 flex-row items-center gap-2"
               style={{
                 backgroundColor: d.isPlayingAudio ? Colors.border : PRIMARY,
               }}
@@ -748,7 +742,7 @@ export default function DictationScreen() {
               accessibilityRole="button"
               accessibilityState={{ disabled: d.isPlayingAudio }}
               accessibilityHint="Double tap to play the audio clip at slower speed"
-              className="rounded-[14px] px-5 py-3.5 flex-row items-center gap-2"
+              className="rounded-2xl px-5 py-3.5 flex-row items-center gap-2"
               style={{
                 backgroundColor: d.isPlayingAudio ? Colors.border : skillTint(PRIMARY, 0x15 / 255),
                 borderWidth: 1,

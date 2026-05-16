@@ -14,7 +14,7 @@ import React, { useMemo } from "react";
 import { View, Text } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
-import { Colors, Typography } from "@/src/lib/design";
+import { Colors, Shadows, Typography } from "@/src/lib/design";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { CEFRDataPoint } from "@/src/hooks/use-cefr-history";
@@ -125,18 +125,14 @@ function CEFRProgressionChartInner({
   return (
     <Animated.View
       entering={FadeIn.delay(300).duration(400)}
-      style={{
-        backgroundColor: Colors.surfaceWhite,
-        borderRadius: 16,
-        padding: 16,
-        // Shadow iOS
-        shadowColor: Colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        // Shadow Android
-        elevation: 3,
-      }}
+      style={[
+        {
+          backgroundColor: Colors.surfaceWhite,
+          borderRadius: 16,
+          padding: 16,
+        },
+        Shadows.card,
+      ]}
     >
       {/* Section title */}
       <Text
@@ -317,8 +313,8 @@ function CEFRProgressionChartInner({
                   // Shadow for depth
                   shadowColor: Colors.accent,
                   shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 3,
+                  shadowOpacity: 0.3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke chart-marker dot shadow per Q6
+                  shadowRadius: 3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with chart-marker dot shadow above
                   elevation: 2,
                 }}
               />
@@ -389,18 +385,14 @@ function CEFRProgressionEmpty() {
   return (
     <Animated.View
       entering={FadeIn.delay(300).duration(400)}
-      style={{
-        backgroundColor: Colors.surfaceWhite,
-        borderRadius: 16,
-        padding: 20,
-        // Shadow iOS
-        shadowColor: Colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        // Shadow Android
-        elevation: 3,
-      }}
+      style={[
+        {
+          backgroundColor: Colors.surfaceWhite,
+          borderRadius: 16,
+          padding: 20,
+        },
+        Shadows.card,
+      ]}
     >
       <Text
         style={{

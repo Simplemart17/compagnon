@@ -23,7 +23,7 @@ import Reanimated, {
 import { PasswordStrengthIndicator } from "@/src/components/auth/PasswordStrengthIndicator";
 import { Icon } from "@/src/components/common/Icon";
 import { useAuth } from "@/src/hooks/use-auth";
-import { Colors } from "@/src/lib/design";
+import { Colors, Shadows } from "@/src/lib/design";
 import {
   MIN_PASSWORD_LENGTH,
   getGenericWeakPasswordMessage,
@@ -195,11 +195,7 @@ export default function SignUpScreen() {
               backgroundColor: Colors.surfaceWhite,
               borderTopLeftRadius: 32,
               borderTopRightRadius: 32,
-              shadowColor: Colors.shadow,
-              shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
-              elevation: 8,
+              ...Shadows.bottomSheet,
             },
             cardAnimatedStyle,
           ]}
@@ -219,7 +215,7 @@ export default function SignUpScreen() {
             {/* Full Name Input */}
             <View className="mb-[14px]">
               <View
-                className="flex-row items-center bg-white rounded-[14px] py-4 px-4"
+                className="flex-row items-center bg-white rounded-2xl py-4 px-4"
                 style={{
                   borderWidth: 1.5,
                   borderColor: nameFocused ? Colors.accent : Colors.gray200,
@@ -246,7 +242,7 @@ export default function SignUpScreen() {
             {/* Email Input */}
             <View className="mb-[14px]">
               <View
-                className="flex-row items-center bg-white rounded-[14px] py-4 px-4"
+                className="flex-row items-center bg-white rounded-2xl py-4 px-4"
                 style={{
                   borderWidth: 1.5,
                   borderColor: emailFocused ? Colors.accent : Colors.gray200,
@@ -274,7 +270,7 @@ export default function SignUpScreen() {
             {/* Password Input */}
             <View className="mb-[26px]">
               <View
-                className="flex-row items-center bg-white rounded-[14px] py-4 px-4"
+                className="flex-row items-center bg-white rounded-2xl py-4 px-4"
                 style={{
                   borderWidth: 1.5,
                   borderColor: passwordFocused ? Colors.accent : Colors.gray200,

@@ -142,7 +142,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
 
       {/* Bubble */}
       <View
-        className="rounded-[20px] border px-3.5 py-[11px]"
+        className="rounded-full border px-3.5 py-[11px]"
         style={{
           maxWidth: isUser ? 280 : 295,
           backgroundColor: isUser ? Colors.bubbleUser : Colors.bubbleAi,
@@ -205,7 +205,7 @@ function TypingIndicator() {
         Companion
       </Text>
       <View
-        className="flex-row items-center gap-1.5 rounded-[20px] border px-4 py-3.5"
+        className="flex-row items-center gap-1.5 rounded-full border px-4 py-3.5"
         style={{
           backgroundColor: Colors.bubbleAi,
           borderTopLeftRadius: 6,
@@ -246,7 +246,7 @@ function PendingAiBubble({ text }: { text: string }) {
         Companion
       </Text>
       <View
-        className="rounded-[20px] border px-3.5 py-[11px]"
+        className="rounded-full border px-3.5 py-[11px]"
         style={{
           backgroundColor: Colors.bubbleAi,
           borderTopLeftRadius: 6,

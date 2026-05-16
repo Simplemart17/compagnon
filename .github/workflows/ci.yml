@@ -51,6 +51,15 @@ jobs:
       - name: Hex color check
         run: npm run check:colors
 
+      - name: Design token check
+        # Story 14-4: prevent regression of raw `rounded-[Npx]` className
+        # literals and raw shadow* primitives in JS-style objects. Enforce
+        # `Radii.*` + `Shadows.*` tokens from @/src/lib/design as the
+        # single source of truth (matches the Story 13-7 frozen-static-style
+        # discipline). Allowlist: src/lib/design.ts (token definitions).
+        # Magic-comment escape hatch: `design-token-exempt` per-line tag.
+        run: npm run check:tokens
+
       - name: Sentry DSN leak guard
         run: |
           # Story 9-3: prevent regression of the leak that triggered the story.

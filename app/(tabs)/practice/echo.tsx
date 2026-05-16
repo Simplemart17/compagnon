@@ -390,7 +390,7 @@ export default function EchoPracticeScreen() {
               accessibilityLabel="Play sentence at normal speed"
               accessibilityState={{ disabled: echo.audioPlayer.isPlaying }}
               accessibilityHint="Double tap to play the audio"
-              className="rounded-[14px] px-6 py-3.5 flex-row items-center gap-2"
+              className="rounded-2xl px-6 py-3.5 flex-row items-center gap-2"
               style={{
                 backgroundColor: echo.audioPlayer.isPlaying ? Colors.border : Colors.primary,
                 minHeight: 44,
@@ -423,7 +423,7 @@ export default function EchoPracticeScreen() {
               accessibilityLabel="Play sentence at slow speed"
               accessibilityState={{ disabled: echo.audioPlayer.isPlaying }}
               accessibilityHint="Double tap to play at slower speed"
-              className="rounded-[14px] px-5 py-3.5 flex-row items-center gap-2"
+              className="rounded-2xl px-5 py-3.5 flex-row items-center gap-2"
               style={{
                 backgroundColor: echo.audioPlayer.isPlaying
                   ? Colors.border

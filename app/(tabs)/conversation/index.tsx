@@ -174,7 +174,7 @@ export default function ConversationTopicsScreen() {
         {/* Row 1: CEFR badge + initials */}
         <View className="flex-row justify-between items-center">
           <View
-            className="rounded-[20px] px-[10px] py-1"
+            className="rounded-full px-[10px] py-1"
             style={{
               backgroundColor: Colors.accent20,
               borderColor: Colors.accent,
@@ -190,7 +190,7 @@ export default function ConversationTopicsScreen() {
               accessibilityRole="button"
               accessibilityLabel="Conversation history"
               accessibilityHint="Double tap to view past conversations"
-              className="rounded-[20px] px-3 justify-center"
+              className="rounded-full px-3 justify-center"
               style={{
                 minHeight: 44,
                 backgroundColor: skillTint(Colors.surfaceWhite, 0.1),
@@ -206,7 +206,7 @@ export default function ConversationTopicsScreen() {
               </Text>
             </TouchableOpacity>
             <View
-              className="w-9 h-9 rounded-[18px] justify-center items-center"
+              className="w-9 h-9 rounded-full justify-center items-center"
               style={{
                 backgroundColor: skillTint(Colors.surfaceWhite, 0.15),
                 borderColor: skillTint(Colors.surfaceWhite, 0.25),
@@ -237,7 +237,7 @@ export default function ConversationTopicsScreen() {
           ].map((label) => (
             <View
               key={label}
-              className="rounded-[10px] px-[10px] py-[6px]"
+              className="rounded-lg px-[10px] py-[6px]"
               style={{ backgroundColor: skillTint(Colors.surfaceWhite, 0.1) }}
             >
               <Text
@@ -311,7 +311,7 @@ export default function ConversationTopicsScreen() {
               accessibilityLabel={`Filter by level: ${level}`}
               accessibilityHint="Double tap to filter topics by this level"
               accessibilityState={{ selected: isActive }}
-              className="flex-1 max-w-[80px] rounded-[20px] py-2 items-center"
+              className="flex-1 max-w-[80px] rounded-full py-2 items-center"
               style={{
                 minHeight: 44,
                 justifyContent: "center",

@@ -70,8 +70,8 @@ export const conversationCardStaticStyle: ViewStyle = Object.freeze({
   gap: 16,
   shadowColor: Colors.primary,
   shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.25,
-  shadowRadius: 12,
+  shadowOpacity: 0.25, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke colored CTA shadow tone preserved verbatim by Story 13-7 P22
+  shadowRadius: 12, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke colored CTA shadow above
   elevation: 6,
 }) as ViewStyle;
 
@@ -99,7 +99,7 @@ export function ConversationCard({ onPress }: ConversationCardProps) {
     >
       {/* Mic icon circle */}
       <View
-        className="w-[52px] h-[52px] rounded-[26px] justify-center items-center"
+        className="w-[52px] h-[52px] rounded-full justify-center items-center"
         style={{
           backgroundColor: Colors.accent20,
           borderWidth: 1.5,
@@ -246,7 +246,7 @@ export default function HomeScreen() {
         <View className="flex-row justify-between items-center mb-[14px]">
           <Text className="text-[10px] font-bold text-accent tracking-[3px]">COMPANION</Text>
           <View
-            className="w-[34px] h-[34px] rounded-[17px] justify-center items-center"
+            className="w-[34px] h-[34px] rounded-full justify-center items-center"
             style={{
               backgroundColor: Colors.accent15,
               borderWidth: 1,
@@ -266,7 +266,7 @@ export default function HomeScreen() {
         <View className="flex-row items-center gap-2 mb-4 flex-wrap">
           {/* CEFR level pill */}
           <View
-            className="px-[10px] py-1 rounded-[20px]"
+            className="px-[10px] py-1 rounded-full"
             style={{ borderWidth: 1.5, borderColor: Colors.accent }}
             accessibilityLabel={`Current level: ${level}`}
           >
@@ -276,7 +276,7 @@ export default function HomeScreen() {
           {/* Streak chip */}
           {progress.streakDays > 0 && (
             <View
-              className="flex-row items-center px-[9px] py-1 rounded-[20px] gap-1"
+              className="flex-row items-center px-[9px] py-1 rounded-full gap-1"
               style={{ backgroundColor: Colors.accent20 }}
               accessibilityLabel={`${progress.streakDays} day streak`}
             >
@@ -287,7 +287,7 @@ export default function HomeScreen() {
 
           {/* Target pill */}
           <View
-            className="flex-row items-center px-[9px] py-1 rounded-[20px] gap-1"
+            className="flex-row items-center px-[9px] py-1 rounded-full gap-1"
             style={{ backgroundColor: Colors.whiteAlpha12 }}
             accessibilityLabel={`Target level: ${targetLevel}`}
           >
@@ -480,7 +480,7 @@ export default function HomeScreen() {
             </ScrollView>
           ) : (
             <View
-              className="bg-white rounded-[14px] p-5 items-center"
+              className="bg-white rounded-2xl p-5 items-center"
               style={{
                 borderWidth: 1,
                 borderColor: Colors.primary8,
@@ -502,16 +502,7 @@ export default function HomeScreen() {
             Cette semaine
           </Text>
           {progress.recentActivity.length > 1 ? (
-            <View
-              className="bg-white rounded-2xl p-4"
-              style={{
-                shadowColor: Colors.primary,
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 8,
-                elevation: 2,
-              }}
-            >
+            <View className="bg-white rounded-2xl p-4" style={Shadows.card}>
               <View className="flex-row justify-between gap-1">
                 {progress.recentActivity
                   .slice(0, 7)
@@ -540,7 +531,7 @@ export default function HomeScreen() {
             </View>
           ) : (
             <View
-              className="bg-white rounded-[14px] p-5 items-center"
+              className="bg-white rounded-2xl p-5 items-center"
               style={{
                 borderWidth: 1,
                 borderColor: Colors.primary8,

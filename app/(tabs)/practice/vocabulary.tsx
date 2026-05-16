@@ -30,7 +30,7 @@ import { captureError } from "@/src/lib/sentry";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/lib/supabase";
 import { LEVEL_COLORS } from "@/src/lib/constants";
-import { Colors, Typography } from "@/src/lib/design";
+import { Colors, Shadows, Typography } from "@/src/lib/design";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { Icon } from "@/src/components/common/Icon";
 import { calculateNextReview } from "@/src/lib/srs";
@@ -68,10 +68,10 @@ function VocabSkeleton() {
     <View className="flex-1 bg-surface p-5">
       {/* Tab bar skeleton */}
       <View className="flex-row mb-4 bg-surface-300 rounded-xl p-1">
-        <View className="flex-1 py-2.5 rounded-[10px] items-center bg-white">
+        <View className="flex-1 py-2.5 rounded-lg items-center bg-white">
           <SkeletonBar width={80} height={14} />
         </View>
-        <View className="flex-1 py-2.5 rounded-[10px] items-center">
+        <View className="flex-1 py-2.5 rounded-lg items-center">
           <SkeletonBar width={90} height={14} />
         </View>
       </View>
@@ -82,7 +82,7 @@ function VocabSkeleton() {
 
       {/* Flashcard skeleton */}
       <View
-        className="bg-white rounded-[20px] border border-surface-300 p-8 justify-center items-center"
+        className="bg-white rounded-2xl border border-surface-300 p-8 justify-center items-center"
         style={{ minHeight: 280 }}
       >
         <SkeletonBar width={160} height={32} style={{ marginBottom: 8 }} />
@@ -277,7 +277,7 @@ export default function VocabularyScreen() {
       const isDue = new Date(item.next_review) <= new Date();
       return (
         <View
-          className="bg-white rounded-[14px] p-4 flex-row items-center gap-3 mb-2.5"
+          className="bg-white rounded-2xl p-4 flex-row items-center gap-3 mb-2.5"
           style={{
             borderWidth: 1,
             borderColor: isDue ? Colors.accent : Colors.border,
@@ -421,7 +421,7 @@ export default function VocabularyScreen() {
             accessibilityRole="tab"
             accessibilityLabel={label}
             accessibilityState={{ selected: isActive }}
-            className="flex-1 py-2.5 rounded-[10px] items-center"
+            className="flex-1 py-2.5 rounded-lg items-center"
             style={{
               backgroundColor: isActive ? Colors.surfaceWhite : "transparent",
             }}
@@ -530,15 +530,8 @@ export default function VocabularyScreen() {
               ? `${word.french_word} — ${word.english_translation}`
               : `${word.french_word}. Tap to reveal translation`
           }
-          className="bg-white rounded-[20px] border border-surface-300 p-8 justify-center items-center"
-          style={{
-            minHeight: 280,
-            shadowColor: Colors.textPrimary,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 2,
-          }}
+          className="bg-white rounded-2xl border border-surface-300 p-8 justify-center items-center"
+          style={[{ minHeight: 280 }, Shadows.card]}
         >
           {/* French word */}
           <Text className="text-[32px] font-bold text-primary text-center mb-2">
@@ -634,7 +627,7 @@ export default function VocabularyScreen() {
   const renderOfflineBanner = () => {
     if (!isOfflineData) return null;
     return (
-      <View className="bg-accent/10 rounded-[10px] px-3.5 py-2.5 mb-3 flex-row items-center gap-2">
+      <View className="bg-accent/10 rounded-lg px-3.5 py-2.5 mb-3 flex-row items-center gap-2">
         <Text className="text-xs flex-1" style={{ color: Colors.accentText }}>
           Showing cached data. Changes will sync when you are back online.
         </Text>

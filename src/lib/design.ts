@@ -317,6 +317,19 @@ export const Shadows = {
     shadowRadius: 4,
     elevation: 1,
   } as ViewStyle,
+
+  /**
+   * Inverted shadow for bottom-sheet surfaces that rise from below the
+   * viewport (auth + forgot-password rounded-top cards). The negative
+   * `height` casts the soft glow UPWARD above the sheet edge. Story 14-4.
+   */
+  bottomSheet: {
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 8,
+  } as ViewStyle,
 } as const;
 
 // ---------------------------------------------------------------------------

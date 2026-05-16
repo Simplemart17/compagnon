@@ -22,6 +22,31 @@ module.exports = defineConfig([
         },
       ],
       "no-console": ["warn", { allow: ["error", "warn"] }],
+      // Story 14-4: catch raw shadow primitives in JS-style objects at the
+      // ESLint AST layer. The companion bash gate (`scripts/check-design-tokens.sh`)
+      // also covers the NativeWind `className="rounded-[Npx]"` surface that
+      // ESLint cannot see; this rule fires IDE-time on the JS-style-object
+      // surface. Spread `...Shadows.card / .hero / .bottomSheet / .subtle`
+      // from `@/src/lib/design` instead. Escape hatch: add an inline
+      // `// design-token-exempt: <rationale>` comment AND wrap the line in
+      // `// eslint-disable-next-line no-restricted-syntax`.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Property[key.name=/^shadow(Opacity|Radius)$/][value.type='Literal']",
+          message:
+            "Use Shadows.* tokens from @/src/lib/design instead of raw shadowOpacity/shadowRadius literals (Story 14-4).",
+        },
+      ],
+    },
+  },
+  {
+    // The token definitions themselves live in design.ts — exempt from
+    // the no-restricted-syntax shadow-literal rule. The two design-token
+    // scripts already exclude this file from their pattern scan.
+    files: ["src/lib/design.ts"],
+    rules: {
+      "no-restricted-syntax": "off",
     },
   },
   {
