@@ -1,13 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { View, Text, FlatList, TouchableOpacity, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Reanimated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
 
 import { useAuthStore } from "@/src/store/auth-store";
 import { CONVERSATION_TOPICS, LEVEL_COLORS } from "@/src/lib/constants";
@@ -15,6 +9,7 @@ import type { ConversationTopic, ConversationMode } from "@/src/types/conversati
 import type { CEFRLevel } from "@/src/types/cefr";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import { Colors, skillTint } from "@/src/lib/design";
+import { ListItemCard } from "@/src/components/common/ListItemCard";
 
 const CONVERSATION_MODES: { key: ConversationMode; label: string; icon: string }[] = [
   { key: "companion", label: "Companion", icon: "\uD83D\uDCAC" },
@@ -52,123 +47,57 @@ interface CardItemProps {
   onPress: (topic: ConversationTopic) => void;
 }
 
+/**
+ * Story 14-2: pre-14-2 inline `CardItem` consolidated to `<ListItemCard>` from
+ * `@/src/components/common`. Chrome rule (Story 14-1) preserved: titlePrimary
+ * is EN (`item.title`); titleSecondary is the French topic name (`item.titleFr`)
+ * \u2014 which is content, not chrome, since the topic name is what the learner is
+ * learning to discuss. The CEFR badge + difficulty dots become the rightContent
+ * slot.
+ */
 function CardItem({ item, index, onPress }: CardItemProps) {
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(18);
-  const scale = useSharedValue(1);
-
-  useEffect(() => {
-    const delay = index * 60;
-    const timer = setTimeout(() => {
-      opacity.value = withTiming(1, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-      translateY.value = withTiming(0, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-    }, delay);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const animStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
-  }));
-
   const stripColor = LEVEL_COLORS[item.cefr_level] ?? Colors.primary;
   const emoji = TOPIC_EMOJIS[item.titleFr] ?? "\uD83D\uDCAC";
   const difficultyDots = getDifficultyDots(item.cefr_level);
 
   return (
-    <Reanimated.View style={animStyle}>
-      <TouchableOpacity
-        onPress={() => onPress(item)}
-        onPressIn={() => {
-          scale.value = withTiming(0.97, { duration: 100 });
-        }}
-        onPressOut={() => {
-          scale.value = withTiming(1.0, { duration: 150 });
-        }}
-        activeOpacity={1}
-        accessibilityRole="button"
-        accessibilityLabel={`Topic: ${item.titleFr} - ${item.title}. ${item.description}`}
-        accessibilityHint="Double tap to start a conversation on this topic"
-        className="bg-white rounded-2xl mb-3 mx-5 p-4 pl-[22px]"
-        style={{
-          shadowColor: Colors.primary,
-          shadowOpacity: 0.08,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 3,
-        }}
-      >
-        {/* Left accent strip */}
-        <View
-          className="absolute left-0 top-2 bottom-2 w-1 rounded-full"
-          style={{ backgroundColor: stripColor }}
-        />
-
-        {/* Content row */}
-        <View className="flex-row items-center">
-          {/* Icon circle */}
-          <View
-            className="w-11 h-11 rounded-full justify-center items-center mr-3"
-            style={{ backgroundColor: stripColor + "20" }}
-          >
-            <Text className="text-[22px]">{emoji}</Text>
-          </View>
-
-          {/* Titles */}
-          <View className="flex-1">
-            <Text className="text-base font-bold text-primary" numberOfLines={1}>
-              {item.titleFr}
-            </Text>
-            <Text
-              className="text-[13px] mt-[1px]"
-              style={{ color: Colors.textSecondary }}
-              numberOfLines={1}
+    <View className="mx-5 mb-3">
+      <ListItemCard
+        leftStripColor={stripColor}
+        iconEmoji={emoji}
+        iconColor={stripColor}
+        titlePrimary={item.title}
+        titleSecondary={item.titleFr}
+        description={item.description}
+        rightContent={
+          <View className="items-end gap-2">
+            <View
+              className="rounded-lg px-2 py-[3px]"
+              style={{ backgroundColor: stripColor + "22" }}
             >
-              {item.title}
-            </Text>
+              <Text className="text-[11px] font-bold" style={{ color: stripColor }}>
+                {item.cefr_level}
+              </Text>
+            </View>
+            <View className="flex-row gap-1">
+              {[1, 2, 3].map((dot) => (
+                <View
+                  key={dot}
+                  className="w-[7px] h-[7px] rounded-full"
+                  style={{
+                    backgroundColor: dot <= difficultyDots ? stripColor : Colors.gray300,
+                  }}
+                />
+              ))}
+            </View>
           </View>
-        </View>
-
-        {/* Description */}
-        <Text
-          className="text-[13px] leading-[19px] mt-2"
-          style={{ color: Colors.textTertiary }}
-          numberOfLines={2}
-        >
-          {item.description}
-        </Text>
-
-        {/* Footer row */}
-        <View className="flex-row justify-between items-center mt-[10px]">
-          {/* CEFR badge */}
-          <View className="rounded-lg px-2 py-[3px]" style={{ backgroundColor: stripColor + "22" }}>
-            <Text className="text-[11px] font-bold" style={{ color: stripColor }}>
-              {item.cefr_level}
-            </Text>
-          </View>
-
-          {/* Difficulty dots */}
-          <View className="flex-row gap-1">
-            {[1, 2, 3].map((dot) => (
-              <View
-                key={dot}
-                className="w-[7px] h-[7px] rounded-full"
-                style={{
-                  backgroundColor: dot <= difficultyDots ? stripColor : Colors.gray300,
-                }}
-              />
-            ))}
-          </View>
-        </View>
-      </TouchableOpacity>
-    </Reanimated.View>
+        }
+        delay={index * 60}
+        accessibilityLabel={`Topic: ${item.title}, ${item.titleFr}. ${item.description}`}
+        accessibilityHint="Double tap to start a conversation on this topic"
+        onPress={() => onPress(item)}
+      />
+    </View>
   );
 }
 
