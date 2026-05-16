@@ -92,7 +92,7 @@ export default function MockTestResultsScreen() {
 
         {/* CEFR Badge */}
         <View
-          className="px-5 py-2 rounded-[20px] mt-4"
+          className="px-5 py-2 rounded-full mt-4"
           style={{
             backgroundColor: LEVEL_COLORS[results.overallCefrLevel as CEFRLevel] ?? Colors.gray500,
           }}

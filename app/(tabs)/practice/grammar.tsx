@@ -251,7 +251,7 @@ export default function GrammarScreen() {
               );
             })}
             {isDrillRevealed && (
-              <View className="bg-primary/5 rounded-[10px] p-3 mt-2">
+              <View className="bg-primary/5 rounded-lg p-3 mt-2">
                 <Text className="text-[13px] leading-[19px]" style={{ color: Colors.gray700 }}>
                   {drillQuestion.explanation}
                 </Text>

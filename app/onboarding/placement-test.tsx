@@ -299,7 +299,7 @@ function LoadingPulse() {
     >
       {/* Inner ring */}
       <View
-        className="w-[86px] h-[86px] rounded-[43px] justify-center items-center"
+        className="w-[86px] h-[86px] rounded-full justify-center items-center"
         style={{ backgroundColor: Colors.accent15 }}
       >
         <Text style={{ fontSize: Typography.display.fontSize, color: Colors.accent }}>?</Text>
@@ -607,12 +607,12 @@ export default function PlacementTestScreen() {
       <View className="flex-1 bg-surface justify-center items-center px-8">
         {/* Error circle */}
         <View
-          className="w-[90px] h-[90px] rounded-[45px] bg-error justify-center items-center mb-6"
+          className="w-[90px] h-[90px] rounded-full bg-error justify-center items-center mb-6"
           style={{
             shadowColor: Colors.error,
-            shadowOpacity: 0.35,
-            shadowRadius: 16,
-            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.35, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke failed-test icon glow per Q6
+            shadowRadius: 16, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with failed-test glow above
+            shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
             elevation: 8,
           }}
         >
@@ -638,7 +638,7 @@ export default function PlacementTestScreen() {
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel="Go back"
-            className="rounded-[14px] py-4 px-8"
+            className="rounded-2xl py-4 px-8"
             style={{ backgroundColor: Colors.gray100 }}
           >
             <Text className="text-base font-bold" style={{ color: Colors.primary }}>
@@ -650,12 +650,12 @@ export default function PlacementTestScreen() {
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel="Retry generating placement test"
-            className="bg-primary rounded-[14px] py-4 px-8"
+            className="bg-primary rounded-2xl py-4 px-8"
             style={{
               shadowColor: Colors.primary,
-              shadowOpacity: 0.25,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 5 },
+              shadowOpacity: 0.25, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke colored CTA glow per Q6
+              shadowRadius: 12, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with colored CTA glow above
+              shadowOffset: { width: 0, height: 5 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
               elevation: 6,
             }}
           >
@@ -688,9 +688,9 @@ export default function PlacementTestScreen() {
             borderBottomLeftRadius: 40,
             borderBottomRightRadius: 40,
             shadowColor: Colors.bgDark,
-            shadowOpacity: 0.3,
-            shadowRadius: 20,
-            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke onboarding hero shadow per Q6
+            shadowRadius: 20, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with onboarding hero shadow above
+            shadowOffset: { width: 0, height: 8 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
             elevation: 10,
           }}
         >
@@ -706,9 +706,9 @@ export default function PlacementTestScreen() {
             style={{
               backgroundColor: levelColor,
               shadowColor: levelColor,
-              shadowOpacity: 0.5,
-              shadowRadius: 20,
-              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.5, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke determined-level icon glow per Q6
+              shadowRadius: 20, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with determined-level icon glow above
+              shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
               elevation: 10,
             }}
           >
@@ -737,14 +737,14 @@ export default function PlacementTestScreen() {
         >
           {/* Summary card */}
           <View
-            className="bg-white rounded-[20px] p-5 mb-4"
+            className="bg-white rounded-2xl p-5 mb-4"
             style={{
               borderWidth: 1,
               borderColor: Colors.border,
               shadowColor: Colors.primary,
-              shadowOpacity: 0.07,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 3 },
+              shadowOffset: { width: 0, height: 3 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+              shadowOpacity: 0.07, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke placement-test summary-card shadow (radius 10 / offset h:3) preserved per Story 14-4 R1-P3
+              shadowRadius: 10, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke summary-card shadow above
               elevation: 3,
             }}
           >
@@ -765,7 +765,7 @@ export default function PlacementTestScreen() {
             <View className="flex-row gap-[10px] flex-wrap">
               {masteryLevel && (
                 <View
-                  className="flex-row items-center rounded-[10px] px-3 py-[7px] gap-[6px]"
+                  className="flex-row items-center rounded-lg px-3 py-[7px] gap-[6px]"
                   style={{ backgroundColor: Colors.success10 }}
                 >
                   <Text className="text-sm">&#10003;</Text>
@@ -776,7 +776,7 @@ export default function PlacementTestScreen() {
               )}
               {struggleLevel && (
                 <View
-                  className="flex-row items-center rounded-[10px] px-3 py-[7px] gap-[6px]"
+                  className="flex-row items-center rounded-lg px-3 py-[7px] gap-[6px]"
                   style={{ backgroundColor: Colors.accent10 }}
                 >
                   <Text className="text-sm">&#9888;</Text>
@@ -790,14 +790,14 @@ export default function PlacementTestScreen() {
 
           {/* Performance per-level card */}
           <View
-            className="bg-white rounded-[20px] p-5 mb-5"
+            className="bg-white rounded-2xl p-5 mb-5"
             style={{
               borderWidth: 1,
               borderColor: Colors.border,
               shadowColor: Colors.primary,
-              shadowOpacity: 0.07,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 3 },
+              shadowOffset: { width: 0, height: 3 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+              shadowOpacity: 0.07, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke placement-test summary-card shadow preserved per Story 14-4 R1-P3
+              shadowRadius: 10, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke summary-card shadow above
               elevation: 3,
             }}
           >
@@ -903,9 +903,9 @@ export default function PlacementTestScreen() {
             style={{
               opacity: isSubmitting ? 0.7 : 1,
               shadowColor: Colors.accent,
-              shadowOpacity: 0.35,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.35, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke colored CTA glow per Q6
+              shadowRadius: 12, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with colored CTA glow above
+              shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
               elevation: 6,
             }}
           >
@@ -929,9 +929,9 @@ export default function PlacementTestScreen() {
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
           shadowColor: Colors.bgDark,
-          shadowOpacity: 0.3,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke onboarding hero shadow per Q6
+          shadowRadius: 16, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with onboarding hero shadow above
+          shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
           elevation: 10,
         }}
       >
@@ -969,7 +969,7 @@ export default function PlacementTestScreen() {
           accessibilityLabel={`Level ${currentQuestionLevel}, ${CEFR_LEVELS[currentQuestionLevel].name}`}
         >
           <View
-            className="px-3 py-[5px] rounded-[20px]"
+            className="px-3 py-[5px] rounded-full"
             style={{ backgroundColor: LEVEL_COLORS[currentQuestionLevel] }}
           >
             <Text className="text-white font-bold text-xs">{currentQuestionLevel}</Text>
@@ -1019,9 +1019,9 @@ export default function PlacementTestScreen() {
             style={{
               backgroundColor: stoppedEarly ? Colors.accent : Colors.primary,
               shadowColor: stoppedEarly ? Colors.accent : Colors.primary,
-              shadowOpacity: 0.25,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.25, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke colored CTA glow per Q6
+              shadowRadius: 12, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with colored CTA glow above
+              shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
               elevation: 6,
             }}
           >

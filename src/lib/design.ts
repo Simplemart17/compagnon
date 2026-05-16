@@ -317,6 +317,27 @@ export const Shadows = {
     shadowRadius: 4,
     elevation: 1,
   } as ViewStyle,
+
+  /**
+   * Inverted shadow for bottom-sheet surfaces that rise from below the
+   * viewport (auth + forgot-password rounded-top cards). The negative
+   * `height` casts the soft glow UPWARD above the sheet edge — the
+   * load-bearing semantic that distinguishes this token from
+   * `.card` / `.hero` / `.subtle` (all positive-height).
+   *
+   * Uses `Colors.shadow` (neutral black) rather than `Colors.primary`
+   * because the shadow falls onto the dark auth-screen hero gradient
+   * where a navy-tinted shadow would visually disappear. Pre-14-4 the
+   * 3 auth screens all anchored on `Colors.shadow`; this token preserves
+   * that color invariant verbatim. Story 14-4 + R1-P21.
+   */
+  bottomSheet: {
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 8,
+  } as ViewStyle,
 } as const;
 
 // ---------------------------------------------------------------------------

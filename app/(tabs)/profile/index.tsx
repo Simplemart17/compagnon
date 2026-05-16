@@ -49,7 +49,7 @@ interface CEFRBadgePillProps {
 
 function CEFRBadgePill({ level }: CEFRBadgePillProps) {
   return (
-    <View className="rounded-[10px] px-2.5 py-1" style={{ backgroundColor: LEVEL_COLORS[level] }}>
+    <View className="rounded-lg px-2.5 py-1" style={{ backgroundColor: LEVEL_COLORS[level] }}>
       <Text className="text-xs font-bold text-white">{level}</Text>
     </View>
   );
@@ -214,7 +214,7 @@ export default function ProfileScreen() {
             {/* Streak chip */}
             {progress.streakDays > 0 ? (
               <View
-                className="mt-3 flex-row items-center gap-[5px] rounded-[20px] border px-3.5 py-1.5"
+                className="mt-3 flex-row items-center gap-[5px] rounded-full border px-3.5 py-1.5"
                 style={{
                   backgroundColor: skillTint(Colors.accent, 0.18),
                   borderColor: skillTint(Colors.accent, 0.35),
@@ -307,7 +307,7 @@ export default function ProfileScreen() {
             <View className="mb-2 flex-row items-center gap-2.5">
               {/* Level badge */}
               <View
-                className="rounded-[10px] px-3 py-1"
+                className="rounded-lg px-3 py-1"
                 style={{ backgroundColor: LEVEL_COLORS[level] }}
               >
                 <Text className="text-[13px] font-bold text-white">{level}</Text>

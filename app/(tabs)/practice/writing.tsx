@@ -238,7 +238,7 @@ export default function WritingScreen() {
               Suggestions
             </Text>
             {eval_.suggestions.map((suggestion, i) => (
-              <View key={i} className="bg-primary/5 rounded-[10px] p-3 mb-1.5">
+              <View key={i} className="bg-primary/5 rounded-lg p-3 mb-1.5">
                 <Text className="text-sm text-primary leading-5">{suggestion}</Text>
               </View>
             ))}

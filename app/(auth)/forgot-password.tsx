@@ -20,7 +20,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import { supabase } from "@/src/lib/supabase";
-import { Colors } from "@/src/lib/design";
+import { Colors, Shadows } from "@/src/lib/design";
 import { captureError } from "@/src/lib/sentry";
 import { Icon } from "@/src/components/common/Icon";
 
@@ -146,11 +146,7 @@ export default function ForgotPasswordScreen() {
               paddingHorizontal: 24,
               paddingTop: 32,
               paddingBottom: insets.bottom + 16,
-              shadowColor: Colors.shadow,
-              shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
-              elevation: 8,
+              ...Shadows.bottomSheet,
             },
             cardAnimatedStyle,
           ]}
@@ -166,7 +162,7 @@ export default function ForgotPasswordScreen() {
           {/* Email Input */}
           <View className="mb-6">
             <View
-              className="flex-row items-center bg-white rounded-[14px] py-4 px-4"
+              className="flex-row items-center bg-white rounded-2xl py-4 px-4"
               style={{
                 borderWidth: 1.5,
                 borderColor: emailFocused ? Colors.accent : Colors.gray200,

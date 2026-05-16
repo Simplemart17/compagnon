@@ -140,14 +140,20 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
         {isUser ? "You" : "Companion"}
       </Text>
 
-      {/* Bubble */}
+      {/* Bubble — explicit corner radii preserve pre-14-4 byte-identical
+          rendering on multi-line bubbles. Story 14-4 R1-P14: `rounded-full`
+          alone would clamp bottom corners to height/2, scaling with content
+          height. Pinning all 4 corners ensures the 20 / 6 / 20 / 20 pattern
+          renders consistently regardless of bubble length. */}
       <View
-        className="rounded-[20px] border px-3.5 py-[11px]"
+        className="border px-3.5 py-[11px]"
         style={{
           maxWidth: isUser ? 280 : 295,
           backgroundColor: isUser ? Colors.bubbleUser : Colors.bubbleAi,
           borderTopRightRadius: isUser ? 6 : 20,
           borderTopLeftRadius: isUser ? 20 : 6,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
           borderColor: isUser ? Colors.bubbleUserBorder : Colors.bubbleAiBorder,
         }}
       >
@@ -205,10 +211,13 @@ function TypingIndicator() {
         Companion
       </Text>
       <View
-        className="flex-row items-center gap-1.5 rounded-[20px] border px-4 py-3.5"
+        className="flex-row items-center gap-1.5 border px-4 py-3.5"
         style={{
           backgroundColor: Colors.bubbleAi,
           borderTopLeftRadius: 6,
+          borderTopRightRadius: 20,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
           borderColor: Colors.bubbleAiBorder,
         }}
       >
@@ -246,10 +255,13 @@ function PendingAiBubble({ text }: { text: string }) {
         Companion
       </Text>
       <View
-        className="rounded-[20px] border px-3.5 py-[11px]"
+        className="border px-3.5 py-[11px]"
         style={{
           backgroundColor: Colors.bubbleAi,
           borderTopLeftRadius: 6,
+          borderTopRightRadius: 20,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
           borderColor: Colors.bubbleAiBorder,
         }}
       >

@@ -501,7 +501,7 @@ export default function ConversationSessionScreen() {
 
         {/* Text Input — between waveform area and bottom controls */}
         {showTextInput && conversation.status === "connected" && (
-          <View className="bg-white/[0.08] rounded-[28px] px-4 py-2 mx-4 mb-3 flex-row items-center gap-2">
+          <View className="bg-white/[0.08] rounded-full px-4 py-2 mx-4 mb-3 flex-row items-center gap-2">
             <TextInput
               value={textInput}
               onChangeText={setTextInput}
@@ -559,9 +559,9 @@ export default function ConversationSessionScreen() {
                 className="bg-success w-20 h-20 rounded-full justify-center items-center"
                 style={{
                   shadowColor: Colors.success,
-                  shadowOpacity: 0.5,
-                  shadowRadius: 20,
-                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.5, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke start-conversation glow per Q6
+                  shadowRadius: 20, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with start-conversation glow above
+                  shadowOffset: { width: 0, height: 6 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                   elevation: 10,
                 }}
               >
@@ -609,9 +609,9 @@ export default function ConversationSessionScreen() {
                 className="bg-error rounded-full px-6 py-3"
                 style={{
                   shadowColor: Colors.error,
-                  shadowOpacity: 0.45,
-                  shadowRadius: 14,
-                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.45, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke end-conversation glow per Q6
+                  shadowRadius: 14, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with end-conversation glow above
+                  shadowOffset: { width: 0, height: 4 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
                   elevation: 8,
                 }}
               >

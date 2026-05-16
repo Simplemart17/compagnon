@@ -64,9 +64,9 @@ function SettingsCard({ children, marginBottom = 12 }: SettingsCardProps) {
       style={{
         marginBottom,
         shadowColor: Colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.07,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+        shadowOpacity: 0.07, // eslint-disable-line no-restricted-syntax -- design-token-exempt: SettingsCard bespoke shadowColor (Colors.shadow gray, not Shadows.card navy) preserved per Story 14-4 R1-P4
+        shadowRadius: 8, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with SettingsCard bespoke shadow above
         elevation: 3,
       }}
     >
@@ -457,7 +457,7 @@ export default function SettingsScreen() {
             {editingName ? (
               <View>
                 <TextInput
-                  className="rounded-[10px] border border-surface-300 bg-surface px-3.5 text-base text-primary"
+                  className="rounded-lg border border-surface-300 bg-surface px-3.5 text-base text-primary"
                   style={{
                     paddingVertical: Platform.OS === "ios" ? 12 : 10,
                   }}
@@ -475,7 +475,7 @@ export default function SettingsScreen() {
                     onPress={handleSaveName}
                     accessibilityRole="button"
                     accessibilityLabel="Save display name"
-                    className="items-center rounded-[10px] bg-accent px-5 py-2.5"
+                    className="items-center rounded-lg bg-accent px-5 py-2.5"
                     style={{ minHeight: 44, justifyContent: "center" }}
                   >
                     <Text className="text-sm font-semibold text-white">Save</Text>
@@ -484,7 +484,7 @@ export default function SettingsScreen() {
                     onPress={handleCancelNameEdit}
                     accessibilityRole="button"
                     accessibilityLabel="Cancel editing display name"
-                    className="items-center rounded-[10px] bg-surface-200 px-5 py-2.5"
+                    className="items-center rounded-lg bg-surface-200 px-5 py-2.5"
                     style={{ minHeight: 44, justifyContent: "center" }}
                   >
                     <Text className="text-sm font-semibold" style={{ color: Colors.gray700 }}>
@@ -639,7 +639,7 @@ export default function SettingsScreen() {
                   Type &quot;DELETE&quot; to confirm account deletion
                 </Text>
                 <TextInput
-                  className="rounded-[10px] border border-error bg-surface px-3.5 text-base text-primary"
+                  className="rounded-lg border border-error bg-surface px-3.5 text-base text-primary"
                   style={{
                     paddingVertical: Platform.OS === "ios" ? 12 : 10,
                   }}
@@ -659,7 +659,7 @@ export default function SettingsScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Permanently delete account"
                     accessibilityState={{ disabled: deletingAccount, busy: deletingAccount }}
-                    className="items-center rounded-[10px] bg-error px-5 py-2.5"
+                    className="items-center rounded-lg bg-error px-5 py-2.5"
                     style={{
                       minHeight: 44,
                       justifyContent: "center",
@@ -675,7 +675,7 @@ export default function SettingsScreen() {
                     disabled={deletingAccount}
                     accessibilityRole="button"
                     accessibilityLabel="Cancel account deletion"
-                    className="items-center rounded-[10px] bg-surface-200 px-5 py-2.5"
+                    className="items-center rounded-lg bg-surface-200 px-5 py-2.5"
                     style={{
                       minHeight: 44,
                       justifyContent: "center",

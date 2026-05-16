@@ -165,7 +165,7 @@ export const SkillCard = React.memo(function SkillCard({
 
         {/* Icon circle (Story 14-3: iconNode overrides emoji when provided) */}
         <View
-          className="w-14 h-14 rounded-[28px] justify-center items-center"
+          className="w-14 h-14 rounded-full justify-center items-center"
           style={{ backgroundColor: skillTint(stripColor, 0.09) }}
         >
           {iconNode !== undefined ? (
@@ -188,7 +188,7 @@ export const SkillCard = React.memo(function SkillCard({
 
         {/* Arrow circle */}
         <View
-          className="w-7 h-7 rounded-[14px] justify-center items-center"
+          className="w-7 h-7 rounded-2xl justify-center items-center"
           style={{ backgroundColor: skillTint(accentColor, 0.09) }}
         >
           <Text className="text-sm font-bold" style={{ color: accentColor }}>

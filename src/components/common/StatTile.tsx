@@ -40,9 +40,9 @@ export const statTileStaticStyle: ViewStyle = Object.freeze({
   paddingHorizontal: 10,
   paddingVertical: 14,
   shadowColor: Colors.shadow,
-  shadowOffset: { width: 0, height: 3 },
-  shadowOpacity: 0.1,
-  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 3 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+  shadowOpacity: 0.1, // eslint-disable-line no-restricted-syntax -- design-token-exempt: StatTile bespoke shadow tone preserved verbatim by Story 13-7
+  shadowRadius: 8, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with StatTile bespoke shadow above
   elevation: 6,
 }) as ViewStyle;
 

@@ -350,7 +350,7 @@ export default function ReadingScreen() {
               onPress={() => setSelectedWord(null)}
               accessibilityRole="button"
               accessibilityLabel="Close"
-              className="mt-4 bg-surface-200 rounded-[10px] py-2.5 items-center"
+              className="mt-4 bg-surface-200 rounded-lg py-2.5 items-center"
             >
               <Text className="font-semibold text-primary">Close</Text>
             </TouchableOpacity>

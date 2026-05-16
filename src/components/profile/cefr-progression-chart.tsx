@@ -129,12 +129,10 @@ function CEFRProgressionChartInner({
         backgroundColor: Colors.surfaceWhite,
         borderRadius: 16,
         padding: 16,
-        // Shadow iOS
         shadowColor: Colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        // Shadow Android
+        shadowOffset: { width: 0, height: 2 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+        shadowOpacity: 0.06, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke chart-card shadow tone (Colors.shadow gray, not Shadows.card navy) preserved per Story 14-4 R1-P2
+        shadowRadius: 6, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke chart-card shadow above
         elevation: 3,
       }}
     >
@@ -316,9 +314,9 @@ function CEFRProgressionChartInner({
                   borderColor: Colors.accent,
                   // Shadow for depth
                   shadowColor: Colors.accent,
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 3,
+                  shadowOffset: { width: 0, height: 1 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+                  shadowOpacity: 0.3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke chart-marker dot shadow per Q6
+                  shadowRadius: 3, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with chart-marker dot shadow above
                   elevation: 2,
                 }}
               />
@@ -393,12 +391,10 @@ function CEFRProgressionEmpty() {
         backgroundColor: Colors.surfaceWhite,
         borderRadius: 16,
         padding: 20,
-        // Shadow iOS
         shadowColor: Colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        // Shadow Android
+        shadowOffset: { width: 0, height: 2 }, // design-token-exempt: paired with bespoke shadow above (Story 14-4 R1-P9)
+        shadowOpacity: 0.06, // eslint-disable-line no-restricted-syntax -- design-token-exempt: bespoke chart-card shadow tone preserved per Story 14-4 R1-P2
+        shadowRadius: 6, // eslint-disable-line no-restricted-syntax -- design-token-exempt: paired with bespoke chart-card shadow above
         elevation: 3,
       }}
     >
