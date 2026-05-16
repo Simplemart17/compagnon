@@ -44,6 +44,7 @@ import { AudioWaveform } from "@/src/components/conversation/AudioWaveform";
 import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
 import { ProcessingIndicator } from "@/src/components/conversation/ProcessingIndicator";
+import { Icon } from "@/src/components/common/Icon";
 import { SessionComparison } from "@/src/components/feedback/SessionComparison";
 import { MilestoneBanner } from "@/src/components/feedback/MilestoneBanner";
 import { ErrorJourneyBar } from "@/src/components/home/ErrorJourneyBar";
@@ -897,7 +898,9 @@ export default function ConversationSessionScreen() {
                       {/* Strengths */}
                       {conversation.feedback.strengths.map((s, i) => (
                         <View key={`s-${i}`} style={{ flexDirection: "row", marginBottom: 4 }}>
-                          <Text style={{ color: Colors.success, marginRight: 6 }}>✓</Text>
+                          <View style={{ marginRight: 6, marginTop: 2 }}>
+                            <Icon name="check" size={14} color={Colors.success} />
+                          </View>
                           <Text
                             style={{
                               ...Typography.bodySecondary,

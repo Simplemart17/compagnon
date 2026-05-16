@@ -19,6 +19,7 @@ import { CEFRProgressionChart } from "@/src/components/profile/cefr-progression-
 import { CEFR_LEVELS } from "@/src/types/cefr";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, SKILL_COLORS, skillTint } from "@/src/lib/design";
+import { Icon } from "@/src/components/common/Icon";
 import { ListItemCard } from "@/src/components/common/ListItemCard";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { StatTile } from "@/src/components/common/StatTile";
@@ -220,7 +221,8 @@ export default function ProfileScreen() {
                 }}
                 accessibilityLabel={`${progress.streakDays} day streak`}
               >
-                <Text className="text-[15px]">{"🔥"}</Text>
+                {/* Story 14-3 Q3: streak chrome 🔥 → Icon name="zap" (Feather lacks Flame). */}
+                <Icon name="zap" size={14} color={Colors.accentText} />
                 <Text style={{ color: Colors.accentText }} className="text-[13px] font-bold">
                   {progress.streakDays} jour{progress.streakDays !== 1 ? "s" : ""}
                 </Text>

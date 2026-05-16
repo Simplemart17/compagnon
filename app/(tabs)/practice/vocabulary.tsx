@@ -32,6 +32,7 @@ import { supabase } from "@/src/lib/supabase";
 import { LEVEL_COLORS } from "@/src/lib/constants";
 import { Colors, Typography } from "@/src/lib/design";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { Icon } from "@/src/components/common/Icon";
 import { calculateNextReview } from "@/src/lib/srs";
 import type { ReviewQuality, SRSState } from "@/src/lib/srs";
 import type { CEFRLevel } from "@/src/types/cefr";
@@ -380,7 +381,9 @@ export default function VocabularyScreen() {
   if (words.length === 0) {
     return (
       <View className="flex-1 bg-surface justify-center items-center p-6">
-        <Text className="text-[64px] mb-4">{"📚"}</Text>
+        <View className="mb-4">
+          <Icon name="book" size={64} color={Colors.accent} />
+        </View>
         <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
           Build your word bank!
         </Text>
@@ -443,7 +446,9 @@ export default function VocabularyScreen() {
     if (reviewComplete) {
       return (
         <View className="flex-1 justify-center items-center p-6">
-          <Text className="text-[64px] mb-4">{"🎉"}</Text>
+          <View className="mb-4">
+            <Icon name="award" size={64} color={Colors.accent} />
+          </View>
           <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
             All Caught Up!
           </Text>
@@ -466,7 +471,9 @@ export default function VocabularyScreen() {
     if (dueWords.length === 0) {
       return (
         <View className="flex-1 justify-center items-center p-6">
-          <Text className="text-[64px] mb-4">{"✅"}</Text>
+          <View className="mb-4">
+            <Icon name="check-circle" size={64} color={Colors.success} />
+          </View>
           <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
             You{"'"}re all caught up!
           </Text>

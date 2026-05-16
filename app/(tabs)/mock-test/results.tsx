@@ -11,6 +11,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { LEVEL_COLORS, TCF } from "@/src/lib/constants";
 import { Colors, Typography } from "@/src/lib/design";
 import type { CEFRLevel } from "@/src/types/cefr";
+import { Icon, type IconName } from "@/src/components/common/Icon";
 
 interface SectionResult {
   score: number;
@@ -27,11 +28,11 @@ interface TestResults {
   testType: string;
 }
 
-const SECTION_LABELS: Record<string, { name: string; emoji: string }> = {
-  listening: { name: "Listening Comprehension", emoji: "\uD83C\uDFA7" },
-  reading: { name: "Reading Comprehension", emoji: "\uD83D\uDCD6" },
+const SECTION_LABELS: Record<string, { name: string; iconName: IconName }> = {
+  listening: { name: "Listening Comprehension", iconName: "headphones" },
+  reading: { name: "Reading Comprehension", iconName: "book-open" },
   // Legacy — TCF Canada has no Grammar section; kept for historical results only.
-  grammar: { name: "Language Structures", emoji: "\uD83E\uDDE0" },
+  grammar: { name: "Language Structures", iconName: "activity" },
 };
 
 function getScoreColor(tcfScore: number): string {
@@ -158,7 +159,9 @@ export default function MockTestResultsScreen() {
             >
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center gap-2">
-                  <Text className="text-xl">{meta?.emoji}</Text>
+                  {meta !== undefined && (
+                    <Icon name={meta.iconName} size={20} color={Colors.primary} />
+                  )}
                   <View>
                     <Text className="text-base font-bold text-primary">{meta?.name}</Text>
                     <Text className="text-[11px]" style={{ color: Colors.gray500 }}>

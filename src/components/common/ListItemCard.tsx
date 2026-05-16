@@ -60,6 +60,14 @@ export interface ListItemCardProps {
   iconEmoji?: string;
   /** Required if `iconEmoji` provided — drives the circle tint. */
   iconColor?: string;
+  /**
+   * Story 14-3: optional icon-circle override. When provided, renders this
+   * React node in the icon circle in place of the `iconEmoji` `<Text>`. The
+   * `iconEmoji` path stays for the 12 conversation topic cards (preserve
+   * `TOPIC_EMOJIS` as learning content per Story 14-1 chrome/content rule).
+   * `iconColor` is still required (drives the circle tint).
+   */
+  iconNode?: React.ReactNode;
   /** Optional colored left vertical strip (1px wide). */
   leftStripColor?: string;
   /** Optional right-side content (CEFR badge, count pill, difficulty dots, etc). */
@@ -84,6 +92,7 @@ function ListItemCardImpl({
   description,
   iconEmoji,
   iconColor,
+  iconNode,
   leftStripColor,
   rightContent,
   progressBar,
@@ -120,8 +129,8 @@ function ListItemCardImpl({
   // when progressBar is set.
   const renderContentRow = (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 14, flex: 1 }}>
-      {/* Optional icon circle */}
-      {iconEmoji !== undefined && iconColor !== undefined && (
+      {/* Optional icon circle (Story 14-3: iconNode overrides iconEmoji) */}
+      {(iconNode !== undefined || iconEmoji !== undefined) && iconColor !== undefined && (
         <View
           style={{
             width: 52,
@@ -132,7 +141,7 @@ function ListItemCardImpl({
             backgroundColor: skillTint(iconColor, 0.09),
           }}
         >
-          <Text style={{ fontSize: 24 }}>{iconEmoji}</Text>
+          {iconNode !== undefined ? iconNode : <Text style={{ fontSize: 24 }}>{iconEmoji}</Text>}
         </View>
       )}
 

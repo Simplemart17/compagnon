@@ -28,6 +28,7 @@ import { useProgress } from "@/src/hooks/use-progress";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, Radii, Shadows, Typography } from "@/src/lib/design";
 import { ActivityBar } from "@/src/components/common/ActivityBar";
+import { Icon } from "@/src/components/common/Icon";
 import { useAuthStore } from "@/src/store/auth-store";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -105,7 +106,7 @@ export function ConversationCard({ onPress }: ConversationCardProps) {
           borderColor: Colors.accent50,
         }}
       >
-        <Text className="text-[24px]">{"\uD83C\uDF99\uFE0F"}</Text>
+        <Icon name="mic" size={24} color={Colors.accent} />
       </View>
 
       {/* Text content */}
@@ -391,7 +392,7 @@ export default function HomeScreen() {
                   title={item.title}
                   subtitle={item.subtitle}
                   iconColor={item.iconColor}
-                  iconEmoji={item.iconEmoji}
+                  iconName={item.iconName}
                   badge={item.badge}
                   disabled={!isConnected}
                   onPress={() => handlePlanItemPress(item.route, item.params)}

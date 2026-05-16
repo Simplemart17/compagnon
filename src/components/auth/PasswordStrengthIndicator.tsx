@@ -47,6 +47,7 @@ import React, { useMemo } from "react";
 import { View, Text } from "react-native";
 
 import { Colors, Typography } from "@/src/lib/design";
+import { Icon } from "@/src/components/common/Icon";
 import {
   computePasswordStrengthLabel,
   passwordPolicyReasonToMessage,
@@ -149,20 +150,31 @@ function PasswordStrengthIndicatorImpl({ password }: PasswordStrengthIndicatorPr
               importantForAccessibility="yes"
               style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
             >
-              <Text
+              <View
                 importantForAccessibility="no"
                 accessibilityElementsHidden={true}
-                style={[
-                  Typography.caption,
-                  {
-                    color: met ? Colors.success : Colors.textTertiary,
-                    fontWeight: "700",
-                    width: 14,
-                  },
-                ]}
+                style={{
+                  width: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                {met ? "✓" : "·"}
-              </Text>
+                {met ? (
+                  <Icon name="check" size={12} color={Colors.success} />
+                ) : (
+                  <Text
+                    style={[
+                      Typography.caption,
+                      {
+                        color: Colors.textTertiary,
+                        fontWeight: "700",
+                      },
+                    ]}
+                  >
+                    {"·"}
+                  </Text>
+                )}
+              </View>
               <Text
                 importantForAccessibility="no"
                 accessibilityElementsHidden={true}

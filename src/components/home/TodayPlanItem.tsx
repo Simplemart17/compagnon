@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { Icon, type IconName } from "@/src/components/common/Icon";
 import { Colors, Radii, Typography, skillTint } from "@/src/lib/design";
 import { hapticLight } from "@/src/lib/haptics";
 import { captureError } from "@/src/lib/sentry";
@@ -23,8 +24,19 @@ export interface TodayPlanItemProps {
   subtitle: string;
   /** Icon color for tinted backgrounds */
   iconColor: string;
-  /** Emoji icon for the activity */
-  iconEmoji: string;
+  /**
+   * Story 14-3: typed icon name (rendered via shared `<Icon>` component).
+   * When present, takes precedence over `iconEmoji`. One of the two MUST
+   * be provided.
+   */
+  iconName?: IconName;
+  /**
+   * Legacy: emoji fallback. Preserved for content-emoji surfaces (none
+   * remain post-14-3 inside `use-daily-briefing` — keeping the prop so
+   * future content surfaces can opt-in to emoji rendering without losing
+   * type safety).
+   */
+  iconEmoji?: string;
   /** Badge type determining color and label */
   badge: "due" | "suggested" | "error";
   /** Callback when the item is pressed */
@@ -55,6 +67,7 @@ export const TodayPlanItem = React.memo(function TodayPlanItem({
   title,
   subtitle,
   iconColor,
+  iconName,
   iconEmoji,
   badge,
   onPress,
@@ -124,7 +137,7 @@ export const TodayPlanItem = React.memo(function TodayPlanItem({
           animatedStyle,
         ]}
       >
-        {/* Icon container */}
+        {/* Icon container (Story 14-3: iconName takes precedence over iconEmoji) */}
         <View
           style={{
             width: 28,
@@ -135,7 +148,11 @@ export const TodayPlanItem = React.memo(function TodayPlanItem({
             justifyContent: "center",
           }}
         >
-          <Text style={{ fontSize: 14 }}>{iconEmoji}</Text>
+          {iconName !== undefined ? (
+            <Icon name={iconName} size={14} color={iconColor} />
+          ) : (
+            <Text style={{ fontSize: 14 }}>{iconEmoji ?? ""}</Text>
+          )}
         </View>
 
         {/* Text content */}

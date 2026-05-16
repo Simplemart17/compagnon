@@ -1,0 +1,84 @@
+import React from "react";
+import { Feather } from "@expo/vector-icons";
+
+import { Colors } from "@/src/lib/design";
+
+/**
+ * Story 14-3: centralised icon-set wrapper.
+ *
+ * Closes audit roadmap line 272 (icon system replacement). Wraps
+ * `@expo/vector-icons.Feather` (already transitive via Expo SDK 55 — zero
+ * install cost) so the icon-set choice is centralised in 1 file. Future
+ * swap (e.g., to `lucide-react-native`) is 1-file change, not 33-site.
+ *
+ * Mirrors the consolidation discipline from Story 14-2 (SkillCard +
+ * ListItemCard single source-of-truth) and the chrome/content split from
+ * Story 14-1 (chrome icons get real icons; learning-content emoji stay
+ * verbatim per `TOPIC_EMOJIS` + onboarding goal emoji).
+ *
+ * **Why a typed `IconName` union?** `<Feather name="mial" />` (typo) would
+ * silently render a missing-glyph placeholder at runtime; the union catches
+ * the typo at `tsc` time. Adding a new icon usage requires extending the
+ * union FIRST — drift detector pins ≥ 20 members so a careless removal
+ * breaks CI.
+ *
+ * **Why `React.memo`?** Consistent with `SkillCard` / `ListItemCard` /
+ * `Bubble` precedents — Icon is rendered in lists / cards / chrome
+ * affordances that re-render on parent state changes; the wrapper memo
+ * defends against unnecessary re-renders.
+ *
+ * **Accessibility default**: when `accessibilityLabel` is omitted, the icon
+ * is treated as decorative-of-text (`importantForAccessibility="no"`) so
+ * screen-readers don't announce "envelope, U+2709" beside an "Email"
+ * TextInput that already has its own label. Consumers that need the icon
+ * announced as its own element pass `accessibilityLabel` explicitly.
+ */
+export type IconName =
+  | "mail"
+  | "lock"
+  | "user"
+  | "mic"
+  | "headphones"
+  | "book-open"
+  | "edit-3"
+  | "activity" // grammar chrome — Feather lacks Brain (Q5 in story AC #11)
+  | "volume-2"
+  | "file-text"
+  | "repeat"
+  | "globe"
+  | "book"
+  | "check"
+  | "check-circle"
+  | "key"
+  | "zap" // streak chrome — Feather Flame is FontAwesome only (Q3)
+  | "target"
+  | "message-circle"
+  | "award"
+  | "smile"
+  | "settings";
+
+export interface IconProps {
+  name: IconName;
+  /** Defaults to 24. */
+  size?: number;
+  /** Defaults to `Colors.textPrimary`. */
+  color?: string;
+  /**
+   * When provided, the icon is announced to screen-readers under this
+   * label. When omitted, the icon is treated as decorative-of-text via
+   * `importantForAccessibility="no"`.
+   */
+  accessibilityLabel?: string;
+}
+
+export const Icon = React.memo(function Icon({
+  name,
+  size = 24,
+  color = Colors.textPrimary,
+  accessibilityLabel,
+}: IconProps) {
+  if (accessibilityLabel === undefined) {
+    return <Feather name={name} size={size} color={color} importantForAccessibility="no" />;
+  }
+  return <Feather name={name} size={size} color={color} accessibilityLabel={accessibilityLabel} />;
+});
