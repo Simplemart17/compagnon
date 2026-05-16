@@ -868,7 +868,7 @@ export default function ConversationHistoryScreen() {
         <Text className="text-[64px] mb-4">{"\uD83D\uDCAC"}</Text>
         <Text className="text-[22px] font-bold text-primary mb-2">Your conversations await!</Text>
         <Text className="text-sm text-center leading-5 mb-6" style={{ color: Colors.gray700 }}>
-          Have your first chat with Compagnon{"\n"}and it will show up here for review.
+          Have your first chat with Companion{"\n"}and it will show up here for review.
         </Text>
         <TouchableOpacity
           onPress={() => router.back()}
