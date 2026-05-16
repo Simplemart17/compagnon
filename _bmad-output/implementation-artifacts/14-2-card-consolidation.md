@@ -1,6 +1,6 @@
 # Story 14.2: Card Consolidation — collapse 3 card treatments into 2 reusable components (`SkillCard` + new `ListItemCard`)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
