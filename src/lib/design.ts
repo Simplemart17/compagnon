@@ -42,6 +42,57 @@ export const Colors = {
   accentLight: "#FFD180",
   warning: "#9A6400", // darkened from #FF9500 — 4.6:1 on surface (WCAG AA)
 
+  /**
+   * Streak warmth — warmer amber for informational chrome (streak chip,
+   * day-count badge, "zap" icon color).
+   *
+   * **Semantic:** non-interactive warmth indicator. The user reads this
+   * color as "personal energy / progress over time", NOT as "tap me".
+   *
+   * **Do NOT use for:** primary CTAs, tappable buttons, active-state markers
+   * on Pressable / TouchableOpacity — those stay on `Colors.accent` (the
+   * cooler amber that means "interact with me"). The whole point of the
+   * Story 14-5 split is to keep the streak warmth distinguishable from
+   * CTA-amber on the same screen.
+   *
+   * Hue: Tailwind amber-500. ~5° hue rotation warmer than `Colors.accent`.
+   * Story 14-5 + P2-12.
+   */
+  streak: "#F59E0B",
+  streakDark: "#D97706",
+  /** WCAG-AA-compliant text variant for streak chrome on `Colors.surface` (contrast ratio 6.48:1; Tailwind amber-800). Below AAA's 7.0:1 threshold by ~8%; acceptable for short-form 13-14pt informational chrome (streak chip day-count + zap icon). */
+  streakText: "#92400E",
+  streak10: "rgba(245,158,11,0.1)",
+  streak15: "rgba(245,158,11,0.15)",
+  streak20: "rgba(245,158,11,0.2)",
+  streak30: "rgba(245,158,11,0.3)",
+
+  /**
+   * Progress feedback — cooler gold for non-interactive visual feedback
+   * (rating-bar fills, progress-bar fills, chart-marker dots, fillPercent
+   * indicators).
+   *
+   * **Semantic:** data-feedback indicator. The user reads this color as
+   * "this is the value/level being shown", NOT as "tap me" and NOT as
+   * "streak warmth".
+   *
+   * **Do NOT use for:** primary CTAs (use `Colors.accent`); streak chrome
+   * (use `Colors.streak`); success/correct-answer states (use `Colors.success`).
+   * The 3-token split (accent/streak/progress) decouples Story 14-5 / P2-12's
+   * 3 conflated semantic roles so each can render distinctly on the same screen.
+   *
+   * Hue: Tailwind yellow-600. ~10° hue rotation toward yellow + lower
+   * saturation than `Colors.accent`. Story 14-5 + P2-12.
+   */
+  progress: "#CA8A04",
+  progressDark: "#A16207",
+  /** WCAG-AAA-compliant text variant for progress chrome on `Colors.surface` (contrast ratio 7.93:1; Tailwind yellow-900). Headroom for future progressText consumers; not used in v1 (only progress bg fills consume Colors.progress). */
+  progressText: "#713F12",
+  progress10: "rgba(202,138,4,0.1)",
+  progress15: "rgba(202,138,4,0.15)",
+  progress20: "rgba(202,138,4,0.2)",
+  progress30: "rgba(202,138,4,0.3)",
+
   // Success tints
   success10: "rgba(52,199,89,0.1)",
   success12: "rgba(52,199,89,0.12)",
