@@ -87,8 +87,12 @@ interface BriefingData {
 }
 
 function getGreeting(): string {
+  // Story 14-1: converted from "Bonjour"/"Bonsoir" to English greetings
+  // under the EN-UI rule (Decision Matrix row D1).
   const hour = new Date().getHours();
-  return hour < 18 ? "Bonjour" : "Bonsoir";
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
 }
 
 function extractFirstName(fullName: string | null): string | null {

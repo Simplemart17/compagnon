@@ -40,15 +40,15 @@ const DAILY_OPTIONS = [
 
 const STEP_COPY: Record<Step, { title: string; subtitle: string }> = {
   level: {
-    title: "Votre niveau actuel",
+    title: "Your current level",
     subtitle: "We'll calibrate precisely with a placement test after.",
   },
   goal: {
-    title: "Quel est votre objectif ?",
+    title: "What is your goal?",
     subtitle: "This helps us tailor your personal learning path.",
   },
   daily: {
-    title: "Objectif quotidien",
+    title: "Daily goal",
     subtitle: "Consistency matters more than duration. You can change this later.",
   },
 };
@@ -211,7 +211,7 @@ export default function OnboardingScreen() {
           style={{ color: Colors.accentLight }}
           className="text-[11px] font-extrabold tracking-[3px] mb-5"
         >
-          COMPAGNON
+          COMPANION
         </Text>
 
         {/* Step progress pills */}
@@ -528,9 +528,9 @@ export default function OnboardingScreen() {
               ? "Saving..."
               : isFinalStep
                 ? selectedLevel === null
-                  ? "Passer le test de placement"
-                  : "Commencer l\u2019apprentissage"
-                : "Continuer \u2192"}
+                  ? "Take the placement test"
+                  : "Start learning"
+                : "Continue \u2192"}
           </Text>
         </TouchableOpacity>
       </View>

@@ -418,7 +418,7 @@ function CEFRProgressionEmpty() {
           paddingVertical: 16,
         }}
       >
-        Compl{"\u00E9"}tez des exercices pour suivre votre progression au fil du temps.
+        Complete exercises to track your progression over time.
       </Text>
     </Animated.View>
   );

@@ -5,16 +5,16 @@
  * but `user.email_confirmed_at` is unset. Closes audit P1-15.
  *
  * Renders a French recovery surface with three buttons:
- *   - "Renvoyer l'e-mail" — calls `onResendVerification(email)`; cooldown
+ *   - "Resend email" — calls `onResendVerification(email)`; cooldown
  *     locked for 60s after a successful send (mirrors Supabase's
  *     server-side rate-limit; pure helpers in
  *     `src/lib/email-verification.ts`).
- *   - "J'ai vérifié — actualiser" — calls `onRefreshSession()` to pull a
+ *   - "I've verified — refresh" — calls `onRefreshSession()` to pull a
  *     fresh `user` shape from Supabase after the user clicks the email
  *     link. The auth listener (Story 9-6 / 12-2) re-renders the gate
  *     against the post-refresh `user.email_confirmed_at`; on success the
  *     auth-guard falls through to the routing arms.
- *   - "Se déconnecter" — sign-out escape hatch so the user can switch
+ *   - "Sign out" — sign-out escape hatch so the user can switch
  *     accounts without being trapped on the gate.
  *
  * Render-branch ordering inside `RootLayoutNav`:
@@ -185,10 +185,7 @@ function EmailVerificationGateImpl({
         // as an extra. Sentry's view of the failure is the error object +
         // the categorical `feature` tag — nothing else.
         captureError(error, "email-verification-resend");
-        Alert.alert(
-          "Erreur",
-          "Impossible d'envoyer l'e-mail de vérification. Veuillez réessayer dans une minute."
-        );
+        Alert.alert("Error", "Couldn't send the verification email. Please try again in a minute.");
         return;
       }
       const nowMs = Date.now();
@@ -230,10 +227,7 @@ function EmailVerificationGateImpl({
       if (!mountedRef.current) return;
       if (error) {
         captureError(error, "email-verification-refresh");
-        Alert.alert(
-          "Erreur",
-          "Impossible d'actualiser votre session. Vérifiez votre connexion et réessayez."
-        );
+        Alert.alert("Error", "Couldn't refresh your session. Check your connection and try again.");
         return;
       }
       // Post-refresh re-check: did `email_confirmed_at` actually flip?
@@ -242,8 +236,8 @@ function EmailVerificationGateImpl({
       const refreshedUser = useAuthStore.getState().user;
       if (!isEmailVerified(refreshedUser)) {
         Alert.alert(
-          "Vérification non confirmée",
-          "Assurez-vous d'avoir cliqué sur le lien dans votre e-mail, puis réessayez."
+          "Not verified yet",
+          "Make sure you've clicked the link in your email, then try again."
         );
       }
     } finally {
@@ -269,10 +263,7 @@ function EmailVerificationGateImpl({
       // resolves with an `{error}` object AND `error` is truthy, surface.
       if (result && typeof result === "object" && "error" in result && result.error) {
         captureError(result.error, "email-verification-signout");
-        Alert.alert(
-          "Erreur",
-          "Impossible de vous déconnecter. Vérifiez votre connexion et réessayez."
-        );
+        Alert.alert("Error", "Couldn't sign you out. Check your connection and try again.");
       }
     } finally {
       signingOutRef.current = false;
@@ -281,19 +272,19 @@ function EmailVerificationGateImpl({
   }, [onSignOut]);
 
   // Review-round-1 M3 patch: when `userEmail` is undefined the resend
-  // button must show a distinct label (not "Renvoyer dans 0s"-forever).
+  // button must show a distinct label (not "Resend in 0s"-forever).
   const hasEmail = !!userEmail;
   const canResend = canResendNow(lastResendAtMs, now) && !isResending && hasEmail;
   const remainingSeconds = secondsUntilResend(lastResendAtMs, now);
   const maskedEmail = formatVerificationEmailMask(userEmail);
 
   const resendLabel = !hasEmail
-    ? "Adresse e-mail manquante"
+    ? "Email address missing"
     : isResending
-      ? "Envoi en cours…"
+      ? "Sending…"
       : canResendNow(lastResendAtMs, now)
-        ? "Renvoyer l'e-mail"
-        : `Renvoyer dans ${remainingSeconds}s`;
+        ? "Resend email"
+        : `Resend in ${remainingSeconds}s`;
 
   return (
     <View
@@ -320,7 +311,7 @@ function EmailVerificationGateImpl({
             { color: Colors.textPrimary, textAlign: "center", marginBottom: Spacing.sectionGap },
           ]}
         >
-          Vérifiez votre adresse e-mail
+          Verify your email address
         </Text>
 
         <Text
@@ -333,8 +324,8 @@ function EmailVerificationGateImpl({
             },
           ]}
         >
-          Nous avons envoyé un lien de vérification à {maskedEmail}. Cliquez sur le lien dans
-          l&apos;e-mail pour activer votre compte.
+          We sent a verification link to {maskedEmail}. Click the link in the email to activate your
+          account.
         </Text>
 
         <Pressable
@@ -358,7 +349,7 @@ function EmailVerificationGateImpl({
           }}
         >
           <Text style={[Typography.label, { color: Colors.textPrimary }]}>
-            {isRefreshing ? "Actualisation…" : "J'ai vérifié — actualiser"}
+            {isRefreshing ? "Refreshing…" : "I've verified — refresh"}
           </Text>
         </Pressable>
 
@@ -410,7 +401,7 @@ function EmailVerificationGateImpl({
           }}
         >
           <Text style={[Typography.caption, { color: Colors.textSecondary }]}>
-            {isSigningOut ? "Déconnexion…" : "Se déconnecter"}
+            {isSigningOut ? "Signing out…" : "Sign out"}
           </Text>
         </Pressable>
       </View>

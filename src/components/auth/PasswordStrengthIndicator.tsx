@@ -3,7 +3,7 @@
  *
  * Live UI feedback for the signup screen's password input. Renders:
  * (a) a 3-segment progress bar colored by `computePasswordStrengthLabel`,
- * (b) a French strength label (Faible / Moyen / Fort) right-aligned,
+ * (b) a strength label (Weak / Medium / Strong) right-aligned,
  * (c) an itemized 4-line requirements checklist with met/unmet states.
  *
  * Hides itself when `password.length === 0` to avoid a flash of the
@@ -49,15 +49,17 @@ import { View, Text } from "react-native";
 import { Colors, Typography } from "@/src/lib/design";
 import {
   computePasswordStrengthLabel,
-  passwordPolicyReasonToFrenchMessage,
+  passwordPolicyReasonToMessage,
   validatePasswordStrength,
   type PasswordPolicyReason,
 } from "@/src/lib/password-policy";
 
+// Story 14-1: converted from French ("Faible" / "Moyen" / "Fort") to
+// English under the EN-UI rule (Decision Matrix row D1).
 const STRENGTH_LABELS: Record<"weak" | "medium" | "strong", string> = {
-  weak: "Faible",
-  medium: "Moyen",
-  strong: "Fort",
+  weak: "Weak",
+  medium: "Medium",
+  strong: "Strong",
 };
 
 const STRENGTH_COLORS: Record<"weak" | "medium" | "strong", string> = {
@@ -143,7 +145,7 @@ function PasswordStrengthIndicatorImpl({ password }: PasswordStrengthIndicatorPr
               accessible={true}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: met }}
-              accessibilityLabel={passwordPolicyReasonToFrenchMessage(reason)}
+              accessibilityLabel={passwordPolicyReasonToMessage(reason)}
               importantForAccessibility="yes"
               style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
             >
@@ -166,7 +168,7 @@ function PasswordStrengthIndicatorImpl({ password }: PasswordStrengthIndicatorPr
                 accessibilityElementsHidden={true}
                 style={[Typography.caption, { color: met ? Colors.success : Colors.textTertiary }]}
               >
-                {passwordPolicyReasonToFrenchMessage(reason)}
+                {passwordPolicyReasonToMessage(reason)}
               </Text>
             </View>
           );

@@ -144,7 +144,9 @@ export function secondsUntilResend(lastResendAtMs: number | null, now: number): 
   return Math.max(0, Math.ceil(remainingMs / 1000));
 }
 
-const VERIFICATION_EMAIL_FALLBACK_FR = "votre adresse e-mail";
+// Story 14-1: converted from "votre adresse e-mail" to "your email
+// address" under the EN-UI rule (Decision Matrix row D1).
+const VERIFICATION_EMAIL_FALLBACK = "your email address";
 
 /**
  * Returns a user-facing display string with the local-part masked.
@@ -158,10 +160,10 @@ const VERIFICATION_EMAIL_FALLBACK_FR = "votre adresse e-mail";
  * Examples:
  *   formatVerificationEmailMask("alice@example.com")  // "a***@example.com"
  *   formatVerificationEmailMask("a@example.com")      // "a***@example.com"
- *   formatVerificationEmailMask(undefined)             // "votre adresse e-mail"
- *   formatVerificationEmailMask("not-an-email")        // "votre adresse e-mail"
+ *   formatVerificationEmailMask(undefined)             // "your email address"
+ *   formatVerificationEmailMask("not-an-email")        // "your email address"
  *
- * Defensive fallbacks (return the French generic string):
+ * Defensive fallbacks (return the generic string):
  *   - undefined / empty string input.
  *   - no `@` separator.
  *   - `@` at index 0 (zero-length local-part).
@@ -173,14 +175,14 @@ const VERIFICATION_EMAIL_FALLBACK_FR = "votre adresse e-mail";
  * have produced `" ***@..."` — visible UI bug).
  */
 export function formatVerificationEmailMask(email: string | undefined): string {
-  if (!email) return VERIFICATION_EMAIL_FALLBACK_FR;
+  if (!email) return VERIFICATION_EMAIL_FALLBACK;
   // L3 patch: trim before length/index checks so leading whitespace
   // doesn't bypass the `@`-at-index-0 fallback OR produce a leaked
   // space in the rendered display.
   const trimmed = email.trim();
-  if (trimmed.length === 0) return VERIFICATION_EMAIL_FALLBACK_FR;
+  if (trimmed.length === 0) return VERIFICATION_EMAIL_FALLBACK;
   const atIdx = trimmed.indexOf("@");
-  if (atIdx <= 0) return VERIFICATION_EMAIL_FALLBACK_FR;
+  if (atIdx <= 0) return VERIFICATION_EMAIL_FALLBACK;
   const firstChar = trimmed[0];
   const domain = trimmed.slice(atIdx);
   return `${firstChar}***${domain}`;

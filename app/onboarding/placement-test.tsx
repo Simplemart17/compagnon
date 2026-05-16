@@ -88,27 +88,27 @@ function previousLevel(level: CEFRLevel): CEFRLevel {
 
 const LEVEL_CONGRATS: Record<CEFRLevel, { phrase: string; sub: string }> = {
   A1: {
-    phrase: "Bonjour !",
+    phrase: "Hello!",
     sub: "You're at the beginning of a wonderful journey.",
   },
   A2: {
-    phrase: "Tr\u00e8s bien !",
+    phrase: "Nice work!",
     sub: "You have solid foundations to build upon.",
   },
   B1: {
-    phrase: "Bravo !",
+    phrase: "Well done!",
     sub: "You're a true intermediate -- half way there.",
   },
   B2: {
-    phrase: "Excellent !",
+    phrase: "Excellent!",
     sub: "You command French with impressive fluency.",
   },
   C1: {
-    phrase: "Magnifique !",
+    phrase: "Wonderful!",
     sub: "You speak French at an advanced academic level.",
   },
   C2: {
-    phrase: "Parfait !",
+    phrase: "Perfect!",
     sub: "You have near-native mastery of the French language.",
   },
 };
@@ -569,7 +569,7 @@ export default function PlacementTestScreen() {
         {/* Header area with branding + pulse */}
         <View className="items-center px-8 pb-7" style={{ paddingTop: insets.top + 24 }}>
           <Text className="text-accent text-[11px] font-extrabold tracking-[2px] mb-5">
-            TEST DE PLACEMENT
+            PLACEMENT TEST
           </Text>
 
           <LoadingPulse />
@@ -623,7 +623,7 @@ export default function PlacementTestScreen() {
           className="text-xl font-bold text-primary mb-[10px] text-center"
           accessibilityRole="header"
         >
-          Une erreur est survenue
+          Something went wrong
         </Text>
         <Text
           className="text-sm mb-8 text-center leading-[21px]"
@@ -642,7 +642,7 @@ export default function PlacementTestScreen() {
             style={{ backgroundColor: Colors.gray100 }}
           >
             <Text className="text-base font-bold" style={{ color: Colors.primary }}>
-              Retour
+              Back
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -659,7 +659,7 @@ export default function PlacementTestScreen() {
               elevation: 6,
             }}
           >
-            <Text className="text-white text-base font-bold">Réessayer</Text>
+            <Text className="text-white text-base font-bold">Retry</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -694,9 +694,9 @@ export default function PlacementTestScreen() {
             elevation: 10,
           }}
         >
-          {/* "Votre niveau" label */}
+          {/* "Your level" label */}
           <Text className="text-accent text-[11px] font-extrabold tracking-[3px] mb-5">
-            VOTRE NIVEAU
+            YOUR LEVEL
           </Text>
 
           {/* Large CEFR badge circle */}
@@ -805,7 +805,7 @@ export default function PlacementTestScreen() {
               className="text-[13px] font-extrabold text-primary tracking-[1px] mb-4"
               accessibilityRole="header"
             >
-              PERFORMANCE PAR NIVEAU
+              PERFORMANCE BY LEVEL
             </Text>
 
             {(["A1", "A2", "B1", "B2", "C1", "C2"] as CEFRLevel[]).map((level) => {
@@ -882,7 +882,7 @@ export default function PlacementTestScreen() {
           {/* Error message if saving failed */}
           {error && (
             <Text className="text-error text-sm mb-3 text-center">
-              Could not save your results. Tap &quot;Commencer&quot; to try again.
+              Could not save your results. Tap &quot;Start&quot; to try again.
             </Text>
           )}
         </ScrollView>
@@ -910,7 +910,7 @@ export default function PlacementTestScreen() {
             }}
           >
             <Text className="text-white text-[17px] font-bold tracking-wide">
-              {isSubmitting ? "Saving..." : "Commencer l'apprentissage !"}
+              {isSubmitting ? "Saving..." : "Start learning!"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -941,7 +941,7 @@ export default function PlacementTestScreen() {
             className="text-accent text-[11px] font-extrabold tracking-[2px]"
             accessibilityRole="header"
           >
-            TEST DE PLACEMENT
+            PLACEMENT TEST
           </Text>
           <Text
             className="text-white/80 text-[13px] font-semibold"
@@ -1027,8 +1027,8 @@ export default function PlacementTestScreen() {
           >
             <Text className="text-white text-[17px] font-bold tracking-wide">
               {stoppedEarly || currentIndex >= questions.length - 1
-                ? "Voir les résultats"
-                : "Question suivante \u2192"}
+                ? "View results"
+                : "Next question \u2192"}
             </Text>
           </TouchableOpacity>
         </View>

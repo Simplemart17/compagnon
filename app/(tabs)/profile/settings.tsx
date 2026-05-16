@@ -327,7 +327,7 @@ export default function SettingsScreen() {
             accessibilityRole="button"
             accessibilityLabel="Go back to profile"
           >
-            <Text className="text-base font-bold text-primary">← Paramètres</Text>
+            <Text className="text-base font-bold text-primary">← Settings</Text>
           </TouchableOpacity>
         </View>
 
@@ -343,12 +343,12 @@ export default function SettingsScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          {/* ---- Section: Apprentissage ---- */}
-          <SectionLabel topMargin={0}>Apprentissage</SectionLabel>
+          {/* ---- Section: Learning ---- */}
+          <SectionLabel topMargin={0}>Learning</SectionLabel>
 
           {/* Current CEFR level */}
           <SettingsCard>
-            <CardLabel>Niveau actuel</CardLabel>
+            <CardLabel>Current level</CardLabel>
             <View className="flex-row flex-wrap gap-2">
               {CEFR_ORDER.map((level) => {
                 const selected = currentLevel === level;
@@ -382,7 +382,7 @@ export default function SettingsScreen() {
 
           {/* Target CEFR level */}
           <SettingsCard>
-            <CardLabel>Niveau cible</CardLabel>
+            <CardLabel>Target level</CardLabel>
             <View className="flex-row flex-wrap gap-2">
               {CEFR_ORDER.map((level) => {
                 const selected = targetLevel === level;
@@ -416,7 +416,7 @@ export default function SettingsScreen() {
 
           {/* Daily goal */}
           <SettingsCard>
-            <CardLabel>Objectif quotidien</CardLabel>
+            <CardLabel>Daily goal</CardLabel>
             <View className="flex-row flex-wrap gap-2">
               {DAILY_GOAL_OPTIONS.map((minutes) => {
                 const selected = dailyGoal === minutes;
@@ -448,12 +448,12 @@ export default function SettingsScreen() {
             </View>
           </SettingsCard>
 
-          {/* ---- Section: Compte ---- */}
-          <SectionLabel topMargin={20}>Compte</SectionLabel>
+          {/* ---- Section: Account ---- */}
+          <SectionLabel topMargin={20}>Account</SectionLabel>
 
           {/* Display name */}
           <SettingsCard>
-            <CardLabel>Nom d&apos;affichage</CardLabel>
+            <CardLabel>Display name</CardLabel>
             {editingName ? (
               <View>
                 <TextInput
@@ -467,7 +467,7 @@ export default function SettingsScreen() {
                   returnKeyType="done"
                   onSubmitEditing={handleSaveName}
                   maxLength={50}
-                  placeholder="Votre prénom"
+                  placeholder="Your first name"
                   placeholderTextColor={Colors.textTertiary}
                 />
                 <View className="mt-3 flex-row gap-2.5">
@@ -478,7 +478,7 @@ export default function SettingsScreen() {
                     className="items-center rounded-[10px] bg-accent px-5 py-2.5"
                     style={{ minHeight: 44, justifyContent: "center" }}
                   >
-                    <Text className="text-sm font-semibold text-white">Enregistrer</Text>
+                    <Text className="text-sm font-semibold text-white">Save</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleCancelNameEdit}
@@ -488,16 +488,14 @@ export default function SettingsScreen() {
                     style={{ minHeight: 44, justifyContent: "center" }}
                   >
                     <Text className="text-sm font-semibold" style={{ color: Colors.gray700 }}>
-                      Annuler
+                      Cancel
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : (
               <View className="flex-row items-center justify-between">
-                <Text className="text-base text-primary">
-                  {profile?.full_name ?? "Non d\u00E9fini"}
-                </Text>
+                <Text className="text-base text-primary">{profile?.full_name ?? "Not set"}</Text>
                 <TouchableOpacity
                   onPress={() => {
                     setNameValue(profile?.full_name ?? "");
@@ -508,7 +506,7 @@ export default function SettingsScreen() {
                   style={{ minHeight: 44, justifyContent: "center" }}
                 >
                   <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
-                    Modifier
+                    Edit
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -517,7 +515,7 @@ export default function SettingsScreen() {
 
           {/* Email */}
           <SettingsCard>
-            <CardLabel>Adresse e-mail</CardLabel>
+            <CardLabel>Email address</CardLabel>
             <Text className="text-base" style={{ color: Colors.gray700 }}>
               {email}
             </Text>
@@ -606,11 +604,11 @@ export default function SettingsScreen() {
             accessibilityLabel="Sign out"
             className="mb-6 mt-1 items-center rounded-2xl border border-error bg-white p-4"
           >
-            <Text className="text-base font-semibold text-error">Se déconnecter</Text>
+            <Text className="text-base font-semibold text-error">Sign out</Text>
           </TouchableOpacity>
 
           {/* ---- Section: Donnees ---- */}
-          <SectionLabel topMargin={0}>Données</SectionLabel>
+          <SectionLabel topMargin={0}>Data</SectionLabel>
 
           <SettingsCard>
             <TouchableOpacity
@@ -623,7 +621,7 @@ export default function SettingsScreen() {
               style={{ minHeight: 44, opacity: exportingData ? 0.5 : 1 }}
             >
               <View>
-                <Text className="text-[15px] text-primary">Exporter mes données</Text>
+                <Text className="text-[15px] text-primary">Export my data</Text>
                 <Text className="mt-0.5 text-xs" style={{ color: Colors.textTertiary }}>
                   Download all your data as JSON
                 </Text>
@@ -669,7 +667,7 @@ export default function SettingsScreen() {
                     }}
                   >
                     <Text className="text-sm font-semibold text-white">
-                      {deletingAccount ? "Deleting..." : "Supprimer d\u00E9finitivement"}
+                      {deletingAccount ? "Deleting..." : "Delete permanently"}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -685,7 +683,7 @@ export default function SettingsScreen() {
                     }}
                   >
                     <Text className="text-sm font-semibold" style={{ color: Colors.gray700 }}>
-                      Annuler
+                      Cancel
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -702,7 +700,7 @@ export default function SettingsScreen() {
                 style={{ minHeight: 44, opacity: deletingAccount ? 0.5 : 1 }}
               >
                 <View>
-                  <Text className="text-[15px] text-error">Supprimer mon compte</Text>
+                  <Text className="text-[15px] text-error">Delete my account</Text>
                   <Text className="mt-0.5 text-xs" style={{ color: Colors.textTertiary }}>
                     Permanently delete all your data
                   </Text>
@@ -715,7 +713,7 @@ export default function SettingsScreen() {
           </SettingsCard>
 
           {/* ---- Section: A propos ---- */}
-          <SectionLabel topMargin={0}>À propos</SectionLabel>
+          <SectionLabel topMargin={0}>About</SectionLabel>
 
           <SettingsCard marginBottom={0}>
             {/* App version */}
@@ -736,9 +734,9 @@ export default function SettingsScreen() {
               className="flex-row items-center justify-between"
               style={{ minHeight: 44, justifyContent: "center" }}
             >
-              <Text className="text-[15px] text-primary">Politique de confidentialité</Text>
+              <Text className="text-[15px] text-primary">Privacy policy</Text>
               <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
-                Voir {"\u2192"}
+                View {"\u2192"}
               </Text>
             </TouchableOpacity>
 
@@ -752,9 +750,9 @@ export default function SettingsScreen() {
               className="flex-row items-center justify-between"
               style={{ minHeight: 44, justifyContent: "center" }}
             >
-              <Text className="text-[15px] text-primary">Conditions d&apos;utilisation</Text>
+              <Text className="text-[15px] text-primary">Terms of service</Text>
               <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
-                Voir {"\u2192"}
+                View {"\u2192"}
               </Text>
             </TouchableOpacity>
           </SettingsCard>

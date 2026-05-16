@@ -568,7 +568,7 @@ export default function MockTestSessionScreen() {
       const nextStatus = generation.sectionStatus[nextSection];
       // Story 13-4: if the next section is still generating (pending) we
       // advance the section index optimistically so the
-      // "Préparation de la section suivante..." overlay renders (it gates
+      // "Preparing next section..." overlay renders (it gates
       // on `currentSectionStatus !== "ready" && currentQuestions.length === 0`,
       // which is true post-advance because the pending section's
       // questions blob is still []). The merge effect will populate
@@ -673,10 +673,10 @@ export default function MockTestSessionScreen() {
     return (
       <SafeAreaView className="flex-1 bg-surface items-center justify-center px-6">
         <Text style={[Typography.cardTitle, { textAlign: "center", marginBottom: 8 }]}>
-          Préparation de la section suivante...
+          Preparing next section...
         </Text>
         <Text style={[Typography.bodySecondary, { textAlign: "center" }]}>
-          Preparing next section...
+          The next section is loading. Hang tight — this usually takes a few seconds.
         </Text>
       </SafeAreaView>
     );

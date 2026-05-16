@@ -25,11 +25,11 @@ import { useAuth } from "@/src/hooks/use-auth";
 import { Colors } from "@/src/lib/design";
 import {
   MIN_PASSWORD_LENGTH,
-  getGenericWeakPasswordFrenchMessage,
-  getPwnedFrenchMessage,
+  getGenericWeakPasswordMessage,
+  getPwnedMessage,
   isPwnedRejection,
   mapSupabaseWeakPasswordError,
-  passwordPolicyReasonToFrenchMessage,
+  passwordPolicyReasonToMessage,
   validatePasswordStrength,
 } from "@/src/lib/password-policy";
 import { captureError } from "@/src/lib/sentry";
@@ -88,8 +88,8 @@ export default function SignUpScreen() {
 
     const policyResult = validatePasswordStrength(password);
     if (!policyResult.valid) {
-      const itemized = policyResult.reasons.map(passwordPolicyReasonToFrenchMessage).join("\n");
-      Alert.alert("Mot de passe invalide", itemized);
+      const itemized = policyResult.reasons.map(passwordPolicyReasonToMessage).join("\n");
+      Alert.alert("Password invalid", itemized);
       return;
     }
 
@@ -108,23 +108,23 @@ export default function SignUpScreen() {
       const { error } = await signUpWithEmail(email.trim(), trimmedPassword, fullName.trim());
       if (error) {
         if (isPwnedRejection(error)) {
-          Alert.alert("Mot de passe invalide", getPwnedFrenchMessage());
+          Alert.alert("Password invalid", getPwnedMessage());
         } else {
           // R2-P1: pass `trimmedPassword` (the bytes the server actually
           // saw) to the mapper so the always-merge re-validates against
           // the same bytes that triggered the rejection.
           const mapped = mapSupabaseWeakPasswordError(error, trimmedPassword);
           if (mapped !== null) {
-            // Story 12-8 review-round-1 P7: ALWAYS surface a French
-            // message for weak_password rejections, never the English
-            // Supabase engineering text. Empty mapped result happens
-            // when server-reported reasons are unparseable; show the
-            // generic French fallback in that case.
+            // Story 12-8 review-round-1 P7 (Story 14-1 EN conversion):
+            // ALWAYS surface a localized message for weak_password
+            // rejections, never the raw Supabase engineering text. Empty
+            // mapped result happens when server-reported reasons are
+            // unparseable; show the generic fallback in that case.
             const message =
               mapped.length > 0
-                ? mapped.map(passwordPolicyReasonToFrenchMessage).join("\n")
-                : getGenericWeakPasswordFrenchMessage();
-            Alert.alert("Mot de passe invalide", message);
+                ? mapped.map(passwordPolicyReasonToMessage).join("\n")
+                : getGenericWeakPasswordMessage();
+            Alert.alert("Password invalid", message);
           } else {
             Alert.alert("Sign Up Failed", error.message);
           }
@@ -177,13 +177,13 @@ export default function SignUpScreen() {
           </View>
 
           <Text className="text-[42px] font-extrabold text-white tracking-tight mb-[10px]">
-            Compagnon
+            Companion
           </Text>
 
           {/* Amber accent line */}
           <View className="w-12 h-1 bg-accent rounded-full mb-[14px]" />
 
-          <Text className="text-sm text-white/60 italic tracking-wide">Commencez votre voyage</Text>
+          <Text className="text-sm text-white/60 italic tracking-wide">Start your journey</Text>
         </View>
 
         {/* White Card */}
@@ -213,7 +213,7 @@ export default function SignUpScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Card Title */}
-            <Text className="text-[26px] font-extrabold text-primary mb-6">Créer un compte</Text>
+            <Text className="text-[26px] font-extrabold text-primary mb-6">Create account</Text>
 
             {/* Full Name Input */}
             <View className="mb-[14px]">
@@ -228,7 +228,7 @@ export default function SignUpScreen() {
                   👤
                 </Text>
                 <TextInput
-                  placeholder="Nom complet"
+                  placeholder="Full name"
                   placeholderTextColor={Colors.textTertiary}
                   value={fullName}
                   onChangeText={setFullName}
@@ -255,7 +255,7 @@ export default function SignUpScreen() {
                   ✉️
                 </Text>
                 <TextInput
-                  placeholder="Adresse e-mail"
+                  placeholder="Email address"
                   placeholderTextColor={Colors.textTertiary}
                   value={email}
                   onChangeText={setEmail}
@@ -286,7 +286,7 @@ export default function SignUpScreen() {
                   🔒
                 </Text>
                 <TextInput
-                  placeholder={`Mot de passe (min. ${MIN_PASSWORD_LENGTH} caractères)`}
+                  placeholder={`Password (min. ${MIN_PASSWORD_LENGTH} characters)`}
                   placeholderTextColor={Colors.textTertiary}
                   value={password}
                   onChangeText={setPassword}
@@ -315,7 +315,7 @@ export default function SignUpScreen() {
                 style={{ opacity: loading ? 0.6 : 1 }}
               >
                 <Text className="text-accent text-base font-bold tracking-wide">
-                  Créer mon compte
+                  Create my account
                 </Text>
               </Pressable>
             </Reanimated.View>
@@ -325,19 +325,19 @@ export default function SignUpScreen() {
               className="text-[11px] text-center mt-[18px] leading-[17px] px-2"
               style={{ color: Colors.textTertiary }}
             >
-              En créant un compte, vous acceptez nos{" "}
+              By creating an account, you agree to our{" "}
               <Text
                 className="text-primary font-semibold"
                 onPress={() => router.push("/(auth)/terms")}
               >
-                Conditions d&apos;utilisation
+                Terms of Service
               </Text>{" "}
-              et notre{" "}
+              and{" "}
               <Text
                 className="text-primary font-semibold"
                 onPress={() => router.push("/(auth)/privacy-policy")}
               >
-                Politique de confidentialité
+                Privacy Policy
               </Text>
               .
             </Text>
@@ -345,7 +345,7 @@ export default function SignUpScreen() {
             {/* Sign In Row */}
             <View className="flex-row justify-center items-center mt-5 gap-1">
               <Text className="text-sm" style={{ color: Colors.textSecondary }}>
-                Déjà un compte ?{" "}
+                Already have an account?{" "}
               </Text>
               <Link href="/(auth)/login" asChild>
                 <TouchableOpacity
@@ -353,7 +353,7 @@ export default function SignUpScreen() {
                   accessibilityLabel="Already have an account? Sign in"
                   style={{ minHeight: 44, justifyContent: "center" }}
                 >
-                  <Text className="text-accent text-sm font-bold">Se connecter</Text>
+                  <Text className="text-accent text-sm font-bold">Sign in</Text>
                 </TouchableOpacity>
               </Link>
             </View>

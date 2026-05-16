@@ -942,7 +942,7 @@ export default function SpeakingMockTestScreen() {
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
           <View className="flex-row justify-between items-center mb-3">
             <Text style={[Typography.label, { color: Colors.accent }]}>
-              Tâche {state.taskNumber} / 3
+              Task {state.taskNumber} / 3
             </Text>
             <View
               accessibilityLabel={`Recording. ${mins} minutes ${secs} seconds left`}

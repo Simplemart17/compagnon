@@ -178,7 +178,7 @@ export const TodayPlanItem = React.memo(function TodayPlanItem({
  */
 export const TodayPlanSkeleton = React.memo(function TodayPlanSkeleton() {
   return (
-    <View accessibilityLabel="Chargement du plan du jour" style={{ gap: 8 }}>
+    <View accessibilityLabel="Loading today's plan" style={{ gap: 8 }}>
       {[0, 1].map((i) => (
         <View
           key={i}

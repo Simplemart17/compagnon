@@ -279,7 +279,7 @@ export default function ConversationTopicsScreen() {
 
         {/* Row 2: Heading */}
         <Text className="text-[26px] font-extrabold text-white tracking-[-0.3px] mt-3">
-          Parlez avec Compagnon
+          Talk with Companion
         </Text>
 
         {/* Row 3: Subheading */}

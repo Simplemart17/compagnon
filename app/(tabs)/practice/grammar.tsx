@@ -140,7 +140,7 @@ export default function GrammarScreen() {
           <View className="items-center pt-10">
             <Text className="text-[64px] mb-4">{allCorrect ? "\u2705" : "\uD83D\uDCAA"}</Text>
             <Text className="text-[22px] font-bold text-primary mb-2">
-              {allCorrect ? "Parfait !" : "Bon travail !"}
+              {allCorrect ? "Perfect!" : "Nice work!"}
             </Text>
             <Text className="text-sm text-center mb-2" style={{ color: Colors.gray700 }}>
               {drillCorrect}/{microDrill.questions.length} correct

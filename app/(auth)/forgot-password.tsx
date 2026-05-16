@@ -120,7 +120,7 @@ export default function ForgotPasswordScreen() {
         >
           {/* App name -- smaller at top */}
           <Text className="text-base font-semibold text-white/50 tracking-[2px] uppercase mb-5">
-            Compagnon
+            Companion
           </Text>
 
           {/* Large key emoji as hero focal point */}
@@ -129,7 +129,7 @@ export default function ForgotPasswordScreen() {
           {/* Amber accent line */}
           <View className="w-12 h-1 bg-accent rounded-full mb-[14px]" />
 
-          <Text className="text-sm text-white/50 tracking-wide italic">Récupérez votre accès</Text>
+          <Text className="text-sm text-white/50 tracking-wide italic">Recover your account</Text>
         </View>
 
         {/* White Card */}
@@ -153,14 +153,11 @@ export default function ForgotPasswordScreen() {
           ]}
         >
           {/* Card Title */}
-          <Text className="text-[26px] font-extrabold text-primary mb-[10px]">
-            Mot de passe oublié
-          </Text>
+          <Text className="text-[26px] font-extrabold text-primary mb-[10px]">Forgot password</Text>
 
           {/* Description */}
           <Text className="text-sm leading-[21px] mb-7" style={{ color: Colors.textSecondary }}>
-            Saisissez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre
-            mot de passe.
+            Enter your email address and we&apos;ll send you a link to reset your password.
           </Text>
 
           {/* Email Input */}
@@ -176,7 +173,7 @@ export default function ForgotPasswordScreen() {
                 ✉️
               </Text>
               <TextInput
-                placeholder="Adresse e-mail"
+                placeholder="Email address"
                 placeholderTextColor={Colors.textTertiary}
                 value={email}
                 onChangeText={setEmail}
@@ -204,7 +201,7 @@ export default function ForgotPasswordScreen() {
               className="bg-primary rounded-xl py-[17px] items-center"
               style={{ opacity: loading ? 0.6 : 1 }}
             >
-              <Text className="text-accent text-base font-bold tracking-wide">Envoyer le lien</Text>
+              <Text className="text-accent text-base font-bold tracking-wide">Send link</Text>
             </Pressable>
           </Reanimated.View>
 
@@ -220,7 +217,7 @@ export default function ForgotPasswordScreen() {
             }}
           >
             <Text className="text-sm font-medium" style={{ color: Colors.textSecondary }}>
-              ← Retour
+              ← Back
             </Text>
           </TouchableOpacity>
         </Reanimated.View>

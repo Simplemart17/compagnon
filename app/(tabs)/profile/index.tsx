@@ -106,9 +106,9 @@ function ProfileSkillCard({
       <View className="py-3.5 pl-[18px] pr-3.5">
         <View className="mb-2.5 flex-row items-center justify-between">
           <View>
-            <Text className="text-sm font-semibold text-primary">{SKILL_LABELS[skill]?.fr}</Text>
+            <Text className="text-sm font-semibold text-primary">{SKILL_LABELS[skill]?.en}</Text>
             <Text className="mt-0.5 text-[11px]" style={{ color: Colors.textTertiary }}>
-              {exercises} exercices complétés
+              {exercises} exercises completed
             </Text>
           </View>
           {/* CEFR badge pill */}
@@ -139,7 +139,7 @@ function ProfileSkillCard({
         onPress={onPress}
         activeOpacity={0.7}
         accessibilityRole="button"
-        accessibilityLabel={`${SKILL_LABELS[skill]?.fr ?? skill}: ${skillLevel}, ${exercises} exercises`}
+        accessibilityLabel={`${SKILL_LABELS[skill]?.en ?? skill}: ${skillLevel}, ${exercises} exercises`}
       >
         {card}
       </TouchableOpacity>
@@ -186,7 +186,7 @@ export default function ProfileScreen() {
   }
 
   const initials = (profile?.full_name ?? "U")[0].toUpperCase();
-  const displayName = profile?.full_name ?? "Utilisateur";
+  const displayName = profile?.full_name ?? "User";
 
   if (progress.isLoading && !refreshing) {
     return (
@@ -327,9 +327,9 @@ export default function ProfileScreen() {
             Stat tiles -- overlapping hero with negative margin
         ---------------------------------------------------------------- */}
         <View className="-mt-7 mb-1 flex-row gap-2.5 px-5">
-          <StatTile value={`${progress.streakDays}`} unit="jours" label="Série" delay={0} />
-          <StatTile value={`${totalExercises}`} unit="" label="Exercices" delay={80} />
-          <StatTile value={`${totalMinutes}`} unit="min" label="Pratique" delay={160} />
+          <StatTile value={`${progress.streakDays}`} unit="days" label="Streak" delay={0} />
+          <StatTile value={`${totalExercises}`} unit="" label="Exercises" delay={80} />
+          <StatTile value={`${totalMinutes}`} unit="min" label="Practice" delay={160} />
         </View>
 
         {/* ----------------------------------------------------------------
@@ -349,7 +349,7 @@ export default function ProfileScreen() {
         >
           {/* Skills section */}
           <Text className="mb-3 text-lg font-bold text-primary" accessibilityRole="header">
-            Mes compétences
+            My skills
           </Text>
           <View className="mb-7 gap-2.5">
             {SKILLS.map((skill, idx) => {
@@ -422,7 +422,7 @@ export default function ProfileScreen() {
           {progress.topErrors.length > 0 ? (
             <View className="mb-7">
               <Text className="mb-3 text-lg font-bold text-primary" accessibilityRole="header">
-                À améliorer
+                Needs work
               </Text>
               <View className="gap-2">
                 {progress.topErrors.map((error, idx) => (
@@ -484,7 +484,7 @@ export default function ProfileScreen() {
           ) : (
             <View className="mb-7">
               <Text className="mb-3 text-lg font-bold text-primary" accessibilityRole="header">
-                À améliorer
+                Needs work
               </Text>
               <View
                 className="items-center rounded-2xl border bg-white p-5"
@@ -494,7 +494,7 @@ export default function ProfileScreen() {
                   className="text-center text-[13px] leading-[19px]"
                   style={{ color: Colors.textTertiary }}
                 >
-                  Aucune erreur détectée pour le moment.{"\n"}Continuez à pratiquer !
+                  No errors detected yet.{"\n"}Keep practicing!
                 </Text>
               </View>
             </View>
@@ -507,7 +507,7 @@ export default function ProfileScreen() {
             accessibilityLabel="Sign out"
             className="mt-2 items-center rounded-2xl border border-error bg-white p-4"
           >
-            <Text className="text-base font-semibold text-error">Se déconnecter</Text>
+            <Text className="text-base font-semibold text-error">Sign out</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>

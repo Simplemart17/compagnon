@@ -85,7 +85,7 @@ export const CompanionMessage = React.memo(function CompanionMessage({
             marginBottom: 4,
           }}
         >
-          Compagnon
+          Companion
         </Text>
         <Text style={{ ...Typography.bodySecondary, color: Colors.textPrimary }}>
           {renderMessage()}

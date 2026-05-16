@@ -112,7 +112,7 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
           className="mb-2 text-[10px] font-bold uppercase tracking-wider"
           style={{ color: skillTint(Colors.accent, 0.75) }}
         >
-          Compagnon noticed
+          Companion noticed
         </Text>
 
         {visibleCorrections.map((correction, index) => {

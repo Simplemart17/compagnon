@@ -78,7 +78,7 @@ function FullSimCard({ onPress }: FullSimCardProps) {
 
         {/* Badge */}
         <Text className="text-accent text-[10px] font-bold tracking-[1.5px] mb-[10px]">
-          COMPRÉHENSION COMPLÈTE
+          FULL COMPREHENSION
         </Text>
 
         {/* Title */}
@@ -86,8 +86,8 @@ function FullSimCard({ onPress }: FullSimCardProps) {
 
         {/* Description */}
         <Text className="text-[13px] leading-5 mb-4" style={{ color: Colors.textOnDarkSecondary }}>
-          2 sections de compréhension : Écoute ({TCF_QCM_SECTIONS.listening.minutes} min) + Lecture
-          ({TCF_QCM_SECTIONS.reading.minutes} min)
+          2 comprehension sections: Listening ({TCF_QCM_SECTIONS.listening.minutes} min) + Reading (
+          {TCF_QCM_SECTIONS.reading.minutes} min)
         </Text>
 
         {/* Bottom row: time pill + section dots */}
@@ -162,12 +162,13 @@ function ComingSoonCard({
         <Text className="text-[24px]">{emoji}</Text>
       </View>
       <View className="flex-1">
-        <Text className="text-base font-bold text-primary">{nameFr}</Text>
+        {/* Story 14-1 render-flip: EN primary (chrome) + FR secondary (pedagogical) */}
+        <Text className="text-base font-bold text-primary">{nameSub}</Text>
         <Text className="text-xs mt-[3px]" style={{ color: Colors.textTertiary }}>
-          {nameSub} | {minutes} min
+          {nameFr} | {minutes} min
         </Text>
         <Text className="text-[11px] mt-[3px]" style={{ color: Colors.textTertiary }}>
-          Bientôt disponible · {followUp}
+          Coming soon · {followUp}
         </Text>
       </View>
     </View>
@@ -251,11 +252,11 @@ function SectionCard({
           <Text className="text-[24px]">{emoji}</Text>
         </View>
 
-        {/* Labels */}
+        {/* Labels (Story 14-1 render-flip: EN primary + FR pedagogical secondary) */}
         <View className="flex-1">
-          <Text className="text-base font-bold text-primary">{nameFr}</Text>
+          <Text className="text-base font-bold text-primary">{nameSub}</Text>
           <Text className="text-xs mt-[3px]" style={{ color: Colors.textTertiary }}>
-            {nameSub}
+            {nameFr}
             {metaText ? `  |  ${metaText}` : ""}
           </Text>
         </View>
@@ -358,7 +359,7 @@ export default function MockTestScreen() {
 
         {/* Section label */}
         <Text className="text-lg font-bold text-primary mx-5 mt-7 mb-3" accessibilityRole="header">
-          Sections individuelles
+          Individual sections
         </Text>
 
         {/* Individual section cards */}
@@ -380,7 +381,7 @@ export default function MockTestScreen() {
 
         {/* Production sections — Speaking is live (story 9-8); Writing is Epic 10.6 */}
         <Text className="text-lg font-bold text-primary mx-5 mt-7 mb-3" accessibilityRole="header">
-          Production écrite et orale
+          Written and spoken production
         </Text>
         <View className="px-5 gap-3">
           <ComingSoonCard

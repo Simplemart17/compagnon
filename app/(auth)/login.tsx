@@ -121,15 +121,13 @@ export default function LoginScreen() {
           </View>
 
           <Text className="text-[42px] font-extrabold text-white tracking-tight mb-[10px]">
-            Compagnon
+            Companion
           </Text>
 
           {/* Amber accent line */}
           <View className="w-12 h-1 bg-accent rounded-full mb-[14px]" />
 
-          <Text className="text-sm text-white/60 italic tracking-wide">
-            Parlez. Apprenez. Maîtrisez.
-          </Text>
+          <Text className="text-sm text-white/60 italic tracking-wide">Speak. Learn. Master.</Text>
         </View>
 
         {/* White Card */}
@@ -153,7 +151,7 @@ export default function LoginScreen() {
           ]}
         >
           {/* Card Title */}
-          <Text className="text-[26px] font-extrabold text-primary mb-6">Bon retour</Text>
+          <Text className="text-[26px] font-extrabold text-primary mb-6">Welcome back</Text>
 
           {/* Email Input */}
           <View className="mb-[14px]">
@@ -168,7 +166,7 @@ export default function LoginScreen() {
                 ✉️
               </Text>
               <TextInput
-                placeholder="Adresse e-mail"
+                placeholder="Email address"
                 placeholderTextColor={Colors.textTertiary}
                 value={email}
                 onChangeText={setEmail}
@@ -196,7 +194,7 @@ export default function LoginScreen() {
                 🔒
               </Text>
               <TextInput
-                placeholder="Mot de passe"
+                placeholder="Password"
                 placeholderTextColor={Colors.textTertiary}
                 value={password}
                 onChangeText={setPassword}
@@ -223,7 +221,7 @@ export default function LoginScreen() {
               className="bg-primary rounded-xl py-[17px] items-center"
               style={{ opacity: loading ? 0.6 : 1 }}
             >
-              <Text className="text-accent text-base font-bold tracking-wide">Se connecter</Text>
+              <Text className="text-accent text-base font-bold tracking-wide">Sign in</Text>
             </Pressable>
           </Reanimated.View>
 
@@ -237,7 +235,7 @@ export default function LoginScreen() {
               style={{ minHeight: 44, justifyContent: "center" }}
             >
               <Text className="text-[13px]" style={{ color: Colors.textSecondary }}>
-                Mot de passe oublié ?
+                Forgot password?
               </Text>
             </TouchableOpacity>
           </Link>
@@ -254,7 +252,7 @@ export default function LoginScreen() {
           {/* Sign Up Row */}
           <View className="flex-row justify-center items-center gap-1">
             <Text className="text-sm" style={{ color: Colors.textSecondary }}>
-              Pas encore de compte ?{" "}
+              Don&apos;t have an account?{" "}
             </Text>
             <Link href="/(auth)/signup" asChild>
               <TouchableOpacity
@@ -263,7 +261,7 @@ export default function LoginScreen() {
                 accessibilityHint="Navigate to create a new account"
                 style={{ minHeight: 44, justifyContent: "center" }}
               >
-                <Text className="text-accent text-sm font-bold">S&apos;inscrire</Text>
+                <Text className="text-accent text-sm font-bold">Sign up</Text>
               </TouchableOpacity>
             </Link>
           </View>
