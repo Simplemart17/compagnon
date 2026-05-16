@@ -40,6 +40,29 @@ export const skillCardPressableStaticStyle: ViewStyle = Object.freeze({
   gap: 14,
 }) as ViewStyle;
 
+/**
+ * Story 14-2: second frozen static-style constant for the `featured` variant
+ * — adopted from the pre-14-2 inline `VocabularyCard` on the practice screen.
+ * Featured cards use the accent-tinted background + 1px accent border instead
+ * of the default white + card shadow.
+ *
+ * @internal — exported for runtime tests; do NOT import in app code.
+ * Same `Shadows.card` spread-first + `Object.freeze` defenses as the default
+ * style (Story 13-7 R1-P1 + R1-P2).
+ */
+export const skillCardFeaturedStaticStyle: ViewStyle = Object.freeze({
+  ...Shadows.card,
+  backgroundColor: Colors.accent10,
+  borderRadius: Radii.card,
+  borderWidth: 1,
+  borderColor: Colors.accent,
+  overflow: "hidden",
+  flexDirection: "row",
+  alignItems: "center",
+  padding: 16,
+  gap: 14,
+}) as ViewStyle;
+
 export interface SkillCardProps {
   emoji: string;
   titleFr: string;
@@ -48,6 +71,24 @@ export interface SkillCardProps {
   accentColor: string;
   delay: number;
   onPress: () => void;
+  /**
+   * Story 14-2: render with `accent10` background + amber border instead of
+   * the default white + card shadow. Used for the practice-screen featured
+   * Vocabulary card (replaces the pre-14-2 inline `VocabularyCard`).
+   */
+  featured?: boolean;
+  /**
+   * Story 14-2: disable press handling — opacity 0.6 + no `onPress` + sets
+   * `accessibilityState.disabled`. Used for the mock-test "Coming soon"
+   * Speaking + Writing entries (replaces the pre-14-2 inline `ComingSoonCard`).
+   */
+  disabled?: boolean;
+  /**
+   * Story 14-2: override the left-strip color. Defaults to `accentColor`.
+   * Lets featured / themed cards use a different left-strip tone than the
+   * skill's primary color.
+   */
+  accent?: string;
 }
 
 export const SkillCard = React.memo(function SkillCard({
@@ -58,7 +99,12 @@ export const SkillCard = React.memo(function SkillCard({
   accentColor,
   delay,
   onPress,
+  featured = false,
+  disabled = false,
+  accent,
 }: SkillCardProps) {
+  const stripColor = accent ?? accentColor;
+  const containerStyle = featured ? skillCardFeaturedStaticStyle : skillCardPressableStaticStyle;
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(20);
   const scale = useSharedValue(1);
@@ -78,27 +124,39 @@ export const SkillCard = React.memo(function SkillCard({
     <Animated.View style={entryStyle}>
       <Pressable
         onPressIn={() => {
+          if (disabled) return;
           scale.value = withTiming(0.97, { duration: 100 });
         }}
         onPressOut={() => {
+          if (disabled) return;
           scale.value = withTiming(1, { duration: 120 });
         }}
-        onPress={onPress}
-        accessibilityRole="button"
+        onPress={disabled ? undefined : onPress}
+        disabled={disabled}
+        // Story 14-2 review-round-1 H1: when disabled, present as static
+        // text (not a button) — VoiceOver / TalkBack must NOT promise
+        // "Double tap to start ... practice" on a card that won't respond.
+        // Pre-14-2 ComingSoonCard used accessibilityRole="text" + hint
+        // "Not yet available"; the consolidated SkillCard restores that
+        // semantic for the disabled branch.
+        accessibilityRole={disabled ? "text" : "button"}
         accessibilityLabel={`${titleEn}. ${description}`}
-        accessibilityHint={`Double tap to start ${titleEn} practice`}
-        style={skillCardPressableStaticStyle}
+        accessibilityHint={
+          disabled ? "Not yet available" : `Double tap to start ${titleEn} practice`
+        }
+        accessibilityState={{ disabled }}
+        style={[containerStyle, disabled ? { opacity: 0.6 } : null]}
       >
         {/* Left accent strip */}
         <View
           className="absolute left-0 top-0 bottom-0 w-1"
-          style={{ backgroundColor: accentColor }}
+          style={{ backgroundColor: stripColor }}
         />
 
         {/* Icon circle */}
         <View
           className="w-14 h-14 rounded-[28px] justify-center items-center"
-          style={{ backgroundColor: skillTint(accentColor, 0.09) }}
+          style={{ backgroundColor: skillTint(stripColor, 0.09) }}
         >
           <Text style={{ fontSize: Typography.statNumber.fontSize }}>{emoji}</Text>
         </View>

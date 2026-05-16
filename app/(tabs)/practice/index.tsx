@@ -1,8 +1,6 @@
-import { useEffect } from "react";
-import { View, Text, ScrollView, Pressable, StatusBar } from "react-native";
+import { View, Text, ScrollView, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 
 import { SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, Shadows } from "@/src/lib/design";
@@ -88,78 +86,6 @@ const PRACTICE_SKILLS: {
 ];
 
 // ---------------------------------------------------------------------------
-// Vocabulary featured card
-// ---------------------------------------------------------------------------
-
-interface VocabularyCardProps {
-  onPress: () => void;
-}
-
-function VocabularyCard({ onPress }: VocabularyCardProps) {
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(20);
-  const scale = useSharedValue(1);
-
-  useEffect(() => {
-    opacity.value = withTiming(1, { duration: 380 });
-    translateY.value = withTiming(0, { duration: 380 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const entryStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
-  }));
-
-  return (
-    <Animated.View style={entryStyle}>
-      <Pressable
-        onPressIn={() => {
-          scale.value = withTiming(0.97, { duration: 100 });
-        }}
-        onPressOut={() => {
-          scale.value = withTiming(1, { duration: 120 });
-        }}
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel="Vocabulary. Review with spaced repetition."
-        className="rounded-2xl flex-row items-center p-[18px] gap-4 overflow-hidden"
-        style={{
-          backgroundColor: Colors.accent10,
-          borderWidth: 1,
-          borderColor: Colors.accent,
-        }}
-      >
-        {/* FEATURED badge */}
-        <View className="absolute top-2 right-2 bg-accent rounded-md px-[7px] py-[3px]">
-          <Text className="text-white text-[9px] font-bold tracking-[1px]">FEATURED</Text>
-        </View>
-
-        {/* Icon circle */}
-        <View
-          className="w-[52px] h-[52px] rounded-[26px] justify-center items-center"
-          style={{
-            backgroundColor: Colors.accent20,
-            borderWidth: 1.5,
-            borderColor: Colors.accent30,
-          }}
-        >
-          <Text className="text-[24px]">{"\uD83D\uDCDA"}</Text>
-        </View>
-
-        {/* Labels */}
-        <View className="flex-1">
-          <Text className="text-base font-bold text-primary">Vocabulary</Text>
-          <Text className="text-xs mt-1" style={{ color: Colors.textTertiary }}>
-            Review with spaced repetition
-          </Text>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main screen
 // ---------------------------------------------------------------------------
 
@@ -209,8 +135,17 @@ export default function PracticeScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Vocabulary featured card */}
-        <VocabularyCard onPress={() => router.push({ pathname: "/(tabs)/practice/vocabulary" })} />
+        {/* Vocabulary featured card (Story 14-2: consolidated to SkillCard featured variant) */}
+        <SkillCard
+          emoji={"📚"}
+          titleFr="Vocabulaire"
+          titleEn="Vocabulary"
+          description="Review with spaced repetition"
+          accentColor={Colors.accent}
+          delay={0}
+          onPress={() => router.push({ pathname: "/(tabs)/practice/vocabulary" })}
+          featured
+        />
 
         {/* Skill cards */}
         {PRACTICE_SKILLS.map(({ skill, emoji, color, description }, index) => (

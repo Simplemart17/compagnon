@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,14 +10,7 @@ import {
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  Easing,
-  FadeIn,
-} from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 import { useAuth } from "@/src/hooks/use-auth";
 import { useCefrHistory } from "@/src/hooks/use-cefr-history";
@@ -26,6 +19,7 @@ import { CEFRProgressionChart } from "@/src/components/profile/cefr-progression-
 import { CEFR_LEVELS } from "@/src/types/cefr";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, SKILL_COLORS, skillTint } from "@/src/lib/design";
+import { ListItemCard } from "@/src/components/common/ListItemCard";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { StatTile } from "@/src/components/common/StatTile";
 import type { CEFRLevel, TCFSkill } from "@/src/types/cefr";
@@ -45,107 +39,19 @@ const SKILL_ROUTES: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Animated skill card (profile-specific — NOT promoted)
+// Small helpers extracted from the pre-14-2 inline ProfileSkillCard
 // ---------------------------------------------------------------------------
 
-interface ProfileSkillCardProps {
-  skill: TCFSkill;
-  skillLevel: CEFRLevel;
-  exercises: number;
-  score: number;
-  delay: number;
-  onPress?: () => void;
+interface CEFRBadgePillProps {
+  level: CEFRLevel;
 }
 
-function ProfileSkillCard({
-  skill,
-  skillLevel,
-  exercises,
-  score,
-  delay,
-  onPress,
-}: ProfileSkillCardProps) {
-  const opacity = useSharedValue(0);
-  const translateX = useSharedValue(-20);
-
-  useEffect(() => {
-    opacity.value = withDelay(
-      delay,
-      withTiming(1, { duration: 380, easing: Easing.out(Easing.quad) })
-    );
-    translateX.value = withDelay(
-      delay,
-      withTiming(0, { duration: 380, easing: Easing.out(Easing.quad) })
-    );
-  }, [delay, opacity, translateX]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateX: translateX.value }],
-  }));
-
-  const color = SKILL_COLORS[skill];
-  const fillPct: `${number}%` = `${Math.min(100, (score ?? 0) / 7)}%`;
-
-  const card = (
-    <Animated.View
-      className="overflow-hidden rounded-2xl bg-white"
-      style={[
-        animStyle,
-        {
-          shadowColor: Colors.shadow,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 6,
-          elevation: 3,
-        },
-      ]}
-    >
-      {/* Colored left strip */}
-      <View className="absolute bottom-0 left-0 top-0 w-1" style={{ backgroundColor: color }} />
-      <View className="py-3.5 pl-[18px] pr-3.5">
-        <View className="mb-2.5 flex-row items-center justify-between">
-          <View>
-            <Text className="text-sm font-semibold text-primary">{SKILL_LABELS[skill]?.en}</Text>
-            <Text className="mt-0.5 text-[11px]" style={{ color: Colors.textTertiary }}>
-              {exercises} exercises completed
-            </Text>
-          </View>
-          {/* CEFR badge pill */}
-          <View
-            className="rounded-[10px] px-2.5 py-1"
-            style={{ backgroundColor: LEVEL_COLORS[skillLevel] }}
-          >
-            <Text className="text-xs font-bold text-white">{skillLevel}</Text>
-          </View>
-        </View>
-        {/* Progress bar */}
-        <View className="h-1 rounded-sm bg-surface-200">
-          <View
-            className="h-1 rounded-sm"
-            style={{
-              width: fillPct,
-              backgroundColor: color,
-            }}
-          />
-        </View>
-      </View>
-    </Animated.View>
+function CEFRBadgePill({ level }: CEFRBadgePillProps) {
+  return (
+    <View className="rounded-[10px] px-2.5 py-1" style={{ backgroundColor: LEVEL_COLORS[level] }}>
+      <Text className="text-xs font-bold text-white">{level}</Text>
+    </View>
   );
-
-  if (onPress) {
-    return (
-      <TouchableOpacity
-        onPress={onPress}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={`${SKILL_LABELS[skill]?.en ?? skill}: ${skillLevel}, ${exercises} exercises`}
-      >
-        {card}
-      </TouchableOpacity>
-    );
-  }
-  return card;
 }
 
 // ---------------------------------------------------------------------------
@@ -254,7 +160,7 @@ export default function ProfileScreen() {
           {/* Top row: title + settings button */}
           <View className="mb-6 flex-row items-center justify-between">
             <Text className="text-xl font-bold text-white" accessibilityRole="header">
-              Mon profil
+              My profile
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/(tabs)/profile/settings")}
@@ -358,14 +264,18 @@ export default function ProfileScreen() {
               const exerciseCount = skillData?.exercises_completed ?? 0;
               const skillScore = skillData?.score ?? 0;
 
+              const color = SKILL_COLORS[skill];
+              const fillPercent = Math.min(100, (skillScore ?? 0) / 7);
               return (
-                <ProfileSkillCard
+                <ListItemCard
                   key={skill}
-                  skill={skill}
-                  skillLevel={skillLevel}
-                  exercises={exerciseCount}
-                  score={skillScore}
+                  leftStripColor={color}
+                  titlePrimary={SKILL_LABELS[skill]?.en ?? skill}
+                  description={`${exerciseCount} exercises completed`}
+                  rightContent={<CEFRBadgePill level={skillLevel} />}
+                  progressBar={{ fillPercent, color }}
                   delay={idx * 60}
+                  accessibilityLabel={`${SKILL_LABELS[skill]?.en ?? skill}: ${skillLevel}, ${exerciseCount} exercises`}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Expo Router typed routes limitation
                   onPress={() => router.push(SKILL_ROUTES[skill] as any)}
                 />
@@ -426,10 +336,27 @@ export default function ProfileScreen() {
               </Text>
               <View className="gap-2">
                 {progress.topErrors.map((error, idx) => (
-                  <TouchableOpacity
+                  <ListItemCard
                     key={error.id}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
+                    leftStripColor={Colors.accent}
+                    titlePrimary={error.error_description}
+                    rightContent={
+                      <View
+                        className="ml-2.5 rounded-lg border px-2 py-[3px]"
+                        style={{
+                          backgroundColor: Colors.accent10,
+                          borderColor: Colors.accent30,
+                        }}
+                      >
+                        <Text
+                          style={{ color: Colors.accentText }}
+                          className="text-[11px] font-bold"
+                        >
+                          {error.occurrences}x
+                        </Text>
+                      </View>
+                    }
+                    delay={idx * 60 + 100}
                     accessibilityLabel={`Error pattern: ${error.error_description}. Tap for practice drill.`}
                     accessibilityHint="Double tap to start a micro-drill on this error"
                     onPress={() =>
@@ -443,41 +370,7 @@ export default function ProfileScreen() {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Expo Router typed routes limitation
                       } as any)
                     }
-                  >
-                    <Animated.View
-                      entering={FadeIn.delay(idx * 60 + 100).duration(350)}
-                      className="overflow-hidden rounded-2xl bg-white"
-                      style={{
-                        shadowColor: Colors.shadow,
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.06,
-                        shadowRadius: 6,
-                        elevation: 3,
-                      }}
-                    >
-                      {/* Amber left strip */}
-                      <View className="absolute bottom-0 left-0 top-0 w-1 bg-accent" />
-                      <View className="flex-row items-center justify-between py-3.5 pl-[18px] pr-3.5">
-                        <Text className="flex-1 text-[13px] leading-[18px] text-primary">
-                          {error.error_description}
-                        </Text>
-                        <View
-                          className="ml-2.5 rounded-lg border px-2 py-[3px]"
-                          style={{
-                            backgroundColor: Colors.accent10,
-                            borderColor: Colors.accent30,
-                          }}
-                        >
-                          <Text
-                            style={{ color: Colors.accentText }}
-                            className="text-[11px] font-bold"
-                          >
-                            {error.occurrences}x
-                          </Text>
-                        </View>
-                      </View>
-                    </Animated.View>
-                  </TouchableOpacity>
+                  />
                 ))}
               </View>
             </View>

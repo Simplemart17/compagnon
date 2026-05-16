@@ -136,10 +136,15 @@ describe("Story 14-1 — chrome strings converted to English (per touched file)"
 
   it("app/(tabs)/practice/index.tsx: VEDETTE + Vocabulaire + Entraînement converted", () => {
     const src = readScreen("app/(tabs)/practice/index.tsx");
+    // Story 14-2 update: VEDETTE/FEATURED corner badge consolidated away
+    // when VocabularyCard → SkillCard featured variant migration landed.
+    // The featured visual treatment (accent10 bg + amber border) IS the
+    // featured signal post-14-2; no separate chrome badge needed.
     expect(src).not.toMatch(/>VEDETTE</);
-    expect(src).toMatch(/>FEATURED</);
-    expect(src).not.toMatch(/>Vocabulaire</);
-    expect(src).toMatch(/>Vocabulary</);
+    // Story 14-2 update: Vocabulaire is now passed as titleFr prop to
+    // SkillCard (FR pedagogical-reinforcement secondary line per Story
+    // 14-1 R1 chrome rule), not as primary chrome.
+    expect(src).toMatch(/titleEn="Vocabulary"/);
     expect(src).not.toMatch(/>Entraînement</);
     expect(src).toMatch(/>Practice</);
     expect(src).not.toMatch(/Choisissez une compétence/);
@@ -220,12 +225,20 @@ describe("Story 14-1 — chrome strings converted to English (per touched file)"
     expect(src).toMatch(/SKILL_LABELS\[skill\.skill\]\?\.en/);
   });
 
-  it("R1-H3: mock-test/index.tsx ComingSoonCard + SectionCard render EN primary (nameSub) not FR (nameFr)", () => {
+  it("R1-H3: mock-test/index.tsx Section/ComingSoon cards consume SkillCard (EN primary via titleEn=nameSub; FR via titleFr=nameFr)", () => {
     const src = readScreen("app/(tabs)/mock-test/index.tsx");
-    // The primary big-text label inside the cards is now nameSub (EN);
-    // pre-R1 it was nameFr (FR like "Compréhension Orale").
-    expect(src).not.toMatch(/font-bold text-primary">\{nameFr\}/);
-    expect(src).toMatch(/font-bold text-primary">\{nameSub\}/);
+    // Story 14-2 update: SectionCard + ComingSoonCard inline components
+    // DELETED; their EN-primary render contract is now satisfied via
+    // SkillCard (which already renders titleEn as primary big text per
+    // Story 14-1 R1-H2). Pin the new invocation shape instead of the
+    // pre-14-2 inline JSX nameSub mapping.
+    expect(src).not.toMatch(/function\s+ComingSoonCard\s*\(/);
+    expect(src).not.toMatch(/function\s+SectionCard\s*\(/);
+    expect(src).toMatch(/<SkillCard\b/);
+    // EN-primary contract is enforced by SkillCard's own internal render
+    // (titleEn → big text); the mock-test consumer passes the EN value as
+    // titleEn via `titleEn={section.nameSub}` / `titleEn="Writing"`.
+    expect(src).toMatch(/titleEn=\{section\.nameSub\}|titleEn="Writing"|titleEn="Speaking"/);
   });
 
   it("R1-H4: COMPAGNON uppercase brand label converted to COMPANION (home + onboarding)", () => {
@@ -585,7 +598,12 @@ describe("Story 14-1 — chrome strings converted to English (per touched file)"
       "Réessayer",
       "Préparation de la section",
       "Entraînement",
-      "Vocabulaire",
+      // Story 14-2 update: "Vocabulaire" anchored to chrome-context. Post-14-2
+      // it appears as the `titleFr` prop on SkillCard (FR pedagogical
+      // secondary line — content, not chrome per Story 14-1 chrome rule).
+      // Pre-14-2 the bare "Vocabulaire" was rendered as primary chrome via
+      // the deleted VocabularyCard inline component.
+      ">Vocabulaire<",
       "Parlez avec Compagnon",
       "Question suivante",
       "Bon retour",

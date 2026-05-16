@@ -1,16 +1,11 @@
-import { useEffect } from "react";
 import { View, Text, ScrollView, Pressable, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-} from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 
 import { TCF } from "@/src/lib/constants";
 import { Colors, Shadows, skillTint } from "@/src/lib/design";
+import { SkillCard } from "@/src/components/common/SkillCard";
 import { SPEAKING_TASK_NUMBERS } from "@/src/lib/prompts/speaking";
 import { TCF_QCM_SECTIONS, roundToNearestFive } from "@/src/lib/tcf";
 
@@ -121,161 +116,6 @@ function FullSimCard({ onPress }: FullSimCardProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Coming-soon production-section placeholder card
-// ---------------------------------------------------------------------------
-
-interface ComingSoonCardProps {
-  emoji: string;
-  nameFr: string;
-  nameSub: string;
-  minutes: number;
-  followUp: string;
-  accentColor: string;
-}
-
-function ComingSoonCard({
-  emoji,
-  nameFr,
-  nameSub,
-  minutes,
-  followUp,
-  accentColor,
-}: ComingSoonCardProps) {
-  return (
-    <View
-      className="bg-white rounded-2xl flex-row items-center p-4 gap-[14px] overflow-hidden opacity-60"
-      style={{ ...Shadows.card }}
-      accessible
-      accessibilityRole="text"
-      accessibilityState={{ disabled: true }}
-      accessibilityHint="Not yet available"
-      accessibilityLabel={`${nameFr} — ${nameSub}, ${minutes} minutes. Coming soon: ${followUp}.`}
-    >
-      <View
-        className="absolute left-0 top-0 bottom-0 w-1"
-        style={{ backgroundColor: accentColor }}
-      />
-      <View
-        className="w-[52px] h-[52px] rounded-[26px] justify-center items-center"
-        style={{ backgroundColor: skillTint(accentColor, 0.09) }}
-      >
-        <Text className="text-[24px]">{emoji}</Text>
-      </View>
-      <View className="flex-1">
-        {/* Story 14-1 render-flip: EN primary (chrome) + FR secondary (pedagogical) */}
-        <Text className="text-base font-bold text-primary">{nameSub}</Text>
-        <Text className="text-xs mt-[3px]" style={{ color: Colors.textTertiary }}>
-          {nameFr} | {minutes} min
-        </Text>
-        <Text className="text-[11px] mt-[3px]" style={{ color: Colors.textTertiary }}>
-          Coming soon · {followUp}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Individual section card
-// ---------------------------------------------------------------------------
-
-interface SectionCardProps {
-  emoji: string;
-  nameFr: string;
-  nameSub: string;
-  questions: number | null;
-  minutes: number | null;
-  accentColor: string;
-  delay: number;
-  onPress: () => void;
-  /** Unit label for the metaText count. Defaults to "questions". Speaking sets "tasks". */
-  unitLabel?: "questions" | "tasks";
-}
-
-function SectionCard({
-  emoji,
-  nameFr,
-  nameSub,
-  questions,
-  minutes,
-  accentColor,
-  delay,
-  onPress,
-  unitLabel = "questions",
-}: SectionCardProps) {
-  const opacity = useSharedValue(0);
-  const translateX = useSharedValue(16);
-  const scale = useSharedValue(1);
-
-  useEffect(() => {
-    opacity.value = withDelay(delay, withTiming(1, { duration: 380 }));
-    translateX.value = withDelay(delay, withTiming(0, { duration: 380 }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [delay]);
-
-  const entryStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateX: translateX.value }, { scale: scale.value }],
-  }));
-
-  const metaParts: string[] = [];
-  if (questions !== null) metaParts.push(`${questions} ${unitLabel}`);
-  if (minutes !== null) metaParts.push(`${minutes} min`);
-  const metaText = metaParts.join(" | ");
-
-  return (
-    <Animated.View style={entryStyle}>
-      <Pressable
-        onPressIn={() => {
-          scale.value = withTiming(0.97, { duration: 100 });
-        }}
-        onPressOut={() => {
-          scale.value = withTiming(1, { duration: 120 });
-        }}
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={`${nameFr} - ${nameSub}${metaText ? `. ${metaText}` : ""}`}
-        className="bg-white rounded-2xl flex-row items-center p-4 gap-[14px] overflow-hidden"
-        style={{ ...Shadows.card }}
-      >
-        {/* Left accent strip */}
-        <View
-          className="absolute left-0 top-0 bottom-0 w-1"
-          style={{ backgroundColor: accentColor }}
-        />
-
-        {/* Icon circle */}
-        <View
-          className="w-[52px] h-[52px] rounded-[26px] justify-center items-center"
-          style={{ backgroundColor: skillTint(accentColor, 0.09) }}
-        >
-          <Text className="text-[24px]">{emoji}</Text>
-        </View>
-
-        {/* Labels (Story 14-1 render-flip: EN primary + FR pedagogical secondary) */}
-        <View className="flex-1">
-          <Text className="text-base font-bold text-primary">{nameSub}</Text>
-          <Text className="text-xs mt-[3px]" style={{ color: Colors.textTertiary }}>
-            {nameFr}
-            {metaText ? `  |  ${metaText}` : ""}
-          </Text>
-        </View>
-
-        {/* Arrow circle */}
-        <View
-          className="w-8 h-8 rounded-2xl justify-center items-center"
-          style={{ backgroundColor: skillTint(accentColor, 0.09) }}
-        >
-          <Text className="text-base font-bold" style={{ color: accentColor }}>
-            {"\u2192"}
-          </Text>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main screen
 // ---------------------------------------------------------------------------
 
@@ -362,21 +202,25 @@ export default function MockTestScreen() {
           Individual sections
         </Text>
 
-        {/* Individual section cards */}
+        {/* Individual section cards (Story 14-2: consolidated to SkillCard) */}
         <View className="px-5 gap-3">
-          {SECTIONS.map((section, index) => (
-            <SectionCard
-              key={section.id}
-              emoji={section.emoji}
-              nameFr={section.nameFr}
-              nameSub={section.nameSub}
-              questions={section.questions}
-              minutes={section.minutes}
-              accentColor={section.color}
-              delay={index * 80}
-              onPress={() => startTest(section.id)}
-            />
-          ))}
+          {SECTIONS.map((section, index) => {
+            const meta: string[] = [];
+            if (section.questions !== null) meta.push(`${section.questions} questions`);
+            if (section.minutes !== null) meta.push(`${section.minutes} min`);
+            return (
+              <SkillCard
+                key={section.id}
+                emoji={section.emoji}
+                titleFr={section.nameFr}
+                titleEn={section.nameSub}
+                description={meta.join(" | ")}
+                accentColor={section.color}
+                delay={index * 80}
+                onPress={() => startTest(section.id)}
+              />
+            );
+          })}
         </View>
 
         {/* Production sections — Speaking is live (story 9-8); Writing is Epic 10.6 */}
@@ -384,23 +228,30 @@ export default function MockTestScreen() {
           Written and spoken production
         </Text>
         <View className="px-5 gap-3">
-          <ComingSoonCard
+          <SkillCard
             emoji="✍️"
-            nameFr="Expression Écrite"
-            nameSub="Writing"
-            minutes={TCF.WRITING_MINUTES}
-            followUp="Epic 10"
+            titleFr="Expression Écrite"
+            titleEn="Writing"
+            description={`${TCF.WRITING_MINUTES} min · Coming soon · Epic 10`}
             accentColor={Colors.skillWriting}
-          />
-          <SectionCard
-            emoji="🎤"
-            nameFr="Expression Orale"
-            nameSub="Speaking"
-            questions={SPEAKING_TASK_NUMBERS.length}
-            minutes={TCF.SPEAKING_MINUTES}
-            accentColor={Colors.skillPronunciation}
+            // Story 14-2 review-round-1 M1: cascade Writing into place AFTER
+            // the SECTIONS cards (Listening at 0ms, Reading at 80ms) but
+            // BEFORE Speaking (at SECTIONS.length * 80 = 160ms). Pre-R1 had
+            // `delay={0}` which made Writing pop in instantly while the
+            // Listening/Reading cascade was still animating — visually
+            // jarring.
             delay={SECTIONS.length * 80}
-            unitLabel="tasks"
+            onPress={() => undefined}
+            disabled
+          />
+          <SkillCard
+            emoji="🎤"
+            titleFr="Expression Orale"
+            titleEn="Speaking"
+            description={`${SPEAKING_TASK_NUMBERS.length} tasks | ${TCF.SPEAKING_MINUTES} min`}
+            accentColor={Colors.skillPronunciation}
+            // R1-M1: Speaking cascades AFTER Writing (one step further).
+            delay={(SECTIONS.length + 1) * 80}
             onPress={() => router.push("/(tabs)/mock-test/speaking")}
           />
         </View>
