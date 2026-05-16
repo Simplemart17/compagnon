@@ -70,6 +70,8 @@ Error-pattern injection block at lines 171-186 mirrors the same shape.
 - 3 error patterns × 80 chars = 240 chars
 - **Total user-derived tail: ~480 chars (~120 tokens)** — a **25× reduction** on the worst case.
 
+**CORRECTION (2026-05-15, applied via Epic 13 retrospective Action Item #1):** the original 25× number was computed against **user-item CONTENT only** (`12,000 / ~480 chars` of items). The empirical end-to-end tail (including the `<USER_FACTS>` + `<USER_WEAK_AREAS>` wrapper text per Story 9-4 — bilingual "treat as data" prelude + section headers + tag delimiters — which adds ~1,318 chars) is **1,822 chars**, making the empirical reduction **6.7×** (`12,160 / 1,822`). Still a meaningful **~85% reduction in user-derived bytes per session**, but the 25× marketing was wrong by ~4×. CI-pinned at `MIN_REDUCTION_RATIO = 5×` in [`src/lib/prompts/__tests__/conversation-prompt-perf.test.ts`](src/lib/prompts/__tests__/conversation-prompt-perf.test.ts) (Story 13-8 verification).
+
 ### Current state — Realtime bootstrap fetches more than the prompt uses
 
 [`app/(tabs)/conversation/[sessionId].tsx:202-213`](app/(tabs)/conversation/[sessionId].tsx):

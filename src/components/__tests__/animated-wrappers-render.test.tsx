@@ -24,19 +24,13 @@
  *     silently re-injects `className`.
  */
 
-jest.mock("react-native-reanimated", () => ({
-  __esModule: true,
-  default: {
-    View: "View",
-    Text: "Text",
-    createAnimatedComponent: (c: unknown) => c,
-  },
-  useSharedValue: (v: unknown) => ({ value: v }),
-  useAnimatedStyle: (fn: () => Record<string, unknown>) => fn(),
-  withTiming: (v: unknown) => v,
-  withDelay: (_delay: unknown, v: unknown) => v,
-  Easing: { out: () => () => 0, quad: () => 0 },
-}));
+// Reanimated mock factory shared with other test files (Epic 13 retro AI #7).
+// `jest.mock` is hoisted by `babel-plugin-jest-hoist`; the factory must be
+// reached via `require()` from inside the callback.
+jest.mock("react-native-reanimated", () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock hoisting requires require() inside the callback
+  require("@/src/test-utils/mocks/reanimated").reanimatedMockFactory()
+);
 
 // `app/(tabs)/home/index.tsx` transitively imports `useDailyBriefing` →
 // `src/lib/cache.ts` → `@react-native-async-storage/async-storage`, which
@@ -93,16 +87,9 @@ import { ConversationCard, conversationCardStaticStyle } from "@/app/(tabs)/home
 import { Colors, Radii } from "@/src/lib/design";
 import { SkillCard, skillCardPressableStaticStyle } from "@/src/components/common/SkillCard";
 import { StatTile, statTileStaticStyle } from "@/src/components/common/StatTile";
-
-// The project ships a minimal `react-test-renderer` type shim
-// (`src/types/react-test-renderer.d.ts`) without a full `TestInstance`
-// surface; declare the small subset we need locally (Story 12-9 +
-// EmailVerificationGate.test.tsx precedent).
-interface MinimalTestInstance {
-  type: unknown;
-  props: Record<string, unknown>;
-  children: unknown;
-}
+// Shared `findAllNodes` + `flattenStyle` from `@/src/test-utils/react-test-renderer`
+// (Epic 13 retro AI #7). Pre-AI-#7 this file duplicated the type + helpers inline.
+import { findAllNodes, flattenStyle } from "@/src/test-utils/react-test-renderer";
 
 const activeRenderers: ReturnType<typeof create>[] = [];
 
@@ -132,40 +119,6 @@ function mount(element: React.ReactElement) {
   });
   activeRenderers.push(renderer);
   return renderer;
-}
-
-/**
- * Walk every node in the tree and return the matches. Mirrors
- * react-test-renderer's `findAll` API via the local MinimalTestInstance
- * shape so TypeScript's strict-mode is satisfied without `@types/*`.
- */
-function findAllNodes(
-  renderer: ReturnType<typeof create>,
-  predicate: (node: MinimalTestInstance) => boolean
-): MinimalTestInstance[] {
-  const root = renderer.root as {
-    findAll: (pred: (node: MinimalTestInstance) => boolean) => MinimalTestInstance[];
-  };
-  return root.findAll(predicate);
-}
-
-/**
- * Flatten a React Native style prop value (object | array | nested arrays)
- * into a single merged object for assertion convenience. Mirrors RN's
- * StyleSheet.flatten semantics; later entries override earlier entries.
- */
-function flattenStyle(style: unknown): Record<string, unknown> {
-  if (!style) return {};
-  if (Array.isArray(style)) {
-    return style.reduce<Record<string, unknown>>(
-      (acc, item) => ({ ...acc, ...flattenStyle(item) }),
-      {}
-    );
-  }
-  if (typeof style === "object") {
-    return style as Record<string, unknown>;
-  }
-  return {};
 }
 
 describe("Story 13-7 — animated-wrappers runtime smoke tests", () => {
