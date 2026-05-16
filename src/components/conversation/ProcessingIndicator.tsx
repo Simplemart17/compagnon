@@ -36,7 +36,7 @@ function Dot({ index }: { index: number }) {
           width: 5,
           height: 5,
           borderRadius: 2.5,
-          backgroundColor: Colors.accent,
+          backgroundColor: Colors.progress, // Story 14-5: non-interactive processing feedback
         },
         animStyle,
       ]}

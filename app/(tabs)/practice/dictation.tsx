@@ -27,6 +27,11 @@ import { fireScoreHaptic, getScoreColor, getScoreLabel } from "@/src/lib/score-f
 
 const PRIMARY = Colors.primary;
 const ACCENT = Colors.accent;
+// Story 14-5 progress-cluster — used only for the top progress-bar fill at line ~97.
+// The other ACCENT usages below (difficulty pill / wrong-state / achievement-result
+// color) stay on Colors.accent because they're CTA-adjacent state colors, NOT
+// non-interactive progress feedback.
+const PROGRESS = Colors.progress;
 const SUCCESS = Colors.success;
 const ERROR_COLOR = Colors.error;
 
@@ -94,7 +99,12 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
     <View className="w-full h-1.5 bg-surface-200 rounded-sm overflow-hidden">
       <Animated.View
         entering={FadeIn.duration(200)}
-        style={{ width: `${progress}%`, height: "100%", backgroundColor: ACCENT, borderRadius: 3 }}
+        style={{
+          width: `${progress}%`,
+          height: "100%",
+          backgroundColor: PROGRESS,
+          borderRadius: 3,
+        }}
       />
     </View>
   );
