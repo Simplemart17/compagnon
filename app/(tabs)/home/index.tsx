@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import NetInfo from "@react-native-community/netinfo";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -23,6 +22,7 @@ import { CompanionMessage, CompanionMessageSkeleton } from "@/src/components/hom
 import { ErrorJourneyBar, ErrorJourneyBarSkeleton } from "@/src/components/home/ErrorJourneyBar";
 import { TodayPlanItem, TodayPlanSkeleton } from "@/src/components/home/TodayPlanItem";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { HeroHeader } from "@/src/components/common/HeroHeader";
 import { useDailyBriefing } from "@/src/hooks/use-daily-briefing";
 import { useProgress } from "@/src/hooks/use-progress";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
@@ -140,7 +140,6 @@ export function ConversationCard({ onPress }: ConversationCardProps) {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
   const progress = useProgress();
   const briefing = useDailyBriefing();
@@ -196,11 +195,8 @@ export default function HomeScreen() {
     return (
       <View className="flex-1 bg-surface">
         <StatusBar barStyle="light-content" />
-        {/* Hero skeleton */}
-        <View
-          className="bg-primary pb-6 px-6 rounded-b-[28px]"
-          style={{ paddingTop: insets.top + 16 }}
-        >
+        {/* Story 14-9: skeleton hero via canonical HeroHeader (defaults: paddingTopOffset=16, paddingBottom=24) */}
+        <HeroHeader>
           <SkeletonBar width={80} height={10} style={{ marginBottom: 14 }} />
           <SkeletonBar width={200} height={28} style={{ marginBottom: 12 }} />
           <View className="flex-row gap-2 mb-4">
@@ -208,7 +204,7 @@ export default function HomeScreen() {
             <SkeletonBar width={60} height={24} style={{ borderRadius: 20 }} />
           </View>
           <SkeletonBar width="100%" height={4} />
-        </View>
+        </HeroHeader>
         {/* Content skeleton */}
         <View style={{ padding: 20 }}>
           <SkeletonBar width={100} height={18} style={{ marginBottom: 12 }} />
@@ -233,15 +229,11 @@ export default function HomeScreen() {
     <View className="flex-1 bg-surface">
       <StatusBar barStyle="light-content" />
       {/* ------------------------------------------------------------------ */}
-      {/* Hero header -- fixed, not scrollable                                */}
+      {/* Hero header -- fixed, not scrollable.                                */}
+      {/* Story 14-9: canonical HeroHeader (defaults: paddingTopOffset=16,    */}
+      {/* paddingBottom=24); Shadows.hero applied internally by the component. */}
       {/* ------------------------------------------------------------------ */}
-      <View
-        className="bg-primary pb-6 px-6 rounded-b-[28px]"
-        style={{
-          paddingTop: insets.top + 16,
-          ...Shadows.hero,
-        }}
-      >
+      <HeroHeader>
         {/* Row 1: brand label + notification bell */}
         <View className="flex-row justify-between items-center mb-[14px]">
           <Text className="text-[10px] font-bold text-accent tracking-[3px]">COMPANION</Text>
@@ -330,7 +322,7 @@ export default function HomeScreen() {
             {minutesToday}/{dailyGoal} min
           </Text>
         </View>
-      </View>
+      </HeroHeader>
 
       {/* ------------------------------------------------------------------ */}
       {/* Scrollable content                                                   */}

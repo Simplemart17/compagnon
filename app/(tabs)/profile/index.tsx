@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, ScrollView, RefreshControl, StatusBar } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { useAuth } from "@/src/hooks/use-auth";
@@ -12,6 +11,7 @@ import { CEFRProgressionChart } from "@/src/components/profile/cefr-progression-
 import { CEFR_LEVELS } from "@/src/types/cefr";
 import { LEVEL_COLORS, SKILL_LABELS } from "@/src/lib/constants";
 import { Colors, SKILL_COLORS, skillTint } from "@/src/lib/design";
+import { HeroHeader } from "@/src/components/common/HeroHeader";
 import { Icon } from "@/src/components/common/Icon";
 import { ListItemCard } from "@/src/components/common/ListItemCard";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
@@ -55,7 +55,6 @@ function CEFRBadgePill({ level }: CEFRBadgePillProps) {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { profile, signOut } = useAuth();
   const progress = useProgress();
   const cefrHistory = useCefrHistory();
@@ -109,11 +108,8 @@ export default function ProfileScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar barStyle="light-content" />
         <View className="flex-1 bg-surface">
-          {/* Hero skeleton */}
-          <View
-            className="rounded-b-[28px] bg-primary px-6 pb-8 items-center"
-            style={{ paddingTop: insets.top + 12 }}
-          >
+          {/* Story 14-9: skeleton hero via canonical HeroHeader (paddingTopOffset=12, paddingBottom=32, centered) */}
+          <HeroHeader paddingTopOffset={12} paddingBottom={32} centered>
             <SkeletonBar width={100} height={20} style={{ marginBottom: 24 }} />
             <SkeletonBar width={84} height={84} style={{ borderRadius: 42 }} />
             <SkeletonBar width={140} height={22} style={{ marginTop: 12 }} />
@@ -121,7 +117,7 @@ export default function ProfileScreen() {
               <SkeletonBar width={50} height={28} style={{ borderRadius: 16 }} />
               <SkeletonBar width={50} height={28} style={{ borderRadius: 16 }} />
             </View>
-          </View>
+          </HeroHeader>
           {/* Stat tiles skeleton */}
           <View className="-mt-7 mb-1 flex-row gap-2.5 px-5">
             {[0, 1, 2].map((i) => (
@@ -156,16 +152,9 @@ export default function ProfileScreen() {
         {/* ----------------------------------------------------------------
             Hero header -- not scrollable
         ---------------------------------------------------------------- */}
-        <View
-          className="rounded-b-[28px] bg-primary px-6 pb-8"
-          style={{ paddingTop: insets.top + 12 }}
-        >
-          {/* Inner dark overlay layer for depth */}
-          <View
-            className="absolute bottom-0 left-0 right-0 top-0 rounded-b-[40px]"
-            style={{ backgroundColor: skillTint(Colors.bgDark, 0.35) }}
-          />
-
+        {/* Story 14-9: canonical HeroHeader (paddingTopOffset=12, paddingBottom=32);
+            the bespoke inner-dim overlay is now produced by `overlay="inner-dim"`. */}
+        <HeroHeader paddingTopOffset={12} paddingBottom={32} overlay="inner-dim">
           {/* Top row: title + settings button */}
           <View className="mb-6 flex-row items-center justify-between">
             <Text className="text-xl font-bold text-white" accessibilityRole="header">
@@ -242,7 +231,7 @@ export default function ProfileScreen() {
               </View>
             ) : null}
           </View>
-        </View>
+        </HeroHeader>
 
         {/* ----------------------------------------------------------------
             Stat tiles -- overlapping hero with negative margin

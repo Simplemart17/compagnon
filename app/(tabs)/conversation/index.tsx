@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { View, Text, FlatList, TouchableOpacity, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuthStore } from "@/src/store/auth-store";
 import { CONVERSATION_TOPICS, LEVEL_COLORS } from "@/src/lib/constants";
@@ -11,6 +10,7 @@ import { CEFR_ORDER } from "@/src/types/cefr";
 import { Colors, skillTint } from "@/src/lib/design";
 import { Icon, type IconName } from "@/src/components/common/Icon";
 import { ListItemCard } from "@/src/components/common/ListItemCard";
+import { HeroHeader } from "@/src/components/common/HeroHeader";
 
 /**
  * Story 14-3: `icon` is either a typed IconName (rendered via `<Icon />`) or
@@ -115,7 +115,6 @@ function CardItem({ item, index, onPress }: CardItemProps) {
 
 export default function ConversationTopicsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
   const userLevel = (profile?.current_cefr_level ?? "A1") as CEFRLevel;
   const streak = profile?.streak_days ?? 0;
@@ -156,21 +155,9 @@ export default function ConversationTopicsScreen() {
   return (
     <View className="flex-1 bg-surface">
       <StatusBar barStyle="light-content" />
-      {/* Hero section */}
-      <View
-        className="bg-primary rounded-b-[28px] pb-6 px-6"
-        style={{ paddingTop: insets.top + 16 }}
-      >
-        {/* Depth overlay */}
-        <View
-          className="absolute bottom-0 left-0 right-0 rounded-b-[32px]"
-          style={{
-            height: "50%",
-            backgroundColor: skillTint(Colors.primaryDark, 0.4),
-          }}
-          pointerEvents="none"
-        />
-
+      {/* Story 14-9: hero section via canonical HeroHeader; the bespoke
+          depth-overlay inner View is now produced by `overlay="depth-glow"`. */}
+      <HeroHeader overlay="depth-glow">
         {/* Row 1: CEFR badge + initials */}
         <View className="flex-row justify-between items-center">
           <View
@@ -249,7 +236,7 @@ export default function ConversationTopicsScreen() {
             </View>
           ))}
         </View>
-      </View>
+      </HeroHeader>
 
       {/* Mode selector */}
       <View className="flex-row justify-center px-5 pt-3 pb-1 gap-2">

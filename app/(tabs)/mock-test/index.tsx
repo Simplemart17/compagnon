@@ -1,14 +1,14 @@
 import { useCallback, useRef } from "react";
 import { View, Text, ScrollView, Pressable, StatusBar } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 
 import { LEVEL_COLORS, TCF } from "@/src/lib/constants";
-import { Colors, Radii, Shadows, Typography, skillTint } from "@/src/lib/design";
+import { Colors, Radii, Typography, skillTint } from "@/src/lib/design";
 import { SkillCard } from "@/src/components/common/SkillCard";
 import { ListItemCard } from "@/src/components/common/ListItemCard";
 import { Icon, type IconName } from "@/src/components/common/Icon";
+import { HeroHeader } from "@/src/components/common/HeroHeader";
 import { SPEAKING_TASK_NUMBERS } from "@/src/lib/prompts/speaking";
 import { TCF_QCM_SECTIONS, roundToNearestFive } from "@/src/lib/tcf";
 import { useMockTestLanding } from "@/src/hooks/use-mock-test-landing";
@@ -344,7 +344,6 @@ const SECTIONS: {
 
 export default function MockTestScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { inProgress, pastResults, loading, refetch } = useMockTestLanding();
   const { loadAndNavigate } = useMockTestResultsLoader();
 
@@ -395,15 +394,10 @@ export default function MockTestScreen() {
     <View className="flex-1 bg-surface">
       <StatusBar barStyle="light-content" />
       {/* ------------------------------------------------------------------ */}
-      {/* Hero header                                                          */}
+      {/* Hero header — Story 14-9: canonical HeroHeader                       */}
+      {/* (paddingTopOffset=20, paddingBottom=32, centered).                   */}
       {/* ------------------------------------------------------------------ */}
-      <View
-        className="bg-primary px-6 pb-8 rounded-b-[28px] items-center"
-        style={{
-          paddingTop: insets.top + 20,
-          ...Shadows.hero,
-        }}
-      >
+      <HeroHeader paddingTopOffset={20} paddingBottom={32} centered>
         {/* Thin amber horizontal line above TCF */}
         <View className="w-[60px] h-[2px] bg-accent rounded-sm mb-[10px]" />
 
@@ -419,7 +413,7 @@ export default function MockTestScreen() {
         >
           Test de Connaissance du Fran{"\xE7"}ais — Canada
         </Text>
-      </View>
+      </HeroHeader>
 
       {/* ------------------------------------------------------------------ */}
       {/* Scrollable content                                                   */}
