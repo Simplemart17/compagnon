@@ -55,12 +55,32 @@ export const Colors = {
    * Story 14-5 split is to keep the streak warmth distinguishable from
    * CTA-amber on the same screen.
    *
-   * Hue: Tailwind amber-500. ~5° hue rotation warmer than `Colors.accent`.
+   * **Surface contract (Story 14-5 R1-P2 + R1-P19):**
+   *
+   * - Light backgrounds (`Colors.surface` / `surfaceWhite`): use
+   *   `Colors.streakText` (#92400E, 6.48:1 AA-compliant) for text.
+   * - **Dark composites** (home / profile hero on `Colors.bgDark` /
+   *   `Colors.primary` + streak20/skillTint backgrounds): use
+   *   `Colors.streak` base hue itself (~8:1 on `Colors.bgDark`); the dark
+   *   `streakText` variant fails WCAG AA on dark composites (~1.23-1.59:1).
+   *
+   * Hue: Tailwind v3.4 amber-500. The diff from `Colors.accent` is primarily
+   * a saturation/brightness shift (both hover around HSL hue 38°); the
+   * empirically-distinguishable difference comes from the brighter amber tone.
    * Story 14-5 + P2-12.
    */
   streak: "#F59E0B",
-  streakDark: "#D97706",
-  /** WCAG-AA-compliant text variant for streak chrome on `Colors.surface` (contrast ratio 6.48:1; Tailwind amber-800). Below AAA's 7.0:1 threshold by ~8%; acceptable for short-form 13-14pt informational chrome (streak chip day-count + zap icon). */
+  /**
+   * WCAG-AA-compliant text variant for streak chrome ON LIGHT BACKGROUNDS ONLY
+   * (`Colors.surface = #F5F5F0` → 6.48:1; `Colors.surfaceWhite = #FFFFFF` → 6.95:1).
+   *
+   * **Do NOT use on dark composites** (home/profile hero, conversation bg, etc.) —
+   * the dark-brown gives ~1.2-1.6:1 contrast against those backgrounds and fails
+   * WCAG AA badly. For text on dark composites, use `Colors.streak` (the base
+   * lighter amber) which gives ~8:1 on `Colors.bgDark`.
+   *
+   * Tailwind v3.4 amber-800. Story 14-5 R1-P2 + R1-P19.
+   */
   streakText: "#92400E",
   streak10: "rgba(245,158,11,0.1)",
   streak15: "rgba(245,158,11,0.15)",
@@ -77,16 +97,24 @@ export const Colors = {
    * "streak warmth".
    *
    * **Do NOT use for:** primary CTAs (use `Colors.accent`); streak chrome
-   * (use `Colors.streak`); success/correct-answer states (use `Colors.success`).
+   * (use `Colors.streak`); success/correct-answer states (use `Colors.success`);
+   * **text on light backgrounds** (use `Colors.progressText` — `Colors.progress`
+   * itself gives ~2.94:1 on white, fails WCAG AA).
+   *
    * The 3-token split (accent/streak/progress) decouples Story 14-5 / P2-12's
    * 3 conflated semantic roles so each can render distinctly on the same screen.
    *
-   * Hue: Tailwind yellow-600. ~10° hue rotation toward yellow + lower
-   * saturation than `Colors.accent`. Story 14-5 + P2-12.
+   * Tailwind v3.4 yellow-600. Modest hue shift toward yellow + lower saturation
+   * vs `Colors.accent`. Story 14-5 + P2-12.
    */
   progress: "#CA8A04",
-  progressDark: "#A16207",
-  /** WCAG-AAA-compliant text variant for progress chrome on `Colors.surface` (contrast ratio 7.93:1; Tailwind yellow-900). Headroom for future progressText consumers; not used in v1 (only progress bg fills consume Colors.progress). */
+  /**
+   * WCAG-AAA-compliant text variant for progress chrome on light backgrounds
+   * (`Colors.surface` 7.93:1; `Colors.surfaceWhite` 8.59:1). Used by the
+   * cefr-progression-chart Y-axis current-level label (white chart bg).
+   *
+   * Tailwind v3.4 yellow-900. Story 14-5 R1-P3.
+   */
   progressText: "#713F12",
   progress10: "rgba(202,138,4,0.1)",
   progress15: "rgba(202,138,4,0.15)",
