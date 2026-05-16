@@ -211,19 +211,19 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Streak chip */}
+            {/* Streak chip — Story 14-5 streak-cluster (informational chrome, NOT tappable) */}
             {progress.streakDays > 0 ? (
               <View
                 className="mt-3 flex-row items-center gap-[5px] rounded-full border px-3.5 py-1.5"
                 style={{
-                  backgroundColor: skillTint(Colors.accent, 0.18),
-                  borderColor: skillTint(Colors.accent, 0.35),
+                  backgroundColor: skillTint(Colors.streak, 0.18),
+                  borderColor: skillTint(Colors.streak, 0.35),
                 }}
                 accessibilityLabel={`${progress.streakDays} day streak`}
               >
                 {/* Story 14-3 Q3: streak chrome 🔥 → Icon name="zap" (Feather lacks Flame). */}
-                <Icon name="zap" size={14} color={Colors.accentText} />
-                <Text style={{ color: Colors.accentText }} className="text-[13px] font-bold">
+                <Icon name="zap" size={14} color={Colors.streakText} />
+                <Text style={{ color: Colors.streakText }} className="text-[13px] font-bold">
                   {progress.streakDays} jour{progress.streakDays !== 1 ? "s" : ""}
                 </Text>
               </View>

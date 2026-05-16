@@ -273,15 +273,17 @@ export default function HomeScreen() {
             <Text className="text-accent font-bold text-[13px]">{level}</Text>
           </View>
 
-          {/* Streak chip */}
+          {/* Streak chip \u2014 Story 14-5 streak-cluster (informational chrome, NOT tappable) */}
           {progress.streakDays > 0 && (
             <View
               className="flex-row items-center px-[9px] py-1 rounded-full gap-1"
-              style={{ backgroundColor: Colors.accent20 }}
+              style={{ backgroundColor: Colors.streak20 }}
               accessibilityLabel={`${progress.streakDays} day streak`}
             >
               <Text className="text-xs">{"\uD83D\uDD25"}</Text>
-              <Text className="text-xs font-bold text-accent">{progress.streakDays}j</Text>
+              <Text className="text-xs font-bold" style={{ color: Colors.streakText }}>
+                {progress.streakDays}j
+              </Text>
             </View>
           )}
 
