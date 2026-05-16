@@ -463,15 +463,14 @@ export const Presets = {
     alignItems: "center",
   } as ViewStyle,
 
-  /** Dark hero header */
-  heroHeader: {
-    backgroundColor: Colors.primary,
-    paddingBottom: 28,
-    paddingHorizontal: Spacing.screenPaddingLarge,
-    borderBottomLeftRadius: Radii.heroBottom,
-    borderBottomRightRadius: Radii.heroBottom,
-    ...Shadows.hero,
-  } as ViewStyle,
+  /**
+   * Story 14-9: `Presets.heroHeader` DELETED ("delete don't alias" pattern).
+   * The canonical hero now lives in `src/components/common/HeroHeader.tsx`,
+   * which exports `heroHeaderContainerStaticStyle` (frozen) and consumes
+   * `Colors.primary` + `Radii.heroBottom` + `Shadows.hero` directly. The
+   * preset was unused across the app (0 consumers verified at deletion
+   * time); aliasing would create 2 sources of truth.
+   */
 
   /** Screen container with surface background */
   screen: {
