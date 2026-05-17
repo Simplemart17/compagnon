@@ -1,11 +1,16 @@
 /**
  * Story 12-11 — parseUpstreamError runtime tests (Deno-runnable).
  *
- * RUN MANUALLY: `deno test --allow-all supabase/functions/_shared/__tests__/parse-upstream-error_test.ts`
+ * RUN MANUALLY: `deno test --no-check --allow-net=127.0.0.1 supabase/functions/_shared/__tests__/parse-upstream-error_test.ts`
  *
- * Epic 15.3 (`15-3-edge-function-deno-tests`) owns CI integration for this
- * directory — Story 12-11 deliberately does NOT modify `ci.yml`. The dev
- * confirms these tests green locally before merge.
+ * Story 15-3 R1 patch (BH-3 / EH-2): the pre-15-3 `--allow-all` directive
+ * was over-permissive — these tests don't require env/read/write
+ * permissions. The CI step uses the scoped `--allow-net=127.0.0.1` form;
+ * the local-run invocation must match so a contributor's local pass
+ * implies CI pass.
+ *
+ * Epic 15.3 (`15-3-edge-function-deno-tests`) now runs this in CI via the
+ * `Deno tests (Edge Function _shared utilities)` step in `.github/workflows/ci.yml`.
  *
  * Companion Jest tests:
  *   - `src/lib/__tests__/upstream-error-sanitization-source-drift.test.ts`
