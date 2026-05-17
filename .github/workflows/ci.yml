@@ -36,47 +36,38 @@ jobs:
       - name: Tests
         run: npm test -- --no-coverage
 
-      - name: Setup Deno
-        # Story 15-3: install Deno for Edge Function _shared utility tests.
-        # `denoland/setup-deno@v2` is the ACTION installer (second major
-        # release of the installer); `deno-version: v1.x` pins the Deno
-        # RUNTIME. Two independent version axes — don't conflate. Deno 2.0
-        # runtime migration is deferred to a follow-up story. The action
-        # caches the install for faster subsequent runs.
-        # SHA-pinning of this action (and actions/checkout / setup-node)
-        # deferred to `15-3-followup-action-sha-pinning` per R1 BH-1.
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v1.x
+      - name: Tests with coverage threshold
+        # Story 15-6: enforce coverage floor on src/lib/ + src/hooks/ per
+        # Epic 15.6 deliverable. The previous `Tests` step runs without
+        # coverage instrumentation for fast green-light feedback; this step
+        # adds the slower instrumented run that fails CI if statements /
+        # branches / functions / lines drops below 40% on the configured
+        # scope. Per-directory thresholds (R1 BH-2/EH-4) enforce the spec
+        # conjunction (`src/lib/` AND `src/hooks/` ≥ 40%) — `global` alone
+        # would allow one dir to rot while the average stays above floor.
+        # Threshold pinned in `jest.config.js` `coverageThreshold`.
+        # Measured baseline at gate-introduction (2026-05-17): Statements
+        # 53.42% / Branches 55.80% / Functions 51.49% / Lines 54.12% — ~11
+        # points of headroom against the lowest metric. Ratchet up via
+        # future PRs as coverage grows.
+        #
+        # CI cost: coverage instrumentation adds ~30-60% wall-clock vs the
+        # no-coverage `Tests` step (R1 BH-4 / EH-7). Two-step pattern keeps
+        # fast-feedback first; instrumented run second. Acceptable trade-off
+        # per Q1 RECOMMENDED.
+        run: npm run test:coverage
 
-      - name: Deno tests (Edge Function _shared utilities)
-        # Story 15-3: wire Story 11-3 fetch-with-timeout + Story 12-11
-        # parse-upstream-error Deno tests into CI. Pre-15-3 these were
-        # manual-run only. Now gated on PR merge.
-        #
-        # Test files are named EXPLICITLY (R1 BH-2 / EH-1 vacuous-pass
-        # defense): if either file is renamed or moved, the step fails
-        # loudly with `Module not found` instead of silently passing on an
-        # empty directory match. A future file added to _shared/__tests__/
-        # must be appended here to be picked up.
-        #
-        # Permission flags:
-        #   --allow-net=127.0.0.1 — required by the fetch-with-timeout
-        #     happy-path test which spins up a local HTTP server.
-        #   --no-check — runtime-only verification (R1 EH-10); the
-        #     `npm run type-check` step already covers TS soundness for the
-        #     source modules; Deno's redundant typecheck adds ~5s + a
-        #     drift surface against std lib type updates.
-        # NO `--allow-all` — keep the permission surface minimal.
-        # pgTAP migrations (supabase/migrations/__tests__/*.sql) NOT wired
-        # here — requires a Postgres service container. Deferred to
-        # `15-3-followup-pgtap-ci-wiring`.
-        # Deno deps cache deferred to `15-3-followup-deno-cache` per R1 BH-4.
-        timeout-minutes: 3
-        run: |
-          deno test --no-check --allow-net=127.0.0.1 \
-            supabase/functions/_shared/__tests__/fetch-with-timeout_test.ts \
-            supabase/functions/_shared/__tests__/parse-upstream-error_test.ts
+      - name: Upload coverage report
+        # R1 BH-8 / EH-2: AC #5 explicitly noted artifact upload as
+        # "recommended" — operator triaging a coverage-gate failure needs
+        # the per-file lcov + HTML reports, not just the text-summary in
+        # CI logs. Runs even on failure so the failing PR has artifacts.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
 
       - name: Dependency vulnerability gate
         # Story 12-10: prevent regression of `npm audit reports 0 high

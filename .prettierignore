@@ -11,3 +11,7 @@ supabase/functions/
 # operator-authored prose with intentional table alignment and is not subject
 # to source-code formatting rules.
 _bmad-output/
+
+# Story 15-6: jest --coverage HTML report is auto-generated; not subject to
+# prettier formatting.
+coverage/
