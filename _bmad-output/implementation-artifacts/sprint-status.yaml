@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-16 # Story 14-9 done. R1 code review (6 patches: pointerEvents RN 0.74 deprecation, style-prop precedence, overlay-order test, constant placement, StyleProp widening, overlay-radius exemption docs). PR #109. 111 suites / 2099 tests pass (+37 net since 2062 main baseline). All 5 quality gates green. **Epic 14 implementation work COMPLETE — 9 of 9 stories done.** Retrospective is the next workflow step.
+last_updated: 2026-05-16 # Story 15-1 spec created. FIRST Epic 15 story. Pure-function lib unit tests for srs.ts + pronunciation.ts identifyWeakSounds + cache.ts core API + use-dictation.ts compareSentences. GAP-only scope; async/DB-touching paths deferred to 15-2 or follow-ups. Epic 14 retro AI accountability gate fired — "Proceed + acknowledge" selected at kickoff (AI #8 absorbed by 15.3 by design; others orthogonal). Status: ready-for-dev.
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -205,8 +205,8 @@ development_status:
   epic-14-retrospective: optional
 
   # Epic 15: Test Coverage & QA Infrastructure (P1)
-  epic-15: backlog
-  15-1-lib-unit-tests: backlog
+  epic-15: in-progress # 2026-05-16: auto-flipped backlog → in-progress when 15-1 story file was created. Epic 14 retro AIs surfaced at kickoff per Epic 13 AI #4 accountability gate; "Proceed + acknowledge" mode selected (AI #8 absorbed by 15.3 scope; others orthogonal docs/workflow).
+  15-1-lib-unit-tests: ready-for-dev # 2026-05-16: Story 15-1 spec file created. FIRST Epic 15 story. Pure-function lib unit tests for 4 modules where direct tests don't yet exist: srs.ts (SM-2 algorithm full coverage), pronunciation.ts identifyWeakSounds (pure aggregator), cache.ts core API (getCache/setCache/invalidateCache/cacheWithFallback happy + TTL boundary), use-dictation.ts compareSentences (pure word-comparison helper). Coverage inventory completed: activity.ts already fully tested (Story 9-2 + 12-3); memory.ts + error-tracker.ts have substantial partial coverage (sanitize via 9-4 + dedup via 11-6); pronunciation.ts has history-cap test (12-12); the GAP-only scope targets the 4 untested-or-partially-tested pure-function surfaces. Async/DB-touching paths (assessPronunciation Edge wrapper, memory.ts extractFacts/persistMemories/retrieveMemories, error-tracker.ts non-dedup paths) DEFERRED to 15-1-followups or 15-2 hook-integration scope per Story 14-4 R1-22-patch lesson (broad enforcement-rule changes interact with every surface; test-writing stories at analogous risk). 3 operator-decision items Q1-Q3 all resolved per Recommended (defer Edge wrapper / memory async / error-tracker non-dedup). 0 source-module modifications — test-only story. Spec target: +50-65 net Jest cases (2099 → 2149-2164). Status: ready-for-dev. Awaiting /bmad-dev-story.
   15-2-hook-integration-tests: backlog
   15-3-edge-function-deno-tests: backlog
   15-4-golden-flow-e2e: backlog
