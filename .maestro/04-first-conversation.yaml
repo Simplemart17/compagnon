@@ -1,0 +1,64 @@
+# Story 15-4 — Flow 4: First conversation (Realtime voice)
+#
+# Validates: conversation tab → topic → start → grant mic permission →
+# session connects → user can speak (simulated) → end session.
+#
+# Note: Real-time voice depends on OpenAI Realtime API + microphone access.
+# Maestro can simulate the mic-permission grant + the End button tap but
+# CANNOT inject audio. This flow validates the SHELL — connection + UI
+# state transitions — not the AI response content.
+
+appId: com.companion.app
+tags:
+  - smoke
+  - conversation
+
+env:
+  TEST_EMAIL: "e2e-test+conversation-001@invalid.localdomain"  # TODO
+  TEST_PASSWORD: "Abcdefghi1"
+---
+- launchApp:
+    clearState: false
+
+- runFlow:
+    when:
+      visible: "Sign in"
+    commands:
+      - tapOn:
+          id: "input-email"
+      - inputText: ${TEST_EMAIL}
+      - tapOn:
+          id: "input-password"
+      - inputText: ${TEST_PASSWORD}
+      - tapOn: "Sign in"
+
+# Navigate to Conversation tab
+- tapOn: "Conversation"  # bottom tab — Story 14-1 R1
+- assertVisible: "Talk with Companion"  # hero title from conversation/index.tsx
+
+# Pick the first topic (A1 — "Se présenter" greeting)
+- tapOn:
+    text: "Se présenter"  # FR content per Story 14-1 chrome rule
+    # TODO: confirm exact rendered text; topic card has both EN + FR labels
+
+# Start the session
+- assertVisible: "Talk"  # or whatever the start CTA reads — TODO
+- tapOn: "Talk"
+
+# Grant mic permission (system dialog)
+- runFlow:
+    when:
+      visible: "OK"  # iOS permission dialog
+    commands:
+      - tapOn: "OK"
+
+# Wait for connection (status: "connected")
+- extendedWaitUntil:
+    visible: "Companion is listening"  # TODO: verify status text
+    timeout: 30000
+
+# End the session
+- tapOn: "End"  # TODO: verify End button label
+
+# Expect feedback screen or session-summary
+- assertVisible: "Session summary"  # TODO: verify post-session screen

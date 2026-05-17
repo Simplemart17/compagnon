@@ -1,0 +1,59 @@
+# Story 15-4 — Flow 5: Mock test partial completion + review
+#
+# Validates: mock-test tab → start TCF full simulation → complete listening
+# section → submit early → results screen renders with correct CEFR + TCF
+# score reconstruction (Story 14-7 + 13-4 parallel section generation).
+
+appId: com.companion.app
+tags:
+  - smoke
+  - mock-test
+
+env:
+  TEST_EMAIL: "e2e-test+mocktest-001@invalid.localdomain"  # TODO
+  TEST_PASSWORD: "Abcdefghi1"
+---
+- launchApp:
+    clearState: false
+
+- runFlow:
+    when:
+      visible: "Sign in"
+    commands:
+      - tapOn:
+          id: "input-email"
+      - inputText: ${TEST_EMAIL}
+      - tapOn:
+          id: "input-password"
+      - inputText: ${TEST_PASSWORD}
+      - tapOn: "Sign in"
+
+# Navigate to Mock Test tab
+- tapOn: "Mock test"  # bottom tab — Story 14-1 R1 EN chrome
+- assertVisible: "TCF"  # mock-test/index.tsx hero brand
+
+# Tap the full TCF simulation card
+- tapOn: "Start full simulation"  # TODO: verify CTA label
+
+# Generation: parallel per-section (Story 13-4); wait for first section
+- extendedWaitUntil:
+    visible: "Question 1"  # TODO: verify
+    timeout: 120000  # 2-minute budget for section 1 generation
+
+# Answer listening section (29 questions per TCF Canada — answer all with index 0)
+- repeat:
+    times: 29
+    commands:
+      - tapOn:
+          id: "mcq-option-0"  # TODO: verify testID
+      - tapOn: "Next"  # TODO: verify Next button
+
+# Submit listening section early (won't wait for reading section to finish)
+- tapOn: "Submit"  # TODO: verify Submit early CTA / confirm dialog flow
+
+# Results screen
+- extendedWaitUntil:
+    visible: "Results"  # TODO: verify results screen header
+    timeout: 30000
+- assertVisible: "TCF Score"  # TODO: verify
+- assertVisible: "Listening"

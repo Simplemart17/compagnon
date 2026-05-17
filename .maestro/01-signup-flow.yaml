@@ -1,0 +1,43 @@
+# Story 15-4 — Flow 1: Sign-up
+#
+# Validates: a new user can create an account and reach the
+# EmailVerificationGate (Story 12-9). Subsequent flows assume an
+# already-verified test account.
+#
+# Selectors below carry # TODO markers — operator must verify against
+# the actual app via `maestro studio` before first CI wire-up.
+# See _bmad-output/planning-artifacts/runbooks/maestro-e2e-setup.md.
+
+appId: com.companion.app
+tags:
+  - smoke
+  - signup
+---
+# Launch the app cold
+- launchApp:
+    clearState: true
+
+# Sign-up CTA — auth screens carry an EN "Sign up" link (Story 14-1 R1-H6)
+- assertVisible: "Sign up"  # TODO: verify exact text matches login.tsx
+- tapOn: "Sign up"
+
+# Email + password fields
+- assertVisible: "Email address"  # TODO: verify placeholder / a11y label
+- tapOn:
+    id: "input-email"  # TODO: verify testID on signup.tsx email TextInput
+- inputText: "e2e-test+signup-001@invalid.localdomain"
+
+- tapOn:
+    id: "input-password"  # TODO: verify testID
+- inputText: "Abcdefghi1"  # min 10 chars per Story 12-8 password policy
+
+- tapOn:
+    id: "input-password-confirm"  # TODO: verify testID exists OR remove if single password
+- inputText: "Abcdefghi1"
+
+# Submit
+- tapOn: "Create account"  # TODO: verify exact button text
+
+# Expect to land on EmailVerificationGate (Story 12-9)
+- assertVisible: "Vérifiez votre adresse e-mail"  # FR per Story 14-1 R1-Q5: gate stays EN per Q5 — verify current text
+- assertVisible: "J'ai vérifié — actualiser"  # TODO: verify the Refresh CTA label
