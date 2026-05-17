@@ -1,0 +1,21 @@
+{
+  "_synthetic": true,
+  "_note": "Story 15-5 seed fixture. Demonstrates the replay path works against dictationSetSchema. Replace with operator-captured real model output per runbooks/ai-fixture-capture.md.",
+  "sentences": [
+    {
+      "sentence": "Bonjour, comment ça va aujourd'hui ?",
+      "translation": "Hello, how are you today?",
+      "difficulty": "easy"
+    },
+    {
+      "sentence": "Je voudrais une baguette et deux croissants, s'il vous plaît.",
+      "translation": "I would like a baguette and two croissants, please.",
+      "difficulty": "medium"
+    },
+    {
+      "sentence": "Malgré la pluie, nous avons décidé de continuer notre promenade.",
+      "translation": "Despite the rain, we decided to continue our walk.",
+      "difficulty": "hard"
+    }
+  ]
+}

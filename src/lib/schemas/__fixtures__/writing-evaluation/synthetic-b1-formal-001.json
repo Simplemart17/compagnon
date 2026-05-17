@@ -1,0 +1,27 @@
+{
+  "_synthetic": true,
+  "_note": "Story 15-5 seed fixture. Demonstrates the replay path works against writingEvaluationSchema. Replace with operator-captured real model output per runbooks/ai-fixture-capture.md when available.",
+  "overallScore": 72,
+  "grammarScore": 75,
+  "cohesionScore": 70,
+  "lexicalRichnessScore": 68,
+  "registerScore": 78,
+  "errors": [
+    {
+      "original": "Je suis allé au magasin pour acheter quelques pomme",
+      "correction": "Je suis allé au magasin pour acheter quelques pommes",
+      "explanation": "'pommes' takes plural agreement after 'quelques'",
+      "category": "grammar"
+    }
+  ],
+  "suggestions": [
+    "Vary sentence openers — three sentences start with 'Je'",
+    "Consider using subordinate clauses to demonstrate B1+ syntactic range"
+  ],
+  "rewriteSuggestion": "Hier, je suis allé au magasin pour acheter des pommes. Quand je suis rentré, j'ai préparé une tarte.",
+  "tcfEstimatedScore": 12,
+  "vocabularyDiversityRatio": 0.42,
+  "connectorsUsed": ["et", "pour", "quand"],
+  "connectorsMissing": ["cependant", "néanmoins", "ainsi"],
+  "summary": "Solid B1 base; grammar largely accurate but vocabulary diversity and connector variety can grow."
+}
