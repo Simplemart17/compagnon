@@ -167,7 +167,7 @@ describe("Story 15-2 — usePronunciation", () => {
   });
 
   describe("startAssessment", () => {
-    it("Case 2: clears prior result + error AND delegates to recorder.startRecording", async () => {
+    it("Case 2: clears prior result + error AND delegates to recorder.startRecording (R1 BH-6: also asserts isAssessing stays false during recording phase)", async () => {
       const recorderStub = makeRecorderStub();
       mockUseAudioRecorder.mockReturnValue(recorderStub);
       // Seed state with a prior result via finishAssessment happy path
@@ -185,6 +185,10 @@ describe("Story 15-2 — usePronunciation", () => {
       expect(result.current?.result).toBeNull();
       expect(result.current?.error).toBeNull();
       expect(recorderStub.startRecording).toHaveBeenCalledTimes(1);
+      // R1 BH-6: `startAssessment` does NOT set isAssessing — "assessing" means
+      // Azure call in-flight (set by finishAssessment), not recording. Pinning
+      // this contract so a future refactor moving the flag earlier is caught.
+      expect(result.current?.isAssessing).toBe(false);
     });
   });
 
@@ -210,6 +214,46 @@ describe("Story 15-2 — usePronunciation", () => {
         expect.objectContaining({ encoding: "base64" })
       );
       expect(mockAssessPronunciation).toHaveBeenCalledWith("stub-base64-audio", "bonjour le monde");
+      // R1 BH-1: weakSounds is the aggregated-across-history field (not
+      // result.weakPhonemes which is per-call). The default fixture has all
+      // phonemes scoring ≥ 80, so identifyWeakSounds returns [] (its filter
+      // requires count ≥ 3 AND avgScore < 70). Pinning the empty case so a
+      // future refactor that breaks the `identifyWeakSounds(newHistory)`
+      // wiring is caught.
+      expect(result.current?.weakSounds).toEqual([]);
+    });
+
+    it("Case 3b: weakSounds aggregator wired correctly — 3+ same-phoneme low-scoring entries produce non-empty weakSounds (R1 BH-1 + EH-7 + EH-10)", async () => {
+      // identifyWeakSounds threshold is `count >= 3 && avgScore < 70`.
+      // Each result contributes 1 occurrence of the weak phoneme "ʁ" with
+      // score 40. After 3 assessments the aggregate is count=3, avg=40 →
+      // weakSounds should contain "ʁ".
+      const lowScoringFixture = () =>
+        makeResult({
+          words: [
+            {
+              word: "rouge",
+              accuracyScore: 40,
+              errorType: "Mispronunciation",
+              phonemes: [{ phoneme: "ʁ", accuracyScore: 40 }],
+            },
+          ],
+        });
+      mockAssessPronunciation
+        .mockResolvedValueOnce(lowScoringFixture())
+        .mockResolvedValueOnce(lowScoringFixture())
+        .mockResolvedValueOnce(lowScoringFixture());
+      const { result } = renderHost();
+      for (let i = 0; i < 3; i++) {
+        await act(async () => {
+          await result.current!.finishAssessment(`rouge ${i}`);
+        });
+      }
+      // After 3 assessments with the same low-scoring phoneme, the
+      // aggregator returns a non-empty weakSounds list.
+      expect(result.current?.weakSounds.length).toBeGreaterThan(0);
+      // The weak phoneme "ʁ" must appear in the aggregated list.
+      expect(result.current?.weakSounds.some((w) => w.phoneme === "ʁ")).toBe(true);
     });
 
     it("Case 4: recorder returns null (no audio) → error set + isAssessing:false + no captureError + no readAsStringAsync call", async () => {
@@ -227,6 +271,36 @@ describe("Story 15-2 — usePronunciation", () => {
       expect(mockCaptureError).not.toHaveBeenCalled();
       expect(mockReadAsStringAsync).not.toHaveBeenCalled();
       expect(mockAssessPronunciation).not.toHaveBeenCalled();
+    });
+
+    it("Case 4b: audio-permission-denied surface — recorder.hasPermission=false + recorder.error set + stopRecording returns null (R1 EH-1)", async () => {
+      // Real-world iOS/Android first-run scenario: user taps mic, denies
+      // permission. `useAudioRecorder` returns hasPermission:false +
+      // error: "Microphone permission denied" + stopRecording → null.
+      // The hook's permission-denied path routes through the same
+      // null-audio branch (Case 4 above) — pinning that contract.
+      mockUseAudioRecorder.mockReturnValue(
+        makeRecorderStub({
+          hasPermission: false,
+          error: "Microphone permission denied",
+          stopRecording: jest.fn(async () => null),
+        })
+      );
+      const { result } = renderHost();
+      let returnedValue: PronunciationResult | null = makeResult();
+      await act(async () => {
+        returnedValue = await result.current!.finishAssessment("bonjour");
+      });
+      expect(returnedValue).toBeNull();
+      expect(result.current?.isAssessing).toBe(false);
+      // Hook currently surfaces "No audio recorded" (Case 4 contract).
+      // Filed `15-2-followup-permission-denied-distinct-error` if operators
+      // want a distinct user-visible message vs no-audio. Until then this
+      // pins the current behavior.
+      expect(result.current?.error).toBe("No audio recorded");
+      // captureError should NOT fire on the permission-denied path (it's
+      // user-driven, not a system error worth Sentry-paging on).
+      expect(mockCaptureError).not.toHaveBeenCalled();
     });
 
     it("Case 5: assessPronunciation throws → captureError fires with `pronunciation-assessment` feature tag + error set via classifyError + isAssessing:false", async () => {
@@ -255,6 +329,35 @@ describe("Story 15-2 — usePronunciation", () => {
       });
       expect(returnedValue).toEqual(expected);
       expect(returnedValue).toBe(expected); // Reference identity preserved
+    });
+
+    it("Case 6b: transient isAssessing — set true synchronously before Azure call, reset false after settle (R1 EH-9 deferred-resolve pattern)", async () => {
+      // Hand-rolled deferred promise so we can observe the mid-flight state
+      // before the assessment resolves (Story 13-3 P8 pattern).
+      let resolveAssess!: (v: PronunciationResult) => void;
+      const deferred = new Promise<PronunciationResult>((resolve) => {
+        resolveAssess = resolve;
+      });
+      mockAssessPronunciation.mockReturnValueOnce(deferred);
+      const { result } = renderHost();
+      // Fire finishAssessment WITHOUT awaiting — captures the in-flight state.
+      let finishPromise!: Promise<PronunciationResult | null>;
+      await act(async () => {
+        finishPromise = result.current!.finishAssessment("test");
+      });
+      // At this point: readAsStringAsync has resolved, assessPronunciation
+      // has been called but its promise is still pending. The hook's
+      // setState({...prev, isAssessing: true, error: null}) should have
+      // already committed.
+      expect(result.current?.isAssessing).toBe(true);
+      // Resolve the assessment.
+      await act(async () => {
+        resolveAssess(makeResult({ accuracyScore: 77 }));
+        await finishPromise;
+      });
+      // Post-settle: isAssessing is false again.
+      expect(result.current?.isAssessing).toBe(false);
+      expect(result.current?.result).not.toBeNull();
     });
   });
 
@@ -297,6 +400,45 @@ describe("Story 15-2 — usePronunciation", () => {
       );
       expect(mockCaptureError).toHaveBeenCalledWith(err, "pronunciation-assessment");
     });
+
+    it("Case 8b: readAsStringAsync rejection — file gone / permissions → captureError + error surfaced (R1 EH-6)", async () => {
+      // Real-world scenario: cached audio file deleted by an OS background
+      // cleaner between recording and assess. readAsStringAsync rejects;
+      // the hook's catch arm at use-pronunciation.ts wraps both file-read
+      // and assessment errors with the same feature tag.
+      const fsErr = new Error("ENOENT: file not found");
+      mockReadAsStringAsync.mockRejectedValueOnce(fsErr);
+      const { result } = renderHost();
+      let returnedValue: PronunciationResult | null = makeResult();
+      await act(async () => {
+        returnedValue = await result.current!.assessFromUri("file:///deleted.wav", "test");
+      });
+      expect(returnedValue).toBeNull();
+      expect(result.current?.isAssessing).toBe(false);
+      expect(result.current?.error).toBe(
+        "Pronunciation assessment failed. Please try recording again."
+      );
+      // Sentry captures the FS error with the same `pronunciation-assessment`
+      // feature tag. If operators want distinct telemetry for file-read vs
+      // assessment errors, file `15-2-followup-distinct-fs-error-tag`.
+      expect(mockCaptureError).toHaveBeenCalledWith(fsErr, "pronunciation-assessment");
+      expect(mockAssessPronunciation).not.toHaveBeenCalled();
+    });
+
+    it("Case 8c: assessFromUri callback reference is stable across re-renders (R1 BH-5: pins useCallback empty-deps contract)", async () => {
+      const { result, renderer } = renderHost();
+      const ref1 = result.current!.assessFromUri;
+      // Force a re-render by mutating a recorder stub that triggers no
+      // state change. The useAudioRecorder mock returns the same stub.
+      act(() => {
+        renderer.update(<HookHost result={result} />);
+      });
+      const ref2 = result.current!.assessFromUri;
+      // Pin reference stability — useCallback([]) deps mean the function
+      // should be identical across renders unless a future maintainer adds
+      // a dep (which would silently re-render consumers that depend on it).
+      expect(ref2).toBe(ref1);
+    });
   });
 
   describe("clearResult", () => {
@@ -316,6 +458,24 @@ describe("Story 15-2 — usePronunciation", () => {
       expect(result.current?.error).toBeNull();
       // history is NOT cleared
       expect(result.current?.history).toHaveLength(1);
+    });
+
+    it("Case 9b: clearResult on initial empty state is a no-op (R1 EH-4 pre-init defense)", () => {
+      // User taps "Clear" before any assessment — should not crash, should
+      // leave the empty state unchanged.
+      const { result } = renderHost();
+      // Initial empty state pin
+      expect(result.current?.result).toBeNull();
+      expect(result.current?.error).toBeNull();
+      expect(result.current?.history).toEqual([]);
+      // Invoke clearResult against empty state
+      act(() => {
+        result.current!.clearResult();
+      });
+      // Post-state: still empty, history still []
+      expect(result.current?.result).toBeNull();
+      expect(result.current?.error).toBeNull();
+      expect(result.current?.history).toEqual([]);
     });
   });
 
@@ -374,13 +534,36 @@ describe("Story 15-2 — usePronunciation", () => {
       // First entry (accuracyScore=0) was evicted; oldest surviving is accuracyScore=1
       expect(result.current?.history[0].accuracyScore).toBe(1);
       expect(result.current?.history[49].accuracyScore).toBe(50);
+      // R1 EH-8: explicit non-containment so a future regression that
+      // evicts from the tail (LIFO) or fails to evict at all is caught.
+      // The original accuracyScore=0 entry must NOT appear anywhere.
+      expect(result.current?.history.some((h) => h.accuracyScore === 0)).toBe(false);
     });
   });
 
   describe("isRecording mirroring", () => {
-    it("Case 13: isRecording mirrors recorder.isRecording (live-state delegation)", () => {
+    it("Case 13: isRecording mirrors recorder.isRecording at first render (snapshot)", () => {
       mockUseAudioRecorder.mockReturnValue(makeRecorderStub({ isRecording: true }));
       const { result } = renderHost();
+      expect(result.current?.isRecording).toBe(true);
+    });
+
+    it("Case 13b: isRecording mirrors recorder state changes across re-renders (R1 BH-2 live-state delegation)", () => {
+      // Two mock returns: first render = false, second render = true.
+      // After forcing a re-render, the hook should reflect the new state.
+      mockUseAudioRecorder
+        .mockReturnValueOnce(makeRecorderStub({ isRecording: false }))
+        .mockReturnValue(makeRecorderStub({ isRecording: true }));
+      const { result, renderer } = renderHost();
+      expect(result.current?.isRecording).toBe(false);
+      // Force a re-render by re-invoking renderer.update — the second
+      // useAudioRecorder mock return fires.
+      act(() => {
+        renderer.update(<HookHost result={result} />);
+      });
+      // The hook should now reflect the new recorder state, NOT the
+      // snapshot-at-mount value. Pin this so a future refactor caching
+      // `isRecording` into local state breaks the mirroring contract.
       expect(result.current?.isRecording).toBe(true);
     });
   });

@@ -1,6 +1,6 @@
 # Story 15.2: Hook integration tests — `use-pronunciation` (full mocked-API coverage)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -123,10 +123,24 @@ Required cases (≥12):
 
 ### Agent Model Used
 
-(to be filled in by /bmad-dev-story)
+Claude Sonnet 4.6 (claude-sonnet-4-6) via /bmad-dev-story + /bmad-code-review workflows in autopilot mode.
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- **NEW** `src/hooks/__tests__/use-pronunciation.test.tsx` — 20 cases (13 original + 7 R1 patches). Tests cover full hook lifecycle: initial state, startAssessment, finishAssessment (4 paths: happy / no-audio / Azure error / permission-denied), assessFromUri (3 paths: happy / Azure error / FS error / ref-stability), clearResult (with-state + empty-state), getWeakPhonemes (null + populated), history accumulation (3-call + 51-call Story 12-12 FIFO cap with non-containment), isRecording mirroring (snapshot + live-state delegation across re-renders), transient isAssessing via deferred-promise pattern, weakSounds aggregator end-to-end via low-scoring × 3 phoneme fixture.
+- **R1 patches applied** (HIGH × 4 + MED × 5): BH-1 weakSounds assertion in Case 3 + new Case 3b for non-empty aggregator integration (R1 EH-7 + EH-10 fixture realism); BH-2 new Case 13b for live-state delegation across re-renders; BH-5 new Case 8c for assessFromUri ref-stability; BH-6 isAssessing post-startAssessment assertion in Case 2; EH-1 new Case 4b for permission-denied path; EH-4 new Case 9b for clearResult-before-init; EH-6 new Case 8b for readAsStringAsync rejection; EH-8 non-containment FIFO assertion in Case 12; EH-9 new Case 6b for transient isAssessing via deferred promise.
+- **Deferred** (filed as follow-ups): EH-3 re-entrant guard → `15-2-followup-reentrant-guard` (low real-world hazard, impl-defined behavior); EH-5 `getWeakPhonemes` ref-stability → `15-2-followup-getweakphonemes-ref-stability`; permission-denied distinct error message → `15-2-followup-permission-denied-distinct-error` (operator decision on UX); distinct FS error feature tag → `15-2-followup-distinct-fs-error-tag` (operator decision on telemetry granularity).
+- **Quality gates green**: type-check 0 errors / lint 0 warnings / prettier clean / jest test passes (20/20).
+
 ### File List
+
+**New:**
+
+- `src/hooks/__tests__/use-pronunciation.test.tsx` — 20 Jest cases (13 original + 7 R1 patches)
+
+**Modified:**
+
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — 15-2 → done
+- `CLAUDE.md` — Story 15-2 architecture paragraph appended
