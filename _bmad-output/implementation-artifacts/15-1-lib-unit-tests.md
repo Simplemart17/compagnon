@@ -1,6 +1,6 @@
 # Story 15.1: Lib unit tests — `srs.ts`, `pronunciation.ts` (compare logic), `cache.ts` (core API), `use-dictation.ts` (`compareSentences` word-comparison helper)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
