@@ -42,6 +42,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Preflight — EXPO_TOKEN present
+        # Story 16-1: fail-fast on missing EXPO_TOKEN instead of letting the
+        # downstream `expo/expo-github-action@v8` step fail with a cryptic 401.
+        # Env-var indirection (`secrets.EXPO_TOKEN != ''` evaluated at
+        # template-render time → bound to EXPO_TOKEN_PRESENT) avoids the GHA
+        # injection sink from Story 9-9 P3 review. The secret VALUE never
+        # reaches the shell — only the boolean string `'true'` or `'false'`.
+        env:
+          EXPO_TOKEN_PRESENT: ${{ secrets.EXPO_TOKEN != '' }}
+        run: |
+          if [ "$EXPO_TOKEN_PRESENT" != "true" ]; then
+            echo "::error title=EXPO_TOKEN GitHub secret missing::Submit cannot proceed without EXPO_TOKEN. See _bmad-output/planning-artifacts/runbooks/submit-and-deploy.md §2.4 (GitHub repository secrets) for provisioning."
+            exit 1
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
