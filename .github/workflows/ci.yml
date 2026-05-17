@@ -36,6 +36,27 @@ jobs:
       - name: Tests
         run: npm test -- --no-coverage
 
+      - name: Setup Deno
+        # Story 15-3: install Deno for Edge Function _shared utility tests.
+        # Pinned to the latest v1 (Deno 2.0 has breaking changes; defer 2.0
+        # migration to a follow-up story). The action caches the install for
+        # faster subsequent runs.
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v1.x
+
+      - name: Deno tests (Edge Function _shared utilities)
+        # Story 15-3: wire Story 11-3 fetch-with-timeout + Story 12-11
+        # parse-upstream-error Deno tests into CI. Pre-15-3 these were
+        # manual-run only. Now gated on PR merge. The `--allow-net=127.0.0.1`
+        # permission is required by the fetch-with-timeout happy-path test
+        # which spins up a local HTTP server. NO `--allow-all` — keep the
+        # permission surface minimal.
+        # pgTAP migrations (supabase/migrations/__tests__/*.sql) NOT wired
+        # here — requires a Postgres service container. Deferred to
+        # `15-3-followup-pgtap-ci-wiring`.
+        run: deno test --allow-net=127.0.0.1 supabase/functions/_shared/__tests__/
+
       - name: Dependency vulnerability gate
         # Story 12-10: prevent regression of `npm audit reports 0 high
         # vulnerabilities` (Epic 12 AC). Calibrated to `--audit-level=high`
