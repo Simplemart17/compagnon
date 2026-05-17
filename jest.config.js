@@ -31,4 +31,27 @@ module.exports = {
   // unchanged). Matches jest-expo's recommended config for projects that
   // import native-module-backed packages at the test boundary.
   forceExit: true,
+
+  // Story 15-6: coverage gate scoped to src/lib/ + src/hooks/ per Epic 15.6
+  // deliverable. Test files + .d.ts excluded from collection. Measured
+  // baseline at gate-introduction (2026-05-17):
+  //   Statements 53.42% / Branches 55.80% / Functions 51.49% / Lines 54.12%
+  // Threshold floor pinned at 40% per spec — gives ~11 points of headroom
+  // against the lowest metric (Functions 51.49%). Ratchet up in future PRs
+  // as coverage grows (see 15-6-followup-coverage-ratchet-cadence).
+  collectCoverageFrom: [
+    "src/lib/**/*.{ts,tsx}",
+    "src/hooks/**/*.{ts,tsx}",
+    "!**/__tests__/**",
+    "!**/*.d.ts",
+  ],
+  coverageThreshold: {
+    global: {
+      statements: 40,
+      branches: 40,
+      functions: 40,
+      lines: 40,
+    },
+  },
+  coverageReporters: ["text-summary", "lcov"],
 };
