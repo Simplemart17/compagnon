@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-16 # Story 15-1 done. R1 review (5 patches: HIGH × 2 useFakeTimers time-flake fix + dictation empty-original semantic-trap TODO; MED × 3 Case 17 tightening + ref-inequality + typed-case-preservation Case 14a). 2159 tests (+1 net R1). All 5 gates green. PR #111.
+last_updated: 2026-05-17 # Story 15-3 done. Deno tests wired into CI; +5 net cases. Cumulative autopilot batch: 15-2 + 15-3 shipped.
 project: companion
 project_key: NOKEY
 tracking_system: file-system
