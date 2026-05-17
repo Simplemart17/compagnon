@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-25
-last_updated: 2026-05-16 # Story 15-1 done. R1 review (5 patches: HIGH × 2 useFakeTimers time-flake fix + dictation empty-original semantic-trap TODO; MED × 3 Case 17 tightening + ref-inequality + typed-case-preservation Case 14a). 2159 tests (+1 net R1). All 5 gates green. PR #111.
+last_updated: 2026-05-17 # Story 15-5 done. AI schema regression test infrastructure shipped; real fixture capture is operator action. Cumulative autopilot batch: 15-2 + 15-3 + 15-5 shipped.
 project: companion
 project_key: NOKEY
 tracking_system: file-system
@@ -210,7 +210,7 @@ development_status:
   15-2-hook-integration-tests: backlog
   15-3-edge-function-deno-tests: backlog
   15-4-golden-flow-e2e: backlog
-  15-5-ai-schema-regression-tests: backlog
+  15-5-ai-schema-regression-tests: done # 2026-05-17: PR pending. NEW fixture-replay infrastructure + 3 synthetic seed fixtures + operator runbook. +8 net Jest cases. Real fixture capture deferred to operator action per runbook.
   15-6-ci-coverage-gating: backlog
   epic-15-retrospective: optional
 
