@@ -1,0 +1,15 @@
+# Maestro project config — Story 15-4
+#
+# Operator setup: see _bmad-output/planning-artifacts/runbooks/maestro-e2e-setup.md
+#
+# Run locally:
+#   maestro test .maestro/
+#
+# Run a single flow:
+#   maestro test .maestro/03-first-exercise.yaml
+
+appId: com.companion.app
+
+# Tags allow selective runs (`maestro test --include-tags=smoke`).
+tags:
+  - epic-15

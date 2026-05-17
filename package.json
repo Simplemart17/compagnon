@@ -14,6 +14,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "check:colors": "bash scripts/check-hex-colors.sh",
     "check:tokens": "bash scripts/check-design-tokens.sh",
     "prepare": "husky"
