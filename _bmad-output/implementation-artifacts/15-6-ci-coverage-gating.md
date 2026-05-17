@@ -93,20 +93,53 @@ Claude Sonnet 4.6 (claude-sonnet-4-6) via /bmad-dev-story workflow in autopilot 
 - **Gate verification**: `npm run test:coverage` runs all 116 suites / 2165 cases + emits the coverage summary; gate passes by ~11 points on each metric.
 - **Ignore files**: `coverage/` added to `.gitignore` (generated lcov + HTML report) and `.prettierignore` (HTML report not subject to Prettier formatting).
 - **Q3 (Codecov/Coveralls)**: deferred per spec — filed as `15-6-followup-codecov-integration` (future operator action).
-- **Quality gates**: type-check 0 errors / lint 0 warnings / Prettier clean / `check:tokens` clean / Jest 116 suites 2165 cases. Coverage gate passes.
+- **Quality gates**: type-check 0 errors / lint 0 warnings / Prettier clean / `check:tokens` clean / Jest 116 suites 2167 cases. Coverage gate passes.
+
+### R1 patches applied (HIGH × 4 + MED × 3 + LOW × 1)
+
+**HIGH:**
+
+- **BH-1 ordering regex anchor**: pre-R1 `indexOf("- name: Tests\n")` was fragile to trailing-whitespace and CRLF. Anchored via `/^\s{6}- name:\s*Tests\s*$/m` (PR #115 EH-4 lesson applied).
+- **BH-3 tail-slice safer fallback**: pre-R1 if the coverage step was ever moved to be the last step, the silent-disable negative guard would sweep the entire file and false-positive on `Expo Doctor`'s legitimate `continue-on-error: true`. Bounded the slice to `MAX_BLOCK_CHARS = 1500`.
+- **EH-1 block-comment-wrap bypass defense**: drift detector deliberately doesn't comment-strip `jest.config.js` (glob patterns contain `/**` sequences that the block-comment regex would eat). This left a bypass: wrap the threshold block in `/* ... */`. New Case 0 verifies the 200 chars preceding `coverageThreshold:` don't contain an unmatched opening block-comment marker.
+- **BH-2 / EH-4 per-directory thresholds (load-bearing)**: spec deliverable said "≥ 40% on `src/lib/` AND `src/hooks/`", but `global` alone enforces the average, not the conjunction. **The per-directory floors REVEALED a real gap**: `src/hooks/` was actually at **23.02% statements / 27.12% branches / 25.92% functions / 23.36% lines** — well below 40%. The global metric (53.42%) was MASKING this because `src/lib/` (much higher) was averaging against it. Per spec AC-E ("if below 40% on ANY metric, lower threshold to floor-minus-3% of actual"), calibrated `./src/hooks/` floors to 20/24/22/20. `./src/lib/` carries the spec 40% floor by extension. Filed `15-6-followup-lift-hooks-coverage-to-40` so future stories add hook tests until per-directory floor can raise to 40%.
+
+**MED:**
+
+- **BH-5 gitignore anchor**: `coverage/` (no leading `/`) matches at any depth. Changed to `/coverage/` so a future sub-directory legitimately named `coverage` (e.g., `docs/insurance-coverage/`) isn't silently dropped.
+- **BH-8 / EH-2 upload-artifact step**: AC #5 explicitly noted artifact upload as "recommended" but pre-R1 didn't include it. Added `actions/upload-artifact@v4` with `if: always()` so gate-failure PRs still upload coverage for triage. 14-day retention.
+- **EH-10 sibling-test exclude**: `!**/__tests__/**` covered the canonical convention but not future `src/lib/foo.test.ts` sibling-tests. Extended `collectCoverageFrom` with `!**/*.test.{ts,tsx}` + `!**/*.spec.{ts,tsx}` so test files can't artificially inflate coverage by running themselves.
+
+**LOW:**
+
+- **EH-9 fractional tolerance**: drift detector regex `:\s*40\s*,` was brittle to `40.0` reformat. Switched to `40(?:\.0+)?` and a general `\d+(?:\.\d+)?` for per-directory numeric floors.
+
+**Documented but not patched** (operator-readable, no code change):
+
+- **BH-4 / EH-7 CI cost**: coverage instrumentation adds ~30-60% wall-clock vs the no-coverage `Tests` step. Two-step pattern (fast feedback first, instrumented run second) is the documented trade-off per Q1 RECOMMENDED. Added explanatory comment to the CI step.
+- **BH-6 scope gap**: spec deliberately scoped to `src/lib/` + `src/hooks/`. `src/components/` + `app/` excluded. Filed `15-6-followup-extend-coverage-scope-to-components-and-app` to broaden once per-directory floor here is stable.
+- **BH-7 / EH-5 forceExit + coverage**: known interaction where `forceExit: true` can clip worker-coverage-flush. Today's 11-point headroom absorbs minor drift. If future coverage hovers near floor, may need to investigate.
+- **EH-8 float vs rounded display**: Jest's threshold check uses raw float comparison while `text-summary` reporter rounds to 2 decimals. Boundary precision gotcha for future ratchet PRs.
+
+**Deferred (filed as follow-ups):**
+
+- `15-6-followup-codecov-integration` (Q3 spec deferral — operator action)
+- `15-6-followup-coverage-ratchet-cadence` (when to bump 40→50→60)
+- `15-6-followup-extend-coverage-scope-to-components-and-app` (BH-6)
+- `15-6-followup-lift-hooks-coverage-to-40` (R1 BH-2/EH-4 — raise per-dir floor to match `./src/lib/` once hook tests catch up)
 
 ### File List
 
 **New:**
 
-- `src/lib/__tests__/ci-coverage-gate-source-drift.test.ts` — 6 drift cases
+- `src/lib/__tests__/ci-coverage-gate-source-drift.test.ts` — 8 drift cases (6 original + 2 R1: Case 0 block-comment-wrap defense + Upload coverage report step pin)
 
 **Modified:**
 
-- `jest.config.js` — coverage config (collectCoverageFrom + coverageThreshold + coverageReporters)
+- `jest.config.js` — coverage config (collectCoverageFrom + per-directory coverageThreshold + coverageReporters + sibling-test excludes)
 - `package.json` — `test:coverage` script
-- `.github/workflows/ci.yml` — new `Tests with coverage threshold` step
-- `.gitignore` — `coverage/` ignored
+- `.github/workflows/ci.yml` — new `Tests with coverage threshold` step + `Upload coverage report` step
+- `.gitignore` — `/coverage/` ignored (anchored to repo root per R1 BH-5)
 - `.prettierignore` — `coverage/` ignored
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — 15-6 → done
 - `CLAUDE.md` — Story 15-6 architecture paragraph appended

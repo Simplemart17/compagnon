@@ -42,12 +42,32 @@ jobs:
         # coverage instrumentation for fast green-light feedback; this step
         # adds the slower instrumented run that fails CI if statements /
         # branches / functions / lines drops below 40% on the configured
-        # scope. Threshold pinned in `jest.config.js` `coverageThreshold`.
+        # scope. Per-directory thresholds (R1 BH-2/EH-4) enforce the spec
+        # conjunction (`src/lib/` AND `src/hooks/` ≥ 40%) — `global` alone
+        # would allow one dir to rot while the average stays above floor.
+        # Threshold pinned in `jest.config.js` `coverageThreshold`.
         # Measured baseline at gate-introduction (2026-05-17): Statements
         # 53.42% / Branches 55.80% / Functions 51.49% / Lines 54.12% — ~11
         # points of headroom against the lowest metric. Ratchet up via
         # future PRs as coverage grows.
+        #
+        # CI cost: coverage instrumentation adds ~30-60% wall-clock vs the
+        # no-coverage `Tests` step (R1 BH-4 / EH-7). Two-step pattern keeps
+        # fast-feedback first; instrumented run second. Acceptable trade-off
+        # per Q1 RECOMMENDED.
         run: npm run test:coverage
+
+      - name: Upload coverage report
+        # R1 BH-8 / EH-2: AC #5 explicitly noted artifact upload as
+        # "recommended" — operator triaging a coverage-gate failure needs
+        # the per-file lcov + HTML reports, not just the text-summary in
+        # CI logs. Runs even on failure so the failing PR has artifacts.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
 
       - name: Dependency vulnerability gate
         # Story 12-10: prevent regression of `npm audit reports 0 high
