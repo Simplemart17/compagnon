@@ -21,6 +21,36 @@ Each fixture file becomes a distinct Jest test case automatically. **Adding a fi
 
 ---
 
+## Privacy + GDPR — REQUIRED before any real-capture commit (R1 BH-3 / EH-10)
+
+**⚠️ CRITICAL:** Real model outputs may contain user-derived French content. The `writing-evaluation` schema receives the user's actual essay text in the `errors[].original` field — which can carry names, addresses, dates, contact info, or other personally-identifiable details from the user's writing prompt. Committing real-captured fixtures to source without sanitization exfiltrates this data into the public git history.
+
+**Story 9-3 GDPR scrubber does NOT run on fixtures** — it operates on Sentry events at emit time, not on raw breadcrumb payloads pulled later. **Story 9-4 prompt-side `<USER_FACTS>` wrapping does NOT protect captured outputs** — fixtures contain raw user text. **git history is irrevocable once pushed.**
+
+### Required sanitization steps before commit
+
+For each real-captured fixture:
+
+1. **Scan ALL user-derived string fields** for:
+   - Names (first, last, middle, nicknames)
+   - Place names (cities, streets, schools, employers)
+   - Dates (birthdays, anniversaries, specific calendar dates)
+   - Contact info (emails, phone numbers, social handles)
+   - Sensitive context (medical, financial, legal references)
+2. **Replace** identifying tokens with neutral placeholders: `[NAME]`, `[CITY]`, `[DATE]`, `[EMAIL]`, etc. Preserve French grammatical structure (e.g., article agreement, verb conjugation).
+3. **Add** a `_redacted: true` metadata marker to the fixture file alongside `_synthetic: false` (or `_synthetic: <omitted>` per the operator-action manifest in `15-5-followup-real-fixture-manifest`).
+4. **Document** the redaction scope in `_note`: e.g., `_note: "Captured from production 2026-MM-DD; user name + city redacted to [NAME] / [CITY]"`.
+
+### Prefer synthetic-derived fixtures when possible
+
+For schemas covering user-derived content (writing-evaluation, conversation-feedback, post-conversation-analysis), prefer hand-authored synthetic fixtures using neutral prompts (e.g., "Le chat est sur la table"). Real captures should be reserved for schemas where the user-derived surface is minimal (dictation, mock-test-section — where user data only flows back as scores, not as text).
+
+### Enforcement
+
+Story 15-5 Case 6 currently REQUIRES `_synthetic: true` on every committed fixture. A real-captured fixture without an entry in a future `.real-fixtures.txt` operator-action manifest will fail CI loudly. The manifest is filed as `15-5-followup-real-fixture-manifest`.
+
+---
+
 ## How to capture (3 options)
 
 ### Option A: Sentry breadcrumb pull (preferred for production-shape fidelity)
@@ -102,7 +132,7 @@ npx jest fixture-replay --no-coverage
 You should see a new passing test case named `fixture <schema>/<file> parses successfully against its Zod schema`. If the test FAILS:
 
 - Read the Zod issue list in the error output — it tells you which field is wrong and why.
-- Common causes: model emitted an extra field the schema doesn't allow (Zod is `strict()` by default in many schemas); model omitted an optional-but-validated field; model returned a string where the schema expected a number.
+- Common causes: model omitted an optional-but-validated field; model returned a string where the schema expected a number; enum value drift (e.g., model emitted `"medium"` where schema accepts only `"low" | "high"`). **Note:** Zod's default behavior is `.strip()` — unknown extra fields are silently dropped, NOT rejected. The Story 15-5 `Case 7` parallel strict-mode probe surfaces extra-field drift as a SOFT console warning (does not fail the test). If the soft warning fires, decide whether to (a) update the schema to accept the new field, or (b) sanitize the fixture before commit.
 - If the schema needs to be widened to accept the new shape, that's a schema change in `ai-responses.ts` — usually requires a follow-up story discussion.
 
 ---

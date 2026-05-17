@@ -1,6 +1,6 @@
 # Story 15.5: AI schema regression test infrastructure — fixture loader + replay harness for `ai-responses.ts` Zod schemas (capture deferred to operator)
 
-Status: review
+Status: done
 
 ## Story
 
@@ -76,6 +76,26 @@ As a developer, I want a **regression-test harness that loads recorded AI-respon
 
 ### Agent Model Used
 
+Claude Sonnet 4.6 (claude-sonnet-4-6) via /bmad-dev-story + /bmad-code-review workflows in autopilot mode.
+
 ### Completion Notes List
 
+- **Infrastructure shipped**: fixture-replay harness at `src/lib/schemas/__tests__/fixture-replay.test.ts` discovers `__fixtures__/<schema>/*.json` via `it.each`, strips `_synthetic` + `_note` top-level metadata, parses through Zod schemas via `FIXTURE_SCHEMA_MAP`. 3 synthetic seed fixtures (writing-evaluation, dictation, mock-test-section). Operator runbook at `_bmad-output/planning-artifacts/runbooks/ai-fixture-capture.md`.
+- **R1 patches applied** (HIGH × 5 + MED × 5 + LOW × 2): BH-1 JSON.parse error wrapping (surfaces fixture path on malformed JSON); BH-2 NEW Case 6 enforces `_synthetic: true` marker on every committed fixture (privacy defense); BH-3/EH-10 runbook gains REQUIRED Privacy + GDPR section before Option A — user-derived French content sanitization workflow with `_redacted: true` marker convention; BH-4 Case 2 walks `fs.readdirSync` directly so empty orphan dirs fail loud; BH-5 `FIXTURE_SCHEMA_MAP` uses `as const satisfies` for narrow value typing; BH-6 `dirent.isFile()` filter so a directory ending in `.json` doesn't crash with EISDIR; BH-7/EH-1 `stripMetadata` JSDoc documents top-level-only contract; BH-12 belt-and-suspenders FIXTURES_ROOT existence pin (Case 0); EH-2 Case 4 covers nested `_note` symmetrically with nested `_synthetic`; EH-6 case-insensitive `.json` match; EH-9 (load-bearing) NEW Case 7 parallel strict-mode probe — schemas use Zod default `.strip()` which silently drops unknown fields; strict-probe surfaces extra-field drift as SOFT console warning per fixture (does not fail test — synthetic seeds pass by construction; real captures may flag drift). Runbook's misleading "Zod is strict() by default" claim corrected.
+- **Deferred** (filed as follow-ups): `15-5-followup-real-fixture-manifest` (operator-action `.real-fixtures.txt` allow-list for real captures); `15-5-followup-passage-ref-integrity` (BH-8 — mock-test passageId schema gap); `15-5-followup-empty-fixture-boundary` (EH-3 — empty-object edge case).
+- **Quality gates green**: type-check 0 errors / lint 0 warnings / prettier clean / jest test passes (11/11).
+
 ### File List
+
+**New:**
+
+- `src/lib/schemas/__tests__/fixture-replay.test.ts` — 11 Jest cases (8 original + 3 R1 patches: Case 0 FIXTURES_ROOT existence + Case 6 synthetic-marker + Case 7 strict-mode probe)
+- `src/lib/schemas/__fixtures__/writing-evaluation/synthetic-b1-formal-001.json`
+- `src/lib/schemas/__fixtures__/dictation/synthetic-a2-mixed-001.json`
+- `src/lib/schemas/__fixtures__/mock-test-section/synthetic-b1-listening-001.json`
+- `_bmad-output/planning-artifacts/runbooks/ai-fixture-capture.md` (round-1 includes new Privacy + GDPR section + Zod default-behavior correction)
+
+**Modified:**
+
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — 15-5 → done
+- `CLAUDE.md` — Story 15-5 architecture paragraph appended
