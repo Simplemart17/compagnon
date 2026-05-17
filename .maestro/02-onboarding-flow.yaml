@@ -1,0 +1,57 @@
+# Story 15-4 — Flow 2: Onboarding wizard + placement test
+#
+# Prerequisite: a verified test account already exists (created via Flow 1
+# OR seeded via Supabase admin). The flow signs in with that account, then
+# walks the 3-step onboarding + placement test → home.
+#
+# Test account credentials should live in `MAESTRO_TEST_EMAIL` /
+# `MAESTRO_TEST_PASSWORD` env vars (operator-set per runbook).
+
+appId: com.companion.app
+tags:
+  - smoke
+  - onboarding
+
+env:
+  TEST_EMAIL: "e2e-test+onboarding-001@invalid.localdomain"  # TODO: replace with operator-seeded test account
+  TEST_PASSWORD: "Abcdefghi1"
+---
+- launchApp:
+    clearState: true
+
+# Sign in (assumes account is verified)
+- assertVisible: "Sign in"  # TODO: verify exact text
+- tapOn:
+    id: "input-email"  # TODO: verify testID
+- inputText: ${TEST_EMAIL}
+- tapOn:
+    id: "input-password"
+- inputText: ${TEST_PASSWORD}
+- tapOn: "Sign in"
+
+# Step 1 of 3 — goals
+- assertVisible: "What are your goals?"  # TODO: verify exact onboarding/index.tsx text
+- tapOn: "TCF preparation"  # TODO: verify goal label
+- tapOn: "Continue"
+
+# Step 2 of 3 — daily goal
+- assertVisible: "Daily goal"  # TODO
+- tapOn: "15 min"  # TODO
+- tapOn: "Continue"
+
+# Step 3 of 3 — placement test entry
+- assertVisible: "Placement test"  # TODO
+- tapOn: "Start placement test"  # TODO
+
+# Placement test — answer all 15 questions (B1-ish)
+- repeat:
+    times: 15
+    commands:
+      - tapOn:
+          index: 0  # tap first option
+          text: ".*"
+      - tapOn: "Next question"  # TODO: verify
+
+# Reach home tab
+- assertVisible: "COMPANION"  # home hero brand label (Story 14-1 R1-H4)
+- assertVisible: "Hello"  # greeting

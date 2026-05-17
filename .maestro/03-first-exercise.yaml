@@ -1,0 +1,52 @@
+# Story 15-4 — Flow 3: Complete the first practice exercise
+#
+# Prerequisite: an onboarded test account exists (Flow 2 completed).
+# Validates: practice tab → grammar → AI exercise generation → answer →
+# grade → result + activity-tracking persists.
+
+appId: com.companion.app
+tags:
+  - smoke
+  - exercise
+
+env:
+  TEST_EMAIL: "e2e-test+exercise-001@invalid.localdomain"  # TODO
+  TEST_PASSWORD: "Abcdefghi1"
+---
+- launchApp:
+    clearState: false  # preserve any signed-in session
+
+# If not signed in, sign in
+- runFlow:
+    when:
+      visible: "Sign in"
+    commands:
+      - tapOn:
+          id: "input-email"
+      - inputText: ${TEST_EMAIL}
+      - tapOn:
+          id: "input-password"
+      - inputText: ${TEST_PASSWORD}
+      - tapOn: "Sign in"
+
+# Navigate to Practice tab
+- tapOn: "Practice"  # bottom tab — Story 14-1 R1-H1 EN
+- assertVisible: "Choose a skill to practice."  # practice screen subtitle
+
+# Choose Grammar
+- tapOn: "Grammar"  # SkillCard label (Story 14-1)
+- assertVisible: "Generating exercise"  # loading state
+
+# Wait for the MCQ to appear (max 60s for AI gen)
+- extendedWaitUntil:
+    visible: "Submit"  # or "Check" — TODO verify the submit button label
+    timeout: 60000
+
+# Tap first option then submit
+- tapOn:
+    id: "mcq-option-0"  # TODO: verify testID on MCQCard option Pressables
+- tapOn: "Submit"
+
+# Expect a result screen
+- assertVisible: "Correct"  # ideal — TODO: handle "Incorrect" path too
+- tapOn: "Next exercise"  # TODO: verify CTA

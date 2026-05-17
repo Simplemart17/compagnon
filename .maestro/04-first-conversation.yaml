@@ -1,0 +1,70 @@
+# Story 15-4 — Flow 4: First conversation (Realtime voice)
+#
+# Validates: conversation tab → topic → start → grant mic permission →
+# session connects → user can speak (simulated) → end session.
+#
+# Note: Real-time voice depends on OpenAI Realtime API + microphone access.
+# Maestro can simulate the mic-permission grant + the End button tap but
+# CANNOT inject audio. This flow validates the SHELL — connection + UI
+# state transitions — not the AI response content.
+
+appId: com.companion.app
+tags:
+  - smoke
+  - conversation
+
+env:
+  TEST_EMAIL: "e2e-test+conversation-001@invalid.localdomain"  # TODO
+  TEST_PASSWORD: "Abcdefghi1"
+---
+# R1 EH-4: Use Maestro's `launchApp.permissions` directive to grant
+# RECORD_AUDIO upfront — bypasses the system permission dialog entirely
+# AND works on both iOS Simulator + Android Emulator (eliminates the
+# iOS-only "OK" / Android-only "Allow" / "While using the app" /
+# "Only this time" alternation problem).
+- launchApp:
+    clearState: false
+    permissions:
+      record_audio: allow
+
+- runFlow:
+    when:
+      visible: "Sign in"
+    commands:
+      - tapOn:
+          id: "input-email"
+      - inputText: ${TEST_EMAIL}
+      - tapOn:
+          id: "input-password"
+      - inputText: ${TEST_PASSWORD}
+      - tapOn: "Sign in"
+
+# Navigate to Conversation tab. R1 BH-2: the tab `title` is "Talk" per
+# `app/(tabs)/_layout.tsx:61`, NOT "Conversation". The `headerTitle`
+# (rendered in the screen hero) is "Conversation" — but Maestro's
+# `tapOn` on the bottom tab matches the `title` value.
+- tapOn: "Talk"  # bottom-tab title per _layout.tsx:61
+- assertVisible: "Talk with Companion"  # hero title from conversation/index.tsx
+
+# Pick the first topic (A1 — "Se présenter" greeting)
+- tapOn:
+    text: "Se présenter"  # FR content per Story 14-1 chrome rule
+    # TODO: confirm exact rendered text; topic card has both EN + FR labels
+
+# Start the session
+- assertVisible: "Talk"  # or whatever the start CTA reads — TODO
+- tapOn: "Talk"
+
+# R1 EH-4: permission dialog bypassed via launchApp.permissions above.
+# The pre-R1 `runFlow when: visible: "OK"` block (iOS-only) is DELETED.
+
+# Wait for connection (status: "connected")
+- extendedWaitUntil:
+    visible: "Companion is listening"  # TODO: verify status text
+    timeout: 30000
+
+# End the session
+- tapOn: "End"  # TODO: verify End button label
+
+# Expect feedback screen or session-summary
+- assertVisible: "Session summary"  # TODO: verify post-session screen
