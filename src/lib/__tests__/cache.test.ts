@@ -76,6 +76,21 @@ const USER_ID = "user-abc";
 const TEST_KEY = "skills"; // NON-secure key — exercises AsyncStorage path
 const FULL_KEY = `@companion_cache:${USER_ID}:${TEST_KEY}`;
 
+// R1-P1: pin `Date.now()` so TTL boundary cases (Case 3 + 4) are deterministic.
+// Pre-R1, Case 3 failed in the first full-suite run because real wall-clock
+// drift between the test setup's `Date.now() - (ttlMs - 1)` and the call-time
+// `Date.now()` inside `getCache` crossed the strict `>` boundary. Fake timers
+// eliminate the wall-clock-drift race.
+const FROZEN_NOW = new Date("2026-05-17T12:00:00Z");
+
+beforeAll(() => {
+  jest.useFakeTimers({ now: FROZEN_NOW });
+});
+
+afterAll(() => {
+  jest.useRealTimers();
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -253,18 +268,27 @@ describe("Story 15-1 — cache.ts core API", () => {
       await expect(cacheWithFallback(USER_ID, TEST_KEY, fetchFn)).rejects.toBe(fetchErr);
     });
 
-    it("Case 17: fetcher throws AND cache read also throws → captureError fires for fallback-read + rethrows original error", async () => {
-      mockAsyncStorage.getItem.mockRejectedValueOnce(new Error("cache read also fails"));
-      const fetchErr = new Error("network down");
+    it("Case 17: fetcher throws AND cache read also throws → captureError fires for fallback-read with the CACHE error (not the fetch error) + rethrows original fetch error", async () => {
+      // R1-P3: use distinctive messages so we can verify the CORRECT error is
+      // routed to captureError. Pre-R1 `expect.any(Error)` would have passed
+      // even if the impl accidentally captured the fetch error instead of the
+      // cache-read error.
+      const cacheReadErr = new Error("CACHE_READ_DISTINCT_MARKER");
+      const fetchErr = new Error("FETCH_DISTINCT_MARKER");
+      mockAsyncStorage.getItem.mockRejectedValueOnce(cacheReadErr);
       const fetchFn = jest.fn(async () => {
         throw fetchErr;
       });
       await expect(cacheWithFallback(USER_ID, TEST_KEY, fetchFn)).rejects.toBe(fetchErr);
+      // The first arg should be the cache-read error, NOT the fetch error.
       expect(mockCaptureError).toHaveBeenCalledWith(
-        expect.any(Error),
+        cacheReadErr,
         "cache-fallback-read",
         expect.objectContaining({ key: TEST_KEY })
       );
+      // Belt-and-suspenders: confirm by inspecting the call args directly.
+      const capturedErr = mockCaptureError.mock.calls[0][0];
+      expect((capturedErr as Error).message).toBe("CACHE_READ_DISTINCT_MARKER");
     });
   });
 

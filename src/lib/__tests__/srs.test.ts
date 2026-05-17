@@ -23,6 +23,20 @@ import { calculateNextReview, type SRSState } from "@/src/lib/srs";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+// R1-P1: pin `new Date()` + `Date.now()` to a fixed moment so the
+// `nextReview` math (Case 12 + Case 14) is deterministic and cannot flake
+// across midnight or DST boundaries. Use a noon-UTC timestamp so we sit
+// safely in the middle of a day for all timezones the CI might run in.
+const FROZEN_NOW = new Date("2026-05-17T12:00:00Z");
+
+beforeAll(() => {
+  jest.useFakeTimers({ now: FROZEN_NOW });
+});
+
+afterAll(() => {
+  jest.useRealTimers();
+});
+
 function makeState(overrides: Partial<SRSState> = {}): SRSState {
   return { easeFactor: 2.5, intervalDays: 1, repetitions: 0, ...overrides };
 }
@@ -175,16 +189,21 @@ describe("Story 15-1 — calculateNextReview (SM-2)", () => {
       expect(input.repetitions).toBe(2);
     });
 
-    it("Case 14: calling twice on the same input returns equivalent results (deterministic / no hidden state)", () => {
+    it("Case 14: calling twice on the same input returns equivalent results (deterministic / no hidden state) AND returns DISTINCT Date references (R1-P4 memoization defense)", () => {
       const input: SRSState = { easeFactor: 2.5, intervalDays: 6, repetitions: 2 };
       const r1 = calculateNextReview(input, 5);
       const r2 = calculateNextReview(input, 5);
       expect(r1.easeFactor).toBe(r2.easeFactor);
       expect(r1.intervalDays).toBe(r2.intervalDays);
       expect(r1.repetitions).toBe(r2.repetitions);
-      // `nextReview` may differ by milliseconds if Date.now() rolls forward
-      // between calls — but both should be the same calendar day at midnight.
+      // With fake timers pinned to FROZEN_NOW, both calls produce the same
+      // calendar day at midnight.
       expect(r1.nextReview.toDateString()).toBe(r2.nextReview.toDateString());
+      expect(r1.nextReview.getTime()).toBe(r2.nextReview.getTime());
+      // R1-P4: returned Date references MUST be distinct objects. A future
+      // refactor that memoizes the Date (e.g., a module-level "today" cache)
+      // would break consumers that mutate the returned Date in place.
+      expect(r1.nextReview).not.toBe(r2.nextReview);
     });
   });
 });

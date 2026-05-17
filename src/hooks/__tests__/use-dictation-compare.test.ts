@@ -107,14 +107,28 @@ describe("Story 15-1 — compareSentences (dictation word comparison)", () => {
 
   describe("Defensive degenerate inputs", () => {
     it("Case 6: empty original returns empty wordResults; accuracy = 0; isFullyCorrect = true (vacuously — 0/0 is fully correct)", () => {
+      // SEMANTIC NOTE (R1-P2): the impl returns `isFullyCorrect: true` for an
+      // empty original even when the user typed something — `0 === 0` is a
+      // vacuous truth. This test pins the existing behavior; a consumer that
+      // gates downstream behavior on `isFullyCorrect` alone (e.g., "mark
+      // exercise complete") would incorrectly mark an empty-original exercise
+      // complete despite the user having typed real content. The production
+      // fix (e.g., `isFullyCorrect = totalWords > 0 && correctCount === totalWords`)
+      // belongs in a follow-up story and is OUT OF SCOPE for Story 15-1's
+      // test-only AC-F44.
+      // TODO(15-1-followup-dictation-empty-original-semantic): tighten the
+      // production semantic AND flip this test's assertion to `false`.
       const result = compareSentences("", "bonjour");
       expect(result.wordResults).toEqual([]);
       expect(result.accuracy).toBe(0);
-      // 0 of 0 words correct → trivially "fully correct"
       expect(result.isFullyCorrect).toBe(true);
     });
 
     it("Case 7: both empty returns empty wordResults; accuracy = 0; isFullyCorrect = true", () => {
+      // Both-empty case is the ONE case where `isFullyCorrect: true` is
+      // semantically defensible (the user correctly typed an empty string for
+      // an empty original). The R1-P2 follow-up should preserve this case's
+      // truth value while flipping Case 6.
       const result = compareSentences("", "");
       expect(result.wordResults).toEqual([]);
       expect(result.accuracy).toBe(0);
@@ -166,6 +180,26 @@ describe("Story 15-1 — compareSentences (dictation word comparison)", () => {
       const result = compareSentences("  bonjour monde  ", "bonjour monde");
       expect(result.wordResults).toHaveLength(2);
       expect(result.wordResults.every((w) => w.status === "correct")).toBe(true);
+    });
+
+    it("Case 14a: `typed` preserves user's ORIGINAL casing + accents (R1-P5 — load-bearing for UI 'you typed FOO — should be bar' display)", () => {
+      // The impl's `typed` field uses the RAW-SPLIT user input (punctuation
+      // stripped, but casing + accents PRESERVED) at index i — NOT the
+      // normalized lowercased+stripped token. A future refactor that swapped
+      // to `userTokens[i]` would silently break this contract. The display
+      // surface depends on showing the user EXACTLY what they typed.
+      //
+      // To probe case-preservation we need a position where original and user
+      // tokens DIFFER (so the position is "wrong") AND the user's word has
+      // distinctive casing. Using "marie" vs "MARIA" — the lowercased forms
+      // also differ ("marie" vs "maria") so the position is marked wrong,
+      // and the user's UPPERCASE form is preserved in `typed`.
+      const result = compareSentences("bonjour marie", "bonjour MARIA");
+      expect(result.wordResults).toHaveLength(2);
+      expect(result.wordResults[0].status).toBe("correct");
+      expect(result.wordResults[1].status).toBe("wrong");
+      // typed preserves the user's UPPERCASE input (not normalized to lower).
+      expect(result.wordResults[1].typed).toBe("MARIA");
     });
 
     it("Case 14: apostrophe stripped — 'l'eau' compared as 'leau' against user 'leau'", () => {
