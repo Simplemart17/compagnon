@@ -1,6 +1,6 @@
 # Story 15.3: Edge Function Deno tests in CI — wire existing `_shared/__tests__/*_test.ts` files into the GitHub Actions workflow
 
-Status: review
+Status: done
 
 ## Story
 
@@ -75,8 +75,25 @@ Existing manual-run tests:
 
 ### Agent Model Used
 
-(to be filled in)
+Claude Sonnet 4.6 (claude-sonnet-4-6) via /bmad-dev-story + /bmad-code-review workflows in autopilot mode.
 
 ### Completion Notes List
 
+- **CI step wired**: `.github/workflows/ci.yml` gains `Setup Deno` (denoland/setup-deno@v2 + deno-version v1.x) + `Deno tests (Edge Function _shared utilities)` step after the existing `Tests` step.
+- **Drift detector**: 5 cases at `src/lib/__tests__/ci-deno-step-source-drift.test.ts` — pins action + version + canonical run command + 2 negative guards (--allow-all + silent-disable) + ordering.
+- **R1 patches applied** (HIGH × 3 + MED × 4): BH-2/EH-1 explicit file paths in run command (vacuous-pass defense); BH-3/EH-2 fix --allow-all docstring drift in parse-upstream-error_test.ts; EH-4 anchor Case 5 regex with `/m + $` to defend against PR #116 `Tests with coverage threshold` step; BH-5 extend Case 4 to cover BOTH Setup Deno + Deno test step blocks; BH-6 add `timeout-minutes: 3`; BH-7 rewrite misleading v1/v2 comment to clarify action-version vs runtime-version axes; EH-10 add `--no-check` to skip redundant TS check.
+- **Deferred**: BH-1/EH-3 SHA-pin all 3rd-party actions → `15-3-followup-action-sha-pinning` (warrants global PR); BH-4/EH-6 Deno cache → `15-3-followup-deno-cache`; EH-8 real body-read timeout test → `15-3-followup-real-body-read-timeout-test`; EH-5 PR #116 merge conflict — operator resolves at merge time (recommended: merge this PR before #116).
+- **Quality gates green**: type-check 0 errors / lint 0 warnings / prettier clean / jest drift detector 5/5 pass.
+
 ### File List
+
+**New:**
+
+- `src/lib/__tests__/ci-deno-step-source-drift.test.ts` — 5 drift cases (round-1 includes BH-5 + EH-4 + R1 BH-2/EH-1/EH-10 pin updates)
+
+**Modified:**
+
+- `.github/workflows/ci.yml` — added `Setup Deno` + `Deno tests (Edge Function _shared utilities)` steps after the existing `Tests` step (round-1 includes explicit file paths + --no-check + timeout-minutes per R1 patches)
+- `supabase/functions/_shared/__tests__/parse-upstream-error_test.ts` — docstring R1 fix (--allow-all → --allow-net=127.0.0.1)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — 15-3 → done
+- `CLAUDE.md` — Story 15-3 architecture paragraph appended

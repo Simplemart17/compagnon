@@ -30,41 +30,77 @@ describe("Story 15-3 — Deno test CI step source drift", () => {
     expect(ci).toMatch(/deno-version:\s*v1\.x\b/);
   });
 
-  it("Case 2: Deno test step name + canonical run command pinned", () => {
+  it("Case 2: Deno test step name + canonical run command pinned (explicit file paths + --no-check + --allow-net=127.0.0.1)", () => {
     expect(ci).toMatch(/- name:\s*Deno tests \(Edge Function _shared utilities\)/);
-    // Canonical run command: deno test + scoped permission + scoped dir
-    expect(ci).toMatch(
-      /run:\s*deno test --allow-net=127\.0\.0\.1 supabase\/functions\/_shared\/__tests__\//
+    // Canonical run command form (R1 BH-2/EH-1 vacuous-pass defense:
+    // explicit file names instead of directory match; R1 EH-10:
+    // --no-check skips redundant TS check):
+    expect(ci).toMatch(/deno test --no-check --allow-net=127\.0\.0\.1/);
+    // Both _test.ts files named explicitly so a rename/move fails loudly
+    // at "Module not found" instead of silently passing an empty match.
+    expect(ci).toMatch(/supabase\/functions\/_shared\/__tests__\/fetch-with-timeout_test\.ts/);
+    expect(ci).toMatch(/supabase\/functions\/_shared\/__tests__\/parse-upstream-error_test\.ts/);
+    // Bounded execution time so a hung worker can't burn the GitHub
+    // Actions 6-hour default timeout (R1 BH-6).
+    const denoBlockMatch = ci.match(
+      /- name:\s*Deno tests \(Edge Function _shared utilities\)[\s\S]*?(?=\n\s{6}- name:|\n\s*$)/
     );
+    expect(denoBlockMatch).not.toBeNull();
+    expect(denoBlockMatch![0]).toMatch(/timeout-minutes:\s*3\b/);
   });
 
   it("Case 3: NEGATIVE guard — no --allow-all (over-permissive); permission surface stays minimal", () => {
-    // Find the Deno test run line specifically (avoid false positives if
-    // another step happens to mention --allow-all in a comment).
-    const runLineMatch = ci.match(
-      /run:\s*deno test [^\n]+supabase\/functions\/_shared\/__tests__\/[^\n]*/
-    );
-    expect(runLineMatch).not.toBeNull();
-    expect(runLineMatch![0]).not.toContain("--allow-all");
-  });
-
-  it("Case 4: NEGATIVE guard — Deno test step does NOT carry `continue-on-error: true` or unrestricted `if:` (Story 12-10 R1-H2 silent-disable defense)", () => {
-    // Extract the block from "name: Deno tests" to the next "- name:" or EOF.
+    // Scope to the Deno test step's block so a comment elsewhere
+    // mentioning --allow-all isn't false-flagged.
     const denoBlockMatch = ci.match(
-      /- name:\s*Deno tests \(Edge Function _shared utilities\)[\s\S]*?(?=\n\s*- name:|\n\s*$)/
+      /- name:\s*Deno tests \(Edge Function _shared utilities\)[\s\S]*?(?=\n\s{6}- name:|\n\s*$)/
     );
     expect(denoBlockMatch).not.toBeNull();
-    const block = denoBlockMatch![0];
-    expect(block).not.toMatch(/continue-on-error:\s*true/);
-    // No top-level `if:` key that would conditionally skip the step.
-    // (Note: `if:` inside the `run:` shell script is fine — only flag the
-    // step-level `if:` key.)
-    const stepLevelIf = block.match(/^\s{6}if:\s/m); // 6-space indent matches step-level keys
-    expect(stepLevelIf).toBeNull();
+    // Strip comment lines so the "NO `--allow-all`" comment doesn't
+    // false-flag against the negative guard.
+    const blockNoComments = denoBlockMatch![0].replace(/^\s*#.*$/gm, "");
+    expect(blockNoComments).not.toMatch(/--allow-all\b/);
   });
 
-  it("Case 5: Ordering — Deno test step appears AFTER the Tests step (so npm test failures short-circuit before Deno install)", () => {
-    const testsIdx = ci.search(/- name:\s*Tests\b/);
+  it("Case 4: NEGATIVE guard — BOTH Setup Deno + Deno test steps lack silent-disable patterns (R1 BH-5: tightly-coupled steps need parity)", () => {
+    // R1 BH-5 lesson: silent-disable on the Setup Deno step would leave
+    // `deno` uninstalled; the subsequent test step would fail with
+    // `deno: command not found` — BUT if BOTH steps carry the disable,
+    // CI green-passes vacuously. Pin both blocks.
+    const blocks: [string, RegExp][] = [
+      ["Setup Deno", /- name:\s*Setup Deno\b[\s\S]*?(?=\n\s{6}- name:|\n\s*$)/],
+      [
+        "Deno tests",
+        /- name:\s*Deno tests \(Edge Function _shared utilities\)[\s\S]*?(?=\n\s{6}- name:|\n\s*$)/,
+      ],
+    ];
+    for (const [label, blockRegex] of blocks) {
+      const m = ci.match(blockRegex);
+      if (!m) {
+        throw new Error(`${label} block not found in ci.yml`);
+      }
+      const block = m[0];
+      if (/continue-on-error:\s*true/.test(block)) {
+        throw new Error(
+          `${label} step carries \`continue-on-error: true\` (R1 BH-5 silent-disable)`
+        );
+      }
+      // No step-level `if:` key (6-space indent). `if:` inside a `run:`
+      // shell script is fine — only flag the step-level YAML key.
+      if (/^\s{6}if:\s/m.test(block)) {
+        throw new Error(`${label} step carries step-level \`if:\` key (R1 BH-5 silent-disable)`);
+      }
+    }
+    // Belt-and-suspenders structural pin: both regexes matched.
+    expect(blocks.length).toBe(2);
+  });
+
+  it("Case 5: Ordering — Deno test step appears AFTER the no-coverage Tests step (so npm test failures short-circuit before Deno install)", () => {
+    // R1 EH-4: anchor the `Tests` regex to line-end (`$/m`) so the
+    // `Tests with coverage threshold` step that PR #116 inserts cannot
+    // match this pattern. `\b` alone would match both "Tests" and
+    // "Tests with..." (both have a word boundary after "Tests").
+    const testsIdx = ci.search(/^\s{6}- name:\s*Tests\s*$/m);
     const denoIdx = ci.search(/- name:\s*Deno tests \(Edge Function _shared utilities\)/);
     const setupDenoIdx = ci.search(/- name:\s*Setup Deno\b/);
     expect(testsIdx).toBeGreaterThan(0);
