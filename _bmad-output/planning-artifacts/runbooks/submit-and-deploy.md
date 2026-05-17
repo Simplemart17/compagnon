@@ -130,6 +130,27 @@ The credentials in §2.1–§2.3 are different — they live as EAS env vars / f
 
 GitHub → Actions → "EAS Build" → Run workflow → `profile: production`, `platform: all`. Wait for the EAS dashboard to show the build complete (~20–40 min for both platforms).
 
+#### First-run notes (Story 16-1, operator fills in on 2026-05-XX)
+
+<!--
+  OPERATOR ACTION: After completing the first real production build per
+  Story 16-1, replace this placeholder block with the actual observations.
+  Suggested items to capture (drop any that didn't apply):
+    - Did EAS prompt for provisioning-profile / distribution-cert
+      auto-generation? If yes, did it succeed in CI or require a local
+      `eas build` invocation first to seed credentials?
+    - Did 2FA prompts fire on any step (ASC API key, Google service
+      account, Apple Developer Portal)?
+    - Did Google Cloud IAM role propagation take longer than ~5 minutes?
+    - Any error messages not covered by §4.3 below?
+    - Actual wall-clock build duration per platform (compare against the
+      pre-execution estimate "~20–40 min").
+  If no novel observations: replace this block with the single line
+  "First production build completed without novel observations on YYYY-MM-DD."
+-->
+
+_(placeholder — see HTML comment for operator-action instructions)_
+
 ### 3.2 Confirm Sentry source maps uploaded
 
 While the build runs, watch the EAS build log for a line like:
@@ -164,21 +185,52 @@ If boot fails, the GitHub secrets in §2.4 rows 2–4 are missing or stale.
 
 GitHub → Actions → "EAS Submit" → Run workflow → `platform: ios`, `build_id: <empty>` (uses `--latest`). If the `production` environment gate is configured (§2.5), approve the deployment.
 
-Expected:
+Expected (pre-Story-16-1 estimates):
 
 - Workflow completes in ~3 minutes.
 - App Store Connect → TestFlight → iOS Builds shows the new build within 5–15 minutes (Apple processing).
 - The build is in "Processing" → "Ready to Test" once Apple completes its scan.
 
+#### Story 16-1 first-run observed values (operator fills in on 2026-05-XX)
+
+<!--
+  OPERATOR ACTION: After the first real iOS submission, replace this
+  placeholder with actual observed values:
+    - Workflow duration (compare against ~3 min estimate)
+    - Time to TestFlight visibility (compare against 5–15 min Apple processing)
+    - "Processing" → "Ready to Test" transition time
+    - Apple email notifications received (if any rejection scans fired)
+  If observed range matches expected: "First iOS submission completed within
+  expected timings on YYYY-MM-DD."
+-->
+
+_(placeholder — see HTML comment for operator-action instructions)_
+
 ### 4.2 Android → Play Internal Track
 
 Same workflow, `platform: android`.
 
-Expected:
+Expected (pre-Story-16-1 estimates):
 
 - Workflow completes in ~2 minutes.
 - Play Console → Testing → Internal testing → Releases shows the AAB as a **draft** (per `releaseStatus: "draft"` in `eas.json`).
 - Operator promotes to internal testers manually via Play Console → Edit release → Review release → Roll out to Internal testing.
+
+#### Story 16-1 first-run observed values (operator fills in on 2026-05-XX)
+
+<!--
+  OPERATOR ACTION: After the first real Android submission, replace this
+  placeholder with actual observed values:
+    - Workflow duration (compare against ~2 min estimate)
+    - Time from submit → draft-visible in Play Console
+    - Did the "Android draft promotion reminder" GHA annotation surface
+      correctly at end of workflow?
+    - Promotion-to-internal-testers wall-clock (operator manual action)
+  If observed range matches expected: "First Android submission completed
+  within expected timings on YYYY-MM-DD."
+-->
+
+_(placeholder — see HTML comment for operator-action instructions)_
 
 ### 4.3 Failure modes & fixes
 
@@ -188,6 +240,18 @@ Expected:
 | `eas submit` exits with `serviceAccountKeyPath does not exist` | EAS file secret not created                                             | Re-run §2.2; confirm `eas secret:list` shows `EXPO_GOOGLE_SERVICE_ACCOUNT_KEY` |
 | Submit succeeds but build never appears in TestFlight          | Apple processing failure (rare); check email from `developer@apple.com` | Resubmit a fresh build; if persistent, file an Apple TSI                       |
 | Play submit succeeds but track empty                           | Service account lacks "Release apps to testing tracks" role             | Re-do §1.6 last step; resubmit                                                 |
+| EAS Submit workflow fails at "Preflight — EXPO_TOKEN present" step with `::error::EXPO_TOKEN GitHub secret missing` | `EXPO_TOKEN` GitHub secret unset or empty                               | Run `gh secret set EXPO_TOKEN --body <token>` OR add via GitHub → Settings → Secrets and variables → Actions. See §2.4 row 1. (Story 16-1 fail-fast check.) |
+
+#### Story 16-1 first-run novel failure modes (operator fills in on 2026-05-XX)
+
+<!--
+  OPERATOR ACTION: After the first real submission, append any novel
+  symptom → cause → fix rows to the table above. If no novel failure
+  modes occurred, replace this block with the single line
+  "First-run submission completed with no novel failure modes on YYYY-MM-DD."
+-->
+
+_(placeholder — see HTML comment for operator-action instructions)_
 
 ---
 
