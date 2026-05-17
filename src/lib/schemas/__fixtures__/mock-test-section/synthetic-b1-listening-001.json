@@ -1,0 +1,34 @@
+{
+  "_synthetic": true,
+  "_note": "Story 15-5 seed fixture. Demonstrates the replay path works against mockTestSectionSchema. Includes the load-bearing 'exactly 4 options + exactly 1 correct + unique ids' invariant per Story 9-7 + 9-7 R1 P9/P10. Replace with operator-captured real model output per runbooks/ai-fixture-capture.md.",
+  "passages": [
+    {
+      "id": "passage-1",
+      "text": "Marie travaille dans une boulangerie depuis cinq ans. Elle commence à quatre heures du matin et finit à midi."
+    }
+  ],
+  "questions": [
+    {
+      "question": "À quelle heure Marie commence-t-elle son travail ?",
+      "passageId": "passage-1",
+      "options": [
+        { "id": "opt-a", "text": "À deux heures du matin", "isCorrect": false },
+        { "id": "opt-b", "text": "À quatre heures du matin", "isCorrect": true },
+        { "id": "opt-c", "text": "À six heures du matin", "isCorrect": false },
+        { "id": "opt-d", "text": "À huit heures du matin", "isCorrect": false }
+      ],
+      "explanation": "Le texte indique qu'elle commence 'à quatre heures du matin'."
+    },
+    {
+      "question": "Depuis combien de temps Marie travaille-t-elle à la boulangerie ?",
+      "passageId": "passage-1",
+      "options": [
+        { "id": "opt-a", "text": "Deux ans", "isCorrect": false },
+        { "id": "opt-b", "text": "Trois ans", "isCorrect": false },
+        { "id": "opt-c", "text": "Cinq ans", "isCorrect": true },
+        { "id": "opt-d", "text": "Dix ans", "isCorrect": false }
+      ],
+      "explanation": "Le texte dit 'depuis cinq ans'."
+    }
+  ]
+}
