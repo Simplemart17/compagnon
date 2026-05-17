@@ -17,8 +17,15 @@ env:
   TEST_EMAIL: "e2e-test+conversation-001@invalid.localdomain"  # TODO
   TEST_PASSWORD: "Abcdefghi1"
 ---
+# R1 EH-4: Use Maestro's `launchApp.permissions` directive to grant
+# RECORD_AUDIO upfront — bypasses the system permission dialog entirely
+# AND works on both iOS Simulator + Android Emulator (eliminates the
+# iOS-only "OK" / Android-only "Allow" / "While using the app" /
+# "Only this time" alternation problem).
 - launchApp:
     clearState: false
+    permissions:
+      record_audio: allow
 
 - runFlow:
     when:
@@ -32,8 +39,11 @@ env:
       - inputText: ${TEST_PASSWORD}
       - tapOn: "Sign in"
 
-# Navigate to Conversation tab
-- tapOn: "Conversation"  # bottom tab — Story 14-1 R1
+# Navigate to Conversation tab. R1 BH-2: the tab `title` is "Talk" per
+# `app/(tabs)/_layout.tsx:61`, NOT "Conversation". The `headerTitle`
+# (rendered in the screen hero) is "Conversation" — but Maestro's
+# `tapOn` on the bottom tab matches the `title` value.
+- tapOn: "Talk"  # bottom-tab title per _layout.tsx:61
 - assertVisible: "Talk with Companion"  # hero title from conversation/index.tsx
 
 # Pick the first topic (A1 — "Se présenter" greeting)
@@ -45,12 +55,8 @@ env:
 - assertVisible: "Talk"  # or whatever the start CTA reads — TODO
 - tapOn: "Talk"
 
-# Grant mic permission (system dialog)
-- runFlow:
-    when:
-      visible: "OK"  # iOS permission dialog
-    commands:
-      - tapOn: "OK"
+# R1 EH-4: permission dialog bypassed via launchApp.permissions above.
+# The pre-R1 `runFlow when: visible: "OK"` block (iOS-only) is DELETED.
 
 # Wait for connection (status: "connected")
 - extendedWaitUntil:

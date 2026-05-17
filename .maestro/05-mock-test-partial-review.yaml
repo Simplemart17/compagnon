@@ -28,8 +28,10 @@ env:
       - inputText: ${TEST_PASSWORD}
       - tapOn: "Sign in"
 
-# Navigate to Mock Test tab
-- tapOn: "Mock test"  # bottom tab — Story 14-1 R1 EN chrome
+# Navigate to TCF Test tab. R1 BH-2: tab `title` is "TCF Test" per
+# `app/(tabs)/_layout.tsx:97`, NOT "Mock test". The screen content
+# refers to "Mock test" but the bottom-tab label is "TCF Test".
+- tapOn: "TCF Test"  # bottom-tab title per _layout.tsx:97
 - assertVisible: "TCF"  # mock-test/index.tsx hero brand
 
 # Tap the full TCF simulation card

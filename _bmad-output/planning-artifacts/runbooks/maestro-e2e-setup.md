@@ -87,14 +87,53 @@ Walk through each of the 5 flows in `studio`. For each `# TODO: verify selector`
 
 ## Step 5 — Seed test accounts
 
+### Prerequisites — verify Story 12-9 email-verification gate is ON
+
+**R1 EH-3 precheck:** Flow 1 asserts the EmailVerificationGate appears after signup. This requires the Supabase project to have **Authentication → Providers → Email → "Confirm email" toggled ON** (per the Story 12-9 runbook). If your test environment was created with the toggle OFF (or you followed the 12-9 rollback procedure), Flow 1 will dead-end because the new user is routed straight to onboarding — the gate never renders.
+
+Verify with:
+
+```bash
+# Quick precheck — signup against the project; response body should
+# carry `email_confirmed_at: null` (gate active) AND no session token
+# (gate is gating session establishment).
+curl -X POST "$SUPABASE_URL/auth/v1/signup" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"precheck-12-9@invalid.localdomain","password":"Abcdefghi1"}' | jq '.user.email_confirmed_at, .session'
+```
+
+If `email_confirmed_at` is not null OR a `session` object is present, the gate is OFF — toggle it ON in the Supabase Dashboard before running Flow 1.
+
+### Test accounts
+
 Each flow uses an env-var-injected test email:
-- `e2e-test+signup-001@invalid.localdomain`
+
+- `e2e-test+signup-001@invalid.localdomain` (Flow 1 only — created at runtime)
 - `e2e-test+onboarding-001@invalid.localdomain`
 - `e2e-test+exercise-001@invalid.localdomain`
 - `e2e-test+conversation-001@invalid.localdomain`
 - `e2e-test+mocktest-001@invalid.localdomain`
 
-Flows 2-5 assume these accounts already exist + are email-verified. Seed via:
+**Flows 2–5 assume these accounts already exist + are email-verified + have completed onboarding.** The Flow 1 account is created fresh on each run (which means re-running Flow 1 against the same Supabase project requires per-run cleanup — see "Flow 1 re-run cleanup" below).
+
+**Password single source of truth (R1 EH-5):** All flows reference `${TEST_PASSWORD}` via Maestro env-var. The seed script + flow files all consume the same `MAESTRO_TEST_PASSWORD` env var when set; the default value `Abcdefghi1` is hardcoded for convenience. If Story 12-8's `MIN_PASSWORD_LENGTH` tightens above 10 in the future, update the env var default in this runbook + the seed script — the flow files inherit via `${TEST_PASSWORD}`.
+
+```bash
+export MAESTRO_TEST_PASSWORD="Abcdefghi1"  # must satisfy Story 12-8 policy
+maestro test --env TEST_PASSWORD=$MAESTRO_TEST_PASSWORD .maestro/
+```
+
+### Flow 1 re-run cleanup (R1 EH-1)
+
+Flow 1 creates the `e2e-test+signup-001@invalid.localdomain` account fresh. **A second invocation against the same Supabase project fails on "user already exists"** because the email is unique-indexed. Pick one of:
+
+1. **Delete the account between runs** (manual): Supabase Studio → Auth → Users → search `signup-001` → Delete.
+2. **Delete the account between runs** (scripted): `supabase auth users delete <user_id>` via the CLI.
+3. **Randomize the email suffix** (cleanest): edit Flow 1 to use `e2e-test+signup-${MAESTRO_RUN_ID}@invalid.localdomain` and pass `--env MAESTRO_RUN_ID=$(date +%s)` to `maestro test`. The signup gate accepts any unique email; the test asserts the gate state, not a specific email.
+4. **Skip Flow 1 on subsequent runs**: `maestro test --include-tags=smoke --exclude-tags=signup .maestro/`.
+
+### Seed Flows 2–5 (one-time setup)
 
 **Option A (recommended):** Supabase Studio → Auth → Users → Add user (with verified flag).
 
@@ -104,10 +143,12 @@ Flows 2-5 assume these accounts already exist + are email-verified. Seed via:
 // scripts/seed-maestro-test-accounts.ts
 import { createClient } from "@supabase/supabase-js";
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-for (const i of [1, 2, 3, 4, 5]) {
+const password = process.env.MAESTRO_TEST_PASSWORD ?? "Abcdefghi1";
+const flows = ["onboarding", "exercise", "conversation", "mocktest"];
+for (const flow of flows) {
   await supabase.auth.admin.createUser({
-    email: `e2e-test+${flow}-00${i}@invalid.localdomain`,
-    password: "Abcdefghi1",
+    email: `e2e-test+${flow}-001@invalid.localdomain`,
+    password,
     email_confirm: true,
   });
 }
