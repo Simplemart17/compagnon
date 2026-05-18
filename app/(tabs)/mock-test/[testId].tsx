@@ -26,6 +26,7 @@ import { hapticLight } from "@/src/lib/haptics";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useMockTestGeneration } from "@/src/hooks/use-mock-test-generation";
+import { useAudioPlayer } from "@/src/hooks/use-audio-player";
 import type { MCQContent } from "@/src/types/exercise";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -155,6 +156,11 @@ export default function MockTestSessionScreen() {
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<string>>(new Set());
+  // Per-section transcript-toggle state for the listening audio player. Keys
+  // are the question identity (section + index) so navigating away and back
+  // remembers the user's toggle choice.
+  const [transcriptOpen, setTranscriptOpen] = useState<Set<string>>(new Set());
+  const audioPlayer = useAudioPlayer();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef<number>(0);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -193,6 +199,18 @@ export default function MockTestSessionScreen() {
   const currentSection = state.sections[state.currentSectionIndex];
   const currentQuestions = state.questions[currentSection] ?? [];
   const currentQuestion = currentQuestions[currentQuestionIndex];
+
+  // Stop audio playback when navigating between questions or sections so the
+  // previous question's audio doesn't bleed into the next one. `audioPlayer`
+  // is captured via the ref pattern inside useAudioPlayer; calling stop on a
+  // player that isn't currently playing is a no-op (verified in
+  // src/hooks/use-audio-player.ts).
+  useEffect(() => {
+    void audioPlayer.stop();
+    // We intentionally only react to question/section changes — the
+    // audioPlayer reference is stable across renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSection, currentQuestionIndex]);
 
   // Save in-progress test state to DB (debounced)
   const saveTestProgress = useCallback(
@@ -761,6 +779,107 @@ export default function MockTestSessionScreen() {
         <Text className="text-[13px] mb-3" style={{ color: Colors.textTertiary }}>
           Question {currentQuestionIndex + 1} of {currentQuestions.length}
         </Text>
+
+        {/* Reading passage — rendered above the question so the user can refer
+            to it while picking an answer. */}
+        {currentSection === "reading" && currentQuestion?.passage && (
+          <View
+            className="rounded-2xl p-4 mb-4"
+            style={{
+              backgroundColor: Colors.surfaceWhite,
+              borderWidth: 1,
+              borderColor: Colors.border,
+            }}
+          >
+            <Text
+              className="text-[11px] uppercase mb-2 tracking-wider"
+              style={{ color: Colors.textTertiary, fontWeight: "600" }}
+            >
+              Passage
+            </Text>
+            <Text className="text-[15px] leading-[22px]" style={{ color: Colors.textPrimary }}>
+              {currentQuestion.passage}
+            </Text>
+          </View>
+        )}
+
+        {/* Listening audio — play the TTS-rendered passage. The transcript is
+            hidden by default so the user listens (exam-like) but can reveal
+            it if they need to re-read. Falls back to a transcript-only view
+            when TTS generation failed (audioBase64 missing). */}
+        {currentSection === "listening" && currentQuestion?.passage && (
+          <View
+            className="rounded-2xl p-4 mb-4"
+            style={{
+              backgroundColor: Colors.primary,
+            }}
+          >
+            {currentQuestion.audioBase64 ? (
+              <>
+                <View className="flex-row items-center gap-3">
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (audioPlayer.isPlaying) {
+                        void audioPlayer.pause();
+                      } else if (currentQuestion.audioBase64) {
+                        void audioPlayer.playFromBase64(currentQuestion.audioBase64);
+                      }
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={audioPlayer.isPlaying ? "Pause audio" : "Play audio"}
+                    accessibilityHint="Double tap to play the audio clip"
+                    className="w-12 h-12 rounded-full justify-center items-center"
+                    style={{ backgroundColor: Colors.accent }}
+                  >
+                    <Text className="text-white text-xl">{audioPlayer.isPlaying ? "⏸" : "▶"}</Text>
+                  </TouchableOpacity>
+                  <Text className="text-white text-[13px] flex-1">
+                    Tap to {audioPlayer.isPlaying ? "pause" : "listen to the audio"}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setTranscriptOpen((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(answerKey)) next.delete(answerKey);
+                      else next.add(answerKey);
+                      return next;
+                    });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    transcriptOpen.has(answerKey) ? "Hide transcript" : "Show transcript"
+                  }
+                  accessibilityState={{ expanded: transcriptOpen.has(answerKey) }}
+                  className="mt-3 px-3 py-2 rounded-lg self-start"
+                  style={{ backgroundColor: Colors.whiteAlpha30 }}
+                >
+                  <Text className="text-white text-xs font-semibold">
+                    {transcriptOpen.has(answerKey) ? "Hide Transcript" : "Show Transcript"}
+                  </Text>
+                </TouchableOpacity>
+                {transcriptOpen.has(answerKey) && (
+                  <Text className="text-white text-sm leading-[22px] mt-3">
+                    {currentQuestion.passage}
+                  </Text>
+                )}
+              </>
+            ) : (
+              // Audio generation failed (or is still in-flight on a slow link).
+              // Show the transcript as a text fallback so the question is still
+              // answerable rather than blocking on missing audio.
+              <View>
+                <Text
+                  className="text-[11px] uppercase mb-2 tracking-wider text-white"
+                  style={{ fontWeight: "600", opacity: 0.7 }}
+                >
+                  Transcript (audio unavailable)
+                </Text>
+                <Text className="text-white text-sm leading-[22px]">{currentQuestion.passage}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* MCQ card (no result reveal in test mode) */}
         {currentQuestion && (

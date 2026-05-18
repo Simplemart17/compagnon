@@ -17,6 +17,7 @@
     "test:coverage": "jest --coverage",
     "check:colors": "bash scripts/check-hex-colors.sh",
     "check:tokens": "bash scripts/check-design-tokens.sh",
+    "generate-assets": "node scripts/generate-assets.mjs",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -34,12 +35,15 @@
     "@sentry/react-native": "~7.11.0",
     "@supabase/supabase-js": "^2.99.1",
     "expo": "^55.0.23",
+    "expo-asset": "~55.0.17",
     "expo-audio": "~55.0.8",
     "expo-constants": "~55.0.7",
     "expo-dev-client": "~55.0.16",
     "expo-device": "~55.0.10",
     "expo-file-system": "~55.0.10",
+    "expo-font": "~55.0.7",
     "expo-haptics": "~55.0.8",
+    "expo-linking": "~55.0.15",
     "expo-notifications": "~55.0.14",
     "expo-router": "^55.0.5",
     "expo-secure-store": "~55.0.8",
@@ -56,6 +60,7 @@
     "react-native-screens": "^4.24.0",
     "react-native-url-polyfill": "^3.0.0",
     "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.7.4",
     "tailwindcss": "^3.4.19",
     "zod": "^3.23.0",
     "zustand": "^5.0.11"
@@ -74,6 +79,7 @@
     "jest-expo": "^55.0.17",
     "lint-staged": "^16.3.3",
     "prettier": "^3.8.1",
+    "sharp": "^0.34.5",
     "typescript": "~5.9.2"
   },
   "private": true

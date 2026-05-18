@@ -23,6 +23,7 @@ import {
 } from "../_shared/cost-table.ts";
 import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
 import {
+  CHAT_UPSTREAM_TIMEOUT_MS,
   DEFAULT_UPSTREAM_TIMEOUT_MS,
   WHISPER_UPSTREAM_TIMEOUT_MS,
   fetchWithTimeout,
@@ -201,7 +202,12 @@ Deno.serve(async (req: Request) => {
                   : undefined,
               }),
             },
-            DEFAULT_UPSTREAM_TIMEOUT_MS
+            // Chat completions can take up to ~150s on a 12000-token mock-test
+            // section (gpt-4o output rate × maxTokens). The 30s default budget
+            // sized for shorter calls (≤4096 maxTokens) was firing prematurely
+            // on listening/reading section generation. See CHAT_UPSTREAM_TIMEOUT_MS
+            // rationale in `_shared/fetch-with-timeout.ts`.
+            CHAT_UPSTREAM_TIMEOUT_MS
           );
         } catch (err) {
           if (isUpstreamTimeoutError(err)) {

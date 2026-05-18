@@ -17,6 +17,7 @@ import { Colors, Radii, Spacing, Typography } from "@/src/lib/design";
 import { isEmailVerified } from "@/src/lib/email-verification";
 import { captureError, getSentryInitConfig } from "@/src/lib/sentry";
 import { EmailVerificationGate } from "@/src/components/auth/EmailVerificationGate";
+import { AnimatedSplash } from "@/src/components/common/AnimatedSplash";
 import { NetworkBanner } from "@/src/components/common/NetworkBanner";
 import { ErrorBoundary as AppErrorBoundary } from "@/src/components/common/ErrorBoundary";
 import { ToastProvider } from "@/src/components/common/Toast/ToastContext";
@@ -82,12 +83,14 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
   const hasRegisteredNotifications = useRef(false);
-
-  useEffect(() => {
-    if (!isLoading) {
-      void SplashScreen.hideAsync();
-    }
-  }, [isLoading]);
+  // When `false`, `AnimatedSplash` is overlaid on top of the route Stack
+  // playing its entry → settle → exit animation. It calls `onDismiss` after
+  // ~1.4s, at which point this flips to true and the splash unmounts so
+  // the user can interact with the route below.
+  //
+  // The native `expo-splash-screen` is dismissed from INSIDE `AnimatedSplash`
+  // (on its first paint) so the static→animated handoff is frame-perfect.
+  const [animatedSplashDone, setAnimatedSplashDone] = useState(false);
 
   // Register for push notifications once per app launch when authenticated
   // AND email-verified. Reset the guard on sign-out OR when verification
@@ -255,6 +258,10 @@ function RootLayoutNav() {
             <Stack.Screen name="onboarding" />
             <Stack.Screen name="(tabs)" />
           </Stack>
+          {/* Animated splash overlay — hides the native splash on first
+              paint, plays entry → settle → exit, then unmounts. Sits above
+              every route at zIndex 9999 (defined inside the component). */}
+          {!animatedSplashDone && <AnimatedSplash onDismiss={() => setAnimatedSplashDone(true)} />}
         </View>
       </ToastProvider>
     </AppErrorBoundary>

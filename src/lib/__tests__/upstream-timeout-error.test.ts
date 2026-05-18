@@ -73,6 +73,10 @@ describe("UpstreamTimeoutError (Story 11-3) — Deno-source drift detector", () 
     expect(DENO_HELPER_SOURCE).toMatch(/export const WHISPER_UPSTREAM_TIMEOUT_MS\s*=\s*90_000/);
   });
 
+  it("Chat upstream timeout is 120s (CHAT_UPSTREAM_TIMEOUT_MS, sized for 12000-maxTokens mock-test sections)", () => {
+    expect(DENO_HELPER_SOURCE).toMatch(/export const CHAT_UPSTREAM_TIMEOUT_MS\s*=\s*120_000/);
+  });
+
   it("error-body-read timeout is 5s (ERROR_BODY_READ_TIMEOUT_MS, P1 review patch)", () => {
     expect(DENO_HELPER_SOURCE).toMatch(/export const ERROR_BODY_READ_TIMEOUT_MS\s*=\s*5_000/);
   });

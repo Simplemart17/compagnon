@@ -70,7 +70,9 @@
           "organization": "simplemart-inc",
           "project": "companion"
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

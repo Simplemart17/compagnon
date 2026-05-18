@@ -154,6 +154,51 @@ export const PHASE_A_SLOT_NAMES = [
 export type PhaseASlotName = (typeof PHASE_A_SLOT_NAMES)[number];
 
 /** Initial conversation state — exported for tests + hook initialization. */
+/**
+ * Substrings on `error.message` that indicate a benign barge-in race —
+ * the response.cancel / conversation.item.truncate fired AFTER the server
+ * already cleared the active response. These race conditions are expected
+ * under fast user-interruption + AI-response-end overlap and do NOT
+ * indicate a real failure. We match defensively because OpenAI's Realtime
+ * API has shifted the `code` and `type` fields across versions.
+ */
+const BENIGN_BARGE_IN_MESSAGES: readonly string[] = [
+  "no active response",
+  "no_response_to_cancel",
+  "invalid_truncate_audio",
+  "item_not_found",
+  "Cancellation failed",
+];
+
+/**
+ * Defensive multi-field discriminator for the "benign barge-in race"
+ * error class. Matches on `code` OR `message` substring — either is
+ * sufficient to classify the error as benign and suppress it from
+ * Sentry telemetry + the conversation status: "error" branch.
+ *
+ * `code` covers the canonical OpenAI Realtime API codes; `message`
+ * covers human-readable variants that appear when OpenAI changes the
+ * code structure between API versions (e.g. the v1 "Cancellation failed:
+ * no active response found" message we observed in production).
+ */
+function isBenignBargeInRace(error: { code?: string; message?: string }): boolean {
+  if (
+    error.code === "no_response_to_cancel" ||
+    error.code === "invalid_truncate_audio" ||
+    error.code === "item_not_found" ||
+    error.code === "response_cancel_not_active" ||
+    error.code === "conversation_item_not_found" ||
+    error.code === "conversation_item_invalid_truncate_audio"
+  ) {
+    return true;
+  }
+  const msg = error.message?.toLowerCase() ?? "";
+  for (const fragment of BENIGN_BARGE_IN_MESSAGES) {
+    if (msg.includes(fragment.toLowerCase())) return true;
+  }
+  return false;
+}
+
 export const INITIAL_STATE: ConversationState = {
   status: "idle",
   isSpeaking: false,
@@ -323,6 +368,20 @@ export class RealtimeOrchestrator {
    */
   private isAiSpeakingMirror = false;
 
+  /**
+   * Cooldown timer pending after `response.output_audio.done`. The mirror
+   * stays `true` for this window so the mic-forwarding gate in
+   * `onAudioStream` continues to suppress speaker drain (the device's
+   * audio buffer keeps playing AI audio for ~300–800ms after OpenAI's
+   * final delta arrives over the wire). Without the cooldown, the gate
+   * lifts the instant `audio.done` fires and the speaker-tail bleed
+   * triggers server VAD → spurious next response → infinite stack.
+   */
+  private aiSpeechCooldownTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Post-`audio.done` speaker-drain window — empirically tuned. */
+  private static readonly AI_SPEECH_COOLDOWN_MS = 800;
+
   // ────────────────────────────────────────────────────────────────────
   // Construction + observer pattern
   // ────────────────────────────────────────────────────────────────────
@@ -383,6 +442,10 @@ export class RealtimeOrchestrator {
     // refactor that drops the rAF callback's defensive check. Belt-and-
     // suspenders extension of the Story 12-1 P7 isDisposed contract.
     this.cancelPendingAiTextRaf();
+    // Cancel any pending speaker-drain cooldown so the orchestrator's
+    // setTimeout callback doesn't outlive the instance + mutate state on
+    // a disposed object.
+    this.endAiSpeechWindow();
     this.subscription?.remove();
     this.subscription = null;
     this.session?.disconnect({ reason: "user" });
@@ -486,6 +549,21 @@ export class RealtimeOrchestrator {
     }
   }
 
+  /**
+   * Cancel the pending post-`audio.done` cooldown timer (if any) and
+   * synchronously flip `isAiSpeakingMirror` to false. Used on lifecycle
+   * events that should immediately re-enable mic forwarding (barge-in
+   * fires, error tears down the turn, dispose/end terminates the
+   * session, reconnect crosses a session boundary).
+   */
+  private endAiSpeechWindow(): void {
+    if (this.aiSpeechCooldownTimer !== null) {
+      clearTimeout(this.aiSpeechCooldownTimer);
+      this.aiSpeechCooldownTimer = null;
+    }
+    this.isAiSpeakingMirror = false;
+  }
+
   // ────────────────────────────────────────────────────────────────────
   // Story 11-1: drain per-turn report_correction buffer
   // ────────────────────────────────────────────────────────────────────
@@ -584,7 +662,16 @@ export class RealtimeOrchestrator {
       // enumerate 16000|44100|48000.
       await ExpoPlayAudioStream.setSoundConfig({
         sampleRate: 24000 as Parameters<typeof ExpoPlayAudioStream.setSoundConfig>[0]["sampleRate"],
-        playbackMode: "conversation",
+        // `voiceProcessing` engages iOS's Voice Processing IO audio unit
+        // (hardware AEC + noise suppression + automatic gain control) and
+        // Android's `MODE_IN_COMMUNICATION` + `AcousticEchoCanceler`. This
+        // is the strongest AEC the library exposes — required to prevent
+        // the AI's speaker output from bleeding into the mic and re-
+        // triggering OpenAI's server VAD on phone speakers without
+        // headphones. `conversation` mode (the previous setting) is the
+        // milder Story 12-5 default; `voiceProcessing` is the right
+        // choice for any flow with simultaneous TTS-out + mic-in.
+        playbackMode: "voiceProcessing",
       });
 
       const { subscription } = await ExpoPlayAudioStream.startRecording({
@@ -601,12 +688,19 @@ export class RealtimeOrchestrator {
           // Story 12-4 + review-round-1 P1: route through `safeSessionCall`
           // so a null `this.session` (race with `dispose()` mid-stream,
           // post-disconnect) emits a Sentry breadcrumb instead of silently
-          // dropping audio. The `isConnected` check MUST live inside the
-          // closure — pre-patch had `if (this.session?.isConnected && ...)`
-          // BEFORE the helper which made the null path dead-code (the
-          // optional chain short-circuited to `undefined` BEFORE reaching
-          // `safeSessionCall`, so the breadcrumb could never fire).
-          if (event.data) {
+          // dropping audio.
+          //
+          // ACOUSTIC FEEDBACK LOOP DEFENSE: do NOT forward mic bytes while
+          // `isAiSpeakingMirror === true`. Without this gate the speaker's
+          // playback of the AI's own voice leaks back into the microphone
+          // (especially on devices without headphones / weak hardware AEC),
+          // OpenAI's server VAD treats the bleed as user speech, and a new
+          // response is auto-created on top of the still-playing one — the
+          // user sees "Companion" bubbles stack indefinitely with no turn-
+          // taking. The trade-off is loss of in-sentence barge-in (the user
+          // must wait for the AI to finish a turn before speaking); natural
+          // conversational flow is preserved.
+          if (event.data && !this.isAiSpeakingMirror) {
             this.safeSessionCall((s) => {
               if (s.isConnected) {
                 s.appendAudio(event.data as string);
@@ -964,8 +1058,23 @@ export class RealtimeOrchestrator {
         // barge-in detection — set true on EVERY delta regardless of
         // whether the React setState fires for this one.
         this.isAiSpeakingMirror = true;
+        // Cancel any pending cooldown — a new delta means we're back to
+        // active speech (next turn started before the previous turn's
+        // speaker-drain window elapsed).
+        if (this.aiSpeechCooldownTimer !== null) {
+          clearTimeout(this.aiSpeechCooldownTimer);
+          this.aiSpeechCooldownTimer = null;
+        }
         if (!wasAiSpeaking) {
           this.setState((s) => ({ ...s, isAiSpeaking: true, isProcessing: false }));
+          // Feedback-loop defense: at the moment the AI starts speaking,
+          // flush any partial bytes the server may have buffered from the
+          // user's mic input. The `onAudioStream` gate (above) prevents
+          // NEW bytes from flowing while AI speaks, but bytes already on
+          // the wire could still arrive after this delta — flushing them
+          // here ensures the buffer is empty when the AI's turn ends and
+          // the user's next turn begins.
+          this.safeSessionCall((s) => s.clearAudioBuffer(), "ai-start-buffer-flush");
         }
         break;
       }
@@ -974,13 +1083,26 @@ export class RealtimeOrchestrator {
         this.turnIdCounter++;
         // Story 11-2: reset AI-speaking start time on natural turn end.
         this.aiSpeakingStartedAtMs = null;
-        // Story 11-2 review-round-2 P22: synchronous mirror update.
-        this.isAiSpeakingMirror = false;
         // Story 13-1: cancel any pending pendingAiText rAF so the
         // turn-finalization setState below is the authoritative final state
         // (a queued rAF firing AFTER this setState would surface stale text).
         this.cancelPendingAiTextRaf();
+        // UI flips to "not speaking" immediately so the speaking indicator
+        // matches the user's perception of "AI finished its message".
         this.setState((s) => ({ ...s, isAiSpeaking: false }));
+        // BUT the mic-forwarding gate stays closed for the cooldown window
+        // because the device's audio output buffer keeps playing the AI's
+        // voice for ~300–800ms after this event arrives over the wire.
+        // Without the cooldown, speaker tail bleeds into the mic, server
+        // VAD triggers, and a new response is auto-created on top of the
+        // just-completed one.
+        if (this.aiSpeechCooldownTimer !== null) {
+          clearTimeout(this.aiSpeechCooldownTimer);
+        }
+        this.aiSpeechCooldownTimer = setTimeout(() => {
+          this.isAiSpeakingMirror = false;
+          this.aiSpeechCooldownTimer = null;
+        }, RealtimeOrchestrator.AI_SPEECH_COOLDOWN_MS);
         break;
 
       // Defensive: with output_modalities=["audio"], this event should not fire.
@@ -1120,8 +1242,10 @@ export class RealtimeOrchestrator {
       // Reset AI-speaking refs since the response is over.
       this.aiSpeakingStartedAtMs = null;
       this.inflightItemId = null;
-      // Story 11-2 review-round-2 P22: synchronous mirror update.
-      this.isAiSpeakingMirror = false;
+      // Story 11-2 review-round-2 P22 + speaker-drain cooldown: synchronous
+      // mirror flip + cancel any pending cooldown timer (barge-in is
+      // intentional immediate-resume of mic forwarding).
+      this.endAiSpeechWindow();
       // Story 11-2 review-round-2 P30: clear streaming text accumulator so
       // next turn doesn't accidentally prefix with stale unplayed text via
       // `acceptDelta`'s adopt path.
@@ -1209,16 +1333,25 @@ export class RealtimeOrchestrator {
 
   private handleErrorEvent(event: RealtimeEvent & { type: "error" }): void {
     // Review-round-2 P28: suppress known-benign barge-in race codes.
-    if (
-      event.error.code === "no_response_to_cancel" ||
-      event.error.code === "invalid_truncate_audio" ||
-      event.error.code === "item_not_found"
-    ) {
+    //
+    // OpenAI's Realtime API has shifted the error shape across versions —
+    // sometimes the diagnostic is on `code`, sometimes on `type`, and the
+    // human-readable substring lives on `message`. We match defensively on
+    // all three so the race-suppression works regardless of which surface
+    // OpenAI currently uses. The three race scenarios:
+    //   1. `response.cancel` fires after the response naturally ended
+    //   2. `conversation.item.truncate` fires with stale `audio_end_ms`
+    //   3. `conversation.item.truncate` references an item the server
+    //      already cleared
+    if (isBenignBargeInRace(event.error)) {
       addBreadcrumb({
         category: "realtime",
         level: "info",
         message: "Benign barge-in race suppressed",
-        data: { feature: "realtime-barge-in", code: event.error.code },
+        data: {
+          feature: "realtime-barge-in",
+          code: event.error.code,
+        },
       });
       return;
     }
@@ -1289,8 +1422,10 @@ export class RealtimeOrchestrator {
     this.responseInFlight = false;
     this.currentAiText = "";
     this.aiSpeakingStartedAtMs = null;
-    // Review-round-2 P22: synchronous mirror update.
-    this.isAiSpeakingMirror = false;
+    // Review-round-2 P22 + cooldown: synchronous mirror update + clear any
+    // pending speaker-drain cooldown timer (the new session has no in-flight
+    // speaker tail to drain).
+    this.endAiSpeechWindow();
     // Story 13-1 review-round-1 P4: cancel any pending pendingAiText rAF
     // so a queued frame can't surface stale partial text AFTER the
     // reconnect setState clears pendingAiText to "". The orchestrator
@@ -1558,8 +1693,9 @@ export class RealtimeOrchestrator {
     // Story 12-1 review-round-1 P1: reset the synchronous mirror so a
     // previous conversation's stuck `true` value (e.g., barge-in path that
     // bypassed `handleResponseDone`) doesn't trigger a spurious barge-in
-    // on this conversation's first `speech_started`.
-    this.isAiSpeakingMirror = false;
+    // on this conversation's first `speech_started`. Also clears any
+    // dangling speaker-drain cooldown timer from a prior conversation.
+    this.endAiSpeechWindow();
     // Story 12-5 + review-round-1 P1: reset audio-stream lifecycle tracking.
     // Same Story 12-1 P1 reset-mirrors-on-start pattern so a pathological
     // `start()` retry after a partial prior `start()` (or an `end()`→`start()`
@@ -1713,7 +1849,9 @@ export class RealtimeOrchestrator {
           // swallow because we're already in the error path.
         }
         this.session = null;
-        this.isAiSpeakingMirror = false;
+        // Cancels any dangling cooldown alongside the mirror flip — the
+        // connect failure means there's no in-flight speaker tail.
+        this.endAiSpeechWindow();
         this.responseInFlight = false;
         throw err;
       }

@@ -33,6 +33,13 @@ export interface MCQContent {
   question: string;
   passage?: string;
   audioUrl?: string;
+  /**
+   * Base64-encoded TTS audio of the passage. Populated by the mock-test
+   * listening generator (`use-mock-test-generation.ts`) and by the single-skill
+   * listening practice screen so both rendering surfaces can play passage
+   * audio via `useAudioPlayer.playFromBase64`.
+   */
+  audioBase64?: string;
   options: MCQOption[];
   explanation: string;
 }

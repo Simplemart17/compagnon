@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Companion brand mark — Android adaptive-icon foreground.
+  Transparent background; full glyph on transparent so the platform
+  composites it over the separately-supplied background layer + applies
+  parallax effects. Safe-zone is the inner 66% of the canvas (Android
+  may crop circular / squircle / etc. depending on launcher).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <path
+    d="M 712 340 A 240 240 0 1 0 712 620"
+    fill="none"
+    stroke="#F5A623"
+    stroke-width="88"
+    stroke-linecap="round"
+  />
+  <path
+    d="M 512 720 Q 512 800 472 822 Q 442 836 416 822"
+    fill="none"
+    stroke="#F5A623"
+    stroke-width="52"
+    stroke-linecap="round"
+  />
+</svg>

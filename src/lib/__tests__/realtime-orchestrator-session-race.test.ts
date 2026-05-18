@@ -103,6 +103,7 @@ let mockLastSession: {
   sendFunctionResult: jest.Mock;
   sendRaw: jest.Mock;
   appendAudio: jest.Mock;
+  clearAudioBuffer: jest.Mock;
 } | null = null;
 
 let mockConnectImpl: () => Promise<void> = async () => undefined;
@@ -121,6 +122,7 @@ jest.mock("../realtime", () => ({
       sendFunctionResult: jest.fn(),
       sendRaw: jest.fn(),
       appendAudio: jest.fn(),
+      clearAudioBuffer: jest.fn(),
     };
     return mockLastSession;
   }),
