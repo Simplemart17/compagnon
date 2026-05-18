@@ -40,10 +40,10 @@ import { retrieveMemories } from "@/src/lib/memory";
 import { getTopErrors } from "@/src/lib/error-tracker";
 import { MAX_PROMPT_ERROR_PATTERNS, MAX_PROMPT_MEMORIES } from "@/src/lib/prompts/conversation";
 import { captureError } from "@/src/lib/sentry";
-import { AudioWaveform } from "@/src/components/conversation/AudioWaveform";
+import { AIOrb, type AIOrbState } from "@/src/components/conversation/AIOrb";
+import { AIOrbStatusLabel } from "@/src/components/conversation/AIOrbStatusLabel";
 import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
-import { ProcessingIndicator } from "@/src/components/conversation/ProcessingIndicator";
 import { Icon } from "@/src/components/common/Icon";
 import { SessionComparison } from "@/src/components/feedback/SessionComparison";
 import { MilestoneBanner } from "@/src/components/feedback/MilestoneBanner";
@@ -460,32 +460,31 @@ export default function ConversationSessionScreen() {
             />
 
             <View className="flex-1 items-center justify-center">
-              <AudioWaveform
-                isActive={
-                  conversation.isSpeaking || conversation.isAiSpeaking || conversation.isProcessing
-                }
-                speaker={
+              {/* AIOrb: state-driven centerpiece. Compute the unified `orbState`
+                  from the orchestrator's flags (connection → connecting,
+                  AI-audio → ai-speaking, mic-VAD → listening, in-flight
+                  AI request → processing, otherwise idle). Order matters —
+                  connecting wins over everything, then ai-speaking (the
+                  most user-visible AI moment), then listening, then
+                  processing. */}
+              {(() => {
+                const orbState: AIOrbState =
                   conversation.status === "connecting"
-                    ? undefined
-                    : conversation.isSpeaking
-                      ? "user"
-                      : conversation.isProcessing
-                        ? "processing"
-                        : conversation.isAiSpeaking
-                          ? "ai"
-                          : "idle"
-                }
-                isConnecting={conversation.status === "connecting"}
-                size={140}
-              />
-              <ProcessingIndicator
-                isVisible={conversation.isProcessing || conversation.status === "connecting"}
-                label={
-                  conversation.status === "connecting"
-                    ? "Setting up your conversation..."
-                    : undefined
-                }
-              />
+                    ? "connecting"
+                    : conversation.isAiSpeaking
+                      ? "ai-speaking"
+                      : conversation.isSpeaking
+                        ? "listening"
+                        : conversation.isProcessing
+                          ? "processing"
+                          : "idle";
+                return (
+                  <>
+                    <AIOrb state={orbState} size={180} />
+                    <AIOrbStatusLabel state={orbState} />
+                  </>
+                );
+              })()}
             </View>
           </>
         ) : (

@@ -43,7 +43,11 @@ import { ExpoPlayAudioStream } from "@mykin-ai/expo-audio-stream";
 import type { EventSubscription } from "expo-modules-core";
 import type { User } from "@supabase/supabase-js";
 
-import { acquireAudioStream, releaseAudioStream } from "@/src/lib/audio-stream-manager";
+import {
+  acquireAudioStream,
+  markRecordingStarted,
+  releaseAudioStream,
+} from "@/src/lib/audio-stream-manager";
 import { RealtimeSession, type RealtimeConfig, type RealtimeEvent } from "@/src/lib/realtime";
 import {
   applyTranscriptCap,
@@ -711,6 +715,11 @@ export class RealtimeOrchestrator {
       });
 
       this.subscription = subscription ?? null;
+      // Tell the audio-stream manager that startRecording succeeded so the
+      // matching stopRecording in releaseAudioStream() fires correctly.
+      // Pre-fix the library would log a noisy console.error on stop-when-
+      // idle if startRecording had failed earlier in this try block.
+      markRecordingStarted();
     } catch (err) {
       captureError(err, "realtime-voice-audio");
       const message = err instanceof Error ? err.message : "Microphone error";
@@ -721,12 +730,19 @@ export class RealtimeOrchestrator {
 
   /** Stop microphone recording */
   private async stopAudioStreaming(): Promise<void> {
+    const hadSubscription = this.subscription !== null;
     this.subscription?.remove();
     this.subscription = null;
-    try {
-      await ExpoPlayAudioStream.stopRecording();
-    } catch {
-      // Ignore cleanup errors
+    // Only invoke the library's stopRecording when we actually had an
+    // active subscription — otherwise the library logs a noisy
+    // console.error("Recording is not active") BEFORE throwing, and our
+    // try/catch can't suppress the already-emitted console line.
+    if (hadSubscription) {
+      try {
+        await ExpoPlayAudioStream.stopRecording();
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   }
 

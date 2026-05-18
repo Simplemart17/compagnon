@@ -53,6 +53,24 @@ import { addBreadcrumb } from "@/src/lib/sentry";
 let refCount = 0;
 
 /**
+ * Module-level flag tracking whether `ExpoPlayAudioStream.startRecording`
+ * has ever been called successfully since the last cleanup. The library's
+ * `stopRecording()` does `console.error(error); throw` when called against
+ * an idle engine — even our try/catch around the throw can't suppress the
+ * already-emitted console.error, so we end up with a noisy red LogBox
+ * during dev whenever the orchestrator disposes before successfully
+ * starting recording (e.g., mic permission denied, or a startRecording
+ * error in the orchestrator's catch path).
+ *
+ * Consumers call `markRecordingStarted()` from inside their own
+ * `startRecording` success branch; the manager only fires
+ * `stopRecording()` during cleanup when this flag is true. The flag is
+ * cleared back to false at the end of the cleanup path so the next
+ * conversation lifecycle starts fresh.
+ */
+let recordingActive = false;
+
+/**
  * Acquire a reference to the audio-stream singleton. Increments the
  * refcount SYNCHRONOUSLY (Story 12-5 review-round-1 P7) — callers MUST
  * record their `acquireWasCalled = true` bookkeeping immediately after
@@ -73,6 +91,20 @@ let refCount = 0;
  */
 export function acquireAudioStream(): void {
   refCount++;
+}
+
+/**
+ * Mark that `ExpoPlayAudioStream.startRecording` has been called
+ * successfully. Consumers MUST call this immediately after their own
+ * `startRecording(...)` await resolves without throwing — without it the
+ * manager will skip `stopRecording()` on the final release, and a true
+ * mic-leak would go uncaught.
+ *
+ * Idempotent: calling twice is a no-op (the flag stays true). Cleared
+ * automatically by `releaseAudioStream()` when the cleanup branch fires.
+ */
+export function markRecordingStarted(): void {
+  recordingActive = true;
 }
 
 /**
@@ -125,10 +157,28 @@ export async function releaseAudioStream(): Promise<void> {
     // synchronously acquires during the await window would land
     // refCount = 1, in which case we abandon the remaining cleanup
     // (the new consumer expects the engine alive).
-    try {
-      await ExpoPlayAudioStream.stopRecording();
-    } catch {
-      // Cleanup-path swallow.
+    //
+    // Gate `stopRecording` behind `recordingActive`: the library throws
+    // (and console.error's BEFORE throwing) when called against an idle
+    // engine. Pre-fix the orchestrator would acquire → fail to start
+    // recording (mic permission / native error) → dispose → release-to-0
+    // → stopRecording → noisy red LogBox screen during dev. Post-fix the
+    // call is skipped when nothing was ever recording.
+    //
+    // NOTE: we do NOT clear `recordingActive` here. If a peer orchestrator
+    // acquires + markRecordingStarted's DURING our await, the post-await
+    // refCount re-check below abandons our remaining cleanup; clearing
+    // the flag here would let the peer's eventual release skip its
+    // stopRecording. The flag is only cleared after BOTH native cleanups
+    // complete AND no peer acquired (i.e., we reached the end of the
+    // critical section without abandoning).
+    if (recordingActive) {
+      try {
+        await ExpoPlayAudioStream.stopRecording();
+      } catch {
+        // Cleanup-path swallow — true cleanup failures here are operator-
+        // unactionable (the OS reclaims native resources on app exit).
+      }
     }
     if (refCount !== 0) {
       // Peer orchestrator acquired during the stopRecording await.
@@ -141,6 +191,14 @@ export async function releaseAudioStream(): Promise<void> {
       await ExpoPlayAudioStream.stopSound();
     } catch {
       // Cleanup-path swallow.
+    }
+    // Reached only when refCount stayed at 0 across the full critical
+    // section (no peer mid-cleanup acquire). Safe to clear so the next
+    // conversation lifecycle starts with `recordingActive = false` and
+    // markRecordingStarted has to be called again before stopRecording
+    // will fire.
+    if (refCount === 0) {
+      recordingActive = false;
     }
   }
 }
@@ -172,4 +230,5 @@ export function __resetAudioStreamManagerForTests(): void {
     );
   }
   refCount = 0;
+  recordingActive = false;
 }
