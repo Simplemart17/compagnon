@@ -10,7 +10,7 @@ Paste these values into App Store Connect when creating your app listing.
 | -------------------- | ------------------------ |
 | **Name**             | Companion – Learn French |
 | **Subtitle**         | AI Tutor & TCF Exam Prep |
-| **Bundle ID**        | com.companion.app        |
+| **Bundle ID**        | com.simplemart.companion |
 | **SKU**              | companion-ios-001        |
 | **Primary Language** | English                  |
 

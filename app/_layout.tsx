@@ -157,7 +157,7 @@ function RootLayoutNav() {
     // typed-routes generator — the `tour` literal isn't in the union until typed
     // routes regenerate. Widening via `String(...)` keeps the comparison
     // type-safe + survives the next typed-routes regeneration cleanly.
-    const inTour = inOnboarding && String(segments[1]) === "tour";
+    const inTour = inOnboarding && String((segments as readonly string[])[1]) === "tour";
 
     // Story 12-9: unverified-but-session-bearing users must NOT be routed
     // into onboarding or the tabs. The render-branch below shows the gate.
