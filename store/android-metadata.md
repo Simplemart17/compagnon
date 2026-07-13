@@ -9,7 +9,7 @@ Paste these values into Google Play Console when creating your store listing.
 | Field                | Value                    |
 | -------------------- | ------------------------ |
 | **App Name**         | Companion – Learn French |
-| **Package Name**     | com.simplemart.companion |
+| **Package Name**     | com.compagnon.android    |
 | **Default Language** | English (United States)  |
 
 ---

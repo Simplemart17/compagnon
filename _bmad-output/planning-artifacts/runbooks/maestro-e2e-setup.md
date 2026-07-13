@@ -60,7 +60,7 @@ cd /Users/simplemart/Development/projects/personal/companion
 npx expo run:ios --device "iPhone 16 Pro"
 ```
 
-This installs `com.simplemart.companion` on the booted simulator + starts Metro.
+This installs `com.compagnon.ios` on the booted simulator + starts Metro.
 
 For Android:
 
