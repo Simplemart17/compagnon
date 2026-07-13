@@ -6,7 +6,7 @@
 // inside the prompt are sourced from `src/lib/prompts/vocabulary-tiers.ts`
 // `buildAggregatedVocabularyConstraintTable()` (Story 10-4 / §7.2).
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -29,6 +29,7 @@ import {
   TOTAL_PLACEMENT_QUESTIONS,
 } from "@/src/lib/prompts/placement";
 import { placementTestSchema } from "@/src/lib/schemas/ai-responses";
+import { determinePlacementLevel } from "@/src/lib/placement-scoring";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { LEVEL_COLORS } from "@/src/lib/constants";
 import { Colors, Typography } from "@/src/lib/design";
@@ -68,13 +69,6 @@ function levelForQuestion(questionNumber: number): CEFRLevel {
     }
   }
   return "C2";
-}
-
-/** Previous level (for fallback when user fails at a level) */
-function previousLevel(level: CEFRLevel): CEFRLevel {
-  const order: CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-  const idx = order.indexOf(level);
-  return idx > 0 ? order[idx - 1] : "A1";
 }
 
 // The 145-line `SYSTEM_PROMPT` previously defined here is now
@@ -449,30 +443,6 @@ export default function PlacementTestScreen() {
   }
 
   /** Calculate final CEFR level based on wrong answers per level */
-  const calculateLevel = useCallback(
-    (
-      wrongs: Record<CEFRLevel, number>,
-      stopped: boolean,
-      stoppedAtLevel?: CEFRLevel
-    ): CEFRLevel => {
-      const order: CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-
-      if (stopped && stoppedAtLevel) {
-        return previousLevel(stoppedAtLevel);
-      }
-
-      let highestPassed: CEFRLevel = "A1";
-      for (const level of order) {
-        if (wrongs[level] < 2) {
-          highestPassed = level;
-        } else {
-          break;
-        }
-      }
-      return highestPassed;
-    },
-    []
-  );
 
   function handleSelect(answerId: string) {
     if (showResult) return;
@@ -497,7 +467,7 @@ export default function PlacementTestScreen() {
 
       if (updatedWrongs[questionLevel] >= 2) {
         setStoppedEarly(true);
-        const level = calculateLevel(updatedWrongs, true, questionLevel);
+        const level = determinePlacementLevel(updatedWrongs, correctPerLevel, true, questionLevel);
         setDeterminedLevel(level);
       }
     }
@@ -506,7 +476,7 @@ export default function PlacementTestScreen() {
   async function handleNext() {
     if (stoppedEarly || currentIndex >= questions.length - 1) {
       if (!stoppedEarly) {
-        const level = calculateLevel(wrongPerLevel, false);
+        const level = determinePlacementLevel(wrongPerLevel, correctPerLevel, false);
         setDeterminedLevel(level);
       }
       setTestFinished(true);
