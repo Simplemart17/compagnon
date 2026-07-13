@@ -132,14 +132,27 @@ Deno.test("withTimeout: rejects with UpstreamTimeoutError when promise exceeds b
   // Story 11-3 review patch P1: bound body consumption in addition to
   // request-and-headers. This test pins that withTimeout produces the
   // same UpstreamTimeoutError shape as fetchWithTimeout on timeout.
-  const slowPromise = new Promise((resolve) => setTimeout(resolve, 500));
-  const err = await assertRejects(
-    () => withTimeout("body-read-test", slowPromise, 50),
-    UpstreamTimeoutError,
-    "did not respond within 50ms"
-  );
-  assertEquals(err.upstream, "body-read-test");
-  assertEquals(err.timeoutMs, 50);
+  //
+  // The slow-promise timer is captured + cleared in `finally`: withTimeout
+  // rejects at 50ms while this 500ms timer is still armed, and Deno's default
+  // test resource sanitizer fails the suite on a dangling timer ("A timer was
+  // started in this test, but never completed"). Clearing it keeps the CI-wired
+  // run leak-clean without disabling the sanitizer.
+  let slowTimer: ReturnType<typeof setTimeout> | undefined;
+  const slowPromise = new Promise((resolve) => {
+    slowTimer = setTimeout(resolve, 500);
+  });
+  try {
+    const err = await assertRejects(
+      () => withTimeout("body-read-test", slowPromise, 50),
+      UpstreamTimeoutError,
+      "did not respond within 50ms"
+    );
+    assertEquals(err.upstream, "body-read-test");
+    assertEquals(err.timeoutMs, 50);
+  } finally {
+    if (slowTimer !== undefined) clearTimeout(slowTimer);
+  }
 });
 
 Deno.test("withTimeout: resolves with the promise value when it completes within budget", async () => {
