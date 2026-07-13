@@ -16,6 +16,7 @@ import {
 } from "../_shared/rate-limit-db.ts";
 import { MODEL_RATES } from "../_shared/cost-table.ts";
 import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
+import { getSupabasePublishableKey } from "../_shared/supabase-keys.ts";
 import {
   DEFAULT_UPSTREAM_TIMEOUT_MS,
   fetchWithTimeout,
@@ -26,7 +27,9 @@ const ALLOWED_REALTIME_MODELS = ["gpt-realtime", "gpt-realtime-mini", "gpt-4o-re
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+// Prefer the new publishable key (SUPABASE_PUBLISHABLE_KEYS); fall back to the
+// legacy SUPABASE_ANON_KEY. Both resolve to the anon/authenticated role.
+const SUPABASE_ANON_KEY = getSupabasePublishableKey();
 
 /**
  * Rate limit: 10 sessions per minute per user.
@@ -61,6 +64,8 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
+      // App tables + RPCs live under the `companion` schema (shared project).
+      db: { schema: "companion" },
     });
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
