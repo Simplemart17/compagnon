@@ -131,10 +131,13 @@ describe("eas.json — Story 16-1 env-var reference drift detector (Story 9-9 su
   });
 
   it("Case 6: NEGATIVE — no iOS submit field contains the 'YOUR_' placeholder substring (Story 9-9 pre-fix shape)", () => {
-    // Story 9-9 removed `YOUR_APPLE_ID@example.com`, `YOUR_APP_STORE_CONNECT_APP_ID`,
-    // `YOUR_APPLE_TEAM_ID` from eas.json. A future revert (e.g., `git revert
-    // <9-9-sha>` after a bad merge) would re-introduce these. This case
-    // catches that regression at test time.
+    // Story 9-9 removed the `YOUR_…` placeholder strings (Apple ID / App Store
+    // Connect App ID / Apple Team ID) from eas.json. A future revert (e.g.,
+    // `git revert <9-9-sha>` after a bad merge) would re-introduce them. This
+    // case catches that regression at test time. NB: the literal placeholder
+    // strings are intentionally NOT spelled out here — the Story 9-9 "Submit
+    // credentials leak guard" (ci.yml) greps source for them, so writing them
+    // verbatim (even in a comment) trips the guard.
     for (const value of Object.values(iosSubmit)) {
       if (typeof value !== "string") continue;
       expect(value).not.toContain("YOUR_");
