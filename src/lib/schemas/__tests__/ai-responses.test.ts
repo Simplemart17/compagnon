@@ -337,14 +337,38 @@ describe("placementTestSchema", () => {
     }
   });
 
-  it("rejects 14-question response with too_small on questions (Case 16)", () => {
+  it("accepts a 14-question response within the ±tolerance band (Case 16, ship-blocker M4)", () => {
+    // Pre-M4 this was rejected with too_small. The tolerance band (12–18) now
+    // absorbs gpt-4o's occasional off-by-one instead of burning ~9 retries.
     const result = placementTestSchema.safeParse({
       questions: fifteenQuestions(validQuestionAsArray()).slice(0, 14),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an 11-question response below the tolerance band with too_small (Case 16b)", () => {
+    const result = placementTestSchema.safeParse({
+      questions: fifteenQuestions(validQuestionAsArray()).slice(0, 11),
     });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].path).toEqual(["questions"]);
       expect(result.error.issues[0].code).toBe("too_small");
+    }
+  });
+
+  it("rejects a 19-question response above the tolerance band with too_big (Case 16c)", () => {
+    const template = validQuestionAsArray();
+    const result = placementTestSchema.safeParse({
+      questions: Array.from({ length: 19 }, (_, i) => ({
+        ...template,
+        question: `Q${i + 1}: ${template.question}`,
+      })),
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path).toEqual(["questions"]);
+      expect(result.error.issues[0].code).toBe("too_big");
     }
   });
 });
@@ -486,11 +510,17 @@ describe("mockTestSectionSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts an empty questions array (the section may have failed AI generation)", () => {
-    // The schema doesn't enforce min length; the call site emits a separate
-    // `mock-test-undercount` Sentry signal if the count is too low.
+  it("rejects an empty questions array (ship-blocker M2 — no blank exam)", () => {
+    // Pre-M2 an empty section passed validation, flipped `firstSectionReady`,
+    // and rendered a playable BLANK exam. `.min(1)` now rejects it so the
+    // generator marks the section failed (per-section failure isolation +
+    // parseRetries) instead of shipping an empty section to the user.
     const result = mockTestSectionSchema.safeParse({ questions: [] });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].path).toEqual(["questions"]);
+      expect(result.error.issues[0].code).toBe("too_small");
+    }
   });
 });
 

@@ -40,10 +40,10 @@ import { retrieveMemories } from "@/src/lib/memory";
 import { getTopErrors } from "@/src/lib/error-tracker";
 import { MAX_PROMPT_ERROR_PATTERNS, MAX_PROMPT_MEMORIES } from "@/src/lib/prompts/conversation";
 import { captureError } from "@/src/lib/sentry";
-import { AudioWaveform } from "@/src/components/conversation/AudioWaveform";
+import { AIOrb, type AIOrbState } from "@/src/components/conversation/AIOrb";
+import { AIOrbStatusLabel } from "@/src/components/conversation/AIOrbStatusLabel";
 import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
-import { ProcessingIndicator } from "@/src/components/conversation/ProcessingIndicator";
 import { Icon } from "@/src/components/common/Icon";
 import { SessionComparison } from "@/src/components/feedback/SessionComparison";
 import { MilestoneBanner } from "@/src/components/feedback/MilestoneBanner";
@@ -244,7 +244,12 @@ export default function ConversationSessionScreen() {
 
   // Prevent accidental back navigation during active conversation
   useEffect(() => {
-    if (conversation.status !== "connected" && conversation.status !== "connecting") return;
+    if (
+      conversation.status !== "connected" &&
+      conversation.status !== "connecting" &&
+      conversation.status !== "reconnecting"
+    )
+      return;
 
     const onBackPress = () => {
       Alert.alert("Leave this conversation?", "Leave this conversation? It will be saved.", [
@@ -326,7 +331,9 @@ export default function ConversationSessionScreen() {
   }));
 
   const isConversationActive =
-    conversation.status === "connected" || conversation.status === "connecting";
+    conversation.status === "connected" ||
+    conversation.status === "connecting" ||
+    conversation.status === "reconnecting";
 
   // Extract first name for personalized header
   const firstName = profile?.full_name?.split(" ")[0] || "Learner";
@@ -356,7 +363,7 @@ export default function ConversationSessionScreen() {
   const statusDotColor =
     conversation.status === "connected"
       ? Colors.success
-      : conversation.status === "connecting"
+      : conversation.status === "connecting" || conversation.status === "reconnecting"
         ? Colors.accent
         : conversation.status === "error" || conversation.status === "disconnected"
           ? Colors.error
@@ -433,13 +440,15 @@ export default function ConversationSessionScreen() {
                   ? formatDuration(conversation.durationSeconds)
                   : conversation.status === "connecting"
                     ? "Connecting..."
-                    : conversation.status === "error"
-                      ? "Error"
-                      : conversation.status === "disconnected"
-                        ? "Disconnected"
-                        : conversation.status === "ended"
-                          ? "Ended"
-                          : "Ready"}
+                    : conversation.status === "reconnecting"
+                      ? "Reconnecting..."
+                      : conversation.status === "error"
+                        ? "Error"
+                        : conversation.status === "disconnected"
+                          ? "Disconnected"
+                          : conversation.status === "ended"
+                            ? "Ended"
+                            : "Ready"}
               </Text>
             </View>
           </View>
@@ -460,32 +469,31 @@ export default function ConversationSessionScreen() {
             />
 
             <View className="flex-1 items-center justify-center">
-              <AudioWaveform
-                isActive={
-                  conversation.isSpeaking || conversation.isAiSpeaking || conversation.isProcessing
-                }
-                speaker={
-                  conversation.status === "connecting"
-                    ? undefined
-                    : conversation.isSpeaking
-                      ? "user"
-                      : conversation.isProcessing
-                        ? "processing"
-                        : conversation.isAiSpeaking
-                          ? "ai"
-                          : "idle"
-                }
-                isConnecting={conversation.status === "connecting"}
-                size={140}
-              />
-              <ProcessingIndicator
-                isVisible={conversation.isProcessing || conversation.status === "connecting"}
-                label={
-                  conversation.status === "connecting"
-                    ? "Setting up your conversation..."
-                    : undefined
-                }
-              />
+              {/* AIOrb: state-driven centerpiece. Compute the unified `orbState`
+                  from the orchestrator's flags (connection → connecting,
+                  AI-audio → ai-speaking, mic-VAD → listening, in-flight
+                  AI request → processing, otherwise idle). Order matters —
+                  connecting wins over everything, then ai-speaking (the
+                  most user-visible AI moment), then listening, then
+                  processing. */}
+              {(() => {
+                const orbState: AIOrbState =
+                  conversation.status === "connecting" || conversation.status === "reconnecting"
+                    ? "connecting"
+                    : conversation.isAiSpeaking
+                      ? "ai-speaking"
+                      : conversation.isSpeaking
+                        ? "listening"
+                        : conversation.isProcessing
+                          ? "processing"
+                          : "idle";
+                return (
+                  <>
+                    <AIOrb state={orbState} size={180} />
+                    <AIOrbStatusLabel state={orbState} />
+                  </>
+                );
+              })()}
             </View>
           </>
         ) : (
@@ -573,6 +581,27 @@ export default function ConversationSessionScreen() {
           {conversation.status === "connecting" && (
             <View className="w-20 h-20 rounded-full bg-accent/30 justify-center items-center">
               <Text className="text-accent text-sm font-semibold">Connecting</Text>
+            </View>
+          )}
+
+          {/* Reconnecting: transient auto-recovery window (Story 11-2, up to
+              ~15.5s). Pre-fix this had NO controls branch — the header showed
+              a misleading "Ready" and there was no End button (dead-end UX).
+              Now surface the reconnect state + let the user bail out. */}
+          {conversation.status === "reconnecting" && (
+            <View className="items-center gap-3">
+              <View className="rounded-full bg-accent/30 px-5 py-3 justify-center items-center">
+                <Text className="text-accent text-sm font-semibold">Reconnecting…</Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleEnd}
+                accessibilityRole="button"
+                accessibilityLabel="End conversation"
+                accessibilityHint="Double tap to end the current conversation"
+                className="bg-error rounded-full px-6 py-3"
+              >
+                <Text className="text-white text-[15px] font-bold">End Conversation</Text>
+              </TouchableOpacity>
             </View>
           )}
 

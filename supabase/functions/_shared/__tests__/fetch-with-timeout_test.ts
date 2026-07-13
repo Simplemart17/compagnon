@@ -21,6 +21,7 @@ import {
   assertStringIncludes,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
+  CHAT_UPSTREAM_TIMEOUT_MS,
   DEFAULT_UPSTREAM_TIMEOUT_MS,
   ERROR_BODY_READ_TIMEOUT_MS,
   FetchWithTimeoutMisuseError,
@@ -113,8 +114,12 @@ Deno.test("fetchWithTimeout: error message contains literal 'timeout' substring 
   }
 });
 
-Deno.test("Constants are tiered: default 30s, Whisper 90s (bumped from 60s per D2 review patch), error-body 5s", () => {
+Deno.test("Constants are tiered: default 30s, chat 120s, Whisper 90s (bumped from 60s per D2 review patch), error-body 5s", () => {
   assertEquals(DEFAULT_UPSTREAM_TIMEOUT_MS, 30_000);
+  // Chat completions can take ~80-150s on 12000-maxTokens mock-test sections
+  // (gpt-4o output rate × maxTokens). 120s leaves ~30s headroom under the
+  // 150s Supabase platform kill.
+  assertEquals(CHAT_UPSTREAM_TIMEOUT_MS, 120_000);
   // Whisper bumped to 90s to cover the Story 9-8 speaking-task pipeline
   // (32 kbit AAC, up to 5.5 min audio = ~30s p99 server-side with model-
   // load tail spikes observed up to ~60s).
@@ -127,7 +132,15 @@ Deno.test("withTimeout: rejects with UpstreamTimeoutError when promise exceeds b
   // Story 11-3 review patch P1: bound body consumption in addition to
   // request-and-headers. This test pins that withTimeout produces the
   // same UpstreamTimeoutError shape as fetchWithTimeout on timeout.
-  const slowPromise = new Promise((resolve) => setTimeout(resolve, 500));
+  //
+  // The "slow" body-read is modeled as a promise that NEVER settles rather than
+  // a setTimeout(500): withTimeout rejects at 50ms while any such timer would
+  // still be armed, and Deno's default test resource sanitizer fails the suite
+  // on the dangling timer ("A timer was started in this test, but never
+  // completed"). A never-settling promise creates no timer/async-op at all, so
+  // the sanitizer has nothing to flag — leak-clean on any Deno version (CI pins
+  // v1.x). withTimeout still clears its own 50ms timer in finally.
+  const slowPromise = new Promise<never>(() => {});
   const err = await assertRejects(
     () => withTimeout("body-read-test", slowPromise, 50),
     UpstreamTimeoutError,

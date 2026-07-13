@@ -18,14 +18,20 @@ import { rawPercentToListeningReadingScore } from "@/src/lib/scoring";
 import { levelFromScore } from "@/src/types/cefr";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/lib/supabase";
-import { captureError } from "@/src/lib/sentry";
-import { updateStreak, incrementDailyActivity, checkCefrPromotion } from "@/src/lib/activity";
+import { captureError, addBreadcrumb } from "@/src/lib/sentry";
+import {
+  updateStreak,
+  incrementDailyActivity,
+  checkCefrPromotion,
+  updateSkillProgress,
+} from "@/src/lib/activity";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { hapticLight } from "@/src/lib/haptics";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useMockTestGeneration } from "@/src/hooks/use-mock-test-generation";
+import { useAudioPlayer } from "@/src/hooks/use-audio-player";
 import type { MCQContent } from "@/src/types/exercise";
 import type { CEFRLevel } from "@/src/types/cefr";
 
@@ -155,12 +161,18 @@ export default function MockTestSessionScreen() {
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<string>>(new Set());
+  // Per-section transcript-toggle state for the listening audio player. Keys
+  // are the question identity (section + index) so navigating away and back
+  // remembers the user's toggle choice.
+  const [transcriptOpen, setTranscriptOpen] = useState<Set<string>>(new Set());
+  const audioPlayer = useAudioPlayer();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef<number>(0);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Story 13-4 — guards against firing the all-failed / corrupt-resume
   // Alert more than once per (story 13-4 hook signal) transition.
   const allFailedAlertFiredRef = useRef(false);
+  const firstSectionFailedAlertFiredRef = useRef(false);
   const corruptResumeAlertFiredRef = useRef(false);
   const stateInitializedRef = useRef(false);
 
@@ -193,6 +205,18 @@ export default function MockTestSessionScreen() {
   const currentSection = state.sections[state.currentSectionIndex];
   const currentQuestions = state.questions[currentSection] ?? [];
   const currentQuestion = currentQuestions[currentQuestionIndex];
+
+  // Stop audio playback when navigating between questions or sections so the
+  // previous question's audio doesn't bleed into the next one. `audioPlayer`
+  // is captured via the ref pattern inside useAudioPlayer; calling stop on a
+  // player that isn't currently playing is a no-op (verified in
+  // src/hooks/use-audio-player.ts).
+  useEffect(() => {
+    void audioPlayer.stop();
+    // We intentionally only react to question/section changes — the
+    // audioPlayer reference is stable across renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSection, currentQuestionIndex]);
 
   // Save in-progress test state to DB (debounced)
   const saveTestProgress = useCallback(
@@ -324,6 +348,39 @@ export default function MockTestSessionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generation.allFailed]);
 
+  // Ship-blocker P4: the FIRST section failed to generate but the overall test
+  // did NOT (a later section may have succeeded). `firstSectionReady` gates on
+  // sections[0] === "ready" and `allFailed` requires ALL sections to fail — so
+  // when only the first section fails, neither the active-transition effect nor
+  // the all-failed Alert fires, and the screen sticks on the loading skeleton
+  // forever with no recourse. Surface a recoverable Alert (Retry re-fires the
+  // failed sections; Go Back exits). Single-section tests hit `allFailed` above
+  // instead, so this fires only for multi-section runs with a failed first.
+  useEffect(() => {
+    if (state.status !== "loading") return;
+    if (generation.allFailed) return;
+    if (generation.sectionStatus[sections[0]] !== "failed") return;
+    if (firstSectionFailedAlertFiredRef.current) return;
+    firstSectionFailedAlertFiredRef.current = true;
+    Alert.alert(
+      "Could not load a section",
+      "We were unable to generate part of this test. Please retry, or go back and try again.",
+      [
+        { text: "Go Back", onPress: () => router.back() },
+        {
+          text: "Retry",
+          onPress: () => {
+            firstSectionFailedAlertFiredRef.current = false;
+            generation.retry();
+          },
+        },
+      ]
+    );
+    // Reactive on the loading status + the per-section status signal. `sections`
+    // is stable (useMemo); `generation.retry`/`router` are stable identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status, generation.allFailed, generation.sectionStatus]);
+
   // Story 13-4: corrupt-resume signal → render "Resume Failed" Alert
   // mirroring pre-13-4 lines 273-294. Retry calls generation.retry()
   // which clears the corrupt row + fires fresh generation.
@@ -453,10 +510,42 @@ export default function MockTestSessionScreen() {
               if (mockError) captureError(mockError, "mock-test-save");
             }
 
-            // TODO(story-9-8): Wire per-skill score writes from `results.sections` into
-            // updateSkillProgress(userId, "listening" | "reading" | "writing" | "speaking",
-            //   currentLevel, sectionScore, sectionMinutes) once Story 9-8 lands the Speaking
-            // pipeline and re-confirms section/skill mapping for TCF Canada.
+            // Wire per-skill score writes from the section results into
+            // skill_progress so a completed mock test actually moves the user's
+            // skill bars + CEFR level. Pre-fix this was an unwired TODO, so
+            // acing a full mock test moved streak/daily-activity but left
+            // listening/reading skill scores (and thus checkCefrPromotion,
+            // which reads skill_progress) untouched. `section.score` is the
+            // 0–100 raw-percent — updateSkillProgress's internal scale; the
+            // cefrLevel arg is the user's current working level (the atomic
+            // RPC applies the Story 9-2 no-regress rule). Sections that didn't
+            // generate (total === 0 — e.g. skipped after a generation failure)
+            // are excluded so a non-attempted section can't tank the skill.
+            // MUST run before checkCefrPromotion (which reads skill_progress).
+            const currentLevel = useAuthStore.getState().profile?.current_cefr_level;
+            if (currentLevel) {
+              for (const section of state.sections) {
+                const sectionResult = results.sections[section];
+                if (!sectionResult || sectionResult.total === 0) continue;
+                await updateSkillProgress(
+                  userId,
+                  section,
+                  currentLevel,
+                  sectionResult.score,
+                  TCF_QCM_SECTIONS[section].minutes
+                );
+              }
+            } else {
+              // D4: profile CEFR level unavailable at finish (should be loaded
+              // by now) — skip skill writes but make the skip observable so a
+              // missing-profile regression isn't silent.
+              addBreadcrumb({
+                category: "mock-test",
+                level: "warning",
+                message: "Skill progress skipped — profile CEFR level unavailable at finish",
+                data: { feature: "mock-test-skill-progress-skipped" },
+              });
+            }
             await incrementDailyActivity(userId, { exercises: 1 });
             await updateStreak(userId);
             await checkCefrPromotion(userId);
@@ -761,6 +850,107 @@ export default function MockTestSessionScreen() {
         <Text className="text-[13px] mb-3" style={{ color: Colors.textTertiary }}>
           Question {currentQuestionIndex + 1} of {currentQuestions.length}
         </Text>
+
+        {/* Reading passage — rendered above the question so the user can refer
+            to it while picking an answer. */}
+        {currentSection === "reading" && currentQuestion?.passage && (
+          <View
+            className="rounded-2xl p-4 mb-4"
+            style={{
+              backgroundColor: Colors.surfaceWhite,
+              borderWidth: 1,
+              borderColor: Colors.border,
+            }}
+          >
+            <Text
+              className="text-[11px] uppercase mb-2 tracking-wider"
+              style={{ color: Colors.textTertiary, fontWeight: "600" }}
+            >
+              Passage
+            </Text>
+            <Text className="text-[15px] leading-[22px]" style={{ color: Colors.textPrimary }}>
+              {currentQuestion.passage}
+            </Text>
+          </View>
+        )}
+
+        {/* Listening audio — play the TTS-rendered passage. The transcript is
+            hidden by default so the user listens (exam-like) but can reveal
+            it if they need to re-read. Falls back to a transcript-only view
+            when TTS generation failed (audioBase64 missing). */}
+        {currentSection === "listening" && currentQuestion?.passage && (
+          <View
+            className="rounded-2xl p-4 mb-4"
+            style={{
+              backgroundColor: Colors.primary,
+            }}
+          >
+            {currentQuestion.audioBase64 ? (
+              <>
+                <View className="flex-row items-center gap-3">
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (audioPlayer.isPlaying) {
+                        void audioPlayer.pause();
+                      } else if (currentQuestion.audioBase64) {
+                        void audioPlayer.playFromBase64(currentQuestion.audioBase64);
+                      }
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={audioPlayer.isPlaying ? "Pause audio" : "Play audio"}
+                    accessibilityHint="Double tap to play the audio clip"
+                    className="w-12 h-12 rounded-full justify-center items-center"
+                    style={{ backgroundColor: Colors.accent }}
+                  >
+                    <Text className="text-white text-xl">{audioPlayer.isPlaying ? "⏸" : "▶"}</Text>
+                  </TouchableOpacity>
+                  <Text className="text-white text-[13px] flex-1">
+                    Tap to {audioPlayer.isPlaying ? "pause" : "listen to the audio"}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setTranscriptOpen((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(answerKey)) next.delete(answerKey);
+                      else next.add(answerKey);
+                      return next;
+                    });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    transcriptOpen.has(answerKey) ? "Hide transcript" : "Show transcript"
+                  }
+                  accessibilityState={{ expanded: transcriptOpen.has(answerKey) }}
+                  className="mt-3 px-3 py-2 rounded-lg self-start"
+                  style={{ backgroundColor: Colors.whiteAlpha30 }}
+                >
+                  <Text className="text-white text-xs font-semibold">
+                    {transcriptOpen.has(answerKey) ? "Hide Transcript" : "Show Transcript"}
+                  </Text>
+                </TouchableOpacity>
+                {transcriptOpen.has(answerKey) && (
+                  <Text className="text-white text-sm leading-[22px] mt-3">
+                    {currentQuestion.passage}
+                  </Text>
+                )}
+              </>
+            ) : (
+              // Audio generation failed (or is still in-flight on a slow link).
+              // Show the transcript as a text fallback so the question is still
+              // answerable rather than blocking on missing audio.
+              <View>
+                <Text
+                  className="text-[11px] uppercase mb-2 tracking-wider text-white"
+                  style={{ fontWeight: "600", opacity: 0.7 }}
+                >
+                  Transcript (audio unavailable)
+                </Text>
+                <Text className="text-white text-sm leading-[22px]">{currentQuestion.passage}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* MCQ card (no result reveal in test mode) */}
         {currentQuestion && (

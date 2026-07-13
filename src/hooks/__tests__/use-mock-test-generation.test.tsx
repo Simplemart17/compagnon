@@ -892,11 +892,17 @@ describe("useMockTestGeneration — Story 13-4 hook contract (audit P2-6)", () =
     expect(capturedUpdates[capturedUpdates.length - 1].id).toBe("partial-row");
   });
 
-  it("Case 23 (P21 toError): non-Error supabase error shape is normalized before captureError", async () => {
-    // Pre-patch captureError received a raw PostgrestError-shape object;
-    // Sentry showed "[object Object]" because Story 9-3's scrubber expects
-    // an Error instance with a .message string. Post-patch the hook wraps
-    // non-Error values via the `toError` helper.
+  it("Case 23 (toError baked into captureError): non-Error supabase error shape is passed through with its .message preserved", async () => {
+    // Pre-Story 13-4 captureError did `new Error(String(err))` which produced
+    // "[object Object]" for PostgrestError-shape objects. Story 13-4 R1-P21
+    // wrapped each call site with a local `toError` helper. The current
+    // contract bakes the normalization into `captureError` itself (sentry.ts),
+    // so call sites simply pass the raw `{ error }` value through and rely on
+    // captureError's internal `toError` to extract `.message`.
+    //
+    // This test verifies the call-site contract: the raw PostgrestError shape
+    // reaches captureError with its `.message` intact (which sentry.ts then
+    // wraps into an Error before Sentry.captureException).
     let resolveListening!: (v: ReturnType<typeof sectionResponse>) => void;
     let resolveReading!: (v: ReturnType<typeof sectionResponse>) => void;
     mockChatCompletionJSON.mockImplementationOnce(
@@ -911,9 +917,6 @@ describe("useMockTestGeneration — Story 13-4 hook contract (audit P2-6)", () =
           resolveReading = resolve;
         })
     );
-    // Production supabase update returns `{ error: {message, code, hint, details} }`
-    // — a non-Error object literal. The hook must wrap before passing to
-    // captureError.
     mockUpdate.mockResolvedValueOnce({
       error: { message: "violates check constraint", code: "23514" },
     });
@@ -936,10 +939,19 @@ describe("useMockTestGeneration — Story 13-4 hook contract (audit P2-6)", () =
       (call) => call[1] === "mock-test-section-update"
     );
     expect(captureCalls.length).toBeGreaterThanOrEqual(1);
-    // First arg MUST be an Error instance after toError normalization.
+    // The PostgrestError shape MUST carry a string `.message` so captureError's
+    // internal toError can extract it. (Either Error instance or object-with-
+    // message satisfies the new contract; "[object Object]" would not.)
     for (const call of captureCalls) {
-      expect(call[0]).toBeInstanceOf(Error);
-      expect((call[0] as Error).message).toContain("violates check constraint");
+      const value = call[0] as unknown;
+      const messageProp =
+        value instanceof Error
+          ? value.message
+          : value && typeof value === "object" && "message" in value
+            ? (value as { message?: unknown }).message
+            : undefined;
+      expect(typeof messageProp).toBe("string");
+      expect(messageProp as string).toContain("violates check constraint");
     }
   });
 });

@@ -103,4 +103,15 @@ describe("[testId].tsx — Story 13-4 source-drift detector (audit P2-6)", () =>
     expect(SCREEN_CODE_ONLY).toMatch(/generation\.firstSectionReady/);
     expect(SCREEN_CODE_ONLY).toMatch(/status\s*:\s*["']active["']/);
   });
+
+  it("Case 11: POSITIVE — recoverable Alert when the FIRST section fails (P4 dead-end fix)", () => {
+    // firstSectionReady gates on sections[0]==="ready" and allFailed needs ALL
+    // sections failed — so a failed first section + a succeeded later section
+    // would stick the screen on the loading skeleton forever. The screen must
+    // detect sections[0]==="failed" and surface a Retry/Go-Back Alert.
+    expect(SCREEN_CODE_ONLY).toMatch(/firstSectionFailedAlertFiredRef/);
+    expect(SCREEN_CODE_ONLY).toMatch(
+      /generation\.sectionStatus\s*\[\s*sections\s*\[\s*0\s*\]\s*\]\s*!==\s*["']failed["']/
+    );
+  });
 });

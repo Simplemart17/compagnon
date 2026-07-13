@@ -20,7 +20,7 @@
  * and `parseUpstreamError` body reads on non-OK responses).
  */
 
-/** Default upstream timeout — covers chat, embedding, TTS, realtime-token, pronunciation. */
+/** Default upstream timeout — covers embedding, TTS, realtime-token, pronunciation. */
 export const DEFAULT_UPSTREAM_TIMEOUT_MS = 30_000;
 
 /**
@@ -33,6 +33,21 @@ export const DEFAULT_UPSTREAM_TIMEOUT_MS = 30_000;
  * platform kill. Bumped from the initial 60s per Story 11-3 review patch D2.
  */
 export const WHISPER_UPSTREAM_TIMEOUT_MS = 90_000;
+
+/**
+ * Chat-completion upstream timeout — long-form structured-output generation.
+ *
+ * 120s budget rationale: the mock-test listening + reading sections use
+ * `maxTokens = 12000` to fit 39 questions × ~150 tokens each + passages. At
+ * gpt-4o's typical structured-JSON output rate of 70-150 tokens/sec, 12000
+ * tokens takes ~80-170s wall-clock. The default 30s budget was sized for the
+ * pre-13-4 mock-test maxTokens of 4096 (~30-50s) and the typical 800-2048
+ * maxTokens of every other call site (well under 30s). 120s leaves ~30s
+ * headroom before the Supabase 150s platform kill, matches the Whisper
+ * precedent for "long upstream", and applies uniformly so smaller chat calls
+ * still fail fast on a genuinely-hung upstream within the same envelope.
+ */
+export const CHAT_UPSTREAM_TIMEOUT_MS = 120_000;
 
 /** Short budget for reading error-response bodies. Error bodies are tiny; a slow read is a hung-upstream signal. */
 export const ERROR_BODY_READ_TIMEOUT_MS = 5_000;

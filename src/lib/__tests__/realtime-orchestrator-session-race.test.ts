@@ -103,6 +103,7 @@ let mockLastSession: {
   sendFunctionResult: jest.Mock;
   sendRaw: jest.Mock;
   appendAudio: jest.Mock;
+  clearAudioBuffer: jest.Mock;
 } | null = null;
 
 let mockConnectImpl: () => Promise<void> = async () => undefined;
@@ -121,6 +122,7 @@ jest.mock("../realtime", () => ({
       sendFunctionResult: jest.fn(),
       sendRaw: jest.fn(),
       appendAudio: jest.fn(),
+      clearAudioBuffer: jest.fn(),
     };
     return mockLastSession;
   }),
@@ -199,7 +201,13 @@ describe("Story 12-4 — drift detector: assign-before-await invariant", () => {
     expect(ORCHESTRATOR_SOURCE).toMatch(
       /try\s*\{[\s\S]*?await\s+session\.connect\(\)[\s\S]*?\}\s*catch[\s\S]+?this\.session\s*=\s*null/
     );
-    expect(ORCHESTRATOR_SOURCE).toMatch(/catch[\s\S]+?this\.isAiSpeakingMirror\s*=\s*false/);
+    // The connect-failure catch resets the synchronous AI-speaking mirror via
+    // `endAiSpeechWindow()` (which sets `isAiSpeakingMirror = false` AND clears
+    // the `micCooldownUntilMs` speaker-drain gate). Scoped to the connect-
+    // failure catch so a stray reset elsewhere can't satisfy this vacuously.
+    expect(ORCHESTRATOR_SOURCE).toMatch(
+      /await\s+session\.connect\(\)[\s\S]*?\}\s*catch[\s\S]+?this\.endAiSpeechWindow\(\)/
+    );
     expect(ORCHESTRATOR_SOURCE).toMatch(/catch[\s\S]+?this\.responseInFlight\s*=\s*false/);
   });
 

@@ -22,7 +22,9 @@ import {
   MODEL_RATES,
 } from "../_shared/cost-table.ts";
 import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
+import { getSupabasePublishableKey } from "../_shared/supabase-keys.ts";
 import {
+  CHAT_UPSTREAM_TIMEOUT_MS,
   DEFAULT_UPSTREAM_TIMEOUT_MS,
   WHISPER_UPSTREAM_TIMEOUT_MS,
   fetchWithTimeout,
@@ -36,7 +38,9 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const AZURE_SPEECH_KEY = Deno.env.get("AZURE_SPEECH_KEY");
 const AZURE_SPEECH_REGION = Deno.env.get("AZURE_SPEECH_REGION") ?? "westeurope";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+// Prefer the new publishable key (SUPABASE_PUBLISHABLE_KEYS); fall back to the
+// legacy SUPABASE_ANON_KEY. Both resolve to the anon/authenticated role.
+const SUPABASE_ANON_KEY = getSupabasePublishableKey();
 
 /** Allowed Azure French neural voices, mapped from short client-side names */
 const AZURE_VOICES: Record<string, string> = {
@@ -112,6 +116,8 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
+      // App tables + RPCs live under the `companion` schema (shared project).
+      db: { schema: "companion" },
     });
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -201,7 +207,12 @@ Deno.serve(async (req: Request) => {
                   : undefined,
               }),
             },
-            DEFAULT_UPSTREAM_TIMEOUT_MS
+            // Chat completions can take up to ~150s on a 12000-token mock-test
+            // section (gpt-4o output rate × maxTokens). The 30s default budget
+            // sized for shorter calls (≤4096 maxTokens) was firing prematurely
+            // on listening/reading section generation. See CHAT_UPSTREAM_TIMEOUT_MS
+            // rationale in `_shared/fetch-with-timeout.ts`.
+            CHAT_UPSTREAM_TIMEOUT_MS
           );
         } catch (err) {
           if (isUpstreamTimeoutError(err)) {

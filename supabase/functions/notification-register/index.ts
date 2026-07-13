@@ -10,9 +10,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit-db.ts";
 import { errorResponse } from "../_shared/errors.ts";
+import { getSupabasePublishableKey } from "../_shared/supabase-keys.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+// Prefer the new publishable key (SUPABASE_PUBLISHABLE_KEYS); fall back to the
+// legacy SUPABASE_ANON_KEY. Both resolve to the anon/authenticated role.
+const SUPABASE_ANON_KEY = getSupabasePublishableKey();
 
 /** Rate limit: 10 requests per minute per user. */
 const RATE_LIMIT = { requests: 10, windowSeconds: 60 };
@@ -59,6 +62,8 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
+      // App tables + RPCs live under the `companion` schema (shared project).
+      db: { schema: "companion" },
     });
 
     const {

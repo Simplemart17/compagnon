@@ -427,11 +427,18 @@ export class RealtimeSession {
    * keeps voice playback working AND yields a single terminal event per turn.
    */
   private configureSession(): void {
+    // VAD threshold tuned for real-world use: at 0.5 (the default) the server
+    // false-triggers on quiet environmental noise + any residual AI-voice bleed
+    // through the mic, producing phantom "user turns" that auto-create new AI
+    // responses and stack bubbles indefinitely. 0.7 is loud enough to require
+    // intentional user speech while still capturing normal conversational
+    // volume. `silence_duration_ms` bumped to 700 to give the user a brief
+    // pause to think between sentences without prematurely ending their turn.
     const turnDetection = this.config.turnDetection ?? {
       type: "server_vad" as const,
-      threshold: 0.5,
+      threshold: 0.7,
       prefix_padding_ms: 300,
-      silence_duration_ms: 500,
+      silence_duration_ms: 700,
     };
 
     this.send({
@@ -454,6 +461,14 @@ export class RealtimeSession {
           output: {
             format: {
               type: "audio/pcm",
+              // OpenAI Realtime API requires `rate` on output.format the same
+              // way it does on input.format. Omitting it surfaces as
+              // `Missing required parameter: 'session.audio.output.format.rate'`
+              // on the first session.update — which fails session bootstrap
+              // and tanks the entire conversation flow before any user audio
+              // is exchanged. 24kHz is the PCM16 default used by the GA API
+              // and matched on the playback side via ExpoPlayAudioStream.
+              rate: 24000,
             },
             voice: this.config.voice ?? "coral",
           },

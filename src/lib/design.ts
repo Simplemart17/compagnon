@@ -428,6 +428,25 @@ export const Shadows = {
     shadowRadius: 12,
     elevation: 8,
   } as ViewStyle,
+  /**
+   * Soft tinted glow for hero animated surfaces (the Talk-screen AIOrb,
+   * future audio-reactive widgets). Unlike `card` / `hero` / `bottomSheet`
+   * — which target rectangular shadowed containers — `glow` uses a wider
+   * radius + higher opacity to produce a halo around a circular element.
+   *
+   * Consumers MUST override `shadowColor` to a state-appropriate hue
+   * (e.g. `Colors.accent` while listening, `Colors.surfaceWhite` while
+   * AI is speaking). Default is `Colors.primary` for the neutral idle
+   * case — passes the no-restricted-syntax rule by keeping the literal
+   * `shadowOpacity` / `shadowRadius` numbers inside this single token.
+   */
+  glow: {
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 28,
+    elevation: 12,
+  } as ViewStyle,
 } as const;
 
 // ---------------------------------------------------------------------------

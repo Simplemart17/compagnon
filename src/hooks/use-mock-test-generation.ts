@@ -40,7 +40,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { chatCompletionJSON } from "@/src/lib/openai";
+import { chatCompletionJSON, generateSpeech } from "@/src/lib/openai";
 import { mockTestSectionSchema } from "@/src/lib/schemas/ai-responses";
 import { buildMockTestPrompt } from "@/src/lib/prompts/mock-test";
 import { TCF_QCM_SECTIONS, type QcmSection } from "@/src/lib/tcf";
@@ -121,6 +121,7 @@ type MutableQuestion = {
   question: string;
   passage?: string;
   passageId?: string;
+  audioBase64?: string;
   options: { id: string; text: string; isCorrect: boolean }[];
   explanation: string;
 };
@@ -128,25 +129,6 @@ type MutableQuestion = {
 /** Pure helper — initial state shape for `questions`. */
 function initialQuestions(): Record<QcmSection, MCQContent[]> {
   return { listening: [], reading: [] };
-}
-
-/**
- * Story 13-4 review-round-1 P21 — normalize supabase / PostgrestError-shape
- * objects to Error instances before passing to `captureError`. Pre-patch
- * Sentry showed `[object Object]` for non-Error inputs (Story 9-3 scrubber
- * expects Error shape). Post-patch surfaces the actual `.message` text.
- */
-function toError(value: unknown): Error {
-  if (value instanceof Error) return value;
-  if (value && typeof value === "object" && "message" in value) {
-    const msg = (value as { message?: unknown }).message;
-    if (typeof msg === "string") return new Error(msg);
-  }
-  try {
-    return new Error(JSON.stringify(value));
-  } catch {
-    return new Error(String(value));
-  }
 }
 
 /** Pure helper — initial state shape for `sectionStatus`. */
@@ -183,7 +165,10 @@ async function generateOneSection(
   const result = await chatCompletionJSON(
     [{ role: "system", content: prompt }],
     mockTestSectionSchema,
-    { temperature: 0.4, maxTokens: 4096, feature: `mock-test-${section}` }
+    // 39-question sections + passages emit ~6,000–7,500 output tokens; the
+    // pre-fix 4096 cap truncated JSON mid-array, producing "Unexpected end of
+    // input" parse failures. gpt-4o supports up to 16,384 output tokens.
+    { temperature: 0.4, maxTokens: 12000, feature: `mock-test-${section}` }
   );
 
   const questions = result.questions.map((q) => ({ ...q })) as MutableQuestion[];
@@ -206,7 +191,75 @@ async function generateOneSection(
     );
   }
 
+  // Listening-only: generate TTS audio for each unique passage in parallel.
+  // Without this, the mock-test screen renders questions with no audio context
+  // — users see "What did the speaker say?" with nothing to listen to. We
+  // dedupe by passage TEXT (not passageId, since some questions ship with an
+  // inline `passage` and no passageId), use Promise.allSettled so a single TTS
+  // failure doesn't sink the whole section, and silently fall through to a
+  // text-only "Show transcript" fallback on the rendering side for any
+  // question whose audio generation rejected.
+  if (section === "listening") {
+    await attachListeningAudio(questions);
+  }
+
   return questions as MCQContent[];
+}
+
+/**
+ * Strip `audioBase64` from every question before persisting to the
+ * `mock_tests.questions` JSONB column. Each base64 string is ~100-200KB
+ * per passage; an unstripped section would bloat the row to several MB and
+ * inflate Supabase storage + every subsequent SELECT. The audio is
+ * regenerated on resume via `attachListeningAudio` (called by the resume
+ * effect).
+ */
+function stripAudioBase64ForPersist(
+  questions: Record<QcmSection, MCQContent[]>
+): Record<QcmSection, MCQContent[]> {
+  const result: Record<QcmSection, MCQContent[]> = {
+    listening: questions.listening.map(({ audioBase64: _ignored, ...rest }) => rest),
+    reading: questions.reading.map(({ audioBase64: _ignored, ...rest }) => rest),
+  };
+  return result;
+}
+
+/**
+ * Generate TTS audio for each unique listening passage in parallel and
+ * attach the resulting base64 string to every question that shares that
+ * passage. Failures are captured to Sentry but do not propagate — the
+ * listening section is still playable text-only via the transcript
+ * fallback.
+ */
+async function attachListeningAudio(questions: MutableQuestion[]): Promise<void> {
+  const uniquePassages = new Set<string>();
+  for (const q of questions) {
+    if (q.passage && q.passage.trim().length > 0) uniquePassages.add(q.passage);
+  }
+  if (uniquePassages.size === 0) return;
+
+  const passageList = Array.from(uniquePassages);
+  const ttsResults = await Promise.allSettled(
+    passageList.map((text) => generateSpeech(text, { speed: 1.0 }))
+  );
+
+  const audioByPassage = new Map<string, string>();
+  ttsResults.forEach((res, idx) => {
+    if (res.status === "fulfilled") {
+      audioByPassage.set(passageList[idx], res.value);
+    } else {
+      captureError(res.reason, "mock-test-listening-tts", {
+        passageIndex: idx,
+        totalPassages: passageList.length,
+      });
+    }
+  });
+
+  for (const q of questions) {
+    if (q.passage && audioByPassage.has(q.passage)) {
+      q.audioBase64 = audioByPassage.get(q.passage);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -377,6 +430,29 @@ export function useMockTestGeneration(
             setQuestions(resumedQuestions);
             setSectionStatus(sectionStatusAfterResume);
 
+            // Listening audio is intentionally stripped from `mock_tests.questions`
+            // before persist to avoid multi-MB row bloat — so a resumed row will
+            // always have empty `audioBase64`. Regenerate it in the background so
+            // the user reaches the listening section with playable audio. Fire-
+            // and-forget; failures fall through to the text-only transcript
+            // fallback in the rendering layer.
+            if (
+              resumedQuestions.listening.length > 0 &&
+              resumedQuestions.listening.some((q) => !q.audioBase64)
+            ) {
+              void (async () => {
+                const mutable = resumedQuestions.listening.map((q) => ({ ...q }));
+                await attachListeningAudio(mutable);
+                if (!mountedRef.current || cancelled) return;
+                const merged = {
+                  ...questionsSnapshotRef.current,
+                  listening: mutable as MCQContent[],
+                };
+                questionsSnapshotRef.current = merged;
+                setQuestions(merged);
+              })();
+            }
+
             // Story 13-4 review-round-1 P16 — partial-resume generation.
             // Pre-patch a legacy row with e.g. `listening: [items], reading: []`
             // was accepted by hasValidQuestions (only one section needs data)
@@ -462,13 +538,16 @@ export function useMockTestGeneration(
                     // L2: dropped redundant `testIdParam === "full" ? "full" : testIdParam` ternary.
                     user_id: userId,
                     test_type: testIdParam,
-                    questions: insertPayload,
+                    // Strip audioBase64 to avoid bloating the JSONB row to
+                    // several MB; the resume effect regenerates it via
+                    // attachListeningAudio.
+                    questions: stripAudioBase64ForPersist(insertPayload),
                     status: "in_progress",
                   })
                   .select("id")
                   .single();
 
-                if (insertError) captureError(toError(insertError), "mock-test-section-update");
+                if (insertError) captureError(insertError, "mock-test-section-update");
                 if (!mountedRef.current || cancelled) return;
                 if (newTest) {
                   activeTestIdRef.current = newTest.id; // P2 sync mirror
@@ -491,17 +570,17 @@ export function useMockTestGeneration(
                       try {
                         const { error } = await supabase
                           .from("mock_tests")
-                          .update({ questions: followUpPayload })
+                          .update({ questions: stripAudioBase64ForPersist(followUpPayload) })
                           .eq("id", targetId);
-                        if (error) captureError(toError(error), "mock-test-section-update");
+                        if (error) captureError(error, "mock-test-section-update");
                       } catch (err) {
-                        captureError(toError(err), "mock-test-section-update");
+                        captureError(err, "mock-test-section-update");
                       }
                     })();
                   }
                 }
               } catch (err) {
-                captureError(toError(err), "mock-test-section-update");
+                captureError(err, "mock-test-section-update");
               }
             } else if (activeTestIdRef.current && userId) {
               // Subsequent-section UPDATE — fire-and-forget; failure logged
@@ -511,11 +590,11 @@ export function useMockTestGeneration(
                 try {
                   const { error } = await supabase
                     .from("mock_tests")
-                    .update({ questions: newQuestions })
+                    .update({ questions: stripAudioBase64ForPersist(newQuestions) })
                     .eq("id", targetTestId);
-                  if (error) captureError(toError(error), "mock-test-section-update");
+                  if (error) captureError(error, "mock-test-section-update");
                 } catch (err) {
-                  captureError(toError(err), "mock-test-section-update");
+                  captureError(err, "mock-test-section-update");
                 }
               })();
             }

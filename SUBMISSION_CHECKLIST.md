@@ -71,7 +71,7 @@ Check off each item as you complete it.
 ## 6. Apple Developer (iOS)
 
 - [ ] Enrol in the Apple Developer Program ($99/year) at developer.apple.com
-- [ ] Create an App ID for `com.companion.app`
+- [ ] Create an App ID for `com.compagnon.ios`
 - [ ] Create an app record in App Store Connect
 - [ ] Configure push notifications if needed (not currently used)
 - [ ] Prepare screenshots (see `store/ios-metadata.md`)
@@ -90,7 +90,7 @@ Check off each item as you complete it.
 ## 7. Google Developer (Android)
 
 - [ ] Create a Google Play Console account ($25 one-time) at play.google.com/console
-- [ ] Create a new app for `com.companion.app`
+- [ ] Create a new app for `com.compagnon.android`
 - [ ] Upload a signed AAB (from EAS production build) — the first AAB upload is manual via Play Console; subsequent uploads use `gh workflow run "EAS Submit" -f platform=android` per [runbooks/submit-and-deploy.md §4.2](_bmad-output/planning-artifacts/runbooks/submit-and-deploy.md#42-android--play-internal-track).
 - [ ] Prepare screenshots and feature graphic (see `store/android-metadata.md`)
 - [ ] Complete the content rating questionnaire (expected: Everyone)

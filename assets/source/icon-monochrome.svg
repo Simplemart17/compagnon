@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Companion brand mark — monochrome variant for Android 13+ themed icons.
+  Transparent background; the platform applies its own tint and elevation.
+  Foreground glyph must be a single color (any) on transparent — we use
+  white so the silhouette is visible during local previews.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <path
+    d="M 712 340 A 240 240 0 1 0 712 620"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="88"
+    stroke-linecap="round"
+  />
+  <path
+    d="M 512 720 Q 512 800 472 822 Q 442 836 416 822"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="52"
+    stroke-linecap="round"
+  />
+</svg>

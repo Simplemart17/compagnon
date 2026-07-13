@@ -21,10 +21,20 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.companion.app",
+      "bundleIdentifier": "com.compagnon.ios",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Companion needs microphone access to practice French speaking and pronunciation.",
-        "NSSpeechRecognitionUsageDescription": "Companion uses speech recognition to assess your French pronunciation."
+        "NSSpeechRecognitionUsageDescription": "Companion uses speech recognition to assess your French pronunciation.",
+        "UIApplicationSceneManifest": {
+          "UIApplicationSupportsMultipleScenes": false,
+          "UISceneConfigurations": {
+            "UIWindowSceneSessionRoleApplication": [
+              {
+                "UISceneConfigurationName": "Default Configuration"
+              }
+            ]
+          }
+        }
       }
     },
     "android": {
@@ -34,14 +44,15 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "package": "com.companion.app",
+      "package": "com.compagnon.android",
       "permissions": [
         "RECORD_AUDIO",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
-      ]
+      ],
+      "versionCode": 3
     },
     "web": {
       "bundler": "metro",
@@ -70,7 +81,18 @@
           "organization": "simplemart-inc",
           "project": "companion"
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.0"
+          }
+        }
+      ],
+      "./plugins/withIosPodsDeploymentTarget"
     ],
     "experiments": {
       "typedRoutes": true

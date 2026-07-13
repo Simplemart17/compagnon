@@ -262,12 +262,46 @@ export function getSentryInitConfig(): Parameters<typeof Sentry.init>[0] {
 }
 
 /**
+ * Normalize an unknown thrown/passed value into an `Error` instance so that
+ * Sentry's deduplication + stack-extraction work correctly.
+ *
+ * The pre-Story 13-4 implementation used `new Error(String(value))` which
+ * coerces plain objects (the shape Supabase's PostgrestError comes back as)
+ * to the literal string `"[object Object]"`, producing useless Sentry events.
+ *
+ * Resolution order:
+ *   1. Already an `Error` → pass through unchanged.
+ *   2. Object with a string `.message` (PostgrestError, FunctionsHttpError,
+ *      Supabase response errors, fetch errors that escaped their wrappers) →
+ *      `new Error(value.message)`.
+ *   3. JSON-serializable value → `new Error(JSON.stringify(value))`.
+ *   4. Fallback → `new Error(String(value))`.
+ */
+function toError(value: unknown): Error {
+  if (value instanceof Error) return value;
+  if (value && typeof value === "object" && "message" in value) {
+    const msg = (value as { message?: unknown }).message;
+    if (typeof msg === "string") return new Error(msg);
+  }
+  try {
+    return new Error(JSON.stringify(value));
+  } catch {
+    return new Error(String(value));
+  }
+}
+
+/**
  * Report a caught error to Sentry with an optional context tag.
  *
  * The extras parameter is intentionally typed to primitives only — nested
  * objects and arrays would risk leaking transcript / prompt payloads into
  * Sentry. If you need to capture multiple structured fields, pass each as
  * its own primitive entry.
+ *
+ * Non-`Error` inputs (notably Supabase PostgrestError shapes returned via
+ * destructured `{ data, error }` — they carry a `.message` but are not
+ * `Error` subclasses) are normalized through `toError()` so call sites
+ * never need to wrap before passing.
  *
  * Usage:
  *   try { ... } catch (err) { captureError(err, "placement-test"); }
@@ -277,7 +311,7 @@ export function captureError(
   context?: string,
   extras?: Record<string, string | number | boolean | null>
 ): void {
-  const err = error instanceof Error ? error : new Error(String(error));
+  const err = toError(error);
 
   Sentry.withScope((scope) => {
     if (context) scope.setTag("feature", context);

@@ -340,7 +340,12 @@ export async function signUpWithEmail(email: string, password: string, fullName:
     email,
     password,
     options: {
-      data: { full_name: fullName },
+      // `app: "companion"` tags this signup so the metadata-gated
+      // `companion_on_auth_user_created` trigger on the SHARED `auth.users`
+      // table fires ONLY for Companion signups (not other apps in the shared
+      // Supabase project). Without this tag no `companion.profiles` row is
+      // created and the app routes to the profile-retry surface.
+      data: { full_name: fullName, app: "companion" },
     },
   });
   return { data, error };

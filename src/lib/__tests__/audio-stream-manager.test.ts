@@ -18,6 +18,7 @@ import { join } from "path";
 
 import {
   acquireAudioStream,
+  markRecordingStarted,
   releaseAudioStream,
   getAudioStreamRefCountForTests,
   __resetAudioStreamManagerForTests,
@@ -70,6 +71,7 @@ describe("Story 12-5 — audio-stream-manager refcount happy paths", () => {
 
   it("Case 2: 1 acquire → refcount 1; 1 release → refcount 0; last release calls stopRecording + stopSound exactly once each", async () => {
     acquireAudioStream();
+    markRecordingStarted();
     expect(getAudioStreamRefCountForTests()).toBe(1);
     expect(mockStopRecording).not.toHaveBeenCalled();
     expect(mockStopSound).not.toHaveBeenCalled();
@@ -82,8 +84,11 @@ describe("Story 12-5 — audio-stream-manager refcount happy paths", () => {
 
   it("Case 3: 3 acquires + 3 releases — stopRecording + stopSound fire exactly once each (on the last release only)", async () => {
     acquireAudioStream();
+    markRecordingStarted();
     acquireAudioStream();
+    markRecordingStarted();
     acquireAudioStream();
+    markRecordingStarted();
     expect(getAudioStreamRefCountForTests()).toBe(3);
 
     await releaseAudioStream();
@@ -104,7 +109,9 @@ describe("Story 12-5 — audio-stream-manager refcount happy paths", () => {
 
   it("Case 4: intermediate releases (refcount > 0) do NOT call stopRecording / stopSound", async () => {
     acquireAudioStream();
+    markRecordingStarted();
     acquireAudioStream();
+    markRecordingStarted();
 
     await releaseAudioStream();
     // refcount = 1 > 0 — no cleanup
@@ -125,6 +132,7 @@ describe("Story 12-5 — NEVER-destroy negative guards (audit P1-19 closure)", (
     // successive screen mount/unmount cycles".
     for (let i = 0; i < 5; i++) {
       acquireAudioStream();
+      markRecordingStarted();
       expect(getAudioStreamRefCountForTests()).toBe(1);
       await releaseAudioStream();
       expect(getAudioStreamRefCountForTests()).toBe(0);
@@ -187,8 +195,11 @@ describe("Story 12-5 — defensive guards", () => {
 describe("Story 12-5 — test-only inspector + best-effort cleanup", () => {
   it("Case 9: __resetAudioStreamManagerForTests resets count to 0 even after partial acquires", () => {
     acquireAudioStream();
+    markRecordingStarted();
     acquireAudioStream();
+    markRecordingStarted();
     acquireAudioStream();
+    markRecordingStarted();
     expect(getAudioStreamRefCountForTests()).toBe(3);
 
     __resetAudioStreamManagerForTests();
@@ -196,6 +207,7 @@ describe("Story 12-5 — test-only inspector + best-effort cleanup", () => {
     expect(getAudioStreamRefCountForTests()).toBe(0);
     // After reset, a fresh acquire/release cycle works correctly.
     acquireAudioStream();
+    markRecordingStarted();
     expect(getAudioStreamRefCountForTests()).toBe(1);
   });
 
@@ -204,6 +216,7 @@ describe("Story 12-5 — test-only inspector + best-effort cleanup", () => {
     mockStopSound.mockRejectedValueOnce(new Error("playback engine error"));
 
     acquireAudioStream();
+    markRecordingStarted();
     // releaseAudioStream should resolve cleanly despite both throws.
     await expect(releaseAudioStream()).resolves.toBeUndefined();
     expect(getAudioStreamRefCountForTests()).toBe(0);
@@ -233,12 +246,14 @@ describe("Story 12-5 review-round-1 P2 + P4 — concurrent-orchestrators (Epic 1
 
     // A acquires, then begins releasing (hangs on stopRecording).
     acquireAudioStream();
+    markRecordingStarted();
     expect(getAudioStreamRefCountForTests()).toBe(1);
     const releasePromise = releaseAudioStream();
     expect(getAudioStreamRefCountForTests()).toBe(0);
 
     // B's synchronous acquire lands DURING A's await — this is the race.
     acquireAudioStream();
+    markRecordingStarted();
     expect(getAudioStreamRefCountForTests()).toBe(1);
 
     // Now unblock A's stopRecording. The post-await re-check sees refCount=1,
@@ -265,10 +280,15 @@ describe("Story 12-5 review-round-1 P2 + P4 — concurrent-orchestrators (Epic 1
     // is never called; stopRecording / stopSound fire exactly once each at
     // the moment refcount hits 0 for the final time.
     acquireAudioStream();
+    markRecordingStarted();
     acquireAudioStream();
+    markRecordingStarted();
     acquireAudioStream();
+    markRecordingStarted();
     acquireAudioStream();
+    markRecordingStarted();
     acquireAudioStream();
+    markRecordingStarted();
     expect(getAudioStreamRefCountForTests()).toBe(5);
 
     // Releases in interleaved order — refcount stays > 0 until the last.
@@ -279,6 +299,7 @@ describe("Story 12-5 review-round-1 P2 + P4 — concurrent-orchestrators (Epic 1
     // Mid-cycle: a new orchestrator joins, then leaves. Cleanup must not
     // fire until ALL outstanding consumers have released.
     acquireAudioStream();
+    markRecordingStarted();
     await releaseAudioStream();
     expect(mockStopRecording).not.toHaveBeenCalled();
     expect(mockStopSound).not.toHaveBeenCalled();
