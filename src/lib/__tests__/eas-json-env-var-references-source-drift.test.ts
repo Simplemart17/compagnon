@@ -3,11 +3,10 @@
  *
  * Pins the load-bearing invariant from Story 9-9: every iOS submit credential
  * in `eas.json` is an `$EXPO_*` environment-variable reference, NOT a literal
- * Apple Team ID / ASC App ID / Apple ID. The file-path references for the EAS
- * file secrets (`./asc-api-key.p8`, `./google-service-account.json`) are also
- * pinned because the CI submit step relies on those exact paths being
- * materialized by `EXPO_ASC_API_KEY_P8` and `EXPO_GOOGLE_SERVICE_ACCOUNT_KEY`
- * at submit time.
+ * Apple Team ID / ASC App ID / Apple ID. The EAS file-secret path references
+ * (`$EXPO_ASC_API_KEY_P8`, `$EXPO_GOOGLE_SERVICE_ACCOUNT_KEY`) are also pinned
+ * because the CI submit step relies on those exact env-var references resolving
+ * to the file secrets EAS materializes at submit time.
  *
  * This drift detector is the test-time companion to Story 9-9's "Submit
  * credentials leak guard" step at .github/workflows/ci.yml:110-150 (CI-time
@@ -32,12 +31,12 @@
  *   (6) NEGATIVE — no field under `submit.production.ios` contains the
  *       literal substring `"YOUR_"` (Story 9-9 placeholder regression).
  *   (7) POSITIVE — `submit.production.ios.ascApiKeyPath` is the literal
- *       `./asc-api-key.p8`. The CI submit step materializes this from the
- *       `EXPO_ASC_API_KEY_P8` file secret; a filename rename here without a
- *       matching EAS file-secret rename would silently break submit.
+ *       `$EXPO_ASC_API_KEY_P8` env-var reference. EAS materializes this file
+ *       secret at submit time; dropping the `$EXPO_*` reference (or renaming
+ *       the secret) would silently break iOS submit.
  *   (8) POSITIVE — `submit.production.android.serviceAccountKeyPath` is the
- *       literal `./google-service-account.json`. Same materialization
- *       contract as Case 7, via `EXPO_GOOGLE_SERVICE_ACCOUNT_KEY`.
+ *       literal `$EXPO_GOOGLE_SERVICE_ACCOUNT_KEY` env-var reference. Same
+ *       materialization contract as Case 7.
  *
  * Follows Story 12-10's `ci-audit-gate-source-drift.test.ts` pattern: read
  * the file from disk, parse, assert. JSON is structured (vs YAML's
@@ -142,17 +141,17 @@ describe("eas.json — Story 16-1 env-var reference drift detector (Story 9-9 su
     }
   });
 
-  it("Case 7: submit.production.ios.ascApiKeyPath === './asc-api-key.p8' literal (EAS file-secret materialization contract)", () => {
-    // The CI submit step pulls `EXPO_ASC_API_KEY_P8` (EAS file secret) and
-    // writes it to this exact path. A filename change here without a
-    // matching EAS file-secret rename would silently break iOS submit. Q4
-    // operator decision: pin the literal, not a glob — a future filename
-    // change should go through review, not slide as drift.
-    expect(iosSubmit.ascApiKeyPath).toBe("./asc-api-key.p8");
+  it("Case 7: submit.production.ios.ascApiKeyPath === '$EXPO_ASC_API_KEY_P8' literal (EAS file-secret materialization contract)", () => {
+    // The CI submit step provides `EXPO_ASC_API_KEY_P8` as an EAS file secret;
+    // EAS materializes it and this `$EXPO_*` reference resolves to the file at
+    // submit time. Dropping the reference (or renaming the secret) would
+    // silently break iOS submit. Q4 operator decision: pin the exact reference,
+    // not a glob — a future change should go through review, not slide as drift.
+    expect(iosSubmit.ascApiKeyPath).toBe("$EXPO_ASC_API_KEY_P8");
   });
 
-  it("Case 8: submit.production.android.serviceAccountKeyPath === './google-service-account.json' literal (EAS file-secret materialization contract)", () => {
-    // Same contract as Case 7, via `EXPO_GOOGLE_SERVICE_ACCOUNT_KEY`.
-    expect(androidSubmit.serviceAccountKeyPath).toBe("./google-service-account.json");
+  it("Case 8: submit.production.android.serviceAccountKeyPath === '$EXPO_GOOGLE_SERVICE_ACCOUNT_KEY' literal (EAS file-secret materialization contract)", () => {
+    // Same contract as Case 7, via the `EXPO_GOOGLE_SERVICE_ACCOUNT_KEY` file secret.
+    expect(androidSubmit.serviceAccountKeyPath).toBe("$EXPO_GOOGLE_SERVICE_ACCOUNT_KEY");
   });
 });
