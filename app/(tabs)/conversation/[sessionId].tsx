@@ -244,7 +244,12 @@ export default function ConversationSessionScreen() {
 
   // Prevent accidental back navigation during active conversation
   useEffect(() => {
-    if (conversation.status !== "connected" && conversation.status !== "connecting") return;
+    if (
+      conversation.status !== "connected" &&
+      conversation.status !== "connecting" &&
+      conversation.status !== "reconnecting"
+    )
+      return;
 
     const onBackPress = () => {
       Alert.alert("Leave this conversation?", "Leave this conversation? It will be saved.", [
@@ -326,7 +331,9 @@ export default function ConversationSessionScreen() {
   }));
 
   const isConversationActive =
-    conversation.status === "connected" || conversation.status === "connecting";
+    conversation.status === "connected" ||
+    conversation.status === "connecting" ||
+    conversation.status === "reconnecting";
 
   // Extract first name for personalized header
   const firstName = profile?.full_name?.split(" ")[0] || "Learner";
@@ -356,7 +363,7 @@ export default function ConversationSessionScreen() {
   const statusDotColor =
     conversation.status === "connected"
       ? Colors.success
-      : conversation.status === "connecting"
+      : conversation.status === "connecting" || conversation.status === "reconnecting"
         ? Colors.accent
         : conversation.status === "error" || conversation.status === "disconnected"
           ? Colors.error
@@ -433,13 +440,15 @@ export default function ConversationSessionScreen() {
                   ? formatDuration(conversation.durationSeconds)
                   : conversation.status === "connecting"
                     ? "Connecting..."
-                    : conversation.status === "error"
-                      ? "Error"
-                      : conversation.status === "disconnected"
-                        ? "Disconnected"
-                        : conversation.status === "ended"
-                          ? "Ended"
-                          : "Ready"}
+                    : conversation.status === "reconnecting"
+                      ? "Reconnecting..."
+                      : conversation.status === "error"
+                        ? "Error"
+                        : conversation.status === "disconnected"
+                          ? "Disconnected"
+                          : conversation.status === "ended"
+                            ? "Ended"
+                            : "Ready"}
               </Text>
             </View>
           </View>
@@ -469,7 +478,7 @@ export default function ConversationSessionScreen() {
                   processing. */}
               {(() => {
                 const orbState: AIOrbState =
-                  conversation.status === "connecting"
+                  conversation.status === "connecting" || conversation.status === "reconnecting"
                     ? "connecting"
                     : conversation.isAiSpeaking
                       ? "ai-speaking"
@@ -572,6 +581,27 @@ export default function ConversationSessionScreen() {
           {conversation.status === "connecting" && (
             <View className="w-20 h-20 rounded-full bg-accent/30 justify-center items-center">
               <Text className="text-accent text-sm font-semibold">Connecting</Text>
+            </View>
+          )}
+
+          {/* Reconnecting: transient auto-recovery window (Story 11-2, up to
+              ~15.5s). Pre-fix this had NO controls branch — the header showed
+              a misleading "Ready" and there was no End button (dead-end UX).
+              Now surface the reconnect state + let the user bail out. */}
+          {conversation.status === "reconnecting" && (
+            <View className="items-center gap-3">
+              <View className="rounded-full bg-accent/30 px-5 py-3 justify-center items-center">
+                <Text className="text-accent text-sm font-semibold">Reconnecting…</Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleEnd}
+                accessibilityRole="button"
+                accessibilityLabel="End conversation"
+                accessibilityHint="Double tap to end the current conversation"
+                className="bg-error rounded-full px-6 py-3"
+              >
+                <Text className="text-white text-[15px] font-bold">End Conversation</Text>
+              </TouchableOpacity>
             </View>
           )}
 

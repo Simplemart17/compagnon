@@ -18,8 +18,13 @@ import { rawPercentToListeningReadingScore } from "@/src/lib/scoring";
 import { levelFromScore } from "@/src/types/cefr";
 import { useAuthStore } from "@/src/store/auth-store";
 import { supabase } from "@/src/lib/supabase";
-import { captureError } from "@/src/lib/sentry";
-import { updateStreak, incrementDailyActivity, checkCefrPromotion } from "@/src/lib/activity";
+import { captureError, addBreadcrumb } from "@/src/lib/sentry";
+import {
+  updateStreak,
+  incrementDailyActivity,
+  checkCefrPromotion,
+  updateSkillProgress,
+} from "@/src/lib/activity";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { hapticLight } from "@/src/lib/haptics";
@@ -167,6 +172,7 @@ export default function MockTestSessionScreen() {
   // Story 13-4 — guards against firing the all-failed / corrupt-resume
   // Alert more than once per (story 13-4 hook signal) transition.
   const allFailedAlertFiredRef = useRef(false);
+  const firstSectionFailedAlertFiredRef = useRef(false);
   const corruptResumeAlertFiredRef = useRef(false);
   const stateInitializedRef = useRef(false);
 
@@ -342,6 +348,39 @@ export default function MockTestSessionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generation.allFailed]);
 
+  // Ship-blocker P4: the FIRST section failed to generate but the overall test
+  // did NOT (a later section may have succeeded). `firstSectionReady` gates on
+  // sections[0] === "ready" and `allFailed` requires ALL sections to fail — so
+  // when only the first section fails, neither the active-transition effect nor
+  // the all-failed Alert fires, and the screen sticks on the loading skeleton
+  // forever with no recourse. Surface a recoverable Alert (Retry re-fires the
+  // failed sections; Go Back exits). Single-section tests hit `allFailed` above
+  // instead, so this fires only for multi-section runs with a failed first.
+  useEffect(() => {
+    if (state.status !== "loading") return;
+    if (generation.allFailed) return;
+    if (generation.sectionStatus[sections[0]] !== "failed") return;
+    if (firstSectionFailedAlertFiredRef.current) return;
+    firstSectionFailedAlertFiredRef.current = true;
+    Alert.alert(
+      "Could not load a section",
+      "We were unable to generate part of this test. Please retry, or go back and try again.",
+      [
+        { text: "Go Back", onPress: () => router.back() },
+        {
+          text: "Retry",
+          onPress: () => {
+            firstSectionFailedAlertFiredRef.current = false;
+            generation.retry();
+          },
+        },
+      ]
+    );
+    // Reactive on the loading status + the per-section status signal. `sections`
+    // is stable (useMemo); `generation.retry`/`router` are stable identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status, generation.allFailed, generation.sectionStatus]);
+
   // Story 13-4: corrupt-resume signal → render "Resume Failed" Alert
   // mirroring pre-13-4 lines 273-294. Retry calls generation.retry()
   // which clears the corrupt row + fires fresh generation.
@@ -471,10 +510,42 @@ export default function MockTestSessionScreen() {
               if (mockError) captureError(mockError, "mock-test-save");
             }
 
-            // TODO(story-9-8): Wire per-skill score writes from `results.sections` into
-            // updateSkillProgress(userId, "listening" | "reading" | "writing" | "speaking",
-            //   currentLevel, sectionScore, sectionMinutes) once Story 9-8 lands the Speaking
-            // pipeline and re-confirms section/skill mapping for TCF Canada.
+            // Wire per-skill score writes from the section results into
+            // skill_progress so a completed mock test actually moves the user's
+            // skill bars + CEFR level. Pre-fix this was an unwired TODO, so
+            // acing a full mock test moved streak/daily-activity but left
+            // listening/reading skill scores (and thus checkCefrPromotion,
+            // which reads skill_progress) untouched. `section.score` is the
+            // 0–100 raw-percent — updateSkillProgress's internal scale; the
+            // cefrLevel arg is the user's current working level (the atomic
+            // RPC applies the Story 9-2 no-regress rule). Sections that didn't
+            // generate (total === 0 — e.g. skipped after a generation failure)
+            // are excluded so a non-attempted section can't tank the skill.
+            // MUST run before checkCefrPromotion (which reads skill_progress).
+            const currentLevel = useAuthStore.getState().profile?.current_cefr_level;
+            if (currentLevel) {
+              for (const section of state.sections) {
+                const sectionResult = results.sections[section];
+                if (!sectionResult || sectionResult.total === 0) continue;
+                await updateSkillProgress(
+                  userId,
+                  section,
+                  currentLevel,
+                  sectionResult.score,
+                  TCF_QCM_SECTIONS[section].minutes
+                );
+              }
+            } else {
+              // D4: profile CEFR level unavailable at finish (should be loaded
+              // by now) — skip skill writes but make the skip observable so a
+              // missing-profile regression isn't silent.
+              addBreadcrumb({
+                category: "mock-test",
+                level: "warning",
+                message: "Skill progress skipped — profile CEFR level unavailable at finish",
+                data: { feature: "mock-test-skill-progress-skipped" },
+              });
+            }
             await incrementDailyActivity(userId, { exercises: 1 });
             await updateStreak(userId);
             await checkCefrPromotion(userId);

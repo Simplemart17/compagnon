@@ -380,8 +380,19 @@ export class RealtimeOrchestrator {
    * final delta arrives over the wire). Without the cooldown, the gate
    * lifts the instant `audio.done` fires and the speaker-tail bleed
    * triggers server VAD → spurious next response → infinite stack.
+   *
+   * Ship-blocker fix: this is an ABSOLUTE-TIMESTAMP (epoch ms) rather than a
+   * `setTimeout` handle. The pre-fix timer approach was inert: the mic gate
+   * read `isAiSpeakingMirror`, but `setState` re-syncs the mirror to
+   * `state.isAiSpeaking` on EVERY call (see `setState`), and `audio.done`
+   * flips `isAiSpeaking` false BEFORE arming the timer — so the mirror was
+   * already false and the gate reopened instantly, defeating the cooldown.
+   * The mic gate now consults `isMicForwardingSuppressed()`, which reads this
+   * timestamp INDEPENDENTLY of the mirror, so the UI orb can stop the instant
+   * `audio.done` fires while the mic stays gated through the speaker tail.
+   * A timestamp also removes the leaked-timer / dispose-race surface entirely.
    */
-  private aiSpeechCooldownTimer: ReturnType<typeof setTimeout> | null = null;
+  private micCooldownUntilMs = 0;
 
   /** Post-`audio.done` speaker-drain window — empirically tuned. */
   private static readonly AI_SPEECH_COOLDOWN_MS = 800;
@@ -446,9 +457,7 @@ export class RealtimeOrchestrator {
     // refactor that drops the rAF callback's defensive check. Belt-and-
     // suspenders extension of the Story 12-1 P7 isDisposed contract.
     this.cancelPendingAiTextRaf();
-    // Cancel any pending speaker-drain cooldown so the orchestrator's
-    // setTimeout callback doesn't outlive the instance + mutate state on
-    // a disposed object.
+    // Clear the speaker-drain cooldown gate + AI-speaking mirror on teardown.
     this.endAiSpeechWindow();
     this.subscription?.remove();
     this.subscription = null;
@@ -554,18 +563,28 @@ export class RealtimeOrchestrator {
   }
 
   /**
-   * Cancel the pending post-`audio.done` cooldown timer (if any) and
-   * synchronously flip `isAiSpeakingMirror` to false. Used on lifecycle
-   * events that should immediately re-enable mic forwarding (barge-in
-   * fires, error tears down the turn, dispose/end terminates the
-   * session, reconnect crosses a session boundary).
+   * Clear the post-`audio.done` speaker-drain cooldown and synchronously flip
+   * `isAiSpeakingMirror` to false. Used on lifecycle events that should
+   * immediately re-enable mic forwarding (barge-in fires, error tears down the
+   * turn, dispose/end terminates the session, reconnect crosses a session
+   * boundary).
    */
   private endAiSpeechWindow(): void {
-    if (this.aiSpeechCooldownTimer !== null) {
-      clearTimeout(this.aiSpeechCooldownTimer);
-      this.aiSpeechCooldownTimer = null;
-    }
+    this.micCooldownUntilMs = 0;
     this.isAiSpeakingMirror = false;
+  }
+
+  /**
+   * Mic-forwarding gate. Returns true when user-mic bytes must NOT be sent to
+   * the server: while the AI is actively producing audio (`isAiSpeakingMirror`)
+   * OR during the post-`audio.done` speaker-drain cooldown window
+   * (`micCooldownUntilMs`). Deliberately decoupled from `state.isAiSpeaking`
+   * so the UI orb can flip "not speaking" the instant `audio.done` arrives
+   * while the mic stays gated through the ~300–800ms speaker tail — the
+   * ship-blocker echo/feedback-loop fix.
+   */
+  private isMicForwardingSuppressed(): boolean {
+    return this.isAiSpeakingMirror || Date.now() < this.micCooldownUntilMs;
   }
 
   // ────────────────────────────────────────────────────────────────────
@@ -657,7 +676,18 @@ export class RealtimeOrchestrator {
     try {
       const { granted } = await ExpoPlayAudioStream.requestPermissionsAsync();
       if (!granted) {
-        this.setState((s) => ({ ...s, error: "Microphone permission denied" }));
+        // Ship-blocker M3: a voice conversation with no mic is non-functional.
+        // Pre-fix this set only `error` and left status "connected" (set by the
+        // `session.created` event), so the AI greeting played, the user spoke,
+        // and NOTHING happened with no cause shown. Flip to the terminal error
+        // state so the error screen (Retry + Back) surfaces it; `start()` then
+        // aborts before the greeting via its post-startAudioStreaming guard.
+        this.setState((s) => ({
+          ...s,
+          status: "error",
+          error:
+            "Microphone access is required for voice conversations. Enable microphone access in Settings and try again.",
+        }));
         return;
       }
 
@@ -704,7 +734,7 @@ export class RealtimeOrchestrator {
           // taking. The trade-off is loss of in-sentence barge-in (the user
           // must wait for the AI to finish a turn before speaking); natural
           // conversational flow is preserved.
-          if (event.data && !this.isAiSpeakingMirror) {
+          if (event.data && !this.isMicForwardingSuppressed()) {
             this.safeSessionCall((s) => {
               if (s.isConnected) {
                 s.appendAudio(event.data as string);
@@ -724,7 +754,12 @@ export class RealtimeOrchestrator {
       captureError(err, "realtime-voice-audio");
       const message = err instanceof Error ? err.message : "Microphone error";
       console.error("[RealtimeVoice] Audio streaming error:", err);
-      this.setState((s) => ({ ...s, error: message }));
+      // Ship-blocker M3: an audio-engine failure (permission, setSoundConfig,
+      // startRecording) means the mic won't work — the conversation is broken.
+      // Flip to the terminal error state so it's visible (pre-fix status stayed
+      // "connected" and the failure was silent). `start()` aborts before the
+      // greeting via its post-startAudioStreaming guard.
+      this.setState((s) => ({ ...s, status: "error", error: message }));
     }
   }
 
@@ -1038,6 +1073,13 @@ export class RealtimeOrchestrator {
     if (this.isDisposed) return;
     switch (event.type) {
       case "session.created":
+        // Ship-blocker P2: do NOT flip to "connected" if we already aborted to
+        // "error" (e.g. mic-permission denied). `session.created` is a network
+        // event that can arrive AFTER a synchronous mic-denial flips status to
+        // "error" (cached denial resolves on a microtask, before the wire
+        // event), so without this guard it would resurrect the silent-broken
+        // "connected" screen that the mic-denied error state exists to prevent.
+        if (this.state.status === "error") break;
         this.setState((s) => ({ ...s, status: "connected" }));
         break;
 
@@ -1074,13 +1116,10 @@ export class RealtimeOrchestrator {
         // barge-in detection — set true on EVERY delta regardless of
         // whether the React setState fires for this one.
         this.isAiSpeakingMirror = true;
-        // Cancel any pending cooldown — a new delta means we're back to
-        // active speech (next turn started before the previous turn's
-        // speaker-drain window elapsed).
-        if (this.aiSpeechCooldownTimer !== null) {
-          clearTimeout(this.aiSpeechCooldownTimer);
-          this.aiSpeechCooldownTimer = null;
-        }
+        // Clear any pending cooldown — a new delta means we're back to active
+        // speech (next turn started before the previous turn's speaker-drain
+        // window elapsed); the mirror (set true above) now gates the mic.
+        this.micCooldownUntilMs = 0;
         if (!wasAiSpeaking) {
           this.setState((s) => ({ ...s, isAiSpeaking: true, isProcessing: false }));
           // Feedback-loop defense: at the moment the AI starts speaking,
@@ -1103,22 +1142,20 @@ export class RealtimeOrchestrator {
         // turn-finalization setState below is the authoritative final state
         // (a queued rAF firing AFTER this setState would surface stale text).
         this.cancelPendingAiTextRaf();
+        // Arm the speaker-drain cooldown. The device keeps playing the AI's
+        // voice for ~300–800ms after this event arrives over the wire; the mic
+        // gate reads `micCooldownUntilMs` (via isMicForwardingSuppressed)
+        // INDEPENDENTLY of the mirror, so the mic stays gated through the tail
+        // even though the UI stops immediately below. Without this, speaker
+        // tail bleeds into the mic, server VAD triggers, and a new response is
+        // auto-created on top of the just-completed one (the stacked-bubble
+        // bug). Pre-fix this armed a setTimeout that flipped the mirror false —
+        // an inert no-op, because the setState below had already synced the
+        // mirror false first.
+        this.micCooldownUntilMs = Date.now() + RealtimeOrchestrator.AI_SPEECH_COOLDOWN_MS;
         // UI flips to "not speaking" immediately so the speaking indicator
         // matches the user's perception of "AI finished its message".
         this.setState((s) => ({ ...s, isAiSpeaking: false }));
-        // BUT the mic-forwarding gate stays closed for the cooldown window
-        // because the device's audio output buffer keeps playing the AI's
-        // voice for ~300–800ms after this event arrives over the wire.
-        // Without the cooldown, speaker tail bleeds into the mic, server
-        // VAD triggers, and a new response is auto-created on top of the
-        // just-completed one.
-        if (this.aiSpeechCooldownTimer !== null) {
-          clearTimeout(this.aiSpeechCooldownTimer);
-        }
-        this.aiSpeechCooldownTimer = setTimeout(() => {
-          this.isAiSpeakingMirror = false;
-          this.aiSpeechCooldownTimer = null;
-        }, RealtimeOrchestrator.AI_SPEECH_COOLDOWN_MS);
         break;
 
       // Defensive: with output_modalities=["audio"], this event should not fire.
@@ -1344,7 +1381,25 @@ export class RealtimeOrchestrator {
     // Story 13-1: cancel any pending rAF so the response-finalization
     // setState below is the authoritative final state for pendingAiText.
     this.cancelPendingAiTextRaf();
-    this.setState((s) => ({ ...s, isProcessing: false, pendingAiText: "" }));
+    // Ship-blocker C3: `response.output_audio.done` is NOT guaranteed —
+    // cancelled / content-filtered / incomplete responses (and packet loss)
+    // can skip it while still emitting this terminal `response.done`. If we
+    // were mid-speech and audio.done never cleared it, `isAiSpeaking` would
+    // latch true forever and the mic gate would never reopen (unrecoverable
+    // dead conversation). Reset AI-speaking defensively here — and if we were
+    // still speaking, apply the speaker-drain cooldown so residual audio tail
+    // still can't bleed into the mic. In the normal flow (audio.done already
+    // fired) the mirror is false, so the cooldown is not re-applied and the
+    // `isAiSpeaking: false` below is a harmless no-op.
+    if (this.isAiSpeakingMirror) {
+      this.micCooldownUntilMs = Date.now() + RealtimeOrchestrator.AI_SPEECH_COOLDOWN_MS;
+    }
+    this.setState((s) => ({
+      ...s,
+      isAiSpeaking: false,
+      isProcessing: false,
+      pendingAiText: "",
+    }));
   }
 
   private handleErrorEvent(event: RealtimeEvent & { type: "error" }): void {
@@ -1873,6 +1928,12 @@ export class RealtimeOrchestrator {
       }
 
       await this.startAudioStreaming();
+
+      // Ship-blocker M3: if audio setup failed (mic permission denied or audio
+      // engine error), startAudioStreaming flipped status to "error". Abort
+      // before sending the greeting so we don't burn an AI turn / play audio
+      // behind the error screen — the error surfaces cleanly with Retry + Back.
+      if (this.state.status === "error") return;
 
       // Start duration timer using Date.now() to prevent drift.
       this.startTimeMs = Date.now();
