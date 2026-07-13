@@ -133,26 +133,21 @@ Deno.test("withTimeout: rejects with UpstreamTimeoutError when promise exceeds b
   // request-and-headers. This test pins that withTimeout produces the
   // same UpstreamTimeoutError shape as fetchWithTimeout on timeout.
   //
-  // The slow-promise timer is captured + cleared in `finally`: withTimeout
-  // rejects at 50ms while this 500ms timer is still armed, and Deno's default
-  // test resource sanitizer fails the suite on a dangling timer ("A timer was
-  // started in this test, but never completed"). Clearing it keeps the CI-wired
-  // run leak-clean without disabling the sanitizer.
-  let slowTimer: ReturnType<typeof setTimeout> | undefined;
-  const slowPromise = new Promise((resolve) => {
-    slowTimer = setTimeout(resolve, 500);
-  });
-  try {
-    const err = await assertRejects(
-      () => withTimeout("body-read-test", slowPromise, 50),
-      UpstreamTimeoutError,
-      "did not respond within 50ms"
-    );
-    assertEquals(err.upstream, "body-read-test");
-    assertEquals(err.timeoutMs, 50);
-  } finally {
-    if (slowTimer !== undefined) clearTimeout(slowTimer);
-  }
+  // The "slow" body-read is modeled as a promise that NEVER settles rather than
+  // a setTimeout(500): withTimeout rejects at 50ms while any such timer would
+  // still be armed, and Deno's default test resource sanitizer fails the suite
+  // on the dangling timer ("A timer was started in this test, but never
+  // completed"). A never-settling promise creates no timer/async-op at all, so
+  // the sanitizer has nothing to flag — leak-clean on any Deno version (CI pins
+  // v1.x). withTimeout still clears its own 50ms timer in finally.
+  const slowPromise = new Promise<never>(() => {});
+  const err = await assertRejects(
+    () => withTimeout("body-read-test", slowPromise, 50),
+    UpstreamTimeoutError,
+    "did not respond within 50ms"
+  );
+  assertEquals(err.upstream, "body-read-test");
+  assertEquals(err.timeoutMs, 50);
 });
 
 Deno.test("withTimeout: resolves with the promise value when it completes within budget", async () => {
