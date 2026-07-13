@@ -25,9 +25,12 @@ import {
   CRON_SENTINEL_USER_ID,
 } from "../_shared/rate-limit-db.ts";
 import { errorResponse } from "../_shared/errors.ts";
+import { getSupabaseSecretKey } from "../_shared/supabase-keys.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+// Prefer the new secret key (SUPABASE_SECRET_KEYS); fall back to the legacy
+// SUPABASE_SERVICE_ROLE_KEY. Both bypass RLS (server-only).
+const SUPABASE_SERVICE_ROLE_KEY = getSupabaseSecretKey();
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
 
 /** Rate limit: 5 requests per minute (prevents accidental rapid re-invocation). */
@@ -104,6 +107,9 @@ Deno.serve(async (req: Request) => {
     //    Postgres-backed rate-limit RPC needs a Supabase client to invoke.
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
+      // App tables + RPCs (notification targets, rate-limit) live under the
+      // `companion` schema (shared project).
+      db: { schema: "companion" },
     });
 
     // 4. Rate limiting — server-to-server with sentinel user_id + "cron" key.

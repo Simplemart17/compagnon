@@ -15,6 +15,7 @@ import {
 } from "../_shared/rate-limit-db.ts";
 import { estimateAzureSpeechCostCents } from "../_shared/cost-table.ts";
 import { errorResponse, parseUpstreamError, timeoutResponse } from "../_shared/errors.ts";
+import { getSupabasePublishableKey } from "../_shared/supabase-keys.ts";
 import {
   DEFAULT_UPSTREAM_TIMEOUT_MS,
   fetchWithTimeout,
@@ -24,7 +25,9 @@ import {
 const AZURE_SPEECH_KEY = Deno.env.get("AZURE_SPEECH_KEY");
 const AZURE_SPEECH_REGION = Deno.env.get("AZURE_SPEECH_REGION") ?? "westeurope";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+// Prefer the new publishable key (SUPABASE_PUBLISHABLE_KEYS); fall back to the
+// legacy SUPABASE_ANON_KEY. Both resolve to the anon/authenticated role.
+const SUPABASE_ANON_KEY = getSupabasePublishableKey();
 
 /** Max audio size: 5 MB base64 (~3.75 MB raw audio, ~3 minutes at 16kHz PCM16) */
 const MAX_AUDIO_BASE64_BYTES = 5 * 1024 * 1024;
@@ -59,6 +62,8 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
+      // App tables + RPCs live under the `companion` schema (shared project).
+      db: { schema: "companion" },
     });
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();

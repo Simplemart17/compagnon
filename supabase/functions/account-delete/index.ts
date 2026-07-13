@@ -11,10 +11,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limit-db.ts";
 import { errorResponse } from "../_shared/errors.ts";
+import { getSupabasePublishableKey, getSupabaseSecretKey } from "../_shared/supabase-keys.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+// New publishable/secret keys with legacy anon/service_role fallback.
+const SUPABASE_ANON_KEY = getSupabasePublishableKey();
+const SUPABASE_SERVICE_ROLE_KEY = getSupabaseSecretKey();
 
 /** Rate limit: 1 request per minute per user (destructive operation). */
 const RATE_LIMIT = { requests: 1, windowSeconds: 60 };
@@ -55,6 +57,8 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
+      // App tables + RPCs (rate-limit) live under the `companion` schema.
+      db: { schema: "companion" },
     });
 
     const {
@@ -89,6 +93,9 @@ Deno.serve(async (req: Request) => {
     //    entire deletion rolls back, so partial orphans cannot occur.
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
+      // Consistent schema routing (this client is used for auth.admin only,
+      // but keep it aligned in case a future `.from()`/`.rpc()` is added).
+      db: { schema: "companion" },
     });
 
     const { error: deleteError } =
