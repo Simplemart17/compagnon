@@ -40,14 +40,14 @@
   "submit": {
     "production": {
       "ios": {
-        "ascApiKeyPath": "./asc-api-key.p8",
+        "ascApiKeyPath": "$EXPO_ASC_API_KEY_P8",
         "ascApiKeyIssuerId": "$EXPO_ASC_API_KEY_ISSUER_ID",
         "ascApiKeyId": "$EXPO_ASC_API_KEY_ID",
         "ascAppId": "$EXPO_ASC_APP_ID",
         "appleTeamId": "$EXPO_APPLE_TEAM_ID"
       },
       "android": {
-        "serviceAccountKeyPath": "./google-service-account.json",
+        "serviceAccountKeyPath": "$EXPO_GOOGLE_SERVICE_ACCOUNT_KEY",
         "track": "internal",
         "releaseStatus": "draft"
       }

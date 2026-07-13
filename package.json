@@ -18,7 +18,9 @@
     "check:colors": "bash scripts/check-hex-colors.sh",
     "check:tokens": "bash scripts/check-design-tokens.sh",
     "generate-assets": "node scripts/generate-assets.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "release:android": "eas build --platform android --profile production --auto-submit",
+    "submit:android": "eas submit --platform android --latest"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -37,6 +39,7 @@
     "expo": "~55.0.24",
     "expo-asset": "~55.0.17",
     "expo-audio": "~55.0.14",
+    "expo-build-properties": "~55.0.15",
     "expo-constants": "~55.0.7",
     "expo-dev-client": "~55.0.34",
     "expo-device": "~55.0.17",
