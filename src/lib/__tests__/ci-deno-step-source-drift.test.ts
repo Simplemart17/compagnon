@@ -36,10 +36,19 @@ describe("Story 15-3 — Deno test CI step source drift", () => {
     // explicit file names instead of directory match; R1 EH-10:
     // --no-check skips redundant TS check):
     expect(ci).toMatch(/deno test --no-check --allow-net=127\.0\.0\.1/);
+    // `--config` points Deno at the Edge Function deno.json. Without it Deno
+    // auto-discovers the root React Native tsconfig.json and fails to parse
+    // `jsxImportSource: nativewind` before running any test. Pinned so a
+    // future removal that silently re-breaks CI is caught.
+    expect(ci).toMatch(/--config supabase\/functions\/deno\.json/);
     // Both _test.ts files named explicitly so a rename/move fails loudly
     // at "Module not found" instead of silently passing an empty match.
     expect(ci).toMatch(/supabase\/functions\/_shared\/__tests__\/fetch-with-timeout_test\.ts/);
     expect(ci).toMatch(/supabase\/functions\/_shared\/__tests__\/parse-upstream-error_test\.ts/);
+    // supabase-keys resolver test (new/legacy API-key fallback) + its scoped
+    // env permission (NOT --allow-all — Case 3 guards that).
+    expect(ci).toMatch(/supabase\/functions\/_shared\/__tests__\/supabase-keys_test\.ts/);
+    expect(ci).toMatch(/--allow-env=SUPABASE_PUBLISHABLE_KEYS/);
     // Bounded execution time so a hung worker can't burn the GitHub
     // Actions 6-hour default timeout (R1 BH-6).
     const denoBlockMatch = ci.match(

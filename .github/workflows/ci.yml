@@ -69,6 +69,37 @@ jobs:
           path: coverage/
           retention-days: 14
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v1.x
+
+      - name: Deno tests (Edge Function _shared utilities)
+        # Runs the Edge Function Deno test suites (Story 11-3 fetchWithTimeout,
+        # Story 12-11 parseUpstreamError) that were previously authored (Story
+        # 15-3) but never wired into CI. Placed AFTER the npm Tests steps so a
+        # failing `npm test` short-circuits before the Deno install (build-time
+        # efficiency). Minimal permission surface: NO `--allow-all` — only
+        # loopback net for the in-process test servers. `--no-check` skips the
+        # redundant TS check (jest + tsc already cover TS). Explicit file paths
+        # so a rename fails loudly at "Module not found" instead of matching
+        # nothing. Bounded by timeout-minutes so a hung worker can't burn the
+        # GitHub Actions default 6-hour job timeout. `--config` points Deno at
+        # the Edge Function deno.json — WITHOUT it, Deno auto-discovers the root
+        # React Native tsconfig.json (jsxImportSource: nativewind) and fails to
+        # parse it before it can even run the tests.
+        timeout-minutes: 3
+        # `--allow-env` is scoped to the 4 Supabase key vars (for the
+        # supabase-keys resolver test) — NOT blanket env access. Still no
+        # `--allow-all`; permission surface stays minimal.
+        run: |
+          deno test --no-check --allow-net=127.0.0.1 \
+            --allow-env=SUPABASE_PUBLISHABLE_KEYS,SUPABASE_SECRET_KEYS,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY \
+            --config supabase/functions/deno.json \
+            supabase/functions/_shared/__tests__/fetch-with-timeout_test.ts \
+            supabase/functions/_shared/__tests__/parse-upstream-error_test.ts \
+            supabase/functions/_shared/__tests__/supabase-keys_test.ts
+
       - name: Dependency vulnerability gate
         # Story 12-10: prevent regression of `npm audit reports 0 high
         # vulnerabilities` (Epic 12 AC). Calibrated to `--audit-level=high`
