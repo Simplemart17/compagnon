@@ -58,9 +58,16 @@ describe("Story 18-3 — daily-nudges schema drift (companion-schema.sql)", () =
       CODE_ONLY.indexOf("CREATE TABLE IF NOT EXISTS companion.skill_progress")
     );
     expect(createTable).toMatch(/daily_nudge\s+BOOLEAN NOT NULL DEFAULT TRUE/);
+    // R1: NULLABLE, NO UTC default (a fixed default = 1-3 AM pushes for
+    // APAC users); named constraint for fresh/existing parity.
     expect(createTable).toMatch(
-      /nudge_utc_hour\s+SMALLINT NOT NULL DEFAULT 17 CHECK \(nudge_utc_hour BETWEEN 0 AND 23\)/
+      /nudge_utc_hour\s+SMALLINT CONSTRAINT profiles_nudge_utc_hour_range CHECK \(nudge_utc_hour BETWEEN 0 AND 23\)/
     );
+    expect(createTable).toMatch(
+      /tz_offset_minutes\s+SMALLINT CONSTRAINT profiles_tz_offset_range CHECK \(tz_offset_minutes BETWEEN -720 AND 840\)/
+    );
+    // NEGATIVE: the timezone-blind default must never regress in.
+    expect(createTable).not.toMatch(/nudge_utc_hour\s+SMALLINT NOT NULL DEFAULT/);
   });
 
   it("Case 2: ALTER form — existing deployed DBs get the same columns idempotently", () => {
@@ -68,7 +75,31 @@ describe("Story 18-3 — daily-nudges schema drift (companion-schema.sql)", () =
       /ALTER TABLE companion\.profiles\s+ADD COLUMN IF NOT EXISTS daily_nudge BOOLEAN NOT NULL DEFAULT TRUE/
     );
     expect(CODE_ONLY).toMatch(
-      /ADD COLUMN IF NOT EXISTS nudge_utc_hour SMALLINT NOT NULL DEFAULT 17\s+CONSTRAINT profiles_nudge_utc_hour_range CHECK \(nudge_utc_hour BETWEEN 0 AND 23\)/
+      /ADD COLUMN IF NOT EXISTS nudge_utc_hour SMALLINT\s+CONSTRAINT profiles_nudge_utc_hour_range CHECK \(nudge_utc_hour BETWEEN 0 AND 23\)/
+    );
+    expect(CODE_ONLY).toMatch(
+      /ADD COLUMN IF NOT EXISTS tz_offset_minutes SMALLINT\s+CONSTRAINT profiles_tz_offset_range CHECK \(tz_offset_minutes BETWEEN -720 AND 840\)/
+    );
+  });
+
+  it("Case 2b (R1 CRITICAL): notification_log type CHECK accepts 'nudge' in BOTH forms", () => {
+    // Pre-fix the first nudge poisoned the entire batched log insert —
+    // streak/SRS idempotency died and every eligible user was re-pushed
+    // hourly.
+    expect(CODE_ONLY).toMatch(
+      /CONSTRAINT notification_log_type_check CHECK \(type IN \('streak','srs','nudge'\)\)/
+    );
+    expect(CODE_ONLY).toMatch(
+      /ALTER TABLE companion\.notification_log\s+DROP CONSTRAINT IF EXISTS notification_log_type_check/
+    );
+    expect(CODE_ONLY).toMatch(
+      /ADD CONSTRAINT notification_log_type_check CHECK \(type IN \('streak','srs','nudge'\)\)/
+    );
+  });
+
+  it("Case 2c (R1): partial index bounds the hourly targets scan", () => {
+    expect(CODE_ONLY).toMatch(
+      /CREATE INDEX IF NOT EXISTS idx_profiles_nudge_hour\s+ON companion\.profiles \(nudge_utc_hour\) WHERE daily_nudge/
     );
   });
 
@@ -76,6 +107,9 @@ describe("Story 18-3 — daily-nudges schema drift (companion-schema.sql)", () =
     const body = extractNudgeRpcBody();
     expect(body).toMatch(/SECURITY DEFINER/);
     expect(body).toMatch(/SET search_path = companion, extensions, public/);
+    // R1: shared-project defense — another app's ALTER DATABASE SET
+    // timezone must not shift every user's nudge hour.
+    expect(body).toMatch(/SET timezone = 'UTC'/);
     // NEGATIVE: the deprecated public-only search_path must not regress in.
     expect(body).not.toMatch(/SET search_path = public\s*$/m);
   });
@@ -86,11 +120,21 @@ describe("Story 18-3 — daily-nudges schema drift (companion-schema.sql)", () =
     );
   });
 
-  it("Case 5: all four eligibility filters present", () => {
+  it("Case 5: all eligibility filters present (R1-hardened forms)", () => {
     const body = extractNudgeRpcBody();
     expect(body).toMatch(/p\.daily_nudge = true/);
-    expect(body).toMatch(/p\.nudge_utc_hour = EXTRACT\(HOUR FROM now\(\)\)::smallint/);
-    expect(body).toMatch(/p\.last_active_date IS NULL OR p\.last_active_date < CURRENT_DATE/);
+    // R1: NULL hour = not-yet-activated (client writes the evening-local
+    // default when the timezone is known).
+    expect(body).toMatch(/p\.nudge_utc_hour IS NOT NULL/);
+    // R1: trailing 2-hour catch-up window — a missed cron run no longer
+    // skips the cohort for a day (the 20h cap dedups the catch-up).
+    expect(body).toMatch(/IN \(p\.nudge_utc_hour, \(p\.nudge_utc_hour \+ 1\) % 24\)/);
+    // R1: last_active_date is client-LOCAL (Story 9-2) — compare against
+    // the user's LOCAL today via their reported offset, not UTC.
+    expect(body).toMatch(/now\(\) - make_interval\(mins => COALESCE\(p\.tz_offset_minutes, 0\)\)/);
+    // NEGATIVE: the UTC-date and strict-equality forms must not regress.
+    expect(body).not.toMatch(/p\.last_active_date < CURRENT_DATE/);
+    expect(body).not.toMatch(/p\.nudge_utc_hour = EXTRACT/);
     expect(body).toMatch(/nl\.type = 'nudge'/);
     expect(body).toMatch(/nl\.sent_at > now\(\) - INTERVAL '20 hours'/);
   });

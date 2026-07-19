@@ -31,7 +31,11 @@ jest.mock("@/src/lib/sentry", () => ({
 import { readFileSync } from "fs";
 import { join } from "path";
 
-import { localHourToUtcHour, NUDGE_TIME_SLOTS } from "@/src/hooks/use-notifications";
+import {
+  localHourToUtcHour,
+  utcHourToNearestSlot,
+  NUDGE_TIME_SLOTS,
+} from "@/src/hooks/use-notifications";
 
 describe("Story 18-3 — localHourToUtcHour (pure)", () => {
   it("UTC (offset 0): identity", () => {
@@ -90,5 +94,26 @@ describe("Story 18-3 — deep-link drift (source pin)", () => {
 
   it("preferences include dailyNudge with default true (opt-out model)", () => {
     expect(CODE_ONLY).toMatch(/dailyNudge: data\.dailyNudge \?\? true/);
+  });
+});
+
+describe("Story 18-3 R1 — utcHourToNearestSlot (pure inverse)", () => {
+  it("round-trip property: every slot maps back to itself across timezones", () => {
+    for (const offset of [-720, -540, -330, -120, 0, 300, 720]) {
+      for (const slot of NUDGE_TIME_SLOTS) {
+        const utc = localHourToUtcHour(slot.localHour, offset);
+        expect(utcHourToNearestSlot(utc, offset)).toBe(slot.key);
+      }
+    }
+  });
+
+  it("wraparound distance: UTC hour 23 vs a slot at UTC 0 is distance 1, not 23", () => {
+    // Offset 0: slots at 9/14/18 UTC. utcHour 23 → nearest is evening (18,
+    // dist 5) NOT morning (9, raw dist 14 → circular 10).
+    expect(utcHourToNearestSlot(23, 0)).toBe("evening");
+    // utcHour 1 → circular distance to morning(9)=8, evening(18)=7 → evening.
+    expect(utcHourToNearestSlot(1, 0)).toBe("evening");
+    // utcHour 4 → morning(9) dist 5 vs evening(18) circular 10 → morning.
+    expect(utcHourToNearestSlot(4, 0)).toBe("morning");
   });
 });

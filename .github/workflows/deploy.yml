@@ -87,9 +87,11 @@ jobs:
       github.event_name == 'push' && (
         contains(toJSON(github.event.commits.*.modified), 'supabase/migrations/') ||
         contains(toJSON(github.event.commits.*.added), 'supabase/migrations/') ||
-        contains(toJSON(github.event.commits.*.removed), 'supabase/migrations/')
+        contains(toJSON(github.event.commits.*.removed), 'supabase/migrations/') ||
+        contains(toJSON(github.event.commits.*.modified), 'supabase/companion-schema.sql') ||
+        contains(toJSON(github.event.commits.*.added), 'supabase/companion-schema.sql')
       )
     steps:
       - name: Annotate
         run: |
-          echo "::warning title=Manual migration required::A push to main touched supabase/migrations/. Run 'supabase db push' against production manually. Auto-apply is gated on Epic 16.6 (migration rollback playbook)."
+          echo "::warning title=Manual schema update required::A push to main touched the database DDL. Post-schema-move (2026-07-19) the source of truth is supabase/companion-schema.sql — re-run its changed sections in the Supabase Dashboard SQL editor (idempotent) BEFORE relying on newly-deployed Edge Functions that read new columns. The legacy 'supabase db push' path (supabase/migrations/) is DEPRECATED and does NOT apply companion-schema changes."

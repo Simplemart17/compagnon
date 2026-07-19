@@ -42,6 +42,11 @@ describe("Story 18-3 — send-notifications nudge drift", () => {
     expect(CODE_ONLY).toMatch(/NUDGE_ERROR_SNIPPET_MAX = 60/);
   });
 
+  it("Case 5b (R1): truncation is code-POINT-safe — never a bare slice that can split a surrogate pair", () => {
+    expect(CODE_ONLY).toMatch(/\[\.\.\.snippet\]\.slice\(0, NUDGE_ERROR_SNIPPET_MAX\)\.join\(""\)/);
+    expect(CODE_ONLY).not.toMatch(/snippet\.slice\(0, NUDGE_ERROR_SNIPPET_MAX\)/);
+  });
+
   it("Case 6: nudge rows participate in the invalid-token guard + tokenToUser log enrichment", () => {
     expect(CODE_ONLY).toMatch(
       /if \(nudgeRows\) \{\s*for \(const row of nudgeRows\) tokenToUser\.set\(row\.token, row\.user_id\);/

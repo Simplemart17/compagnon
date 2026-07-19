@@ -25,6 +25,26 @@ export function localHourToUtcHour(localHour: number, offsetMinutes: number): nu
   return ((utc % 24) + 24) % 24;
 }
 
+/**
+ * Story 18-3 R1: pure inverse of `localHourToUtcHour` — maps a stored UTC
+ * hour back to the NEAREST local slot (circular distance, wraparound-safe).
+ * Exported so tests can pin the round-trip property directly.
+ */
+export function utcHourToNearestSlot(utcHour: number, offsetMinutes: number): NudgeTimeSlotKey {
+  let best: NudgeTimeSlotKey = "evening";
+  let bestDist = 24;
+  for (const slot of NUDGE_TIME_SLOTS) {
+    const slotUtc = localHourToUtcHour(slot.localHour, offsetMinutes);
+    const raw = Math.abs(slotUtc - utcHour);
+    const dist = Math.min(raw, 24 - raw);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = slot.key;
+    }
+  }
+  return best;
+}
+
 /** Story 18-3: the three user-facing nudge time slots (local hours). */
 export const NUDGE_TIME_SLOTS = [
   { key: "morning", label: "Morning", localHour: 9 },
@@ -192,25 +212,48 @@ export function useNotificationPreferences(): UseNotificationPreferencesReturn {
           };
           setPreferences(loaded);
           confirmedPrefsRef.current = loaded;
-          // Story 18-3: map the stored UTC hour back to the nearest local
-          // slot for display (inverse of localHourToUtcHour).
+          // Story 18-3 R1: activation + self-healing resync.
+          // - nudgeUtcHour NULL means "not yet activated" (the schema ships
+          //   no UTC default — a fixed default would push APAC users at
+          //   1-3 AM local). Activate with the evening-LOCAL default now
+          //   that the device timezone is known.
+          // - When a stored hour exists but no longer matches its nearest
+          //   slot's CURRENT UTC hour (DST shift, travel), write the
+          //   corrected hour + offset back so display and delivery re-align.
+          const offset = new Date().getTimezoneOffset();
           if (typeof data.nudgeUtcHour === "number") {
-            const offset = new Date().getTimezoneOffset();
-            let best: NudgeTimeSlotKey = "evening";
-            let bestDist = 24;
-            for (const slot of NUDGE_TIME_SLOTS) {
-              const slotUtc = localHourToUtcHour(slot.localHour, offset);
-              const dist = Math.min(
-                Math.abs(slotUtc - data.nudgeUtcHour),
-                24 - Math.abs(slotUtc - data.nudgeUtcHour)
-              );
-              if (dist < bestDist) {
-                bestDist = dist;
-                best = slot.key;
-              }
-            }
+            const best = utcHourToNearestSlot(data.nudgeUtcHour, offset);
             setNudgeSlot(best);
             nudgeSlotRef.current = best;
+            const bestSlot = NUDGE_TIME_SLOTS.find((sl) => sl.key === best);
+            const expectedUtc = bestSlot
+              ? localHourToUtcHour(bestSlot.localHour, offset)
+              : data.nudgeUtcHour;
+            if (expectedUtc !== data.nudgeUtcHour) {
+              void supabase.functions
+                .invoke("notification-register", {
+                  body: {
+                    action: "preferences",
+                    nudgeUtcHour: expectedUtc,
+                    tzOffsetMinutes: offset,
+                  },
+                })
+                .catch((err) => captureError(err, "notification-update-preference"));
+            }
+          } else {
+            const evening = NUDGE_TIME_SLOTS[2];
+            const eveningUtc = localHourToUtcHour(evening.localHour, offset);
+            setNudgeSlot(evening.key);
+            nudgeSlotRef.current = evening.key;
+            void supabase.functions
+              .invoke("notification-register", {
+                body: {
+                  action: "preferences",
+                  nudgeUtcHour: eveningUtc,
+                  tzOffsetMinutes: offset,
+                },
+              })
+              .catch((err) => captureError(err, "notification-update-preference"));
           }
         }
       } catch (err) {
@@ -250,17 +293,20 @@ export function useNotificationPreferences(): UseNotificationPreferencesReturn {
   const updateNudgeSlot = useCallback(async (slotKey: NudgeTimeSlotKey) => {
     const slot = NUDGE_TIME_SLOTS.find((sl) => sl.key === slotKey);
     if (!slot) return;
-    const previous = nudgeSlotRef.current;
     setNudgeSlot(slotKey);
     try {
-      const utcHour = localHourToUtcHour(slot.localHour, new Date().getTimezoneOffset());
+      const offset = new Date().getTimezoneOffset();
+      const utcHour = localHourToUtcHour(slot.localHour, offset);
       const { error } = await supabase.functions.invoke("notification-register", {
-        body: { action: "preferences", nudgeUtcHour: utcHour },
+        body: { action: "preferences", nudgeUtcHour: utcHour, tzOffsetMinutes: offset },
       });
       if (error) throw error;
       nudgeSlotRef.current = slotKey;
     } catch (err) {
-      setNudgeSlot(previous);
+      // R1: roll back to the LATEST server-confirmed slot at catch time —
+      // a pre-await snapshot goes stale under overlapping taps and would
+      // desync the UI from the server permanently.
+      setNudgeSlot(nudgeSlotRef.current);
       captureError(err, "notification-update-preference");
       throw err;
     }

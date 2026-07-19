@@ -87,7 +87,11 @@ function composeNudgeBody(row: NudgeRow): string {
   if (row.top_error_description && row.top_error_description.trim().length > 0) {
     let snippet = row.top_error_description.trim();
     if (snippet.length > NUDGE_ERROR_SNIPPET_MAX) {
-      snippet = `${snippet.slice(0, NUDGE_ERROR_SNIPPET_MAX)}…`;
+      // R1: code-POINT slice (spread iterates by code point) — a bare
+      // .slice() can split a UTF-16 surrogate pair at the cut, rendering
+      // U+FFFD on the lock screen or invalidating the Expo chunk. Same
+      // invariant the client pins in truncateToBytes (Story 11-7).
+      snippet = `${[...snippet].slice(0, NUDGE_ERROR_SNIPPET_MAX).join("")}…`;
     }
     return `Ready for 10 minutes of French? "${snippet}" could use a rematch.`;
   }
