@@ -68,6 +68,13 @@ export interface MockTestInProgressSummary {
 // speaking-results detail screen ships, add `"speaking"` back to
 // `PastResultTestType` + `PAST_RESULT_TEST_TYPES` below + add a speaking
 // branch in `reconstructTestResultsFromMockTestRow`.
+//
+// Story 20-4 R1 dependency note: the results screen's speaking-honesty
+// disclosure AND its 0-20 scale-aware rendering both key on
+// `results.testType === "speaking"`. Any future reconstruction branch MUST
+// preserve `testType: "speaking"` in the reconstructed payload, or historical
+// speaking results will render on the /699 scale with no pronunciation
+// disclosure — the exact dishonesty Story 20-4 removed.
 export type PastResultTestType = "full" | "listening" | "reading";
 
 export interface MockTestPastResult {

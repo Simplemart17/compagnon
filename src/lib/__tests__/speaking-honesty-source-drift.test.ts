@@ -61,8 +61,6 @@ describe("Story 20-4 — evaluator prompt honesty (runtime output pins)", () => 
   });
 
   it("NEGATIVE: the pre-20-4 unhearable-signal bullets are gone from the rubric", () => {
-    // Scope to the rubric section so the honesty-contract block (which names
-    // these signals in order to FORBID them) doesn't false-positive.
     const rubricStart = PROMPT.indexOf("## Evaluation Rubric");
     const rubric = PROMPT.slice(rubricStart);
     expect(rubricStart).toBeGreaterThan(-1);
@@ -71,18 +69,47 @@ describe("Story 20-4 — evaluator prompt honesty (runtime output pins)", () => 
     expect(rubric).not.toContain("### 1. Pronunciation & Fluency");
   });
 
-  it("storage compatibility: the JSON field name pronunciationFluencyScore is unchanged", () => {
-    // Renaming the field would break speakingTaskEvaluationSchema + every
-    // stored mock_tests.section_scores JSONB row (Story 10-6 forward-only
-    // persistence rule).
-    expect(PROMPT).toContain('"pronunciationFluencyScore"');
+  it("R1: NO unhearable-signal words ANYWHERE outside the honesty-contract block — across all 3 tasks", () => {
+    // Review round 1 caught TASK_RUBRIC_FOCUS[1] still demanding "natural
+    // conversational rhythm" in the '## Evaluation Task' section, ABOVE the
+    // rubric slice the original negative pin scanned. This case removes the
+    // blind spot: strip the contract block (which names the signals in order
+    // to FORBID them), then scan the ENTIRE remaining prompt — for every
+    // task number, since the rubric-focus line varies per task.
+    const UNHEARABLE =
+      /\brhythm\b|\bintonation\b|\barticulation\b|\bliaison\b|\belision\b|\bpronunciation\b/i;
+    for (const taskNumber of [1, 2, 3] as const) {
+      const prompt = buildSpeakingEvaluatorPrompt({
+        cefrLevel: "B1",
+        taskNumber,
+        taskInstruction: "Présentez-vous.",
+        transcript: "Bonjour, je m'appelle Marie.",
+      });
+      const contractStart = prompt.indexOf("## What You Can and Cannot Observe");
+      const contractEnd = prompt.indexOf("## Evaluation Task");
+      expect(contractStart).toBeGreaterThan(-1);
+      expect(contractEnd).toBeGreaterThan(contractStart);
+      const outsideContract = prompt.slice(0, contractStart) + prompt.slice(contractEnd);
+      // NOTE: \bpronunciation\b does NOT match the camelCase field name
+      // "pronunciationFluencyScore" (no word boundary before "Fluency") or
+      // the French category label "Prononciation" (different spelling).
+      const match = outsideContract.match(UNHEARABLE);
+      expect(match?.[0] ?? null).toBeNull();
+    }
   });
 
-  it("composite formula unchanged: 5 dimensions × 0-20, ×1.0 mapping", () => {
-    expect(PROMPT).toContain(
-      "overallScore = (pronunciationFluencyScore + vocabularyScore + grammarScore + interactionScore + sociolinguisticScore) × 1.0"
-    );
+  it("storage compatibility: the JSON field name pronunciationFluencyScore is unchanged, with numeric placeholder", () => {
+    // Renaming the field would break speakingTaskEvaluationSchema + every
+    // stored mock_tests.section_scores JSONB row (Story 10-6 forward-only
+    // persistence rule). R1: the placeholder must stay the sibling-uniform
+    // "<0-20>" — prose inside the JSON example risks a string-typed emission
+    // that burns a Story 9-7 schema retry.
+    expect(PROMPT).toContain('"pronunciationFluencyScore": <0-20>,');
   });
+
+  // The composite-formula literal is pinned by speaking.test.ts (its owner
+  // suite) — deliberately NOT duplicated here (R1: double-maintenance for
+  // zero added protection; both pins fail together on the same string).
 });
 
 describe("Story 20-4 — user-facing disclosure drift pins", () => {
@@ -91,6 +118,21 @@ describe("Story 20-4 — user-facing disclosure drift pins", () => {
     expect(src).toMatch(/results\.testType === "speaking"/);
     expect(src).toContain("pronunciation is not scored from exam recordings");
     expect(src).toMatch(/practice\/pronunciation/);
+  });
+
+  it("R1: results screen renders speaking on the 0-20 publisher scale, not /699", () => {
+    // Speaking composites are 0-20 (Story 10-2 computeSpeakingScore0to20);
+    // pre-R1 the score ring hardcoded "/ 699", colored 16/20 as failing red
+    // via the 0-699 bands, and rendered a nonsense distance-to-C1 card —
+    // directly beneath the 20-4 honesty note.
+    const src = readSrc("app/(tabs)/mock-test/results.tsx");
+    expect(src).toMatch(/isSpeakingScale \? 20 : 699/);
+    expect(src).toMatch(/\{scoreDenominator\}/);
+    // Distance-to-C1 is meaningless on a 0-20 scale.
+    expect(src).toMatch(/!isSpeakingScale && distanceToC1 > 0/);
+    // NEGATIVE: no hardcoded /699 remains in the score ring or section bar.
+    expect(src).not.toMatch(/\/ 699\s*</);
+    expect(src).not.toMatch(/tcfScore \/ 699/);
   });
 
   it("conversation feedback sheet: metrics are labeled as practice, not exam", () => {

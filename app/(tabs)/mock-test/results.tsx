@@ -61,8 +61,18 @@ export default function MockTestResultsScreen() {
   // UX continuity hint — `TCF.C1_MIN` is the UI round-number band per
   // src/types/cefr.ts CEFR_LEVELS JSDoc. For IRCC math, use
   // src/lib/ircc-bands.ts instead.
+  // Story 20-4 R1: speaking composites are on the PUBLISHER 0-20 scale
+  // (Story 10-2 — computeSpeakingScore0to20), NOT the 0-699 TCF scale. The
+  // pre-R1 render showed a strong 16/20 as "16 / 699" in failing red with a
+  // nonsense "~484 points to C1" card — directly beneath the 20-4 honesty
+  // note. Scale-aware rendering: /20 denominator, CEFR-level color (the
+  // 0-699 color bands are meaningless at 0-20), no distance-to-C1 card.
+  const isSpeakingScale = results.testType === "speaking";
+  const scoreDenominator = isSpeakingScale ? 20 : 699;
   const distanceToC1 = Math.max(0, TCF.C1_MIN - results.overallTcfScore);
-  const scoreColor = getScoreColor(results.overallTcfScore);
+  const scoreColor = isSpeakingScale
+    ? (LEVEL_COLORS[results.overallCefrLevel as CEFRLevel] ?? Colors.gray500)
+    : getScoreColor(results.overallTcfScore);
 
   return (
     <ScrollView
@@ -72,7 +82,7 @@ export default function MockTestResultsScreen() {
       {/* Overall Score */}
       <View
         className="items-center mb-8"
-        accessibilityLabel={`Your estimated TCF score: ${results.overallTcfScore} out of 699, CEFR level ${results.overallCefrLevel}. Estimated from practice items, not an official TCF prediction.`}
+        accessibilityLabel={`Your estimated TCF score: ${results.overallTcfScore} out of ${scoreDenominator}, CEFR level ${results.overallCefrLevel}. Estimated from practice items, not an official TCF prediction.`}
       >
         <Text className="text-sm mb-2" style={{ color: Colors.gray700 }}>
           Your Estimated TCF Score
@@ -86,7 +96,7 @@ export default function MockTestResultsScreen() {
         >
           <Text className="text-[48px] font-extrabold text-primary">{results.overallTcfScore}</Text>
           <Text className="text-xs" style={{ color: Colors.gray500 }}>
-            / 699
+            / {scoreDenominator}
           </Text>
         </View>
 
@@ -147,7 +157,7 @@ export default function MockTestResultsScreen() {
         )}
 
         {/* Distance to C1 */}
-        {distanceToC1 > 0 && (
+        {!isSpeakingScale && distanceToC1 > 0 && (
           <View
             className="bg-accent/10 rounded-xl p-4 mt-4 w-full items-center"
             accessibilityLabel={`${distanceToC1} points away from C1 level`}
@@ -195,13 +205,15 @@ export default function MockTestResultsScreen() {
       <View className="gap-3 mb-6">
         {Object.entries(results.sections).map(([sectionKey, sectionResult]) => {
           const meta = SECTION_LABELS[sectionKey];
-          const sectionColor = getScoreColor(sectionResult.tcfScore);
+          const sectionColor = isSpeakingScale
+            ? (LEVEL_COLORS[sectionResult.cefrLevel as CEFRLevel] ?? Colors.gray500)
+            : getScoreColor(sectionResult.tcfScore);
 
           return (
             <View
               key={sectionKey}
               className="bg-white rounded-2xl p-4 border border-surface-300"
-              accessibilityLabel={`${meta?.name}: TCF score ${sectionResult.tcfScore}, ${sectionResult.cefrLevel} level, ${sectionResult.correct} of ${sectionResult.total} correct`}
+              accessibilityLabel={`${meta?.name}: score ${sectionResult.tcfScore} out of ${scoreDenominator}, ${sectionResult.cefrLevel} level${isSpeakingScale ? `, ${sectionResult.total} tasks` : `, ${sectionResult.correct} of ${sectionResult.total} correct`}`}
             >
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center gap-2">
@@ -211,7 +223,9 @@ export default function MockTestResultsScreen() {
                   <View>
                     <Text className="text-base font-bold text-primary">{meta?.name}</Text>
                     <Text className="text-[11px]" style={{ color: Colors.gray500 }}>
-                      {sectionResult.correct}/{sectionResult.total} correct
+                      {isSpeakingScale
+                        ? `${sectionResult.total} tasks`
+                        : `${sectionResult.correct}/${sectionResult.total} correct`}
                     </Text>
                   </View>
                 </View>
@@ -245,7 +259,7 @@ export default function MockTestResultsScreen() {
                 <View
                   style={{
                     height: 6,
-                    width: `${Math.min(100, (sectionResult.tcfScore / 699) * 100)}%`,
+                    width: `${Math.min(100, (sectionResult.tcfScore / scoreDenominator) * 100)}%`,
                     backgroundColor: sectionColor,
                     borderRadius: 3,
                   }}
