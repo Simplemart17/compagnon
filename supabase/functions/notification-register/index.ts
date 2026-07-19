@@ -199,13 +199,22 @@ Deno.serve(async (req: Request) => {
       }
 
       case "preferences": {
-        const { streakAlerts, srsReminders } = body;
+        // Story 18-3: dailyNudge (boolean) + nudgeUtcHour (0-23 integer,
+        // client-converted from the user's local choice) join the two
+        // existing boolean prefs.
+        const { streakAlerts, srsReminders, dailyNudge, nudgeUtcHour, tzOffsetMinutes } = body;
 
-        if (streakAlerts === undefined && srsReminders === undefined) {
+        if (
+          streakAlerts === undefined &&
+          srsReminders === undefined &&
+          dailyNudge === undefined &&
+          nudgeUtcHour === undefined &&
+          tzOffsetMinutes === undefined
+        ) {
           return errorResponse({
             code: "INVALID_PARAMS",
             message:
-              "At least one preference must be provided: streakAlerts or srsReminders",
+              "At least one preference must be provided: streakAlerts, srsReminders, dailyNudge, or nudgeUtcHour",
             status: 400,
             corsHeaders,
           });
@@ -213,26 +222,96 @@ Deno.serve(async (req: Request) => {
 
         if (
           (streakAlerts !== undefined && typeof streakAlerts !== "boolean") ||
-          (srsReminders !== undefined && typeof srsReminders !== "boolean")
+          (srsReminders !== undefined && typeof srsReminders !== "boolean") ||
+          (dailyNudge !== undefined && typeof dailyNudge !== "boolean")
         ) {
           return errorResponse({
             code: "INVALID_PARAMS",
-            message: "streakAlerts and srsReminders must be boolean values",
+            message: "streakAlerts, srsReminders, and dailyNudge must be boolean values",
             status: 400,
             corsHeaders,
           });
         }
 
-        const updates: Record<string, boolean> = {};
+        if (
+          nudgeUtcHour !== undefined &&
+          (typeof nudgeUtcHour !== "number" ||
+            !Number.isInteger(nudgeUtcHour) ||
+            nudgeUtcHour < 0 ||
+            nudgeUtcHour > 23)
+        ) {
+          return errorResponse({
+            code: "INVALID_PARAMS",
+            message: "nudgeUtcHour must be an integer between 0 and 23",
+            status: 400,
+            corsHeaders,
+          });
+        }
+
+        // Story 18-3 R1: client-reported getTimezoneOffset() (minutes WEST
+        // of UTC) — lets the nudge RPC compare last_active_date (a
+        // client-LOCAL date per Story 9-2) against the user's LOCAL today.
+        if (
+          tzOffsetMinutes !== undefined &&
+          (typeof tzOffsetMinutes !== "number" ||
+            !Number.isInteger(tzOffsetMinutes) ||
+            tzOffsetMinutes < -720 ||
+            tzOffsetMinutes > 840)
+        ) {
+          return errorResponse({
+            code: "INVALID_PARAMS",
+            message: "tzOffsetMinutes must be an integer between -720 and 840",
+            status: 400,
+            corsHeaders,
+          });
+        }
+
+        const updates: Record<string, boolean | number> = {};
         if (streakAlerts !== undefined) updates.streak_alerts = streakAlerts;
         if (srsReminders !== undefined) updates.srs_reminders = srsReminders;
+        if (dailyNudge !== undefined) updates.daily_nudge = dailyNudge;
+        if (nudgeUtcHour !== undefined) updates.nudge_utc_hour = nudgeUtcHour;
+        if (tzOffsetMinutes !== undefined) updates.tz_offset_minutes = tzOffsetMinutes;
 
-        const { data: profile, error: updateError } = await supabase
-          .from("profiles")
-          .update(updates)
-          .eq("id", user.id)
-          .select("streak_alerts, srs_reminders")
-          .single();
+        // Story 18-3 R1 deploy-order armor: this function auto-deploys on
+        // merge while the schema is a manual Dashboard SQL run. If the
+        // nudge columns don't exist yet (Postgres 42703), retry with the
+        // legacy column set so the PRE-EXISTING streak/SRS toggles keep
+        // working; nudge fields degrade to undefined until the SQL lands.
+        let profile: Record<string, unknown> | null = null;
+        let updateError: { code?: string; message?: string } | null = null;
+        {
+          const res = await supabase
+            .from("profiles")
+            .update(updates)
+            .eq("id", user.id)
+            .select("streak_alerts, srs_reminders, daily_nudge, nudge_utc_hour")
+            .single();
+          profile = res.data;
+          updateError = res.error;
+          if (updateError && updateError.code === "42703") {
+            const legacyUpdates: Record<string, boolean | number> = {};
+            if (streakAlerts !== undefined) legacyUpdates.streak_alerts = streakAlerts;
+            if (srsReminders !== undefined) legacyUpdates.srs_reminders = srsReminders;
+            if (Object.keys(legacyUpdates).length === 0) {
+              return errorResponse({
+                code: "INTERNAL_ERROR",
+                message: "Nudge preferences require a schema update that has not been applied yet",
+                status: 500,
+                corsHeaders,
+              });
+            }
+            const legacy = await supabase
+              .from("profiles")
+              .update(legacyUpdates)
+              .eq("id", user.id)
+              .select("streak_alerts, srs_reminders")
+              .single();
+            profile = legacy.data;
+            updateError = legacy.error;
+            console.warn(`[${requestId}] nudge columns missing (42703) — legacy prefs path used`);
+          }
+        }
 
         if (updateError || !profile) {
           console.error(
@@ -251,6 +330,8 @@ Deno.serve(async (req: Request) => {
             success: true,
             streakAlerts: profile.streak_alerts,
             srsReminders: profile.srs_reminders,
+            dailyNudge: profile.daily_nudge,
+            nudgeUtcHour: profile.nudge_utc_hour,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -259,11 +340,28 @@ Deno.serve(async (req: Request) => {
       }
 
       case "get-preferences": {
-        const { data: profile, error: fetchError } = await supabase
-          .from("profiles")
-          .select("streak_alerts, srs_reminders")
-          .eq("id", user.id)
-          .single();
+        // Story 18-3 R1: same 42703 deploy-order armor as the write path.
+        let profile: Record<string, unknown> | null = null;
+        let fetchError: { code?: string; message?: string } | null = null;
+        {
+          const res = await supabase
+            .from("profiles")
+            .select("streak_alerts, srs_reminders, daily_nudge, nudge_utc_hour")
+            .eq("id", user.id)
+            .single();
+          profile = res.data;
+          fetchError = res.error;
+          if (fetchError && fetchError.code === "42703") {
+            const legacy = await supabase
+              .from("profiles")
+              .select("streak_alerts, srs_reminders")
+              .eq("id", user.id)
+              .single();
+            profile = legacy.data;
+            fetchError = legacy.error;
+            console.warn(`[${requestId}] nudge columns missing (42703) — legacy prefs path used`);
+          }
+        }
 
         if (fetchError || !profile) {
           return errorResponse({
@@ -278,6 +376,8 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({
             streakAlerts: profile.streak_alerts,
             srsReminders: profile.srs_reminders,
+            dailyNudge: profile.daily_nudge,
+            nudgeUtcHour: profile.nudge_utc_hour,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },

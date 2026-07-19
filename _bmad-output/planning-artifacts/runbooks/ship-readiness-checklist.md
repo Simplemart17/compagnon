@@ -44,10 +44,12 @@ absent at runtime even though the code is correct.
 `deploy.yml` intentionally does NOT auto-run `supabase db push` (gated on the
 Epic 16.6 rollback playbook). Apply manually:
 
-```bash
-supabase link --project-ref <ref>
-supabase db push   # applies all 16 migrations incl. 20260518000000 cost-cap hardening
-```
+> **DEPRECATED (2026-07-19 schema move):** `supabase db push` targets the old
+> `public`-schema migrations and does NOT apply current DDL. The source of
+> truth is **`supabase/companion-schema.sql`** (schema `companion`, idempotent):
+> paste + run it (or its changed sections) in Dashboard → SQL Editor, and make
+> sure `companion` is in Settings → API → Exposed schemas. See
+> `runbooks/companion-schema-migration.md`.
 
 If migrations are not applied, every RPC (`get_home_aggregate`, the atomic
 activity RPCs, `match_memories`, `match_error_pattern`, and the hardened

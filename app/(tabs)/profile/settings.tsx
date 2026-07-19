@@ -17,13 +17,13 @@ import Constants from "expo-constants";
 import { useAuth } from "@/src/hooks/use-auth";
 import { useAuthStore } from "@/src/store/auth-store";
 import { useToast } from "@/src/hooks/use-toast";
-import { useNotificationPreferences } from "@/src/hooks/use-notifications";
+import { NUDGE_TIME_SLOTS, useNotificationPreferences } from "@/src/hooks/use-notifications";
 import { useThemedDialog } from "@/src/hooks/use-themed-dialog";
 import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
-import { Colors } from "@/src/lib/design";
+import { Colors, Radii } from "@/src/lib/design";
 import { ThemedDialog } from "@/src/components/common/ThemedDialog";
 
 // ---------------------------------------------------------------------------
@@ -107,7 +107,8 @@ export default function SettingsScreen() {
   const { profile, updateProfile, signOut } = useAuth();
   const session = useAuthStore((s) => s.session);
   const { showToast } = useToast();
-  const { preferences, updatePreference, permissionStatus } = useNotificationPreferences();
+  const { preferences, updatePreference, permissionStatus, nudgeSlot, updateNudgeSlot } =
+    useNotificationPreferences();
   const router = useRouter();
   // Story 14-8: themed dialog for high-traffic confirmation flows
   // (sign-out, change level/target/daily-goal, delete-account stage-1).
@@ -604,6 +605,78 @@ export default function SettingsScreen() {
                 accessibilityState={{ checked: preferences.srsReminders }}
               />
             </View>
+
+            <RowDivider />
+
+            {/* Story 18-3: Daily Nudge — the companion reaches out first */}
+            <View className="flex-row items-center justify-between" style={{ minHeight: 44 }}>
+              <Text className="text-[15px] text-primary">Daily Conversation Nudge</Text>
+              <Switch
+                value={preferences.dailyNudge}
+                onValueChange={async (value) => {
+                  try {
+                    await updatePreference("dailyNudge", value);
+                    showToast({ type: "success", message: "Notification preference updated" });
+                  } catch {
+                    showToast({ type: "error", message: "Failed to update preference" });
+                  }
+                }}
+                trackColor={{ false: Colors.gray300, true: Colors.primary }}
+                thumbColor={Colors.surfaceWhite}
+                accessibilityRole="switch"
+                accessibilityLabel="Daily conversation nudge"
+                accessibilityState={{ checked: preferences.dailyNudge }}
+              />
+            </View>
+
+            {/* Story 18-3: nudge time slot (only meaningful when enabled) */}
+            {preferences.dailyNudge && (
+              <View style={{ minHeight: 44, paddingVertical: 6 }}>
+                <Text className="mb-2 text-[13px]" style={{ color: Colors.gray700 }}>
+                  Nudge time
+                </Text>
+                <View className="flex-row" accessibilityRole="radiogroup">
+                  {NUDGE_TIME_SLOTS.map((slot) => {
+                    const active = nudgeSlot === slot.key;
+                    return (
+                      <TouchableOpacity
+                        key={slot.key}
+                        onPress={async () => {
+                          try {
+                            await updateNudgeSlot(slot.key);
+                            showToast({
+                              type: "success",
+                              message: "Nudge time updated",
+                            });
+                          } catch {
+                            showToast({ type: "error", message: "Failed to update preference" });
+                          }
+                        }}
+                        accessibilityRole="radio"
+                        accessibilityLabel={`Nudge time: ${slot.label}`}
+                        accessibilityState={{ selected: active }}
+                        style={{
+                          paddingHorizontal: 14,
+                          paddingVertical: 8,
+                          borderRadius: Radii.chip,
+                          marginRight: 8,
+                          minHeight: 36,
+                          justifyContent: "center",
+                          backgroundColor: active ? Colors.primary : Colors.gray100,
+                        }}
+                      >
+                        <Text
+                          className="text-[13px] font-semibold"
+                          style={{ color: active ? Colors.surfaceWhite : Colors.gray700 }}
+                        >
+                          {slot.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
 
             {/* Enable Notifications — shown when permission denied */}
             {permissionStatus === "denied" && (

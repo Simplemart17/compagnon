@@ -183,8 +183,10 @@ jobs:
 
       - name: Validate SQL migrations
         run: |
-          # Ensure all migration files parse as valid SQL (basic syntax check)
-          for f in supabase/migrations/*.sql; do
+          # Ensure all migration files parse as valid SQL (basic syntax check).
+          # Post-schema-move (2026-07-19) supabase/companion-schema.sql is the
+          # DB source of truth — validate it with the same checks.
+          for f in supabase/migrations/*.sql supabase/companion-schema.sql; do
             if [ -f "$f" ]; then
               # Check for common syntax issues: unmatched quotes, missing semicolons at EOF
               if ! tail -c 1 "$f" | grep -q ';' && ! tail -1 "$f" | grep -qE '^\s*(\$\$;|;)\s*$'; then
