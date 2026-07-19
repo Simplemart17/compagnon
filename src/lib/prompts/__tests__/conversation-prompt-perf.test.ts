@@ -35,24 +35,25 @@
  *     rate per `supabase/functions/_shared/cost-table.ts` `MODEL_RATES`
  *     (Story 11-4 quarterly refresh discipline; next refresh due
  *     2026-08-12).
- *   - For the worst-case prompt at ~MAX_WORST_CASE_TOKENS ≈ 1,759 tokens,
- *     per-session input cost is bounded at ~$0.0176 (~1.76 cents). At
- *     Story 11-4's $1.00/user daily cap, the prompt-input cost is ~1.8%
- *     of the cap — negligible.
+ *   - MAX_WORST_CASE_TOKENS is DERIVED (chars/4 of the worst-case bound) —
+ *     post-Story-18-1 it computes to ~2,066 tokens, bounding per-session
+ *     prompt-input cost at ~$0.0207 (~2.1 cents). At Story 11-4's
+ *     $1.00/user daily cap that is ~2.1% of the cap — still negligible.
+ *     (Pre-18-1 the derived value was 1,759 tokens / ~1.76 cents.)
  *
- * Observed values (calibrated 2026-05-15 against `buildConversationPrompt`
- * post-Story-11-7 + post-Story-13-7):
+ * Observed values (recalibrated 2026-07-18 against `buildConversationPrompt`
+ * post-Story-18-1 — persona + driver + comprehension-support blocks; the
+ * 2026-05-15 post-11-7/13-7 baseline was B1 base = 4,101 chars):
  *   - Base prompt (B1 companion mode, empty memories + errorPatterns):
- *     4,101 chars (~1,025 tokens).
+ *     5,285 chars (~1,321 tokens).
  *   - Per-CEFR base sizes:
- *     A1: 3,995 / A2: 4,018 / B1: 4,101 / B2: 4,062 / C1: 4,125 / C2: 4,053
- *     (3.3% spread — small per-CEFR variance via vocab-tier blocks).
- *   - Per-mode base sizes (B1 companion default):
- *     companion: 4,101 / debate: 5,045 / tcf_simulation: 4,811
- *     (23% spread — mode-specific block additions per Story 10-7).
- *   - Worst-case prompt (B1 + 20 memories at 300 chars + 20 error patterns
- *     at 300 chars): 5,923 chars (~1,481 tokens).
- *   - Tail delta (post-11-7): 1,822 chars.
+ *     A1: 5,280 / A2: 5,303 / B1: 5,285 / B2: 5,248 / C1: 5,311 / C2: 5,239
+ *     (small per-CEFR variance via vocab-tier + comprehension blocks).
+ *   - Per-mode base sizes (B1 default):
+ *     companion: 5,285 / debate: 6,229 / tcf_simulation: 5,019
+ *     (tcf_simulation gains ONLY the close-pal Role bullet — driver +
+ *     comprehension blocks are mode-gated out per Story 10-6).
+ *   - Tail delta (post-11-7, UNCHANGED by 18-1): 1,822 chars.
  *   - Hypothetical pre-11-7 tail: 2 × 20 × (300 + 4) = 12,160 chars.
  *   - **EMPIRICAL REDUCTION RATIO: 6.7×** (NOT 25× as Story 11-7 claimed —
  *     see the JSDoc on `MIN_REDUCTION_RATIO` below for the discrepancy
@@ -79,23 +80,47 @@ import type { ConversationMode } from "@/src/types/conversation";
 // ============================================================================
 
 /**
- * Calibration: observed 2026-05-15 against post-Story-11-7 + post-13-7
+ * Calibration: observed 2026-07-18 against the post-Story-18-1
  * prompt-builder. Bounds calculated as `Math.floor(observed × 0.98)` (min)
  * and `Math.ceil(observed × 1.02)` (max) per Story 13-7 P3 lesson.
  *
- * Per-CEFR observed values (B1 companion mode used as the canonical base):
- *   A1: 3995  / A2: 4018  / B1: 4101  / B2: 4062  / C1: 4125  / C2: 4053
- * Per-mode observed values (B1 cefr used as the canonical level):
- *   companion: 4101  /  debate: 5045  /  tcf_simulation: 4811
+ * DELIBERATE RECALIBRATION (Story 18-1): the conversation-driver +
+ * comprehension-support blocks (companion + debate modes) and the
+ * close-pal Role bullet (all modes) grow the base prompt by ~1,200 chars
+ * (~300 tokens ≈ +$0.003/session at gpt-realtime-mini input rates — an
+ * accepted cost for the buddy behavior; see v2-vision-roadmap.md Epic 18).
+ * The Story 11-7 user-derived TAIL constants are untouched — Cases 3 + 4
+ * (tail budget + reduction ratio) still pass against the original bounds.
  *
- * MIN bound uses min-across-CEFR (A1 = 3995) — the per-CEFR test (Case 5)
- * iterates ALL 6 levels against the same MIN bound, so the floor must
- * accommodate the smallest observed base.
+ * Per-CEFR observed values, FINAL post-R1 shape (B1 companion = canonical):
+ *   A1: 5280  / A2: 5303  / B1: 5285  / B2: 5248  / C1: 5311  / C2: 5239
+ * Per-mode observed values (B1 cefr used as the canonical level):
+ *   companion: 5285  /  debate: 6229  /  tcf_simulation: 5019
+ *   (tcf_simulation gains ONLY the Role bullet — the driver + comprehension
+ *   blocks are mode-gated out per the Story 10-6 prep-window contract)
+ *
+ * The constants below were set from the initial 18-1 measurement (B1 5305 /
+ * C2 5259 / C1 5331 / debate 6249 / tcf 5010); the R1 prompt patches
+ * (deferential French rule + trimmed nudge bullet) shifted every surface by
+ * ≤ ~25 chars, all still comfortably inside the bands, so the constants are
+ * intentionally NOT re-derived — one calibration event per story.
+ *
+ * MIN bound uses min-across-CEFR — the per-CEFR test (Case 5) iterates ALL
+ * 6 levels against the same MIN bound, so the floor must accommodate the
+ * smallest observed base (C2).
  */
-const BASE_PROMPT_MIN_CHARS = 3915; // floor(3995 × 0.98); A1 is the smallest base
-const BASE_PROMPT_MAX_CHARS = 4184; // ceil(4101 × 1.02); B1 used as canonical Case 1 base
-const BASE_PROMPT_MAX_CHARS_PER_LEVEL = 4208; // ceil(4125 × 1.02); C1 is the largest per-level base
-const BASE_PROMPT_MAX_CHARS_PER_MODE = 5146; // ceil(5045 × 1.02); debate-mode is the largest per-mode base
+const BASE_PROMPT_MIN_CHARS = 5153; // floor(5259 × 0.98); C2 is the smallest base post-18-1
+const BASE_PROMPT_MAX_CHARS = 5412; // ceil(5305 × 1.02); B1 used as canonical Case 1 base
+const BASE_PROMPT_MAX_CHARS_PER_LEVEL = 5438; // ceil(5331 × 1.02); C1 is the largest per-level base
+const BASE_PROMPT_MAX_CHARS_PER_MODE = 6374; // ceil(6249 × 1.02); debate-mode is the largest per-mode base
+// Story 18-1: tcf_simulation is now the SMALLEST mode because the driver +
+// comprehension blocks are mode-gated out of exam simulation — it sits below
+// the companion-calibrated BASE_PROMPT_MIN_CHARS by design, so the per-mode
+// floor gets its own constant. NOTE: this floor alone cannot detect a mode
+// silently LOSING the new blocks — the content-presence pins in
+// conversation.test.ts (Story 18-1 R1 describe block) are the load-bearing
+// guard for block presence/absence per mode.
+const BASE_PROMPT_MIN_CHARS_PER_MODE = 4909; // floor(5010 × 0.98); tcf_simulation is the smallest per-mode base
 
 /**
  * Line-prefix overhead per user-derived item: "- " (2 chars) + "\n".
@@ -291,7 +316,10 @@ describe("Story 13-8 — buildConversationPrompt perf verification", () => {
 
     it.each(MODES)("%s mode base prompt size ≤ BASE_PROMPT_MAX_CHARS_PER_MODE", (mode) => {
       const prompt = buildConversationPrompt({ ...baseArgs, mode });
-      expect(prompt.length).toBeGreaterThanOrEqual(BASE_PROMPT_MIN_CHARS);
+      // Story 18-1: per-mode floor (tcf_simulation deliberately lacks the
+      // driver + comprehension blocks, so it sits below the companion-
+      // calibrated BASE_PROMPT_MIN_CHARS).
+      expect(prompt.length).toBeGreaterThanOrEqual(BASE_PROMPT_MIN_CHARS_PER_MODE);
       expect(prompt.length).toBeLessThanOrEqual(BASE_PROMPT_MAX_CHARS_PER_MODE);
     });
   });
