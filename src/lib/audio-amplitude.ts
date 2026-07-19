@@ -14,13 +14,14 @@
  * Reanimated SharedValue, NEVER through React state (a setState at delta
  * cadence would recreate the exact render storm Story 13-1 killed).
  *
- * KNOWN v1 LIMITATION (review R1, follow-up
- * `18-4-followup-playback-clocked-amplitude`): the level is computed at
- * delta-ARRIVAL time. Chunks arrive from the network faster than the audio
- * plays back, so the mouth LEADS the heard audio by the playback-queue
- * depth, and the boundary zero fires ~300-800ms before the speaker drains
- * (see AI_SPEECH_COOLDOWN_MS in the orchestrator). Syllable-accurate
- * lip-sync needs playback-position callbacks from the native audio layer.
+ * PACING (completion pass — review R1 finding #7 FIXED): levels are NOT
+ * emitted at delta-arrival time. Each chunk's playback duration is derived
+ * from its byte length and the level is replayed through
+ * `AmplitudeEnvelopePacer` (amplitude-pacer.ts) at playback pace, with the
+ * buffered tail draining naturally after `audio.done`. Residual error
+ * (start latency, underruns) is documented on the pacer; true
+ * playback-position callbacks remain the gold standard
+ * (`18-4-followup-playback-clocked-amplitude`, narrowed).
  *
  * Level ≠ raw RMS: conversational speech RMS rarely exceeds ~0.35 of
  * full-scale, so the raw value is perceptually boosted (×2.8, clamped to 1)

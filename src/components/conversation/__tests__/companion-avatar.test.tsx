@@ -14,11 +14,15 @@ jest.mock("react-native-reanimated", () =>
   require("@/src/test-utils/mocks/reanimated").reanimatedMockFactory()
 );
 
-import { create, act } from "react-test-renderer";
+import { act } from "react-test-renderer";
 
 import { AvatarStatusLabel, CompanionAvatar } from "@/src/components/conversation/CompanionAvatar";
 import { type AvatarState } from "@/src/lib/avatar-state";
-import { findAllNodes } from "@/src/test-utils/react-test-renderer";
+import {
+  findAllNodes,
+  mountWithAct,
+  registerMountCleanup,
+} from "@/src/test-utils/react-test-renderer";
 
 const ALL_STATES: AvatarState[] = [
   "idle",
@@ -29,23 +33,17 @@ const ALL_STATES: AvatarState[] = [
   "celebrating",
 ];
 
-function mount(el: React.ReactElement) {
-  let renderer!: ReturnType<typeof create>;
-  act(() => {
-    renderer = create(el);
-  });
-  return renderer;
-}
+registerMountCleanup();
 
 describe("Story 18-4 — CompanionAvatar", () => {
   it.each(ALL_STATES)("renders without crashing in state %s", (state) => {
-    const renderer = mount(<CompanionAvatar state={state} />);
+    const renderer = mountWithAct(<CompanionAvatar state={state} />);
     expect(renderer.toJSON()).toBeTruthy();
     act(() => renderer.unmount());
   });
 
   it("root container is decorative for screen readers (3-prop cross-platform contract, Story 14-3 R1-P1)", () => {
-    const renderer = mount(<CompanionAvatar state="idle" />);
+    const renderer = mountWithAct(<CompanionAvatar state="idle" />);
     const decorative = findAllNodes(renderer, (n) => n.props?.accessibilityElementsHidden === true);
     expect(decorative.length).toBeGreaterThan(0);
     expect(decorative[0].props.importantForAccessibility).toBe("no-hide-descendants");
@@ -54,10 +52,10 @@ describe("Story 18-4 — CompanionAvatar", () => {
   });
 
   it("thinking state mounts the three thinking dots; other states do not", () => {
-    const thinking = mount(<CompanionAvatar state="thinking" />);
+    const thinking = mountWithAct(<CompanionAvatar state="thinking" />);
     const thinkingJson = JSON.stringify(thinking.toJSON());
     act(() => thinking.unmount());
-    const idle = mount(<CompanionAvatar state="idle" />);
+    const idle = mountWithAct(<CompanionAvatar state="idle" />);
     const idleJson = JSON.stringify(idle.toJSON());
     act(() => idle.unmount());
     // The dots are the only marginLeft:5 members of the tree.
@@ -82,7 +80,7 @@ describe("Story 18-4 — AvatarStatusLabel copy (EN chrome, Story 14-1)", () => 
   };
 
   it.each(ALL_STATES)("state %s renders its label with a polite live region", (state) => {
-    const renderer = mount(<AvatarStatusLabel state={state} />);
+    const renderer = mountWithAct(<AvatarStatusLabel state={state} />);
     const json = JSON.stringify(renderer.toJSON());
     expect(json).toContain(EXPECTED[state]);
     expect(json).toContain('"accessibilityLiveRegion":"polite"');

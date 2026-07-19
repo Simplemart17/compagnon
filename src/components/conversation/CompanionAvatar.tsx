@@ -500,20 +500,10 @@ export const CompanionAvatar = React.memo(function CompanionAvatar({
           bodyStyle,
         ]}
       >
-        {/* Top-left sheen */}
-        <View
-          style={{
-            position: "absolute",
-            top: size * 0.12,
-            left: size * 0.16,
-            width: size * 0.34,
-            height: size * 0.34,
-            borderRadius: size * 0.17,
-            backgroundColor: Colors.whiteAlpha35,
-            opacity: 0.5,
-          }}
-        />
-
+        {/* Review R1 (B#4): the AIOrb's top-left sheen was dropped as dead
+            paint — a white-alpha highlight on the now-constant-white face is
+            invisible in every state. Depth comes from the per-state glow +
+            breath instead. */}
         {/* Eyes */}
         <Animated.View
           style={[
