@@ -6,7 +6,10 @@
  * Record-and-grade flow for the 3 production tasks of TCF Canada Expression
  * Orale. Each task: present prompt → record audio (low-bitrate AAC so the
  * 5.5-min Task 2 fits the 5 MB ai-proxy cap) → transcribe via Whisper →
- * evaluate via gpt-4o against the official 4-criterion 0-20 rubric.
+ * evaluate via gpt-4o against the 5-dimension 0-20 rubric (Story 10-6 added
+ * the sociolinguistic dimension; Story 20-4 rescoped dimension 1 to
+ * transcript-observable Fluency & Coherence — pronunciation is NOT scored
+ * from exam recordings because Whisper normalizes it away).
  *
  * Persists one `mock_tests` row (`test_type="speaking"`) and 3
  * `mock_test_answers` rows (one per task; `selected_option=transcript`,
@@ -629,11 +632,13 @@ export default function SpeakingMockTestScreen() {
 
     // Story 21-2 R1: speaking runs in this static route, not [testId].tsx —
     // without this emission every Expression Orale completion is invisible
-    // to analytics. Speaking composites are on the 0-20 PUBLISHER scale
-    // (Story 10-2), so the band converts via /20, not /699.
+    // to analytics. Story 20-4 R2 fix: `compositeOverall` is ALREADY the
+    // 0-100 composite (computeSpeakingComposite); the previous `/20 × 100`
+    // treated it as the 0-20 publisher `totalScore` and inflated the band
+    // input ×5, top-banding essentially every completion.
     trackEvent(ANALYTICS_EVENTS.MOCK_TEST_COMPLETED, {
       test_type: "speaking",
-      score_band: scoreBand(Math.round((summary.compositeOverall / 20) * 100)),
+      score_band: scoreBand(Math.round(summary.compositeOverall)),
     });
 
     const navResults = {

@@ -393,7 +393,7 @@ function normalizeTranscriptForPrompt(input: string): string {
 }
 
 const TASK_RUBRIC_FOCUS: Record<SpeakingTaskNumber, string> = {
-  1: "directed interview — focus on appropriateness of answer length, accuracy of personal information, and natural conversational rhythm",
+  1: "directed interview — focus on appropriateness of answer length, accuracy of personal information, and responsiveness to the interview questions",
   2: "interactive scenario — focus on task fulfillment (did the user address all elements of the scenario?), register appropriateness, and pragmatic competence",
   3: "viewpoint expression — focus on argumentation structure, use of connectors, vocabulary precision, and ability to defend a position",
 };
@@ -439,7 +439,10 @@ export function buildSpeakingEvaluatorPrompt(params: {
       ? `\n\n## Task 2 Preparation-Window Note\nTask 2 includes a built-in 2-minute preparation window inside its 5 min 30 total (publisher: "5 minutes 30 dont 2 minutes de préparation"). The transcript below contains only the user's spoken words — Whisper drops silence, and there are no timestamps to mark where prep ended and active speaking began. **Do NOT penalize fluency or interaction on transcript LENGTH alone for Task 2** — a Task 2 transcript that is shorter than a comparable Task 3 may simply reflect ~2 minutes of prep silence consumed inside the 5:30 envelope, not poor performance. Score on demonstrated quality of the active interaction (register, accuracy, task fulfillment), not on volume of words. Any meta-commentary the user produced while preparing (e.g., "alors, je vais d'abord…") should be treated as out-of-scope thinking-aloud, not as part of the graded response.`
       : "";
 
-  return `You are an expert TCF Canada Expression Orale examiner. You evaluate spoken French with precision and provide constructive feedback calibrated to CEFR level ${cefrLevel}.
+  return `You are an expert TCF Canada Expression Orale examiner. You evaluate a candidate's spoken French FROM A TEXT TRANSCRIPT of their recording, with precision and constructive feedback calibrated to CEFR level ${cefrLevel}.
+
+## What You Can and Cannot Observe (Story 20-4 honesty contract)
+You receive a TRANSCRIPT, not audio. Speech-to-text transcription normalizes pronunciation — a mispronounced word is transcribed as the intended word. You therefore CANNOT hear articulation, intonation, rhythm, accent, liaison, or elision, and you MUST NOT infer, guess, or invent pronunciation quality. You also do NOT know the response duration, so do NOT invent pace or speech-rate judgments. Transcription may also smooth over some spoken disfluencies (fillers, repetitions), so treat a clean-reading transcript as weak evidence of fluency, not proof. Score dimension 1 ONLY on fluency and coherence signals observable in text. Never mention pronunciation, accent, articulation, or intonation in strengths, improvements, or corrections.
 
 ## Evaluation Task
 - TCF Canada Expression Orale — Task ${taskNumber} of 3
@@ -451,11 +454,12 @@ ${buildVocabularyConstraintBlock(cefrLevel)}
 
 ## Evaluation Rubric — Score Each Dimension 0-20 (TCF Expression Orale official scale)
 
-### 1. Pronunciation & Fluency (0-20)
-- Articulation clarity, intonation, rhythm
-- Hesitation and false starts (acceptable at A1-A2; minimal at C1-C2)
-- Liaison and elision when appropriate
-- Speech rate appropriate for ${cefrLevel}
+### 1. Fluency & Coherence (0-20) — transcript-observable signals ONLY
+(Reported under the publisher's Prononciation/Fluidité category, but scored strictly on what a text transcript can show — see the honesty contract above.)
+- Hesitation markers, false starts, and self-repairs WHERE PRESENT in the text (acceptable at A1-A2; minimal at C1-C2). Transcription may have smoothed some disfluencies away — when the text reads clean, weight the remaining bullets instead of inferring strong fluency from their absence
+- Continuity of speech: connected sentences vs fragmented one-word output
+- Discourse flow — connectors, transitions, logical progression between ideas
+- Utterance length and complexity appropriate for ${cefrLevel}
 
 ### 2. Vocabulary Range & Accuracy (0-20)
 - Lexical diversity appropriate for ${cefrLevel}
@@ -501,6 +505,7 @@ ${safeTranscript}
 </USER_TRANSCRIPT>
 
 ## Response Format — JSON ONLY (no prose outside the JSON object)
+Note: the "pronunciationFluencyScore" field carries the Fluency & Coherence dimension — the field NAME is kept for storage compatibility only; its VALUE must follow dimension 1's transcript-only scope. The five dimension scores MUST be plain numbers. "overallScore" may be null if you are not certain of the arithmetic — it is recomputed client-side from the five dimensions.
 {
   "pronunciationFluencyScore": <0-20>,
   "vocabularyScore": <0-20>,

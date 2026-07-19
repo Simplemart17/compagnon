@@ -1,6 +1,17 @@
 /**
  * Realtime conversation speaking-score formula — Story 11-1.
  *
+ * SEMANTICS (Story 20-4 speaking-honesty contract): this number is a
+ * FLUENCY-PRACTICE heuristic — a corrections-per-utterance ratio from the
+ * conversation transcript. It is NOT a pronunciation or exam-grade speaking
+ * assessment: the pipeline never hears audio (corrections arrive via the
+ * `report_correction` tool-call on transcribed text), so articulation,
+ * intonation, and accent are structurally invisible to it. It feeds
+ * `skill_progress.speaking` as PRACTICE evidence for the promotion engine
+ * (Story 9-2) alongside exam-graded Expression Orale mock-test scores; the
+ * conversation feedback sheet labels it accordingly ("Practice metrics from
+ * this conversation — not an exam speaking score").
+ *
  * Pure helper extracted from `src/hooks/use-realtime-voice.ts:657-662` so
  * the formula can be:
  *   1. Unit-tested without rendering the hook.

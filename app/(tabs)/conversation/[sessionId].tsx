@@ -943,6 +943,22 @@ export default function ConversationSessionScreen() {
                         {conversation.feedback.vocabularyUsed} words
                       </Text>
                     </View>
+
+                    {/* Story 20-4 (Epic 20 speaking honesty): these numbers
+                        are conversation-practice metrics (AI-rated fluency /
+                        grammar from the transcript + corrections), NOT an
+                        exam-grade speaking assessment — that lives in the
+                        Expression Orale mock test. */}
+                    <Text
+                      style={{
+                        ...Typography.caption,
+                        color: Colors.whiteAlpha85,
+                        marginTop: 12,
+                      }}
+                      accessibilityRole="text"
+                    >
+                      Practice metrics from this conversation — not an exam speaking score.
+                    </Text>
                   </View>
                 )}
 

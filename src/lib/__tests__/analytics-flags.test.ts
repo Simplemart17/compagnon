@@ -142,7 +142,11 @@ describe("Story 21-2/21-3 — emission-point + privacy drift pins", () => {
     expect(captureIdx).toBeLessThan(persistIdx);
     const speaking = readSrc("app/(tabs)/mock-test/speaking.tsx");
     expect(speaking).toMatch(/ANALYTICS_EVENTS\.MOCK_TEST_COMPLETED/);
-    expect(speaking).toMatch(/summary\.compositeOverall \/ 20/);
+    // Story 20-4 R2: compositeOverall is ALREADY 0-100 — banding it directly
+    // is correct; the pre-R2 `/20 × 100` inflated the band input ×5 and
+    // top-banded every speaking completion.
+    expect(speaking).toMatch(/scoreBand\(Math\.round\(summary\.compositeOverall\)\)/);
+    expect(speaking).not.toMatch(/compositeOverall \/ 20/);
   });
 
   it("[sessionId]: kill switch gates handleStart + both conversation events fire", () => {
