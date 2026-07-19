@@ -9,6 +9,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { invalidateCache, enqueueWrite, CACHE_KEYS } from "@/src/lib/cache";
 import { captureError } from "@/src/lib/sentry";
+import { ANALYTICS_EVENTS, scoreBand, trackEvent } from "@/src/lib/analytics";
 import { classifyError } from "@/src/lib/error-messages";
 import { useToast } from "@/src/hooks/use-toast";
 import {
@@ -392,6 +393,17 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
           question_stem_hashes: questionStemHashes,
         };
 
+        // Story 21-2 R1: capture BEFORE the persist attempt + its offline
+        // early-return — "completed" is a client-side fact, and PostHog's
+        // local queue buffers offline events; placing this below the
+        // offline return made metro-commuter completions (the cohort the
+        // write-queue infra serves) invisible to retention analysis.
+        trackEvent(ANALYTICS_EVENTS.EXERCISE_COMPLETED, {
+          skill,
+          cefr_level: cefrLevel,
+          score_band: scoreBand(score),
+        });
+
         // 1. Save exercise record
         const { error: exerciseError } = await supabase.from("exercises").insert(exerciseData);
         if (exerciseError) {
@@ -414,6 +426,13 @@ Return JSON: { "prompt": "the writing task in French", "context": "brief context
           }
           captureError(exerciseError, "persist-exercise-insert");
         }
+
+        // Story 21-2: funnel event — banded score only (no raw content).
+        trackEvent(ANALYTICS_EVENTS.EXERCISE_COMPLETED, {
+          skill,
+          cefr_level: cefrLevel,
+          score_band: scoreBand(score),
+        });
 
         // 2. Update skill progress with score (running average)
         await updateSkillProgress(userId, skill, cefrLevel, score, 0);

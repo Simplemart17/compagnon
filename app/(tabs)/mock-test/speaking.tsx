@@ -39,6 +39,7 @@ import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { useAudioRecorder, RECORDING_OPTIONS_LOW_BITRATE } from "@/src/hooks/use-audio-recorder";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useAuthStore } from "@/src/store/auth-store";
+import { ANALYTICS_EVENTS, scoreBand, trackEvent } from "@/src/lib/analytics";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
 import { TCF } from "@/src/lib/constants";
 import { hapticLight, hapticSuccess, hapticError } from "@/src/lib/haptics";
@@ -625,6 +626,15 @@ export default function SpeakingMockTestScreen() {
 
     hapticSuccess();
     leaveConfirmedRef.current = true;
+
+    // Story 21-2 R1: speaking runs in this static route, not [testId].tsx —
+    // without this emission every Expression Orale completion is invisible
+    // to analytics. Speaking composites are on the 0-20 PUBLISHER scale
+    // (Story 10-2), so the band converts via /20, not /699.
+    trackEvent(ANALYTICS_EVENTS.MOCK_TEST_COMPLETED, {
+      test_type: "speaking",
+      score_band: scoreBand(Math.round((summary.compositeOverall / 20) * 100)),
+    });
 
     const navResults = {
       sections: {

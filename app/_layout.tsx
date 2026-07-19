@@ -15,6 +15,7 @@ import {
 } from "@/src/hooks/use-notifications";
 import { Colors, Radii, Spacing, Typography } from "@/src/lib/design";
 import { isEmailVerified } from "@/src/lib/email-verification";
+import { ANALYTICS_EVENTS, identifyUser, resetAnalytics, trackEvent } from "@/src/lib/analytics";
 import { captureError, getSentryInitConfig } from "@/src/lib/sentry";
 import { EmailVerificationGate } from "@/src/components/auth/EmailVerificationGate";
 import { AnimatedSplash } from "@/src/components/common/AnimatedSplash";
@@ -111,6 +112,31 @@ function RootLayoutNav() {
   // this, a subsequent re-verify cycle would leave `hasRegisteredNotifications.current`
   // stuck at `true` and the push token would never re-register after the
   // device-token rotation.
+  // Story 21-2: analytics identity lifecycle — opaque UUID only (privacy
+  // contract in src/lib/analytics.ts). Reset on sign-out so a next user on
+  // the same device never inherits the identity.
+  const hasTrackedAppOpen = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedAppOpen.current) {
+      hasTrackedAppOpen.current = true;
+      trackEvent(ANALYTICS_EVENTS.APP_OPENED);
+    }
+  }, []);
+  // R1: reset ONLY on a real identified→signed-out transition. A cold
+  // start has user=null while auth hydrates — resetting there rotates the
+  // anonymous distinct_id AFTER app_opened captured, orphaning the event
+  // and breaking the D1/D7/D30 funnel this module exists to feed.
+  const lastIdentifiedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (user?.id) {
+      identifyUser(user.id);
+      lastIdentifiedIdRef.current = user.id;
+    } else if (lastIdentifiedIdRef.current !== null) {
+      resetAnalytics();
+      lastIdentifiedIdRef.current = null;
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     if (session && !hasRegisteredNotifications.current && isEmailVerified(user)) {
       hasRegisteredNotifications.current = true;

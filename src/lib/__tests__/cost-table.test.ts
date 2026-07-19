@@ -179,6 +179,13 @@ describe("Story 11-5 review patch P10 — Realtime MODEL cost-table pin", () => 
     expect(COST_TABLE_SOURCE).toContain(`"${modelConstant}":`);
   });
 
+  it("Story 21-3 R1: the FULL_MODEL constant also has a MODEL_RATES entry (flag-enabled sessions must not fall through to gpt-4o rates)", () => {
+    const realtimeSource = readFileSync(resolve(__dirname, "../realtime.ts"), "utf-8");
+    const match = realtimeSource.match(/const FULL_MODEL = "([^"]+)"/);
+    expect(match).not.toBeNull();
+    expect(COST_TABLE_SOURCE).toContain(`"${match![1]}":`);
+  });
+
   it("the current MODEL ('gpt-realtime-mini') has both input + output rates", () => {
     // Belt-and-braces: the inline mirror is what the daily-cost-cap pre-check
     // would consume at runtime. Verify the mirror has the entry the realtime

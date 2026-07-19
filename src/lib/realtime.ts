@@ -18,6 +18,7 @@
  */
 
 import { addBreadcrumb, captureError } from "./sentry";
+import { FEATURE_FLAGS, isFeatureEnabled } from "./feature-flags";
 import { requireNetwork } from "./network";
 import { supabase } from "./supabase";
 import { shouldReconnect, type CloseReason } from "./realtime-reconnect";
@@ -51,6 +52,20 @@ const REALTIME_URL = "wss://api.openai.com/v1/realtime";
  * `"gpt-realtime-mini"` (free) or `"gpt-realtime"` (paid).
  */
 const MODEL = "gpt-realtime-mini";
+
+/** Story 20.6 dogfood A/B (via Story 21-3 flags): the full model, gated by
+ * the `realtime-full-model` PostHog flag (per-user condition on the
+ * operator's account). Both models are pinned in cost-table MODEL_RATES. */
+const FULL_MODEL = "gpt-realtime";
+
+/**
+ * Resolve the Realtime model for this session. Default = the pinned MODEL
+ * constant (free tier); the PostHog flag opts specific users into the full
+ * model. Fail-open: flags unreachable → mini (the cheap default).
+ */
+function getRealtimeModel(): string {
+  return isFeatureEnabled(FEATURE_FLAGS.REALTIME_FULL_MODEL) ? FULL_MODEL : MODEL;
+}
 
 /** Connection timeout in milliseconds */
 const CONNECT_TIMEOUT_MS = 15_000;
@@ -208,7 +223,18 @@ export class RealtimeSession {
    * attempts internally call `establishConnection()` directly (NOT through
    * `connect()`) so they don't reset the per-disconnect attempt counter.
    */
+  /**
+   * R1: the model is resolved ONCE per session and pinned here — the flag
+   * store refreshes asynchronously, so resolving at each consumption site
+   * (token invoke + WS URL, plus every Story 11-2 reconnect) could mint a
+   * token for one model and connect with another, or silently swap models
+   * mid-conversation (contaminating the 20.6 A/B and the Story 11-4 cost
+   * pre-flight). Same cached-per-session pattern as `config.systemPrompt`.
+   */
+  private sessionModel: string | null = null;
+
   async connect(): Promise<void> {
+    this.sessionModel = getRealtimeModel();
     this.reconnectAttempts = 0;
     this.intentionallyDisconnected = false;
     this.wasConnected = false;
@@ -258,7 +284,7 @@ export class RealtimeSession {
     // Get ephemeral token from Edge Function (uses GA /v1/realtime/client_secrets endpoint)
     const { data: sessionData, error } = await supabase.functions.invoke("realtime-session", {
       body: {
-        model: MODEL,
+        model: this.sessionModel ?? getRealtimeModel(),
         voice: this.config.voice ?? "coral",
       },
     });
@@ -299,7 +325,7 @@ export class RealtimeSession {
         }
       }, CONNECT_TIMEOUT_MS);
 
-      const url = `${REALTIME_URL}?model=${MODEL}`;
+      const url = `${REALTIME_URL}?model=${this.sessionModel ?? getRealtimeModel()}`;
 
       // React Native WebSocket accepts headers via 3rd argument (options), not 2nd (protocols)
       const RNWebSocket = WebSocket as unknown as new (

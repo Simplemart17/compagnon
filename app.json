@@ -92,7 +92,8 @@
           }
         }
       ],
-      "./plugins/withIosPodsDeploymentTarget"
+      "./plugins/withIosPodsDeploymentTarget",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

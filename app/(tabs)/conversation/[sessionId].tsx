@@ -50,6 +50,8 @@ import { MilestoneBanner } from "@/src/components/feedback/MilestoneBanner";
 import { ErrorJourneyBar } from "@/src/components/home/ErrorJourneyBar";
 import type { ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
+import { ANALYTICS_EVENTS, trackEvent } from "@/src/lib/analytics";
+import { FEATURE_FLAGS, isFeatureEnabled } from "@/src/lib/feature-flags";
 import { Colors, Radii, Typography } from "@/src/lib/design";
 
 /** Sanitize technical error messages into user-friendly strings. */
@@ -232,6 +234,52 @@ export default function ConversationSessionScreen() {
     },
   });
 
+  // Story 21-2 R1: session analytics keyed on ORCHESTRATOR STATUS
+  // transitions — the single source of truth for the conversation
+  // lifecycle:
+  //   - started fires on the transition INTO "connected" (once per
+  //     session) — NOT before start(), which overcounted by the connect-
+  //     failure/retry rate and contradicted the taxonomy doc;
+  //   - completed fires on EITHER terminal state: "ended" (user end) or
+  //     "disconnected" (reconnect exhaustion — the orchestrator persists
+  //     the full conversation on that path too, so analytics must match
+  //     the DB boundary or the funnel diverges from ground truth for
+  //     exactly the poor-network cohort).
+  // Deps are status-only (13-4 P19 precedent): duration/corrections are
+  // read at fire time; ticking deps would re-run the effect every second.
+  const hasTrackedStartRef = useRef(false);
+  const hasTrackedCompletionRef = useRef(false);
+  useEffect(() => {
+    if (conversation.status === "connected" && !hasTrackedStartRef.current) {
+      hasTrackedStartRef.current = true;
+      trackEvent(ANALYTICS_EVENTS.CONVERSATION_STARTED, {
+        mode,
+        cefr_level: cefrLevel,
+      });
+    }
+    if (
+      (conversation.status === "ended" || conversation.status === "disconnected") &&
+      !hasTrackedCompletionRef.current
+    ) {
+      hasTrackedCompletionRef.current = true;
+      trackEvent(ANALYTICS_EVENTS.CONVERSATION_COMPLETED, {
+        mode,
+        cefr_level: cefrLevel,
+        duration_seconds: conversation.durationSeconds,
+        corrections_count: conversation.allCorrections.length,
+        terminated_by: conversation.status === "ended" ? "user" : "connection_lost",
+      });
+    }
+    if (conversation.status === "connecting") {
+      hasTrackedStartRef.current = false;
+      hasTrackedCompletionRef.current = false;
+    }
+    // Status-only deps by design: duration/corrections are point-in-time
+    // reads at the terminal transition; including them would re-run the
+    // effect every second (13-4 P19 precedent).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.status]);
+
   // Story 13-3: single chokepoint replacing the pre-13-3 4-effect waterfall
   // (~220 lines of inline session-comparison + milestone-detection + error-
   // journey + next-action logic). Closes audit P2-4. Server-side aggregate
@@ -279,6 +327,15 @@ export default function ConversationSessionScreen() {
   }, [conversation.status, conversation, router]);
 
   const handleStart = useCallback(async () => {
+    // Story 21-3: remote kill switch for the Realtime surface (fail-open —
+    // only an affirmative PostHog "off" blocks; offline/unconfigured = on).
+    if (!isFeatureEnabled(FEATURE_FLAGS.AI_CONVERSATIONS_ENABLED)) {
+      Alert.alert(
+        "Temporarily unavailable",
+        "Voice conversations are briefly paused for maintenance. Please try again soon."
+      );
+      return;
+    }
     hapticMedium();
     await conversation.start();
   }, [conversation]);
