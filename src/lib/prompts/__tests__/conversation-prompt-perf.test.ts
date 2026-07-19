@@ -79,23 +79,38 @@ import type { ConversationMode } from "@/src/types/conversation";
 // ============================================================================
 
 /**
- * Calibration: observed 2026-05-15 against post-Story-11-7 + post-13-7
+ * Calibration: observed 2026-07-18 against the post-Story-18-1
  * prompt-builder. Bounds calculated as `Math.floor(observed × 0.98)` (min)
  * and `Math.ceil(observed × 1.02)` (max) per Story 13-7 P3 lesson.
  *
- * Per-CEFR observed values (B1 companion mode used as the canonical base):
- *   A1: 3995  / A2: 4018  / B1: 4101  / B2: 4062  / C1: 4125  / C2: 4053
- * Per-mode observed values (B1 cefr used as the canonical level):
- *   companion: 4101  /  debate: 5045  /  tcf_simulation: 4811
+ * DELIBERATE RECALIBRATION (Story 18-1): the conversation-driver +
+ * comprehension-support blocks (companion + debate modes) and the
+ * close-pal Role bullet (all modes) grow the base prompt by ~1,200 chars
+ * (~300 tokens ≈ +$0.003/session at gpt-realtime-mini input rates — an
+ * accepted cost for the buddy behavior; see v2-vision-roadmap.md Epic 18).
+ * The Story 11-7 user-derived TAIL constants are untouched — Cases 3 + 4
+ * (tail budget + reduction ratio) still pass against the original bounds.
  *
- * MIN bound uses min-across-CEFR (A1 = 3995) — the per-CEFR test (Case 5)
+ * Per-CEFR observed values (B1 companion mode used as the canonical base):
+ *   A1: 5300  / A2: 5323  / B1: 5305  / B2: 5268  / C1: 5331  / C2: 5259
+ * Per-mode observed values (B1 cefr used as the canonical level):
+ *   companion: 5305  /  debate: 6249  /  tcf_simulation: ~5005
+ *   (tcf_simulation gains ONLY the Role bullet — the driver + comprehension
+ *   blocks are mode-gated out per the Story 10-6 prep-window contract)
+ *
+ * MIN bound uses min-across-CEFR (C2 = 5259) — the per-CEFR test (Case 5)
  * iterates ALL 6 levels against the same MIN bound, so the floor must
  * accommodate the smallest observed base.
  */
-const BASE_PROMPT_MIN_CHARS = 3915; // floor(3995 × 0.98); A1 is the smallest base
-const BASE_PROMPT_MAX_CHARS = 4184; // ceil(4101 × 1.02); B1 used as canonical Case 1 base
-const BASE_PROMPT_MAX_CHARS_PER_LEVEL = 4208; // ceil(4125 × 1.02); C1 is the largest per-level base
-const BASE_PROMPT_MAX_CHARS_PER_MODE = 5146; // ceil(5045 × 1.02); debate-mode is the largest per-mode base
+const BASE_PROMPT_MIN_CHARS = 5153; // floor(5259 × 0.98); C2 is the smallest base post-18-1
+const BASE_PROMPT_MAX_CHARS = 5412; // ceil(5305 × 1.02); B1 used as canonical Case 1 base
+const BASE_PROMPT_MAX_CHARS_PER_LEVEL = 5438; // ceil(5331 × 1.02); C1 is the largest per-level base
+const BASE_PROMPT_MAX_CHARS_PER_MODE = 6374; // ceil(6249 × 1.02); debate-mode is the largest per-mode base
+// Story 18-1: tcf_simulation is now the SMALLEST mode (5010 observed) because
+// the driver + comprehension blocks are mode-gated out of exam simulation —
+// it sits below the companion-calibrated BASE_PROMPT_MIN_CHARS by design, so
+// the per-mode floor gets its own constant.
+const BASE_PROMPT_MIN_CHARS_PER_MODE = 4909; // floor(5010 × 0.98); tcf_simulation is the smallest per-mode base
 
 /**
  * Line-prefix overhead per user-derived item: "- " (2 chars) + "\n".
@@ -291,7 +306,10 @@ describe("Story 13-8 — buildConversationPrompt perf verification", () => {
 
     it.each(MODES)("%s mode base prompt size ≤ BASE_PROMPT_MAX_CHARS_PER_MODE", (mode) => {
       const prompt = buildConversationPrompt({ ...baseArgs, mode });
-      expect(prompt.length).toBeGreaterThanOrEqual(BASE_PROMPT_MIN_CHARS);
+      // Story 18-1: per-mode floor (tcf_simulation deliberately lacks the
+      // driver + comprehension blocks, so it sits below the companion-
+      // calibrated BASE_PROMPT_MIN_CHARS).
+      expect(prompt.length).toBeGreaterThanOrEqual(BASE_PROMPT_MIN_CHARS_PER_MODE);
       expect(prompt.length).toBeLessThanOrEqual(BASE_PROMPT_MAX_CHARS_PER_MODE);
     });
   });

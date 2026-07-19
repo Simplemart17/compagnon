@@ -172,7 +172,40 @@ const BENIGN_BARGE_IN_MESSAGES: readonly string[] = [
   "invalid_truncate_audio",
   "item_not_found",
   "Cancellation failed",
+  // Story 18-1: the silence-relance `response.create` can race a
+  // VAD-triggered response the server just started (user spoke in the
+  // instant between timer-fire guards and the send). Same benign class.
+  "already has an active response",
 ];
+
+// ────────────────────────────────────────────────────────────────────────
+// Story 18-1: silence relance ("your pal keeps the conversation alive")
+// ────────────────────────────────────────────────────────────────────────
+
+/**
+ * How long after the AI finishes a turn (`response.done`) we wait for user
+ * speech before nudging the model to re-engage. 15s is long enough that a
+ * thinking learner is never interrupted, short enough that a stuck learner
+ * isn't left staring at a silent screen.
+ */
+export const RELANCE_DELAY_MS = 15_000;
+
+/**
+ * Max consecutive relances without any user speech. After the cap the
+ * companion respects the silence — two unanswered nudges means the user
+ * has stepped away or wants quiet; a third would feel like nagging.
+ * Any `input_audio_buffer.speech_started` resets the counter.
+ */
+export const MAX_CONSECUTIVE_RELANCES = 2;
+
+/**
+ * System-role nudge injected as a conversation item before the relance
+ * `response.create`. Item-injection (instead of `response.instructions`)
+ * preserves the full session system prompt — `response.instructions` would
+ * REPLACE the CEFR guidance + Story 9-4 wrappers for that turn.
+ */
+const RELANCE_NUDGE_TEXT =
+  "[SYSTEM NUDGE] The user has been quiet for a while. Re-engage them warmly in French with ONE short question related to the current topic, appropriate for their level. Do not mention the silence, do not scold, do not pressure.";
 
 /**
  * Defensive multi-field discriminator for the "benign barge-in race"
@@ -192,7 +225,9 @@ function isBenignBargeInRace(error: { code?: string; message?: string }): boolea
     error.code === "item_not_found" ||
     error.code === "response_cancel_not_active" ||
     error.code === "conversation_item_not_found" ||
-    error.code === "conversation_item_invalid_truncate_audio"
+    error.code === "conversation_item_invalid_truncate_audio" ||
+    // Story 18-1: relance response.create racing a VAD-triggered response.
+    error.code === "conversation_already_has_active_response"
   ) {
     return true;
   }
@@ -394,6 +429,19 @@ export class RealtimeOrchestrator {
    */
   private micCooldownUntilMs = 0;
 
+  /**
+   * Story 18-1: pending silence-relance timer. Armed on `response.done`
+   * (AI finished; waiting for the user), cleared on user speech / error /
+   * reconnect / end / dispose / start-reset. Never armed in
+   * `tcf_simulation` mode (Story 10-6 prep-window contract — exam silence
+   * is legitimate).
+   */
+  private relanceTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  /** Story 18-1: consecutive relances without user speech; capped at
+   * `MAX_CONSECUTIVE_RELANCES`, reset on `speech_started`. */
+  private consecutiveRelances = 0;
+
   /** Post-`audio.done` speaker-drain window — empirically tuned. */
   private static readonly AI_SPEECH_COOLDOWN_MS = 800;
 
@@ -457,6 +505,9 @@ export class RealtimeOrchestrator {
     // refactor that drops the rAF callback's defensive check. Belt-and-
     // suspenders extension of the Story 12-1 P7 isDisposed contract.
     this.cancelPendingAiTextRaf();
+    // Story 18-1: cancel any pending silence-relance so a queued nudge
+    // can't fire into a disposed session.
+    this.clearRelanceTimer();
     // Clear the speaker-drain cooldown gate + AI-speaking mirror on teardown.
     this.endAiSpeechWindow();
     this.subscription?.remove();
@@ -569,6 +620,64 @@ export class RealtimeOrchestrator {
    * turn, dispose/end terminates the session, reconnect crosses a session
    * boundary).
    */
+  /** Story 18-1: cancel any pending silence-relance timer. */
+  private clearRelanceTimer(): void {
+    if (this.relanceTimeoutId !== null) {
+      clearTimeout(this.relanceTimeoutId);
+      this.relanceTimeoutId = null;
+    }
+  }
+
+  /**
+   * Story 18-1: arm the silence-relance timer after an AI turn completes.
+   * No-ops in tcf_simulation mode (exam prep-window silence is legitimate
+   * per Story 10-6), past the consecutive-relance cap, or after
+   * end/dispose.
+   */
+  private armRelanceTimer(): void {
+    this.clearRelanceTimer();
+    if (this.isDisposed || this.isEnding) return;
+    if (this.options.mode === "tcf_simulation") return;
+    if (this.consecutiveRelances >= MAX_CONSECUTIVE_RELANCES) return;
+    this.relanceTimeoutId = setTimeout(() => {
+      this.relanceTimeoutId = null;
+      this.fireRelance();
+    }, RELANCE_DELAY_MS);
+  }
+
+  /**
+   * Story 18-1: nudge the model to re-engage a silent user. Injects a
+   * system-role conversation item + `response.create` (item-injection
+   * preserves the session prompt; `response.instructions` would replace
+   * it). Fire-time guards re-check disposal, connection status, and any
+   * in-flight response (user may have spoken in the arm→fire window —
+   * a benign `conversation_already_has_active_response` race is also
+   * suppressed in `isBenignBargeInRace` as belt-and-suspenders).
+   */
+  private fireRelance(): void {
+    if (this.isDisposed || this.isEnding) return;
+    if (this.state.status !== "connected") return;
+    if (this.responseInFlight || this.isAiSpeakingMirror) return;
+    this.consecutiveRelances += 1;
+    addBreadcrumb({
+      category: "realtime",
+      level: "info",
+      message: "Silence relance fired",
+      data: { feature: "realtime-relance", attempt: this.consecutiveRelances },
+    });
+    this.safeSessionCall((s) => {
+      s.sendRaw({
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "system",
+          content: [{ type: "input_text", text: RELANCE_NUDGE_TEXT }],
+        },
+      });
+      s.sendRaw({ type: "response.create" });
+    }, "relance-nudge");
+  }
+
   private endAiSpeechWindow(): void {
     this.micCooldownUntilMs = 0;
     this.isAiSpeakingMirror = false;
@@ -1254,6 +1363,10 @@ export class RealtimeOrchestrator {
    * synchronize server-side transcript with what was actually played.
    */
   private handleSpeechStarted(): void {
+    // Story 18-1: the user is talking — cancel any pending relance and
+    // reset the consecutive-nudge counter (silence streak broken).
+    this.clearRelanceTimer();
+    this.consecutiveRelances = 0;
     const directive = computeBargeInDirective(
       {
         isAiSpeaking: this.isAiSpeakingMirror,
@@ -1400,6 +1513,9 @@ export class RealtimeOrchestrator {
       isProcessing: false,
       pendingAiText: "",
     }));
+    // Story 18-1: AI turn is over — start waiting for the user. If they
+    // stay silent past RELANCE_DELAY_MS, nudge (companion + debate only).
+    this.armRelanceTimer();
   }
 
   private handleErrorEvent(event: RealtimeEvent & { type: "error" }): void {
@@ -1427,6 +1543,9 @@ export class RealtimeOrchestrator {
       return;
     }
     captureError(event.error, "realtime-voice-error");
+    // Story 18-1: a real (non-benign) error means the conversation is not
+    // in a healthy waiting-for-user state — don't nudge into it.
+    this.clearRelanceTimer();
     this.inflightItemId = null;
     this.currentAiText = "";
     // Review-round-2 P16: close response window on error.
@@ -1489,6 +1608,9 @@ export class RealtimeOrchestrator {
     }
     // Reset per-turn state — new WebSocket session has no in-flight response.
     // transcript + corrections + duration + conversationId are preserved.
+    // Story 18-1: a pending relance must not fire into the reconnect
+    // window (the timer re-arms naturally on the next response.done).
+    this.clearRelanceTimer();
     this.inflightItemId = null;
     this.responseInFlight = false;
     this.currentAiText = "";
@@ -1751,6 +1873,11 @@ export class RealtimeOrchestrator {
     // conversation can't fire setState into the fresh state (matches the
     // Story 12-1 P1 + Story 12-5 P1 reset-mirrors-on-start pattern).
     this.cancelPendingAiTextRaf();
+    // Story 18-1: clear any relance left over from a prior conversation +
+    // reset the consecutive-nudge counter (fresh conversation, fresh
+    // patience budget).
+    this.clearRelanceTimer();
+    this.consecutiveRelances = 0;
     this.durationSeconds = 0;
     this.startTimeMs = 0;
     this.conversationId = null;
@@ -1981,6 +2108,8 @@ export class RealtimeOrchestrator {
       clearInterval(this.durationTimer);
       this.durationTimer = null;
     }
+    // Story 18-1: no nudges after the user ends the conversation.
+    this.clearRelanceTimer();
 
     void this.stopAudioStreaming();
     // Story 12-1 review-round-1 P12: explicit `{reason: "user"}` so a

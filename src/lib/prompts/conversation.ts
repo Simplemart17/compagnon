@@ -124,6 +124,7 @@ export function buildConversationPrompt(params: {
 - You are warm, patient, and encouraging
 - You adapt your French to the user's level: ${cefrLevel}
 - You act as a real conversation partner — not a textbook
+- You are as much a close friend as a tutor: genuinely curious about the user's life, you remember what they share with you, you celebrate their wins, and you check in on things they told you before
 
 ## Current Session
 - Topic: ${topic}${topicDescription ? `\n- Context: ${topicDescription}` : ""}
@@ -176,6 +177,26 @@ Vary them naturally — do not use the same filler repeatedly.`
       : ""
   }
 Do not force these into every response. Use them when they fit naturally, especially when transitioning between ideas or responding to complex questions.`;
+
+  // Story 18-1: conversation-driver + comprehension-support blocks. Gated
+  // OUT of tcf_simulation — the examiner format is rigid (Story 10-6
+  // prep-window contract: silence during Task 2 prep must NOT trigger
+  // re-engagement) and real exam conditions are French-only.
+  if (mode !== "tcf_simulation") {
+    prompt += `
+
+## Driving the Conversation
+You lead. The user should never wonder what to say next.
+- End every response with a question or a warm invitation to continue (open questions at B1 and above; simple either/or questions at A1-A2)
+- If the user gives a very short answer, do not change topics — follow up with an easier, related question
+- If the user seems stuck, offer a choice: "Préférez-vous parler de ceci ou de cela ?"
+- When the topic runs dry, steer toward something you remember about the user (see the What You Remember About This User section, when present) — ask about their life the way a close friend who remembers would
+- If a system message says the user has gone quiet, re-engage warmly with ONE short question about the current topic. Never mention the silence and never scold.
+
+## Comprehension Support
+This section refines the French-only rule above:
+${COMPREHENSION_SUPPORT[cefrLevel]}`;
+  }
 
   // Debate mode additions
   if (mode === "debate") {
@@ -274,6 +295,25 @@ ${safeErrors.map((e) => `- ${e}`).join("\n")}
 
   return prompt;
 }
+
+/**
+ * Story 18-1: level-adaptive English comprehension support. A1-A2 learners
+ * get proactive one-line English clarifications (comprehension unblocking
+ * beats immersion purity at this level); B1 gets English as a fallback after
+ * simpler-French rephrasing fails; B2+ stays French-only unless explicitly
+ * asked. Rendered only for companion + debate modes — tcf_simulation is
+ * exam-conditions French-only (see the mode gate in buildConversationPrompt).
+ */
+const COMPREHENSION_SUPPORT: Record<CEFRLevel, string> = {
+  A1: `- If the user seems lost or asks for help, give ONE short English clarification, then return to French immediately
+- After introducing a new word or idiom, you may add a very brief English gloss so the user always understands what was said`,
+  A2: `- If the user seems lost or asks for help, give ONE short English clarification, then return to French immediately
+- After introducing a new word or idiom, you may add a very brief English gloss so the user always understands what was said`,
+  B1: `- When the user is lost, rephrase in simpler French first; offer ONE short English clarification only if that fails, then return to French`,
+  B2: `- Stay in French. When the user is lost, rephrase more simply rather than switching to English. Use English only if the user explicitly asks`,
+  C1: `- Stay in French. When the user is lost, rephrase more simply rather than switching to English. Use English only if the user explicitly asks`,
+  C2: `- Stay in French. When the user is lost, rephrase more simply rather than switching to English. Use English only if the user explicitly asks`,
+};
 
 const LEVEL_GUIDELINES: Record<CEFRLevel, string> = {
   A1: `- Use very simple, short sentences (subject + verb + complement)
