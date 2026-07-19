@@ -5,6 +5,7 @@ import * as Device from "expo-device";
 
 import { supabase } from "@/src/lib/supabase";
 import { captureError } from "@/src/lib/sentry";
+import { ANALYTICS_EVENTS, trackEvent } from "@/src/lib/analytics";
 import { Colors } from "@/src/lib/design";
 
 // ---------------------------------------------------------------------------
@@ -143,6 +144,7 @@ export function setupNotificationResponseListener(
       // Story 18-3: daily-nudge tap lands on the conversation hub. Topic
       // pre-seeding from the nudge context is a filed follow-up
       // (18-3-followup-nudge-topic-seed).
+      trackEvent(ANALYTICS_EVENTS.NUDGE_OPENED);
       navigate("/(tabs)/conversation");
     }
   });

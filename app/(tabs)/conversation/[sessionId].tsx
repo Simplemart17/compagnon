@@ -50,6 +50,8 @@ import { MilestoneBanner } from "@/src/components/feedback/MilestoneBanner";
 import { ErrorJourneyBar } from "@/src/components/home/ErrorJourneyBar";
 import type { ConversationMode } from "@/src/types/conversation";
 import type { CEFRLevel } from "@/src/types/cefr";
+import { ANALYTICS_EVENTS, trackEvent } from "@/src/lib/analytics";
+import { FEATURE_FLAGS, isFeatureEnabled } from "@/src/lib/feature-flags";
 import { Colors, Radii, Typography } from "@/src/lib/design";
 
 /** Sanitize technical error messages into user-friendly strings. */
@@ -232,6 +234,33 @@ export default function ConversationSessionScreen() {
     },
   });
 
+  // Story 21-2: core engagement event — fires once per conversation end.
+  // Top-level effect keyed on the hook's status (NOT inside
+  // onConversationEnd: the orchestrator captures its options at
+  // construction, so state read there would be a stale first-render
+  // snapshot — duration/corrections would read as zero).
+  const hasTrackedCompletionRef = useRef(false);
+  useEffect(() => {
+    if (conversation.status === "ended" && !hasTrackedCompletionRef.current) {
+      hasTrackedCompletionRef.current = true;
+      trackEvent(ANALYTICS_EVENTS.CONVERSATION_COMPLETED, {
+        mode,
+        cefr_level: cefrLevel,
+        duration_seconds: conversation.durationSeconds,
+        corrections_count: conversation.allCorrections.length,
+      });
+    }
+    if (conversation.status === "connecting") {
+      hasTrackedCompletionRef.current = false;
+    }
+  }, [
+    conversation.status,
+    conversation.durationSeconds,
+    conversation.allCorrections.length,
+    mode,
+    cefrLevel,
+  ]);
+
   // Story 13-3: single chokepoint replacing the pre-13-3 4-effect waterfall
   // (~220 lines of inline session-comparison + milestone-detection + error-
   // journey + next-action logic). Closes audit P2-4. Server-side aggregate
@@ -279,9 +308,22 @@ export default function ConversationSessionScreen() {
   }, [conversation.status, conversation, router]);
 
   const handleStart = useCallback(async () => {
+    // Story 21-3: remote kill switch for the Realtime surface (fail-open —
+    // only an affirmative PostHog "off" blocks; offline/unconfigured = on).
+    if (!isFeatureEnabled(FEATURE_FLAGS.AI_CONVERSATIONS_ENABLED)) {
+      Alert.alert(
+        "Temporarily unavailable",
+        "Voice conversations are briefly paused for maintenance. Please try again soon."
+      );
+      return;
+    }
+    trackEvent(ANALYTICS_EVENTS.CONVERSATION_STARTED, {
+      mode,
+      cefr_level: cefrLevel,
+    });
     hapticMedium();
     await conversation.start();
-  }, [conversation]);
+  }, [conversation, mode, cefrLevel]);
 
   const handleEnd = useCallback(() => {
     if (conversation.durationSeconds < 60) {

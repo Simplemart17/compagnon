@@ -28,6 +28,7 @@ import {
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { hapticLight } from "@/src/lib/haptics";
+import { ANALYTICS_EVENTS, scoreBand, trackEvent } from "@/src/lib/analytics";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useMockTestGeneration } from "@/src/hooks/use-mock-test-generation";
@@ -476,6 +477,11 @@ export default function MockTestSessionScreen() {
       if (timerRef.current) clearInterval(timerRef.current);
       // Use state directly from the effect closure — it re-runs when state.status changes
       const results = calculateResultsFromState(state);
+      // Story 21-2: funnel event — banded composite only.
+      trackEvent(ANALYTICS_EVENTS.MOCK_TEST_COMPLETED, {
+        test_type: testId ?? "full",
+        score_band: scoreBand(Math.round((results.overallTcfScore / 699) * 100)),
+      });
 
       // Save to Supabase (non-blocking)
       const userId = useAuthStore.getState().user?.id;
