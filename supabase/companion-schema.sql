@@ -57,7 +57,8 @@ SET search_path = companion, extensions, public;
 
 -- ── 1.1 profiles ─────────────────────────────────────────────────────────────
 -- Base cols from 20260301000000; streak_alerts/srs_reminders from 20260401000000;
--- daily_ai_cost_cents_limit from 20260512000000.
+-- daily_ai_cost_cents_limit from 20260512000000; daily_nudge/nudge_utc_hour
+-- from Story 18-3 (2026-07-19).
 CREATE TABLE IF NOT EXISTS companion.profiles (
   id                         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name                  TEXT,
@@ -72,8 +73,19 @@ CREATE TABLE IF NOT EXISTS companion.profiles (
   updated_at                 TIMESTAMPTZ DEFAULT NOW(),
   streak_alerts              BOOLEAN NOT NULL DEFAULT TRUE,
   srs_reminders              BOOLEAN NOT NULL DEFAULT TRUE,
-  daily_ai_cost_cents_limit  INTEGER NOT NULL DEFAULT 100
+  daily_ai_cost_cents_limit  INTEGER NOT NULL DEFAULT 100,
+  daily_nudge                BOOLEAN NOT NULL DEFAULT TRUE,
+  nudge_utc_hour             SMALLINT NOT NULL DEFAULT 17 CHECK (nudge_utc_hour BETWEEN 0 AND 23)
 );
+
+-- Story 18-3 schema evolution (existing deployed DBs — the CREATE TABLE above
+-- is skipped when companion.profiles already exists, so the same columns are
+-- added idempotently here; fresh installs no-op these):
+ALTER TABLE companion.profiles
+  ADD COLUMN IF NOT EXISTS daily_nudge BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE companion.profiles
+  ADD COLUMN IF NOT EXISTS nudge_utc_hour SMALLINT NOT NULL DEFAULT 17
+    CONSTRAINT profiles_nudge_utc_hour_range CHECK (nudge_utc_hour BETWEEN 0 AND 23);
 
 -- ── 1.2 skill_progress ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS companion.skill_progress (
@@ -960,6 +972,54 @@ AS $$
 $$;
 
 REVOKE EXECUTE ON FUNCTION companion.get_streak_notification_targets() FROM public, anon, authenticated;
+
+-- ── 3.13b get_nudge_notification_targets (Story 18-3, 2026-07-19) ────────────
+-- Daily conversation nudge ("your pal texts you first"). Four server-side
+-- eligibility filters: opt-in, per-user UTC-hour window, no-practice-today,
+-- and a 20-hour one-per-day cap against notification_log (type 'nudge').
+-- Context payload = TOP unresolved error pattern only. PRIVACY: never join
+-- companion_memory here — nudges render on the LOCK SCREEN.
+CREATE OR REPLACE FUNCTION companion.get_nudge_notification_targets()
+RETURNS TABLE (
+  user_id uuid,
+  streak_days integer,
+  token text,
+  platform text,
+  top_error_description text
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = companion, extensions, public
+AS $$
+  SELECT
+    p.id AS user_id,
+    p.streak_days,
+    dt.token,
+    dt.platform,
+    ep.error_description AS top_error_description
+  FROM profiles p
+  JOIN device_tokens dt ON dt.user_id = p.id
+  LEFT JOIN LATERAL (
+    SELECT e.error_description
+    FROM error_patterns e
+    WHERE e.user_id = p.id
+      AND e.resolved = false
+    ORDER BY e.occurrences DESC, e.last_occurred DESC
+    LIMIT 1
+  ) ep ON true
+  WHERE p.daily_nudge = true
+    AND p.nudge_utc_hour = EXTRACT(HOUR FROM now())::smallint
+    AND (p.last_active_date IS NULL OR p.last_active_date < CURRENT_DATE)
+    AND NOT EXISTS (
+      SELECT 1
+      FROM notification_log nl
+      WHERE nl.user_id = p.id
+        AND nl.type = 'nudge'
+        AND nl.sent_at > now() - INTERVAL '20 hours'
+    );
+$$;
+
+REVOKE EXECUTE ON FUNCTION companion.get_nudge_notification_targets() FROM public, anon, authenticated;
 
 -- ── 3.14 match_error_pattern (from 20260513000000; auth.uid()-scoped) ────────
 DROP FUNCTION IF EXISTS companion.match_error_pattern(text, text, vector, double precision);
