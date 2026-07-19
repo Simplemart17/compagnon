@@ -632,11 +632,13 @@ export default function SpeakingMockTestScreen() {
 
     // Story 21-2 R1: speaking runs in this static route, not [testId].tsx —
     // without this emission every Expression Orale completion is invisible
-    // to analytics. Speaking composites are on the 0-20 PUBLISHER scale
-    // (Story 10-2), so the band converts via /20, not /699.
+    // to analytics. Story 20-4 R2 fix: `compositeOverall` is ALREADY the
+    // 0-100 composite (computeSpeakingComposite); the previous `/20 × 100`
+    // treated it as the 0-20 publisher `totalScore` and inflated the band
+    // input ×5, top-banding essentially every completion.
     trackEvent(ANALYTICS_EVENTS.MOCK_TEST_COMPLETED, {
       test_type: "speaking",
-      score_band: scoreBand(Math.round((summary.compositeOverall / 20) * 100)),
+      score_band: scoreBand(Math.round(summary.compositeOverall)),
     });
 
     const navResults = {

@@ -1,7 +1,8 @@
 /**
  * TCF Mock Test Results Screen
  *
- * Displays TCF-calibrated scores (0-699), CEFR level per section,
+ * Displays TCF-calibrated scores (0-699 for QCM tests; publisher-scale
+ * 0-20 for speaking tests — Story 20-4 R1 scale-aware fork), CEFR level per section,
  * overall composite score, and "distance to C1" indicator.
  */
 
@@ -33,6 +34,10 @@ const SECTION_LABELS: Record<string, { name: string; iconName: IconName }> = {
   reading: { name: "Reading Comprehension", iconName: "book-open" },
   // Legacy — TCF Canada has no Grammar section; kept for historical results only.
   grammar: { name: "Language Structures", iconName: "activity" },
+  // Story 20-4 R2: the speaking flow navigates here with sections.speaking —
+  // without this entry the card title rendered blank and the accessibility
+  // label announced the literal string "undefined".
+  speaking: { name: "Oral Expression", iconName: "mic" },
 };
 
 function getScoreColor(tcfScore: number): string {

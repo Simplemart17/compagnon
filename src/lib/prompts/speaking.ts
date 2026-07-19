@@ -505,7 +505,7 @@ ${safeTranscript}
 </USER_TRANSCRIPT>
 
 ## Response Format — JSON ONLY (no prose outside the JSON object)
-Note: the "pronunciationFluencyScore" field carries the Fluency & Coherence dimension — the field NAME is kept for storage compatibility only; its VALUE must follow dimension 1's transcript-only scope. All score fields are NUMBERS.
+Note: the "pronunciationFluencyScore" field carries the Fluency & Coherence dimension — the field NAME is kept for storage compatibility only; its VALUE must follow dimension 1's transcript-only scope. The five dimension scores MUST be plain numbers. "overallScore" may be null if you are not certain of the arithmetic — it is recomputed client-side from the five dimensions.
 {
   "pronunciationFluencyScore": <0-20>,
   "vocabularyScore": <0-20>,

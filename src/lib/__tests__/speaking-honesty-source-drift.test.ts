@@ -69,32 +69,44 @@ describe("Story 20-4 — evaluator prompt honesty (runtime output pins)", () => 
     expect(rubric).not.toContain("### 1. Pronunciation & Fluency");
   });
 
-  it("R1: NO unhearable-signal words ANYWHERE outside the honesty-contract block — across all 3 tasks", () => {
+  it("R1: NO unhearable-signal words ANYWHERE outside the honesty-contract block — all 3 tasks × all 6 CEFR levels", () => {
     // Review round 1 caught TASK_RUBRIC_FOCUS[1] still demanding "natural
     // conversational rhythm" in the '## Evaluation Task' section, ABOVE the
     // rubric slice the original negative pin scanned. This case removes the
     // blind spot: strip the contract block (which names the signals in order
-    // to FORBID them), then scan the ENTIRE remaining prompt — for every
-    // task number, since the rubric-focus line varies per task.
+    // to FORBID them), then scan the ENTIRE remaining prompt.
+    //
+    // R2 hardening: (a) the excluded region ends at the NEXT '\n## ' header
+    // after the contract — not at '## Evaluation Task' — so a future section
+    // inserted between the contract and Evaluation Task is SCANNED, not
+    // silently excluded; (b) 'accent' added to the ban list (the contract's
+    // own enumeration forbids it); (c) all 6 CEFR levels rendered, since the
+    // vocabulary-constraint block varies per level. If a future FRENCH
+    // learner-content word legitimately trips this scan (liaison/intonation
+    // are French homographs), scope an explicit allowlist in that story —
+    // fail-loud beats a blind spot.
     const UNHEARABLE =
-      /\brhythm\b|\bintonation\b|\barticulation\b|\bliaison\b|\belision\b|\bpronunciation\b/i;
-    for (const taskNumber of [1, 2, 3] as const) {
-      const prompt = buildSpeakingEvaluatorPrompt({
-        cefrLevel: "B1",
-        taskNumber,
-        taskInstruction: "Présentez-vous.",
-        transcript: "Bonjour, je m'appelle Marie.",
-      });
-      const contractStart = prompt.indexOf("## What You Can and Cannot Observe");
-      const contractEnd = prompt.indexOf("## Evaluation Task");
-      expect(contractStart).toBeGreaterThan(-1);
-      expect(contractEnd).toBeGreaterThan(contractStart);
-      const outsideContract = prompt.slice(0, contractStart) + prompt.slice(contractEnd);
-      // NOTE: \bpronunciation\b does NOT match the camelCase field name
-      // "pronunciationFluencyScore" (no word boundary before "Fluency") or
-      // the French category label "Prononciation" (different spelling).
-      const match = outsideContract.match(UNHEARABLE);
-      expect(match?.[0] ?? null).toBeNull();
+      /\brhythm\b|\bintonation\b|\barticulation\b|\bliaison\b|\belision\b|\baccent\b|\bpronunciation\b/i;
+    const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+    for (const cefrLevel of CEFR_LEVELS) {
+      for (const taskNumber of [1, 2, 3] as const) {
+        const prompt = buildSpeakingEvaluatorPrompt({
+          cefrLevel,
+          taskNumber,
+          taskInstruction: "Présentez-vous.",
+          transcript: "Bonjour, je m'appelle Marie.",
+        });
+        const contractStart = prompt.indexOf("## What You Can and Cannot Observe");
+        expect(contractStart).toBeGreaterThan(-1);
+        const contractEnd = prompt.indexOf("\n## ", contractStart + 1);
+        expect(contractEnd).toBeGreaterThan(contractStart);
+        const outsideContract = prompt.slice(0, contractStart) + prompt.slice(contractEnd);
+        // NOTE: \bpronunciation\b does NOT match the camelCase field name
+        // "pronunciationFluencyScore" (no word boundary before "Fluency") or
+        // the French category label "Prononciation" (different spelling).
+        const match = outsideContract.match(UNHEARABLE);
+        expect(match?.[0] ?? null).toBeNull();
+      }
     }
   });
 
@@ -130,9 +142,20 @@ describe("Story 20-4 — user-facing disclosure drift pins", () => {
     expect(src).toMatch(/\{scoreDenominator\}/);
     // Distance-to-C1 is meaningless on a 0-20 scale.
     expect(src).toMatch(/!isSpeakingScale && distanceToC1 > 0/);
-    // NEGATIVE: no hardcoded /699 remains in the score ring or section bar.
-    expect(src).not.toMatch(/\/ 699\s*</);
-    expect(src).not.toMatch(/tcfScore \/ 699/);
+    // R2: the color forks and the tasks-vs-correct label are pinned too —
+    // pre-R2 a revert of scoreColor to unconditional getScoreColor (16/20 in
+    // failing red) or of the "N tasks" branch passed every case.
+    expect(src).toMatch(/LEVEL_COLORS\[results\.overallCefrLevel/);
+    expect(src).toMatch(/LEVEL_COLORS\[sectionResult\.cefrLevel/);
+    expect(src).toMatch(/\$\{sectionResult\.total\} tasks/);
+    // NEGATIVE (R2-broadened): NO division by 699 in any form (comment-
+    // stripped source, case-insensitive — catches `overallTcfScore / 699`,
+    // `(x/699)`, and hoisted variants) and no a11y-label "out of 699" revert.
+    expect(src).not.toMatch(/\/\s*699/i);
+    expect(src).not.toMatch(/out of 699/i);
+    // The speaking section card must resolve a real label — the missing
+    // SECTION_LABELS entry rendered a blank title + "undefined" a11y text.
+    expect(src).toMatch(/speaking: \{ name: "Oral Expression", iconName: "mic" \}/);
   });
 
   it("conversation feedback sheet: metrics are labeled as practice, not exam", () => {
