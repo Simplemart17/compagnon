@@ -59,6 +59,15 @@ export interface CompanionAvatarProps {
 interface StateVisual {
   /** Ring color around the face (ambient + pulse + ripples). */
   ringColor: string;
+  /**
+   * Body halo hue — review R1: `Shadows.glow`'s token contract says
+   * "Consumers MUST override shadowColor to a state-appropriate hue"; the
+   * pre-R1 body used the token default (navy), invisible on the navy
+   * screen background. The per-state glow restores the AIOrb's
+   * distance-readable channel (amber while listening, white while
+   * speaking) that the constant-white face otherwise lost.
+   */
+  glowColor: string;
   /** Ripple emanation active (speaking). */
   ripple: boolean;
   /** Breath cycle in ms (lower = more agitated). */
@@ -66,12 +75,37 @@ interface StateVisual {
 }
 
 const STATE_VISUALS: Record<AvatarState, StateVisual> = {
-  idle: { ringColor: Colors.whiteAlpha15, ripple: false, breathMs: 3600 },
-  connecting: { ringColor: Colors.accent25, ripple: false, breathMs: 1400 },
-  listening: { ringColor: Colors.accent30, ripple: false, breathMs: 1000 },
-  thinking: { ringColor: Colors.accent25, ripple: false, breathMs: 1800 },
-  speaking: { ringColor: Colors.whiteAlpha30, ripple: true, breathMs: 1100 },
-  celebrating: { ringColor: Colors.accent30, ripple: false, breathMs: 1200 },
+  idle: {
+    ringColor: Colors.whiteAlpha15,
+    glowColor: Colors.primaryLight,
+    ripple: false,
+    breathMs: 3600,
+  },
+  connecting: {
+    ringColor: Colors.accent25,
+    glowColor: Colors.accent,
+    ripple: false,
+    breathMs: 1400,
+  },
+  listening: {
+    ringColor: Colors.accent30,
+    glowColor: Colors.accent,
+    ripple: false,
+    breathMs: 1000,
+  },
+  thinking: { ringColor: Colors.accent25, glowColor: Colors.accent, ripple: false, breathMs: 1800 },
+  speaking: {
+    ringColor: Colors.whiteAlpha30,
+    glowColor: Colors.surfaceWhite,
+    ripple: true,
+    breathMs: 1100,
+  },
+  celebrating: {
+    ringColor: Colors.accent30,
+    glowColor: Colors.accent,
+    ripple: false,
+    breathMs: 1200,
+  },
 };
 
 /** Mouth geometry targets per state, as fractions of `size`. */
@@ -369,21 +403,35 @@ export const CompanionAvatar = React.memo(function CompanionAvatar({
   const leftEyeStyle = useAnimatedStyle(eyeCommon);
   const rightEyeStyle = useAnimatedStyle(eyeCommon);
 
-  const mouthStyle = useAnimatedStyle(() => {
-    const openBoost = speakingFlag.value * smoothedLevel.value * size * 0.16;
-    const h = mouthH.value + openBoost;
+  // Review R1: SPLIT the mouth into a geometry mapper (layout props — only
+  // change during the 220ms state tween, a handful of commits per turn) and
+  // a transform-only mapper (the per-frame amplitude path). Pre-R1 a single
+  // mapper wrote width/height/borderRadius at amplitude cadence — on New
+  // Architecture every layout-prop update forces a ShadowTree commit + Yoga
+  // pass, the one non-compositor animation in the component during the
+  // FPS-critical speaking window. scaleY from the mouth's center opens the
+  // mouth symmetrically; corner distortion is bounded by the ~1.0-2.5×
+  // range on a small rounded rect.
+  const mouthGeometryStyle = useAnimatedStyle(() => {
+    const h = mouthH.value;
     return {
       width: mouthW.value,
       height: h,
       // Round ("o") mouth when thinking; otherwise a smile bar whose bottom
-      // corners are much rounder than the top (gentle-smile silhouette)
-      // that opens toward a rounded rect as the amplitude boost grows.
+      // corners are much rounder than the top (gentle-smile silhouette).
       borderTopLeftRadius: mouthRound.value * (h / 2) + (1 - mouthRound.value) * 6,
       borderTopRightRadius: mouthRound.value * (h / 2) + (1 - mouthRound.value) * 6,
       borderBottomLeftRadius: h / 2 + 4,
       borderBottomRightRadius: h / 2 + 4,
     };
   });
+
+  const mouthOpenStyle = useAnimatedStyle(() => ({
+    // Relative open: at full level the speaking mouth reaches ~2.5× its
+    // resting height (≈ the pre-R1 absolute boost of 0.16·size on the
+    // 0.06·size speaking base). Transform-only — no layout pass per frame.
+    transform: [{ scaleY: 1 + speakingFlag.value * smoothedLevel.value * 1.5 }],
+  }));
 
   const blushStyle = useAnimatedStyle(() => ({ opacity: blushOpacity.value * 0.8 }));
 
@@ -446,7 +494,11 @@ export const CompanionAvatar = React.memo(function CompanionAvatar({
 
       {/* Face body */}
       <Animated.View
-        style={[styles.body, { width: size, height: size, borderRadius: size / 2 }, bodyStyle]}
+        style={[
+          styles.body,
+          { width: size, height: size, borderRadius: size / 2, shadowColor: visual.glowColor },
+          bodyStyle,
+        ]}
       >
         {/* Top-left sheen */}
         <View
@@ -522,7 +574,7 @@ export const CompanionAvatar = React.memo(function CompanionAvatar({
         <View
           style={{ position: "absolute", top: mouthTop, left: 0, right: 0, alignItems: "center" }}
         >
-          <Animated.View style={[styles.mouth, mouthStyle]} />
+          <Animated.View style={[styles.mouth, mouthGeometryStyle, mouthOpenStyle]} />
         </View>
       </Animated.View>
 

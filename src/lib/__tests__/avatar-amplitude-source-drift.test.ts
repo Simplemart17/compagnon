@@ -26,14 +26,52 @@ describe("Story 18-4 — orchestrator amplitude plumbing", () => {
     expect(src).toMatch(/this\.emitAudioAmplitude\(pcm16Base64Level\(event\.delta as string\)\)/);
   });
 
-  it("every AI-output boundary zeroes the mouth: the zero lives INSIDE cancelPendingAiTextRaf", () => {
-    // All boundary sites (start reset, the three .done arms, barge-in,
-    // response.done, error, reconnect) call cancelPendingAiTextRaf — the
-    // zero inherits every current and future boundary by construction.
-    const helperStart = src.indexOf("private cancelPendingAiTextRaf()");
+  it("R1: audio boundaries route through onAiOutputBoundary; TEXT-done arms do NOT zero the mouth", () => {
+    // Review R1: the zero originally lived inside cancelPendingAiTextRaf,
+    // but that helper is ALSO called by the transcript/text-done arms which
+    // can fire while audio deltas are still streaming — snapping the mouth
+    // shut mid-utterance. The dedicated onAiOutputBoundary couples both
+    // concerns at the genuine audio boundaries only.
+    const helperStart = src.indexOf("private onAiOutputBoundary()");
     expect(helperStart).toBeGreaterThan(-1);
-    const helperBody = src.slice(helperStart, src.indexOf("}", src.indexOf("{", helperStart)));
+    const helperBody = src.slice(helperStart, src.indexOf("\n  }", helperStart));
+    expect(helperBody).toContain("this.cancelPendingAiTextRaf()");
     expect(helperBody).toContain("this.emitAudioAmplitude(0)");
+    // NEGATIVE: cancelPendingAiTextRaf itself must NOT zero the mouth.
+    const cancelStart = src.indexOf("private cancelPendingAiTextRaf()");
+    const cancelBody = src.slice(cancelStart, src.indexOf("\n  }", cancelStart));
+    expect(cancelBody).not.toContain("emitAudioAmplitude");
+    // NEGATIVE: the two TEXT-finalization arms keep only the rAF cancel.
+    for (const arm of [
+      'case "response.output_text.done"',
+      'case "response.output_audio_transcript.done"',
+    ]) {
+      const armStart = src.indexOf(arm);
+      expect(armStart).toBeGreaterThan(-1);
+      const armBody = src.slice(armStart, src.indexOf("case ", armStart + arm.length));
+      expect(armBody).toContain("cancelPendingAiTextRaf");
+      expect(armBody).not.toContain("onAiOutputBoundary");
+      expect(armBody).not.toContain("emitAudioAmplitude");
+    }
+  });
+
+  it("R1: the delta-case guard is hoisted (no eager decode for callback-less consumers) and the decode is prefix-bounded", () => {
+    expect(src).toMatch(
+      /if \(this\.options\.onAudioAmplitude\) \{\s*this\.emitAudioAmplitude\(pcm16Base64Level\(event\.delta as string\)\);/
+    );
+    const amp = readSrc("src/lib/audio-amplitude.ts");
+    expect(amp).toContain("AMPLITUDE_MAX_DECODE_BASE64_CHARS = 5460");
+    expect(amp).toMatch(/base64\.slice\(0, AMPLITUDE_MAX_DECODE_BASE64_CHARS\)/);
+  });
+
+  it("R1: the latch truly MUTES (early return before invoke) and is reset in start()", () => {
+    const emitStart = src.indexOf("private emitAudioAmplitude");
+    const emitBody = src.slice(emitStart, src.indexOf("\n  }", emitStart));
+    const latchCheck = emitBody.indexOf("if (this.amplitudeCallbackErrorLatched) return;");
+    const invoke = emitBody.indexOf("this.options.onAudioAmplitude(level)");
+    expect(latchCheck).toBeGreaterThan(-1);
+    expect(invoke).toBeGreaterThan(latchCheck);
+    expect(src).toMatch(/this\.amplitudeCallbackErrorLatched = false;/);
   });
 
   it("a throwing consumer callback is swallowed with a one-shot breadcrumb, never error-tier at delta cadence", () => {
@@ -55,9 +93,16 @@ describe("Story 18-4 — hook + screen wiring", () => {
 
   it("the screen routes amplitude into a SharedValue — NEVER React state (13-1 contract)", () => {
     const screen = readSrc("app/(tabs)/conversation/[sessionId].tsx");
-    expect(screen).toMatch(/onAudioAmplitude: \(level\) => \{\s*aiAmplitude\.value = level;\s*\}/);
-    // NEGATIVE: no setState-shaped call consumes the amplitude level.
-    expect(screen).not.toMatch(/set\w+\(level\)/);
+    // R1: scope the pin to the callback BODY — the pre-R1 file-wide
+    // /set\w+\(level\)/ guard false-positived on innocent identifiers and
+    // missed setFoo(level * 1) shapes. The 13-1 contract governs exactly
+    // this closure: it must contain ONLY the shared-value write.
+    const cbMatch = screen.match(/onAudioAmplitude: \(level\) => \{([^}]*)\}/);
+    expect(cbMatch).not.toBeNull();
+    const body = cbMatch![1];
+    expect(body).toMatch(/aiAmplitude\.value = level;/);
+    expect(body).not.toMatch(/set[A-Z]\w*\(/);
+    expect(body.trim().split("\n").length).toBe(1);
   });
 
   it("the screen consumes deriveAvatarState + CompanionAvatar; the AIOrb files are GONE", () => {

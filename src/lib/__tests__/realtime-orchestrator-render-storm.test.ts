@@ -172,6 +172,9 @@ function extractCaseArm(caseLabel: string): string {
 }
 
 describe("Story 13-1 — orchestrator render-storm drift detectors (audit P2-3)", () => {
+  // Story 18-4 R1: audio-boundary arms now route through onAiOutputBoundary(),
+  // whose body is pinned (avatar-amplitude-source-drift.test.ts) to call
+  // cancelPendingAiTextRaf — either form satisfies the 13-1 cancel contract.
   it("Case 1: `scheduleAiTextSetState` method exists + uses `requestAnimationFrame`", () => {
     const body = extractMethodBody("private scheduleAiTextSetState(): void {");
     // Idempotent-schedule guard.
@@ -246,7 +249,7 @@ describe("Story 13-1 — orchestrator render-storm drift detectors (audit P2-3)"
 
   it("Case 6: `cancelPendingAiTextRaf` is called inside `dispose()`", () => {
     const body = extractMethodBody("dispose(): void {");
-    expect(body).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
+    expect(body).toMatch(/this\.(cancelPendingAiTextRaf|onAiOutputBoundary)\s*\(\s*\)/);
   });
 
   it("Case 7: `cancelPendingAiTextRaf` is called from every `.done` / error / barge-in / reconnect path", () => {
@@ -255,32 +258,36 @@ describe("Story 13-1 — orchestrator render-storm drift detectors (audit P2-3)"
     // could include sibling case-arms' matching `cancelPendingAiTextRaf`
     // calls, masking a regression that removed it from one specific arm.
     const audioDoneArm = extractCaseArm('case "response.output_audio.done":');
-    expect(audioDoneArm).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
+    expect(audioDoneArm).toMatch(/this\.(cancelPendingAiTextRaf|onAiOutputBoundary)\s*\(\s*\)/);
 
     const textDoneArm = extractCaseArm('case "response.output_text.done":');
-    expect(textDoneArm).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
+    expect(textDoneArm).toMatch(/this\.(cancelPendingAiTextRaf|onAiOutputBoundary)\s*\(\s*\)/);
 
     const audioTranscriptDoneArm = extractCaseArm('case "response.output_audio_transcript.done":');
-    expect(audioTranscriptDoneArm).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
+    expect(audioTranscriptDoneArm).toMatch(
+      /this\.(cancelPendingAiTextRaf|onAiOutputBoundary)\s*\(\s*\)/
+    );
 
     // handleResponseDone method body
     const handleResponseDoneBody = extractMethodBody("private handleResponseDone(): void {");
-    expect(handleResponseDoneBody).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
+    expect(handleResponseDoneBody).toMatch(
+      /this\.(cancelPendingAiTextRaf|onAiOutputBoundary)\s*\(\s*\)/
+    );
 
     // handleErrorEvent method body
     const handleErrorBody = extractMethodBody(
       'private handleErrorEvent(event: RealtimeEvent & { type: "error" }): void {'
     );
-    expect(handleErrorBody).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
+    expect(handleErrorBody).toMatch(/this\.(cancelPendingAiTextRaf|onAiOutputBoundary)\s*\(\s*\)/);
 
     // handleSpeechStarted (barge-in path)
     const bargeInBody = extractMethodBody("private handleSpeechStarted(): void {");
-    expect(bargeInBody).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
+    expect(bargeInBody).toMatch(/this\.(cancelPendingAiTextRaf|onAiOutputBoundary)\s*\(\s*\)/);
 
     // Story 13-1 review-round-1 P4: handleReconnecting also cancels the
     // pending rAF before clearing pendingAiText (cross-session boundary).
     const reconnectingBody = extractMethodBody("private handleReconnecting(): void {");
-    expect(reconnectingBody).toMatch(/this\.cancelPendingAiTextRaf\s*\(\s*\)/);
+    expect(reconnectingBody).toMatch(/this\.(cancelPendingAiTextRaf|onAiOutputBoundary)\s*\(\s*\)/);
   });
 
   it("Case 8: Story 11-2 P22 invariant — `isAiSpeakingMirror = true` AND `= false` both still present", () => {

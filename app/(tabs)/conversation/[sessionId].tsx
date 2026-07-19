@@ -2,7 +2,7 @@
  * Active Voice Conversation Screen
  *
  * Full-screen voice conversation with:
- * - Animated waveform visualization
+ * - Expressive companion avatar (state-driven, audio-amplitude mouth — Story 18-4)
  * - Real-time transcript
  * - Correction bubbles
  * - Push-to-talk + hands-free (VAD) modes

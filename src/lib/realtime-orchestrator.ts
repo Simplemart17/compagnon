@@ -551,7 +551,7 @@ export class RealtimeOrchestrator {
     // but wastes a frame), or (b) — more importantly — surviving a future
     // refactor that drops the rAF callback's defensive check. Belt-and-
     // suspenders extension of the Story 12-1 P7 isDisposed contract.
-    this.cancelPendingAiTextRaf();
+    this.onAiOutputBoundary();
     // Story 18-1: cancel any pending silence-relance so a queued nudge
     // can't fire into a disposed session.
     this.clearRelanceTimer();
@@ -654,16 +654,35 @@ export class RealtimeOrchestrator {
    * disposed orchestrator.
    */
   private cancelPendingAiTextRaf(): void {
-    // Story 18-4: every caller of this helper is an AI-output-stream
-    // boundary (start reset, the three .done arms, barge-in, response.done,
-    // error, reconnect) — exactly the set of moments the avatar mouth must
-    // close. Zeroing here covers all boundaries by construction, and any
-    // future boundary that cancels the rAF inherits the zero for free.
-    this.emitAudioAmplitude(0);
     if (this.aiTextRafHandle !== null) {
       cancelAnimationFrame(this.aiTextRafHandle);
       this.aiTextRafHandle = null;
     }
+  }
+
+  /**
+   * Story 18-4 review R1: a REAL AI-audio boundary — cancels the 13-1 text
+   * rAF AND closes the avatar mouth. Deliberately NOT the same thing as
+   * `cancelPendingAiTextRaf` alone: the `response.output_text.done` and
+   * `response.output_audio_transcript.done` arms are TEXT-finalization
+   * boundaries that can fire while audio deltas are still streaming
+   * (transcript streams faster than synthesized audio; ordering vs
+   * `response.output_audio.done` is not guaranteed) — zeroing the mouth
+   * there produced a visible mid-utterance close/reopen flicker. Those two
+   * arms call only the rAF cancel; every genuine audio boundary (start
+   * reset, `output_audio.done`, barge-in, response.done, error, reconnect,
+   * dispose) routes here.
+   *
+   * Known v1 limitation (documented, follow-up filed as
+   * `18-4-followup-playback-clocked-amplitude`): the zero fires at
+   * `audio.done` ARRIVAL, which leads actual device playback by the
+   * ~300-800ms buffered speaker-drain tail (see AI_SPEECH_COOLDOWN_MS) —
+   * the mouth stops slightly before the voice does. Fixing this needs
+   * playback-position callbacks from the native audio layer.
+   */
+  private onAiOutputBoundary(): void {
+    this.cancelPendingAiTextRaf();
+    this.emitAudioAmplitude(0);
   }
 
   /**
@@ -1316,7 +1335,11 @@ export class RealtimeOrchestrator {
         const turnId = `turn_${this.turnIdCounter}`;
         void ExpoPlayAudioStream.playSound(event.delta, turnId, "pcm_s16le");
         // Story 18-4: drive the avatar mouth from this chunk's RMS level.
-        this.emitAudioAmplitude(pcm16Base64Level(event.delta as string));
+        // Review R1: guard BEFORE computing — argument evaluation would
+        // otherwise decode the chunk even for consumers with no callback.
+        if (this.options.onAudioAmplitude) {
+          this.emitAudioAmplitude(pcm16Base64Level(event.delta as string));
+        }
         // Story 11-2 barge-in: capture AI-speaking start time on first delta.
         if (this.aiSpeakingStartedAtMs === null) {
           this.aiSpeakingStartedAtMs = Date.now();
@@ -1360,7 +1383,7 @@ export class RealtimeOrchestrator {
         // Story 13-1: cancel any pending pendingAiText rAF so the
         // turn-finalization setState below is the authoritative final state
         // (a queued rAF firing AFTER this setState would surface stale text).
-        this.cancelPendingAiTextRaf();
+        this.onAiOutputBoundary();
         // Arm the speaker-drain cooldown. The device keeps playing the AI's
         // voice for ~300–800ms after this event arrives over the wire; the mic
         // gate reads `micCooldownUntilMs` (via isMicForwardingSuppressed)
@@ -1474,12 +1497,6 @@ export class RealtimeOrchestrator {
   }
 
   /**
-   * Story 11-2 barge-in: if the user starts speaking WHILE the AI is already
-   * playing audio (interrupted mid-sentence), (1) stop local playback,
-   * (2) send response.cancel, (3) send conversation.item.truncate to
-   * synchronize server-side transcript with what was actually played.
-   */
-  /**
    * Story 18-4: forward an amplitude sample to the avatar sink. A throwing
    * consumer callback must never break the audio pipeline — swallow, with a
    * one-shot breadcrumb (error-tier at delta cadence would spam Sentry).
@@ -1488,21 +1505,31 @@ export class RealtimeOrchestrator {
 
   private emitAudioAmplitude(level: number): void {
     if (!this.options.onAudioAmplitude) return;
+    // Review R1: the latch MUTES — once a consumer callback throws, further
+    // invocations are skipped entirely (a deterministically-throwing
+    // callback would otherwise cost a construct-throw-catch cycle per audio
+    // delta at ~10-50Hz for the rest of the session). Reset in start()'s
+    // reset block (Story 12-1 P1 pattern) so the next conversation retries.
+    if (this.amplitudeCallbackErrorLatched) return;
     try {
       this.options.onAudioAmplitude(level);
     } catch {
-      if (!this.amplitudeCallbackErrorLatched) {
-        this.amplitudeCallbackErrorLatched = true;
-        addBreadcrumb({
-          category: "realtime",
-          level: "warning",
-          message: "onAudioAmplitude callback threw; amplitude muted for session",
-          data: { feature: "avatar-amplitude-callback-error" },
-        });
-      }
+      this.amplitudeCallbackErrorLatched = true;
+      addBreadcrumb({
+        category: "realtime",
+        level: "warning",
+        message: "onAudioAmplitude callback threw; amplitude muted for session",
+        data: { feature: "avatar-amplitude-callback-error" },
+      });
     }
   }
 
+  /**
+   * Story 11-2 barge-in: if the user starts speaking WHILE the AI is already
+   * playing audio (interrupted mid-sentence), (1) stop local playback,
+   * (2) send response.cancel, (3) send conversation.item.truncate to
+   * synchronize server-side transcript with what was actually played.
+   */
   private handleSpeechStarted(): void {
     // Story 18-1: sound detected — cancel any pending relance so we never
     // nudge over the user. Review R1: the consecutive counter is NOT reset
@@ -1563,7 +1590,7 @@ export class RealtimeOrchestrator {
       // Story 13-1: cancel any pending pendingAiText rAF so the barge-in
       // setState below (which clears pendingAiText to "") is the
       // authoritative final state for this interrupted turn.
-      this.cancelPendingAiTextRaf();
+      this.onAiOutputBoundary();
       this.setState((s) => ({
         ...s,
         isSpeaking: true,
@@ -1641,7 +1668,7 @@ export class RealtimeOrchestrator {
     this.aiSpeakingStartedAtMs = null;
     // Story 13-1: cancel any pending rAF so the response-finalization
     // setState below is the authoritative final state for pendingAiText.
-    this.cancelPendingAiTextRaf();
+    this.onAiOutputBoundary();
     // Ship-blocker C3: `response.output_audio.done` is NOT guaranteed —
     // cancelled / content-filtered / incomplete responses (and packet loss)
     // can skip it while still emitting this terminal `response.done`. If we
@@ -1728,7 +1755,7 @@ export class RealtimeOrchestrator {
     this.aiSpeakingStartedAtMs = null;
     // Story 13-1: cancel any pending rAF so a queued setState can't surface
     // stale partial text after the error-handling state mutations below.
-    this.cancelPendingAiTextRaf();
+    this.onAiOutputBoundary();
     // Story 11-1 P3: drain orphan corrections BEFORE end() so the persisted
     // record is complete on connection_lost.
     const merged = mergeOrphanCorrections(this.corrections, this.pendingToolCorrections);
@@ -1798,7 +1825,7 @@ export class RealtimeOrchestrator {
     // reconnect setState clears pendingAiText to "". The orchestrator
     // survives the cross-session boundary (transcript + corrections are
     // preserved) but the streaming-text accumulator is reset.
-    this.cancelPendingAiTextRaf();
+    this.onAiOutputBoundary();
     this.setState((s) => ({
       ...s,
       status: "reconnecting",
@@ -2046,7 +2073,7 @@ export class RealtimeOrchestrator {
     // start() retry / end()→start() recycle so a stale rAF from a prior
     // conversation can't fire setState into the fresh state (matches the
     // Story 12-1 P1 + Story 12-5 P1 reset-mirrors-on-start pattern).
-    this.cancelPendingAiTextRaf();
+    this.onAiOutputBoundary();
     // Story 18-1: clear any relance left over from a prior conversation +
     // reset ALL relance state (fresh conversation, fresh patience budget —
     // including the per-session lifetime cap, review R1).
@@ -2065,6 +2092,9 @@ export class RealtimeOrchestrator {
     this.pendingToolCorrections = [];
     this.responseInFlight = false;
     this.aiSpeakingStartedAtMs = null;
+    // Story 18-4 review R1: un-mute the amplitude callback for the fresh
+    // conversation (the latch mutes for one session on a throwing consumer).
+    this.amplitudeCallbackErrorLatched = false;
     // Story 12-1 review-round-1 P1: reset the synchronous mirror so a
     // previous conversation's stuck `true` value (e.g., barge-in path that
     // bypassed `handleResponseDone`) doesn't trigger a spurious barge-in
