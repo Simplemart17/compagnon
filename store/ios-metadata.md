@@ -100,6 +100,26 @@ https://companion.app/support
 https://companion.app
 ```
 
+## App Privacy questionnaire (App Store Connect answers)
+
+Post-Story-21-2 the app collects usage analytics via PostHog. Answer the
+App Privacy questionnaire as follows:
+
+- **Data Used to Track You:** None (no cross-app/cross-site tracking; no ad
+  networks; no data broker sharing).
+- **Data Linked to You:**
+  - _Identifiers → User ID:_ Yes (opaque account UUID, linked for app
+    functionality + analytics).
+  - _Usage Data → Product Interaction:_ Yes (feature-usage events — e.g.
+    conversation completed, exercise finished, coarse score bands — linked
+    via the opaque user ID; purpose: Analytics + App Functionality).
+- **Data Not Linked to You:** Diagnostics (crash data via Sentry, tagged
+  with the opaque user ID only per the in-app privacy policy).
+- No data is used for Third-Party Advertising or Developer's Advertising.
+
+Keep these answers in sync with the in-app privacy policy (§3 purposes +
+§4 processor list) whenever a new data sink ships.
+
 ## Privacy Policy URL (required)
 
 ```

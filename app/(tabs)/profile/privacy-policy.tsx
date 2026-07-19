@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/src/lib/design";
 
-const LAST_UPDATED = "May 7, 2026";
+const LAST_UPDATED = "July 19, 2026";
 
 interface Section {
   heading: string;
@@ -21,7 +21,7 @@ const sections: Section[] = [
   },
   {
     heading: "3. How We Use Your Information",
-    body: "We use your data exclusively to:\n\n\u2022 Provide and personalise the language learning experience\n\u2022 Track your progress and maintain your learning streak\n\u2022 Generate AI-powered exercises, conversations, and feedback\n\u2022 Assess your pronunciation and identify areas for improvement\n\u2022 Remember preferences and facts to make conversations more natural\n\u2022 Detect and fix crashes and technical issues\n\nWe do not sell your data, use it for advertising, or share it with third parties except as described in Section 4.",
+    body: "We use your data exclusively to:\n\n\u2022 Provide and personalise the language learning experience\n\u2022 Track your progress and maintain your learning streak\n\u2022 Generate AI-powered exercises, conversations, and feedback\n\u2022 Assess your pronunciation and identify areas for improvement\n\u2022 Remember preferences and facts to make conversations more natural\n\u2022 Understand which features help learners improve, through anonymised usage analytics\n\u2022 Detect and fix crashes and technical issues\n\nWe do not sell your data, use it for advertising, or share it with third parties except as described in Section 4.",
   },
   {
     heading: "4. Third-Party Services",

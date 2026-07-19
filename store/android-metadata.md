@@ -131,14 +131,14 @@ Go to **App content → Data safety** and declare:
 
 ### Data collected
 
-| Data type                   | Collected | Shared                        | Purpose                      |
-| --------------------------- | --------- | ----------------------------- | ---------------------------- |
-| Email address               | Yes       | No                            | Account registration         |
-| Name                        | Yes       | No                            | Profile personalisation      |
-| Voice or sound recordings   | Yes       | Yes (Microsoft Azure, OpenAI) | Pronunciation & conversation |
-| In-app messages/transcripts | Yes       | Yes (OpenAI)                  | AI conversation              |
-| App interactions            | Yes       | No                            | Analytics                    |
-| Crash logs                  | Yes       | Yes (Sentry)                  | App stability                |
+| Data type                   | Collected | Shared                                                       | Purpose                      |
+| --------------------------- | --------- | ------------------------------------------------------------ | ---------------------------- |
+| Email address               | Yes       | No                                                           | Account registration         |
+| Name                        | Yes       | No                                                           | Profile personalisation      |
+| Voice or sound recordings   | Yes       | Yes (Microsoft Azure, OpenAI)                                | Pronunciation & conversation |
+| In-app messages/transcripts | Yes       | Yes (OpenAI)                                                 | AI conversation              |
+| App interactions            | Yes       | Yes (PostHog — anonymised usage events, opaque user ID only) | Analytics                    |
+| Crash logs                  | Yes       | Yes (Sentry)                                                 | App stability                |
 
 > **Sentry scope clarification:** Crash logs sent to Sentry are tagged only with the user's opaque `auth.uid()`. We do not share email, screenshots, conversation transcripts, French text content, or request bodies with Sentry. Only OS version, app version, stack traces, and short structured tags (e.g. error category, status code) are transmitted.
 

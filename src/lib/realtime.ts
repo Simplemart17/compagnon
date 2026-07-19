@@ -223,7 +223,18 @@ export class RealtimeSession {
    * attempts internally call `establishConnection()` directly (NOT through
    * `connect()`) so they don't reset the per-disconnect attempt counter.
    */
+  /**
+   * R1: the model is resolved ONCE per session and pinned here — the flag
+   * store refreshes asynchronously, so resolving at each consumption site
+   * (token invoke + WS URL, plus every Story 11-2 reconnect) could mint a
+   * token for one model and connect with another, or silently swap models
+   * mid-conversation (contaminating the 20.6 A/B and the Story 11-4 cost
+   * pre-flight). Same cached-per-session pattern as `config.systemPrompt`.
+   */
+  private sessionModel: string | null = null;
+
   async connect(): Promise<void> {
+    this.sessionModel = getRealtimeModel();
     this.reconnectAttempts = 0;
     this.intentionallyDisconnected = false;
     this.wasConnected = false;
@@ -273,7 +284,7 @@ export class RealtimeSession {
     // Get ephemeral token from Edge Function (uses GA /v1/realtime/client_secrets endpoint)
     const { data: sessionData, error } = await supabase.functions.invoke("realtime-session", {
       body: {
-        model: getRealtimeModel(),
+        model: this.sessionModel ?? getRealtimeModel(),
         voice: this.config.voice ?? "coral",
       },
     });
@@ -314,7 +325,7 @@ export class RealtimeSession {
         }
       }, CONNECT_TIMEOUT_MS);
 
-      const url = `${REALTIME_URL}?model=${getRealtimeModel()}`;
+      const url = `${REALTIME_URL}?model=${this.sessionModel ?? getRealtimeModel()}`;
 
       // React Native WebSocket accepts headers via 3rd argument (options), not 2nd (protocols)
       const RNWebSocket = WebSocket as unknown as new (

@@ -122,11 +122,18 @@ function RootLayoutNav() {
       trackEvent(ANALYTICS_EVENTS.APP_OPENED);
     }
   }, []);
+  // R1: reset ONLY on a real identified→signed-out transition. A cold
+  // start has user=null while auth hydrates — resetting there rotates the
+  // anonymous distinct_id AFTER app_opened captured, orphaning the event
+  // and breaking the D1/D7/D30 funnel this module exists to feed.
+  const lastIdentifiedIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (user?.id) {
       identifyUser(user.id);
-    } else {
+      lastIdentifiedIdRef.current = user.id;
+    } else if (lastIdentifiedIdRef.current !== null) {
       resetAnalytics();
+      lastIdentifiedIdRef.current = null;
     }
   }, [user?.id]);
 

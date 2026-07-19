@@ -50,9 +50,16 @@ export function isFeatureEnabled(flag: FeatureFlagKey): boolean {
   const client = getAnalyticsClient();
   if (!client) return FLAG_DEFAULTS[flag];
   try {
-    const value = client.isFeatureEnabled(flag);
-    if (value === undefined || value === null) return FLAG_DEFAULTS[flag];
-    return value === true;
+    // R1 (verified against @posthog/core v4 dist): `isFeatureEnabled()`
+    // returns FALSE — not undefined — for a flag MISSING from a loaded
+    // response with ≥1 flag, which would let an uncreated/deleted/typo'd
+    // kill-switch key brick the feature app-wide. `getFeatureFlagResult`
+    // keeps missing-flag as undefined, so absence falls through to the
+    // local fail-open default as documented.
+    const result = client.getFeatureFlagResult(flag);
+    const enabled = result?.enabled;
+    if (enabled === undefined || enabled === null) return FLAG_DEFAULTS[flag];
+    return enabled === true;
   } catch {
     return FLAG_DEFAULTS[flag];
   }

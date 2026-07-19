@@ -43,7 +43,10 @@ export const ANALYTICS_EVENTS = {
   CONVERSATION_COMPLETED: "conversation_completed",
   /** Any practice exercise finished (listening/reading/grammar/writing…). */
   EXERCISE_COMPLETED: "exercise_completed",
-  /** Mock test finished (QCM or speaking). */
+  /** Mock test finished. Emission points: the QCM runner ([testId].tsx,
+   * banded from the 0-699 TCF composite) AND the speaking flow
+   * (speaking.tsx, banded from the 0-20 publisher-scale composite —
+   * different scale, same band semantics). */
   MOCK_TEST_COMPLETED: "mock_test_completed",
   /** User arrived via a daily-nudge push tap (Story 18-3 deep-link). */
   NUDGE_OPENED: "nudge_opened",
@@ -66,7 +69,9 @@ export function scoreBand(score: number): "0-25" | "26-50" | "51-75" | "76-100" 
 }
 
 const API_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
-const HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+// R1: `||` not `??` — CI injects an EMPTY STRING when the GitHub secret is
+// unset, and an empty host would ship analytics-dead builds silently.
+const HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
 
 /** True when analytics is configured AND we're not in a test runtime. */
 export function isAnalyticsEnabled(): boolean {
@@ -89,6 +94,10 @@ export function getAnalyticsClient(): PostHog | null {
         // Explicit taxonomy only — no autocapture, no lifecycle events,
         // no session replay (privacy contract above).
         captureAppLifecycleEvents: false,
+        // R1: without this the SDK auto-captures $feature_flag_called on
+        // every flag read — events OUTSIDE the taxonomy below, violating
+        // the privacy contract (verified real v4 option).
+        sendFeatureFlagEvent: false,
         disabled: false,
       });
     } catch (err) {

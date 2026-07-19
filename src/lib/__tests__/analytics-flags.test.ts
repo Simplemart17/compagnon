@@ -79,15 +79,70 @@ describe("Story 21-3 — feature flags (FAIL-OPEN contract)", () => {
 });
 
 describe("Story 21-2/21-3 — emission-point + privacy drift pins", () => {
-  it("realtime.ts: pinned MODEL constant intact + flag-gated getRealtimeModel used at both consumption sites", () => {
+  it("realtime.ts: pinned MODEL constant intact + SESSION-PINNED model at both consumption sites (R1)", () => {
     const src = readSrc("src/lib/realtime.ts");
-    // The Story 11-5 P10 cost-table pin regex must keep matching.
+    // The Story 11-5 P10 cost-table pin regex must keep matching (first
+    // `const MODEL =` in the file is the mini constant).
     expect(src).toMatch(/const MODEL = "gpt-realtime-mini"/);
     expect(src).toMatch(/const FULL_MODEL = "gpt-realtime"/);
-    expect(src).toMatch(/model: getRealtimeModel\(\)/);
-    expect(src).toMatch(/\?model=\$\{getRealtimeModel\(\)\}/);
+    // R1: the model is resolved ONCE per session in connect() and PINNED —
+    // per-site resolution could mint a token for one model and connect
+    // with another, or silently swap models across a reconnect.
+    expect(src).toMatch(/this\.sessionModel = getRealtimeModel\(\)/);
+    expect(src).toMatch(/model: this\.sessionModel \?\? getRealtimeModel\(\)/);
+    expect(src).toMatch(/\?model=\$\{this\.sessionModel \?\? getRealtimeModel\(\)\}/);
     // NEGATIVE: no direct MODEL consumption remains.
     expect(src).not.toMatch(/model: MODEL,/);
+  });
+
+  it("R1: feature-flags reads getFeatureFlagResult (missing-flag-safe), never bare isFeatureEnabled", () => {
+    const src = readSrc("src/lib/feature-flags.ts");
+    // v4 isFeatureEnabled returns FALSE for a MISSING flag once ≥1 flag is
+    // loaded — an uncreated kill-switch key would brick the feature
+    // app-wide through the exact mechanism meant to prevent that.
+    expect(src).toMatch(/client\.getFeatureFlagResult\(flag\)/);
+    expect(src).not.toMatch(/client\.isFeatureEnabled\(/);
+  });
+
+  it("R1: SDK privacy options — sendFeatureFlagEvent disabled; HOST uses || (empty-string-safe)", () => {
+    const src = readSrc("src/lib/analytics.ts");
+    expect(src).toMatch(/sendFeatureFlagEvent: false/);
+    // CI injects "" for unset secrets; ?? would accept the empty host and
+    // ship analytics-dead builds silently.
+    // (Pattern stops before the URL — the test's comment-stripper eats
+    // the `//` inside the string literal.)
+    expect(src).toMatch(/EXPO_PUBLIC_POSTHOG_HOST \|\|/);
+    expect(src).not.toMatch(/EXPO_PUBLIC_POSTHOG_HOST \?\?/);
+  });
+
+  it("R1: _layout resets identity ONLY on an identified→signed-out transition (funnel-preserving)", () => {
+    const src = readSrc("app/_layout.tsx");
+    expect(src).toMatch(/lastIdentifiedIdRef\.current !== null/);
+  });
+
+  it("R1: conversation lifecycle is status-transition-driven — started on connected; completed on BOTH terminal states with terminated_by", () => {
+    const src = readSrc("app/(tabs)/conversation/[sessionId].tsx");
+    expect(src).toMatch(/conversation\.status === "connected" && !hasTrackedStartRef\.current/);
+    expect(src).toMatch(
+      /conversation\.status === "ended" \|\| conversation\.status === "disconnected"/
+    );
+    expect(src).toMatch(/terminated_by/);
+    // NEGATIVE: no pre-start emission in handleStart (overcounted by the
+    // retry/connect-failure rate).
+    const handleStart = src.slice(src.indexOf("const handleStart"), src.indexOf("const handleEnd"));
+    expect(handleStart).not.toContain("CONVERSATION_STARTED");
+  });
+
+  it("R1: exercise capture sits ABOVE the offline early-return; speaking route emits mock_test_completed on the 0-20 scale", () => {
+    const exercise = readSrc("src/hooks/use-exercise.ts");
+    const captureIdx = exercise.indexOf("ANALYTICS_EVENTS.EXERCISE_COMPLETED");
+    const persistIdx = exercise.indexOf('from("exercises").insert');
+    expect(captureIdx).toBeGreaterThan(-1);
+    expect(persistIdx).toBeGreaterThan(-1);
+    expect(captureIdx).toBeLessThan(persistIdx);
+    const speaking = readSrc("app/(tabs)/mock-test/speaking.tsx");
+    expect(speaking).toMatch(/ANALYTICS_EVENTS\.MOCK_TEST_COMPLETED/);
+    expect(speaking).toMatch(/summary\.compositeOverall \/ 20/);
   });
 
   it("[sessionId]: kill switch gates handleStart + both conversation events fire", () => {

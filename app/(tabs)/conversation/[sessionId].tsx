@@ -234,32 +234,51 @@ export default function ConversationSessionScreen() {
     },
   });
 
-  // Story 21-2: core engagement event — fires once per conversation end.
-  // Top-level effect keyed on the hook's status (NOT inside
-  // onConversationEnd: the orchestrator captures its options at
-  // construction, so state read there would be a stale first-render
-  // snapshot — duration/corrections would read as zero).
+  // Story 21-2 R1: session analytics keyed on ORCHESTRATOR STATUS
+  // transitions — the single source of truth for the conversation
+  // lifecycle:
+  //   - started fires on the transition INTO "connected" (once per
+  //     session) — NOT before start(), which overcounted by the connect-
+  //     failure/retry rate and contradicted the taxonomy doc;
+  //   - completed fires on EITHER terminal state: "ended" (user end) or
+  //     "disconnected" (reconnect exhaustion — the orchestrator persists
+  //     the full conversation on that path too, so analytics must match
+  //     the DB boundary or the funnel diverges from ground truth for
+  //     exactly the poor-network cohort).
+  // Deps are status-only (13-4 P19 precedent): duration/corrections are
+  // read at fire time; ticking deps would re-run the effect every second.
+  const hasTrackedStartRef = useRef(false);
   const hasTrackedCompletionRef = useRef(false);
   useEffect(() => {
-    if (conversation.status === "ended" && !hasTrackedCompletionRef.current) {
+    if (conversation.status === "connected" && !hasTrackedStartRef.current) {
+      hasTrackedStartRef.current = true;
+      trackEvent(ANALYTICS_EVENTS.CONVERSATION_STARTED, {
+        mode,
+        cefr_level: cefrLevel,
+      });
+    }
+    if (
+      (conversation.status === "ended" || conversation.status === "disconnected") &&
+      !hasTrackedCompletionRef.current
+    ) {
       hasTrackedCompletionRef.current = true;
       trackEvent(ANALYTICS_EVENTS.CONVERSATION_COMPLETED, {
         mode,
         cefr_level: cefrLevel,
         duration_seconds: conversation.durationSeconds,
         corrections_count: conversation.allCorrections.length,
+        terminated_by: conversation.status === "ended" ? "user" : "connection_lost",
       });
     }
     if (conversation.status === "connecting") {
+      hasTrackedStartRef.current = false;
       hasTrackedCompletionRef.current = false;
     }
-  }, [
-    conversation.status,
-    conversation.durationSeconds,
-    conversation.allCorrections.length,
-    mode,
-    cefrLevel,
-  ]);
+    // Status-only deps by design: duration/corrections are point-in-time
+    // reads at the terminal transition; including them would re-run the
+    // effect every second (13-4 P19 precedent).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.status]);
 
   // Story 13-3: single chokepoint replacing the pre-13-3 4-effect waterfall
   // (~220 lines of inline session-comparison + milestone-detection + error-
@@ -317,13 +336,9 @@ export default function ConversationSessionScreen() {
       );
       return;
     }
-    trackEvent(ANALYTICS_EVENTS.CONVERSATION_STARTED, {
-      mode,
-      cefr_level: cefrLevel,
-    });
     hapticMedium();
     await conversation.start();
-  }, [conversation, mode, cefrLevel]);
+  }, [conversation]);
 
   const handleEnd = useCallback(() => {
     if (conversation.durationSeconds < 60) {

@@ -98,6 +98,8 @@ Settings → Secrets and variables → Actions → New repository secret. Add:
 | `EXPO_PUBLIC_SUPABASE_URL`      | local `.env.local`                          | build.yml, ota-update.yml             |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | local `.env.local`                          | build.yml, ota-update.yml             |
 | `EXPO_PUBLIC_SENTRY_DSN`        | local `.env.local`                          | build.yml, ota-update.yml             |
+| `EXPO_PUBLIC_POSTHOG_API_KEY`   | PostHog project settings (`phc_…` client key; Story 21-2) | build.yml, ota-update.yml             |
+| `EXPO_PUBLIC_POSTHOG_HOST`      | `https://us.i.posthog.com` (default)        | build.yml, ota-update.yml             |
 | `SENTRY_AUTH_TOKEN`             | sentry.io → Account Tokens (project-scope)  | ota-update.yml                        |
 | `SUPABASE_ACCESS_TOKEN`         | supabase.com/dashboard/account/tokens       | deploy.yml                            |
 | `SUPABASE_PROJECT_REF`          | Supabase dashboard URL slug                 | deploy.yml                            |
@@ -117,7 +119,7 @@ The credentials in §2.1–§2.3 are different — they live as EAS env vars / f
 
 | Variable type | Set as | Read by |
 |---|---|---|
-| `EXPO_PUBLIC_*` (Supabase URL, anon key, Sentry DSN) | GitHub repo secret + `build.yml` `env:` block | EAS Cloud build (uploaded with job spec) |
+| `EXPO_PUBLIC_*` (Supabase URL, anon key, Sentry DSN, PostHog key + host) | GitHub repo secret + `build.yml` `env:` block | EAS Cloud build (uploaded with job spec) |
 | `EXPO_ASC_*` / `EXPO_APPLE_TEAM_ID` | EAS env var (`eas env:create`) | `eas.json` interpolation at submit time |
 | `EXPO_ASC_API_KEY_P8` / `EXPO_GOOGLE_SERVICE_ACCOUNT_KEY` | EAS file secret (`eas secret:create --type file`) | EAS submit infrastructure |
 | `SENTRY_AUTH_TOKEN` | Both: GitHub repo secret (for OTA via `ota-update.yml`) AND EAS env var (for native builds via `eas build`) | The `@sentry/react-native/expo` plugin |
