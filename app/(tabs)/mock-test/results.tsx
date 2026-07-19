@@ -72,10 +72,10 @@ export default function MockTestResultsScreen() {
       {/* Overall Score */}
       <View
         className="items-center mb-8"
-        accessibilityLabel={`Your TCF score: ${results.overallTcfScore} out of 699, CEFR level ${results.overallCefrLevel}`}
+        accessibilityLabel={`Your estimated TCF score: ${results.overallTcfScore} out of 699, CEFR level ${results.overallCefrLevel}. Estimated from practice items, not an official TCF prediction.`}
       >
         <Text className="text-sm mb-2" style={{ color: Colors.gray700 }}>
-          Your TCF Score
+          Your Estimated TCF Score
         </Text>
         <View
           className="w-40 h-40 rounded-full justify-center items-center bg-white"
@@ -99,6 +99,19 @@ export default function MockTestResultsScreen() {
         >
           <Text className="text-white text-lg font-extrabold">{results.overallCefrLevel}</Text>
         </View>
+
+        {/* Epic 20.1 (v2-vision-roadmap): score-honesty disclaimer. Practice
+            items are AI-generated and not psychometrically calibrated against
+            real TCF results — presenting the number as an official prediction
+            risks over-confident exam booking (immigration stakes). */}
+        <Text
+          className="text-xs mt-3 text-center"
+          style={{ color: Colors.gray500, maxWidth: 300 }}
+          accessibilityRole="text"
+        >
+          Estimated from practice items — not an official TCF prediction. Confirm your level with an
+          official sample test before booking the exam.
+        </Text>
 
         {/* Distance to C1 */}
         {distanceToC1 > 0 && (
