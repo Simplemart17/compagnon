@@ -13,15 +13,40 @@ import { Colors } from "@/src/lib/design";
 
 type PermissionStatus = "undetermined" | "granted" | "denied";
 
+/**
+ * Story 18-3: pure local→UTC hour conversion for the nudge-time preference.
+ * `offsetMinutes` is `new Date().getTimezoneOffset()` (minutes WEST of UTC:
+ * positive in the Americas, negative east of Greenwich). Fractional-hour
+ * timezones (e.g. India +5:30) round to the nearest hour — the nudge window
+ * is hour-granular by design. Exported for tests.
+ */
+export function localHourToUtcHour(localHour: number, offsetMinutes: number): number {
+  const utc = Math.round(localHour + offsetMinutes / 60);
+  return ((utc % 24) + 24) % 24;
+}
+
+/** Story 18-3: the three user-facing nudge time slots (local hours). */
+export const NUDGE_TIME_SLOTS = [
+  { key: "morning", label: "Morning", localHour: 9 },
+  { key: "afternoon", label: "Afternoon", localHour: 14 },
+  { key: "evening", label: "Evening", localHour: 18 },
+] as const;
+export type NudgeTimeSlotKey = (typeof NUDGE_TIME_SLOTS)[number]["key"];
+
 interface NotificationPreferences {
   streakAlerts: boolean;
   srsReminders: boolean;
+  /** Story 18-3: daily conversation nudge opt-in. */
+  dailyNudge: boolean;
 }
 
 export interface UseNotificationPreferencesReturn {
   preferences: NotificationPreferences;
   updatePreference: (key: keyof NotificationPreferences, value: boolean) => Promise<void>;
   permissionStatus: PermissionStatus;
+  /** Story 18-3: the user's nudge time slot (null until loaded). */
+  nudgeSlot: NudgeTimeSlotKey | null;
+  updateNudgeSlot: (slot: NudgeTimeSlotKey) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +119,11 @@ export function setupNotificationResponseListener(
       navigate("/(tabs)/home");
     } else if (screen === "vocabulary") {
       navigate("/(tabs)/practice/vocabulary");
+    } else if (screen === "conversation") {
+      // Story 18-3: daily-nudge tap lands on the conversation hub. Topic
+      // pre-seeding from the nudge context is a filed follow-up
+      // (18-3-followup-nudge-topic-seed).
+      navigate("/(tabs)/conversation");
     }
   });
 }
@@ -107,12 +137,19 @@ export function useNotificationPreferences(): UseNotificationPreferencesReturn {
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     streakAlerts: true,
     srsReminders: true,
+    dailyNudge: true,
   });
+  // Story 18-3: the user's chosen nudge slot, derived from the stored UTC
+  // hour on load (nearest slot); null until loaded. The ref mirrors the
+  // server-confirmed slot for rollback (same pattern as confirmedPrefsRef).
+  const [nudgeSlot, setNudgeSlot] = useState<NudgeTimeSlotKey | null>(null);
+  const nudgeSlotRef = useRef<NudgeTimeSlotKey | null>(null);
 
   // Track server-confirmed state for rollback
   const confirmedPrefsRef = useRef<NotificationPreferences>({
     streakAlerts: true,
     srsReminders: true,
+    dailyNudge: true,
   });
 
   // ---- Check current permission on mount + on foreground resume ----
@@ -151,9 +188,30 @@ export function useNotificationPreferences(): UseNotificationPreferencesReturn {
           const loaded = {
             streakAlerts: data.streakAlerts ?? true,
             srsReminders: data.srsReminders ?? true,
+            dailyNudge: data.dailyNudge ?? true,
           };
           setPreferences(loaded);
           confirmedPrefsRef.current = loaded;
+          // Story 18-3: map the stored UTC hour back to the nearest local
+          // slot for display (inverse of localHourToUtcHour).
+          if (typeof data.nudgeUtcHour === "number") {
+            const offset = new Date().getTimezoneOffset();
+            let best: NudgeTimeSlotKey = "evening";
+            let bestDist = 24;
+            for (const slot of NUDGE_TIME_SLOTS) {
+              const slotUtc = localHourToUtcHour(slot.localHour, offset);
+              const dist = Math.min(
+                Math.abs(slotUtc - data.nudgeUtcHour),
+                24 - Math.abs(slotUtc - data.nudgeUtcHour)
+              );
+              if (dist < bestDist) {
+                bestDist = dist;
+                best = slot.key;
+              }
+            }
+            setNudgeSlot(best);
+            nudgeSlotRef.current = best;
+          }
         }
       } catch (err) {
         captureError(err, "notification-load-preferences");
@@ -187,9 +245,32 @@ export function useNotificationPreferences(): UseNotificationPreferencesReturn {
     []
   );
 
+  // Story 18-3: persist a nudge time slot (converted to UTC client-side —
+  // timezone math stays on the client per the Story 9-2 precedent).
+  const updateNudgeSlot = useCallback(async (slotKey: NudgeTimeSlotKey) => {
+    const slot = NUDGE_TIME_SLOTS.find((sl) => sl.key === slotKey);
+    if (!slot) return;
+    const previous = nudgeSlotRef.current;
+    setNudgeSlot(slotKey);
+    try {
+      const utcHour = localHourToUtcHour(slot.localHour, new Date().getTimezoneOffset());
+      const { error } = await supabase.functions.invoke("notification-register", {
+        body: { action: "preferences", nudgeUtcHour: utcHour },
+      });
+      if (error) throw error;
+      nudgeSlotRef.current = slotKey;
+    } catch (err) {
+      setNudgeSlot(previous);
+      captureError(err, "notification-update-preference");
+      throw err;
+    }
+  }, []);
+
   return {
     preferences,
     updatePreference,
     permissionStatus,
+    nudgeSlot,
+    updateNudgeSlot,
   };
 }

@@ -65,6 +65,38 @@ interface SrsRow {
   platform: string;
 }
 
+interface NudgeRow {
+  user_id: string;
+  streak_days: number;
+  token: string;
+  platform: string;
+  top_error_description: string | null;
+}
+
+/** Story 18-3: lock-screen-safe truncation for the error-pattern snippet. */
+const NUDGE_ERROR_SNIPPET_MAX = 60;
+
+/**
+ * Story 18-3: compose the daily-nudge body. Contextual when the user has a
+ * top unresolved error pattern (study metadata — deliberately never
+ * companion_memory content: memories are private life details and this
+ * renders on the LOCK SCREEN); otherwise a warm generic invitation.
+ * EN chrome per the Story 14-1 language strategy.
+ */
+function composeNudgeBody(row: NudgeRow): string {
+  if (row.top_error_description && row.top_error_description.trim().length > 0) {
+    let snippet = row.top_error_description.trim();
+    if (snippet.length > NUDGE_ERROR_SNIPPET_MAX) {
+      snippet = `${snippet.slice(0, NUDGE_ERROR_SNIPPET_MAX)}…`;
+    }
+    return `Ready for 10 minutes of French? "${snippet}" could use a rematch.`;
+  }
+  if (row.streak_days >= 3) {
+    return `A quick chat keeps your ${row.streak_days}-day streak going — your Companion is ready.`;
+  }
+  return "Time for a quick French chat — your Companion is ready when you are.";
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -192,6 +224,16 @@ Deno.serve(async (req: Request) => {
       console.error(`[${requestId}] SRS query failed:`, srsError);
     }
 
+    // 6b. Story 18-3: query daily-nudge targets. The RPC enforces the
+    // per-user hour window + no-practice-today + the 20h one-per-day cap.
+    const { data: nudgeRows, error: nudgeError } = await supabaseAdmin
+      .rpc("get_nudge_notification_targets") as { data: NudgeRow[] | null; error: unknown };
+
+    if (nudgeError) {
+      queryErrors++;
+      console.error(`[${requestId}] nudge query failed:`, nudgeError);
+    }
+
     // 7. Cross-run idempotency: exclude users already notified within the past hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { data: recentLogs } = await supabaseAdmin
@@ -257,6 +299,30 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Story 18-3: daily-nudge notifications
+    const nudgeTokensSent = new Set<string>();
+    const nudgeUserIds: string[] = [];
+    if (nudgeRows) {
+      for (const row of nudgeRows) {
+        if (recentlyNotified.has(`${row.user_id}:nudge`)) continue;
+        if (nudgeTokensSent.has(row.token)) continue;
+        if (!Expo.isExpoPushToken(row.token)) {
+          console.warn(`[${requestId}] Invalid Expo token for user ${row.user_id}: ${row.token}`);
+          continue;
+        }
+        messages.push({
+          to: row.token,
+          title: "Your Companion is waiting \u{1F4AC}",
+          body: composeNudgeBody(row),
+          sound: "default",
+          priority: "high",
+          data: { screen: "conversation" },
+        });
+        nudgeTokensSent.add(row.token);
+        nudgeUserIds.push(row.user_id);
+      }
+    }
+
     // 8. Send notifications via Expo Push API
     let sent = 0;
     let failed = 0;
@@ -317,12 +383,19 @@ Deno.serve(async (req: Request) => {
     if (srsRows) {
       for (const row of srsRows) tokenToUser.set(row.token, row.user_id);
     }
+    if (nudgeRows) {
+      for (const row of nudgeRows) tokenToUser.set(row.token, row.user_id);
+    }
 
     for (const uid of uniqueStreakUsers) {
       logEntries.push({ user_id: uid, type: "streak" });
     }
     for (const uid of uniqueSrsUsers) {
       logEntries.push({ user_id: uid, type: "srs" });
+    }
+    const uniqueNudgeUsers = [...new Set(nudgeUserIds)];
+    for (const uid of uniqueNudgeUsers) {
+      logEntries.push({ user_id: uid, type: "nudge" });
     }
 
     // Enrich log entries with ticket IDs where available
@@ -376,6 +449,7 @@ Deno.serve(async (req: Request) => {
       queryErrors,
       streakNotifications: streakTokensSent.size,
       srsNotifications: srsTokensSent.size,
+      nudgeNotifications: nudgeTokensSent.size,
       timestamp: new Date().toISOString(),
     };
 

@@ -199,13 +199,21 @@ Deno.serve(async (req: Request) => {
       }
 
       case "preferences": {
-        const { streakAlerts, srsReminders } = body;
+        // Story 18-3: dailyNudge (boolean) + nudgeUtcHour (0-23 integer,
+        // client-converted from the user's local choice) join the two
+        // existing boolean prefs.
+        const { streakAlerts, srsReminders, dailyNudge, nudgeUtcHour } = body;
 
-        if (streakAlerts === undefined && srsReminders === undefined) {
+        if (
+          streakAlerts === undefined &&
+          srsReminders === undefined &&
+          dailyNudge === undefined &&
+          nudgeUtcHour === undefined
+        ) {
           return errorResponse({
             code: "INVALID_PARAMS",
             message:
-              "At least one preference must be provided: streakAlerts or srsReminders",
+              "At least one preference must be provided: streakAlerts, srsReminders, dailyNudge, or nudgeUtcHour",
             status: 400,
             corsHeaders,
           });
@@ -213,25 +221,43 @@ Deno.serve(async (req: Request) => {
 
         if (
           (streakAlerts !== undefined && typeof streakAlerts !== "boolean") ||
-          (srsReminders !== undefined && typeof srsReminders !== "boolean")
+          (srsReminders !== undefined && typeof srsReminders !== "boolean") ||
+          (dailyNudge !== undefined && typeof dailyNudge !== "boolean")
         ) {
           return errorResponse({
             code: "INVALID_PARAMS",
-            message: "streakAlerts and srsReminders must be boolean values",
+            message: "streakAlerts, srsReminders, and dailyNudge must be boolean values",
             status: 400,
             corsHeaders,
           });
         }
 
-        const updates: Record<string, boolean> = {};
+        if (
+          nudgeUtcHour !== undefined &&
+          (typeof nudgeUtcHour !== "number" ||
+            !Number.isInteger(nudgeUtcHour) ||
+            nudgeUtcHour < 0 ||
+            nudgeUtcHour > 23)
+        ) {
+          return errorResponse({
+            code: "INVALID_PARAMS",
+            message: "nudgeUtcHour must be an integer between 0 and 23",
+            status: 400,
+            corsHeaders,
+          });
+        }
+
+        const updates: Record<string, boolean | number> = {};
         if (streakAlerts !== undefined) updates.streak_alerts = streakAlerts;
         if (srsReminders !== undefined) updates.srs_reminders = srsReminders;
+        if (dailyNudge !== undefined) updates.daily_nudge = dailyNudge;
+        if (nudgeUtcHour !== undefined) updates.nudge_utc_hour = nudgeUtcHour;
 
         const { data: profile, error: updateError } = await supabase
           .from("profiles")
           .update(updates)
           .eq("id", user.id)
-          .select("streak_alerts, srs_reminders")
+          .select("streak_alerts, srs_reminders, daily_nudge, nudge_utc_hour")
           .single();
 
         if (updateError || !profile) {
@@ -251,6 +277,8 @@ Deno.serve(async (req: Request) => {
             success: true,
             streakAlerts: profile.streak_alerts,
             srsReminders: profile.srs_reminders,
+            dailyNudge: profile.daily_nudge,
+            nudgeUtcHour: profile.nudge_utc_hour,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -261,7 +289,7 @@ Deno.serve(async (req: Request) => {
       case "get-preferences": {
         const { data: profile, error: fetchError } = await supabase
           .from("profiles")
-          .select("streak_alerts, srs_reminders")
+          .select("streak_alerts, srs_reminders, daily_nudge, nudge_utc_hour")
           .eq("id", user.id)
           .single();
 
@@ -278,6 +306,8 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({
             streakAlerts: profile.streak_alerts,
             srsReminders: profile.srs_reminders,
+            dailyNudge: profile.daily_nudge,
+            nudgeUtcHour: profile.nudge_utc_hour,
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
