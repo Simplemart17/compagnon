@@ -176,6 +176,13 @@ export default function ConversationSessionScreen() {
   const rawMode = Array.isArray(modeParam) ? modeParam[0] : modeParam;
   const topic = decodeURIComponent(rawSessionId ?? "Free conversation");
   const cefrLevel = (profile?.current_cefr_level ?? "A1") as CEFRLevel;
+  // Story 18-2 review R1: the correction-explanation default must NOT see
+  // the "A1" coercion above (it would invert the language policy for B1+
+  // users while the profile hydrates). Pass the raw level — undefined means
+  // "not yet known" and defaults to French per
+  // defaultCorrectionExplanationLanguage's contract; the bubble re-derives
+  // when the profile arrives.
+  const correctionCefrLevel = profile?.current_cefr_level as CEFRLevel | undefined;
   const mode: ConversationMode =
     rawMode === "debate" || rawMode === "tcf_simulation" ? rawMode : "companion";
   const user = useAuthStore((s) => s.user);
@@ -466,6 +473,7 @@ export default function ConversationSessionScreen() {
               pendingAiText={conversation.pendingAiText}
               isAiSpeaking={conversation.isAiSpeaking}
               condensed
+              cefrLevel={correctionCefrLevel}
             />
 
             <View className="flex-1 items-center justify-center">
@@ -503,6 +511,7 @@ export default function ConversationSessionScreen() {
               transcript={conversation.transcript}
               pendingAiText={conversation.pendingAiText}
               isAiSpeaking={conversation.isAiSpeaking}
+              cefrLevel={correctionCefrLevel}
             />
           </View>
         )}
@@ -963,7 +972,10 @@ export default function ConversationSessionScreen() {
                 {/* Corrections or "Impeccable" message */}
                 {conversation.allCorrections.length > 0 ? (
                   <View className="mb-3">
-                    <CorrectionBubble corrections={conversation.allCorrections} />
+                    <CorrectionBubble
+                      corrections={conversation.allCorrections}
+                      cefrLevel={correctionCefrLevel}
+                    />
                   </View>
                 ) : (
                   <View

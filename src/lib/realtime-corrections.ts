@@ -31,7 +31,11 @@
 import type { ZodIssueCode } from "zod";
 
 import type { Correction } from "@/src/types/conversation";
-import { reportCorrectionArgsSchema } from "@/src/lib/schemas/ai-responses";
+import { isBeginnerCefrLevel, type CEFRLevel } from "@/src/types/cefr";
+import {
+  reportCorrectionArgsSchema,
+  type ReportCorrectionArgs,
+} from "@/src/lib/schemas/ai-responses";
 
 /**
  * Per-turn upper bound on accumulated `report_correction` tool-calls. A
@@ -68,8 +72,23 @@ export const FUNCTION_RESULT_ACK = "ok";
  *   message includes the issue path (e.g., "category") so the model has
  *   a concrete signal to fix.
  */
+/**
+ * R2: degraded-but-accepted shapes the tolerant boundary coerced. The
+ * helper stays pure (no Sentry import) — the ORCHESTRATOR breadcrumbs
+ * when this field is present (`feature: "report-correction-degraded"`),
+ * giving operators the compliance signal needed to know when the legacy
+ * tolerance can be retired (repo discipline: silent degradation must be
+ * observable — 11-5 P2 / 11-6 P6 / 12-4).
+ */
+export type DegradedCorrectionShape = "legacy-explanation" | "english-missing";
+
 export type ProcessReportCorrectionResult =
-  | { outcome: "recorded"; correction: Correction; resultMessage: string }
+  | {
+      outcome: "recorded";
+      correction: Correction;
+      resultMessage: string;
+      degradedShape?: DegradedCorrectionShape;
+    }
   | {
       outcome: "invalid";
       issueCode: ZodIssueCode | "unknown";
@@ -102,11 +121,106 @@ export function processReportCorrectionCall(parsed: unknown): ProcessReportCorre
       resultMessage: `Rejected: invalid-shape. Issue: ${code} at ${path}. Correction not recorded. Check field names + types + the 4-literal category enum.`,
     };
   }
+  // R2: classify degraded-but-accepted shapes from the RAW input so the
+  // orchestrator can breadcrumb model-compliance drift. Legacy takes
+  // precedence (a legacy-shaped call is trivially also english-missing).
+  let degradedShape: DegradedCorrectionShape | undefined;
+  const raw = parsed as Record<string, unknown> | null;
+  const rawFrIsUsable =
+    typeof raw?.explanation_fr === "string" && raw.explanation_fr.trim().length > 0;
+  if (typeof raw?.explanation === "string" && !rawFrIsUsable) {
+    degradedShape = "legacy-explanation";
+  } else if (result.data.explanation_en === undefined) {
+    degradedShape = "english-missing";
+  }
   return {
     outcome: "recorded",
-    correction: result.data,
+    correction: toStoredCorrection(result.data),
     resultMessage: FUNCTION_RESULT_ACK,
+    ...(degradedShape !== undefined ? { degradedShape } : {}),
   };
+}
+
+/**
+ * Story 18-2 (review R1): THE wire→stored mapping — exported so production
+ * and tests consume the same function (the review found the test file
+ * re-implementing this mapping locally, the mirrored-logic vacuous-pass
+ * mode the repo's drift discipline exists to prevent). Explicit
+ * field-by-field construction (NO spread) so a future wire field can never
+ * leak raw into persisted JSONB; the `_WireFieldsCovered` assertion below
+ * turns "schema gained a field this mapping doesn't handle" into a
+ * compile error (successor to the Story 11-1 P7 bidirectional pin).
+ */
+export function toStoredCorrection(args: ReportCorrectionArgs): Correction {
+  // R2: exhaustive destructure — if the schema gains a field, `unmapped`
+  // becomes non-empty and the assignment below fails the BUILD at the
+  // mapping site itself (stronger than the previous hand-maintained
+  // union, which could be silenced without actually mapping the field).
+  // NOTE (documented asymmetry): this guards wire→stored only; a future
+  // OPTIONAL field added to `Correction` from a non-wire path is not
+  // covered and must be populated deliberately by its own producer.
+  const { original, corrected, explanation_fr, explanation_en, category, ...unmapped } = args;
+  const _exhaustivenessCheck: Record<string, never> = unmapped;
+  void _exhaustivenessCheck;
+  // JSON serialization drops undefined-valued keys at every persist path,
+  // so plain assignment is byte-equivalent to key-omission in stored JSONB.
+  return {
+    original,
+    corrected,
+    explanation: explanation_fr,
+    explanationEn: explanation_en,
+    category,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Story 18-2 — bilingual explanation display policy (pure helpers)
+// ---------------------------------------------------------------------------
+
+export type CorrectionExplanationLanguage = "fr" | "en";
+
+/**
+ * CEFR-adaptive default language for correction explanations (Story 18-2,
+ * mirrors the Comprehension Support policy from Story 18-1): A1-A2 learners
+ * default to ENGLISH (comprehension unblocking beats immersion purity at
+ * this level); B1+ default to FRENCH (the pedagogical primary). The UI
+ * toggle makes the other language one tap away either way. Undefined level
+ * (history surfaces without profile context) defaults to French — safe for
+ * every stored correction since `explanation` is always present.
+ */
+export function defaultCorrectionExplanationLanguage(
+  cefrLevel?: CEFRLevel
+): CorrectionExplanationLanguage {
+  return isBeginnerCefrLevel(cefrLevel) ? "en" : "fr";
+}
+
+/**
+ * Story 18-2 review R1: THE single predicate for "this correction has a
+ * usable English explanation" — used by BOTH the toggle-visibility gate in
+ * CorrectionBubble AND selectCorrectionExplanation, so a stored
+ * `explanationEn: ""` (backfill script, hand-edited JSONB — the wire-side
+ * min(1) never sees stored rows read back) can't render a dead toggle
+ * whose EN state shows French.
+ */
+export function hasEnglishExplanation(
+  correction: Correction
+): correction is Correction & { explanationEn: string } {
+  return typeof correction.explanationEn === "string" && correction.explanationEn.trim().length > 0;
+}
+
+/**
+ * Select the explanation text for the requested language, falling back to
+ * French when the English is absent (pre-18-2 stored corrections carry
+ * only `explanation`). Pure; never returns undefined.
+ */
+export function selectCorrectionExplanation(
+  correction: Correction,
+  language: CorrectionExplanationLanguage
+): string {
+  if (language === "en" && hasEnglishExplanation(correction)) {
+    return correction.explanationEn;
+  }
+  return correction.explanation;
 }
 
 /**

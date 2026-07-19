@@ -17,6 +17,8 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import type { TranscriptEntry } from "@/src/hooks/use-realtime-voice";
+import type { CEFRLevel } from "@/src/types/cefr";
+import type { CorrectionExplanationLanguage } from "@/src/lib/realtime-corrections";
 import { Colors, skillTint } from "@/src/lib/design";
 
 import { CorrectionBubble } from "./CorrectionBubble";
@@ -26,6 +28,9 @@ interface TranscriptViewProps {
   pendingAiText: string;
   isAiSpeaking: boolean;
   condensed?: boolean;
+  /** Story 18-2: threaded to CorrectionBubble for the CEFR-adaptive
+   * explanation-language default. */
+  cefrLevel?: CEFRLevel;
 }
 
 interface AnimatedMessageProps {
@@ -34,6 +39,9 @@ interface AnimatedMessageProps {
   condensed?: boolean;
   /** Corrections from the following AI message, to render below this user message in sideNote mode */
   sideNoteCorrections?: TranscriptEntry["corrections"];
+  cefrLevel?: CEFRLevel;
+  correctionLangOverride?: CorrectionExplanationLanguage | null;
+  onCorrectionLangChange?: (lang: CorrectionExplanationLanguage) => void;
   /** Whether sideNote corrections should be visible (hidden while AI is speaking for latest turn) */
   showSideNoteCorrections?: boolean;
 }
@@ -108,6 +116,9 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
   condensed = false,
   sideNoteCorrections,
   showSideNoteCorrections = true,
+  cefrLevel,
+  correctionLangOverride,
+  onCorrectionLangChange,
 }: AnimatedMessageProps) {
   const isUser = entry.role === "user";
 
@@ -174,7 +185,13 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
         entry.corrections &&
         entry.corrections.length > 0 && (
           <View className="mt-1.5">
-            <CorrectionBubble corrections={entry.corrections} compact />
+            <CorrectionBubble
+              corrections={entry.corrections}
+              compact
+              cefrLevel={cefrLevel}
+              explanationLangOverride={correctionLangOverride}
+              onExplanationLangChange={onCorrectionLangChange}
+            />
           </View>
         )}
 
@@ -185,7 +202,14 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
         sideNoteCorrections &&
         sideNoteCorrections.length > 0 && (
           <View className="mt-1.5" style={{ alignSelf: "flex-start" }}>
-            <CorrectionBubble corrections={sideNoteCorrections} compact variant="sideNote" />
+            <CorrectionBubble
+              corrections={sideNoteCorrections}
+              compact
+              variant="sideNote"
+              cefrLevel={cefrLevel}
+              explanationLangOverride={correctionLangOverride}
+              onExplanationLangChange={onCorrectionLangChange}
+            />
           </View>
         )}
     </Reanimated.View>
@@ -285,7 +309,13 @@ export function TranscriptView({
   pendingAiText,
   isAiSpeaking,
   condensed = false,
+  cefrLevel,
 }: TranscriptViewProps) {
+  // Story 18-2 R2: session-scoped FR/EN preference for the LIVE surface —
+  // lifted here so the user's choice survives across bubbles and FlatList
+  // row remounts (per-bubble state reset every turn / on scroll).
+  const [correctionLangOverride, setCorrectionLangOverride] =
+    useState<CorrectionExplanationLanguage | null>(null);
   const flatListRef = useRef<FlatList<TranscriptEntry>>(null);
   const prevLengthRef = useRef(transcript.length);
 
@@ -344,10 +374,13 @@ export function TranscriptView({
           condensed={condensed}
           sideNoteCorrections={sideNoteCorrections}
           showSideNoteCorrections={showSideNoteCorrections}
+          cefrLevel={cefrLevel}
+          correctionLangOverride={correctionLangOverride}
+          onCorrectionLangChange={setCorrectionLangOverride}
         />
       );
     },
-    [condensed]
+    [condensed, cefrLevel, correctionLangOverride]
   );
 
   /** Footer renders streaming AI text and typing indicator below the list */

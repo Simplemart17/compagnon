@@ -16,12 +16,30 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import type { Correction } from "@/src/types/conversation";
+import type { CEFRLevel } from "@/src/types/cefr";
+import {
+  defaultCorrectionExplanationLanguage,
+  hasEnglishExplanation,
+  selectCorrectionExplanation,
+  type CorrectionExplanationLanguage,
+} from "@/src/lib/realtime-corrections";
 import { Colors, Radii, Typography, skillTint } from "@/src/lib/design";
 
 interface CorrectionBubbleProps {
   corrections: Correction[];
   compact?: boolean;
   variant?: "default" | "sideNote";
+  /** Story 18-2: drives the CEFR-adaptive default explanation language
+   * (A1-A2 → English, B1+ → French). Omitted / not-yet-hydrated → French
+   * (the default re-derives when the prop arrives — review R1). */
+  cefrLevel?: CEFRLevel;
+  /** R2: optional CONTROLLED language override. The live transcript lifts
+   * this to TranscriptView so the user's FR/EN choice survives across
+   * bubbles and FlatList row remounts (per-instance state reset on every
+   * new correction turn — the toggle read as flaky). Uncontrolled when
+   * omitted (end-sheet summary bubble). */
+  explanationLangOverride?: CorrectionExplanationLanguage | null;
+  onExplanationLangChange?: (lang: CorrectionExplanationLanguage) => void;
 }
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -42,8 +60,25 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
   corrections,
   compact = false,
   variant = "default",
+  cefrLevel,
+  explanationLangOverride,
+  onExplanationLangChange,
 }: CorrectionBubbleProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  // Story 18-2 review R1: store only the user's EXPLICIT choice; DERIVE the
+  // effective language from override ?? CEFR default. A lazy useState
+  // initializer froze the default at mount — a bubble mounted before the
+  // profile hydrated locked the wrong language for its whole life. Derived
+  // form self-corrects when cefrLevel arrives, and the user's tap always
+  // wins. R2: optionally CONTROLLED (see props) so the live surface can
+  // persist the preference across bubbles.
+  const [internalOverride, setInternalOverride] = useState<CorrectionExplanationLanguage | null>(
+    null
+  );
+  const langOverride =
+    explanationLangOverride !== undefined ? explanationLangOverride : internalOverride;
+  const setLangOverride = onExplanationLangChange ?? setInternalOverride;
+  const explanationLang = langOverride ?? defaultCorrectionExplanationLanguage(cefrLevel);
 
   const translateY = useSharedValue(30);
   const opacity = useSharedValue(0);
@@ -85,6 +120,8 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
               isExpanded={isExpanded}
               onToggle={() => setExpandedIndex(isExpanded ? null : index)}
               isLast={index === visibleCorrections.length - 1}
+              explanationLang={explanationLang}
+              onToggleLanguage={setLangOverride}
             />
           );
         })}
@@ -120,64 +157,158 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
           const isExpanded = expandedIndex === index;
 
           return (
-            <TouchableOpacity
+            <View
               key={`${correction.original}-${index}`}
-              onPress={() => setExpandedIndex(isExpanded ? null : index)}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={`Correction: "${correction.original}" should be "${correction.corrected}"`}
-              accessibilityHint={isExpanded ? "Tap to collapse explanation" : "Tap for explanation"}
-              accessibilityState={{ expanded: isExpanded }}
               style={{
                 marginBottom: index < visibleCorrections.length - 1 ? 10 : 0,
               }}
             >
-              {/* Category badge */}
-              <View className="mb-1.5 flex-row items-center">
-                <View className="rounded px-1.5 py-0.5" style={{ backgroundColor: catStyle.bg }}>
-                  <Text className="text-[9px] font-semibold" style={{ color: catStyle.text }}>
-                    {catStyle.label}
-                  </Text>
+              {/* Review R1: the touchable is the HEADER only \u2014 expanded
+                  content lives in a SIBLING view so the FR/EN toggle's
+                  touchables aren't flattened into this accessible parent
+                  (iOS VoiceOver cannot reach nested touchables). */}
+              <TouchableOpacity
+                onPress={() => setExpandedIndex(isExpanded ? null : index)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Correction: "${correction.original}" should be "${correction.corrected}"`}
+                accessibilityHint={
+                  isExpanded ? "Tap to collapse explanation" : "Tap for explanation"
+                }
+                accessibilityState={{ expanded: isExpanded }}
+              >
+                {/* Category badge */}
+                <View className="mb-1.5 flex-row items-center">
+                  <View className="rounded px-1.5 py-0.5" style={{ backgroundColor: catStyle.bg }}>
+                    <Text className="text-[9px] font-semibold" style={{ color: catStyle.text }}>
+                      {catStyle.label}
+                    </Text>
+                  </View>
                 </View>
-              </View>
 
-              {/* Original -> Corrected */}
-              <View className="flex-row flex-wrap items-center">
-                <Text className="text-sm italic" style={{ color: Colors.correctionOriginal }}>
-                  {correction.original}
-                </Text>
-                <Text
-                  className="mx-2 text-[13px]"
-                  style={{ color: skillTint(Colors.surfaceWhite, 0.3) }}
-                >
-                  {"\u2192"}
-                </Text>
-                <Text className="text-sm font-bold text-success">{correction.corrected}</Text>
-              </View>
+                {/* Original -> Corrected */}
+                <View className="flex-row flex-wrap items-center">
+                  <Text className="text-sm italic" style={{ color: Colors.correctionOriginal }}>
+                    {correction.original}
+                  </Text>
+                  <Text
+                    className="mx-2 text-[13px]"
+                    style={{ color: skillTint(Colors.surfaceWhite, 0.3) }}
+                  >
+                    {"\u2192"}
+                  </Text>
+                  <Text className="text-sm font-bold text-success">{correction.corrected}</Text>
+                </View>
 
-              {/* Explanation (expandable) */}
+                {!isExpanded && (
+                  <Text
+                    className="mt-1 text-[10px]"
+                    style={{ color: skillTint(Colors.surfaceWhite, 0.25) }}
+                  >
+                    Tap for explanation
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              {/* Expanded explanation (Story 18-2 bilingual). Toggle ABOVE
+                  the text so a long explanation can never push it out of
+                  reach (review R1). R2: the block is itself tappable-to-
+                  collapse with accessible={false} — sighted users regain
+                  the pre-R1 tap-anywhere-to-dismiss gesture, while
+                  VoiceOver skips the wrapper (not an accessibility
+                  element) and still reaches the FR/EN pills inside; the
+                  header remains the screen-reader collapse control. */}
               {isExpanded && (
-                <Text
-                  className="mt-1.5 text-xs italic leading-[18px]"
-                  style={{ color: skillTint(Colors.surfaceWhite, 0.55) }}
+                <TouchableOpacity
+                  accessible={false}
+                  activeOpacity={0.85}
+                  onPress={() => setExpandedIndex(null)}
                 >
-                  {correction.explanation}
-                </Text>
+                  {hasEnglishExplanation(correction) && (
+                    <ExplanationLanguageToggle
+                      language={explanationLang}
+                      onToggle={setLangOverride}
+                    />
+                  )}
+                  <Text
+                    className="mt-1.5 text-xs italic leading-[18px]"
+                    style={{ color: skillTint(Colors.surfaceWhite, 0.55) }}
+                  >
+                    {selectCorrectionExplanation(correction, explanationLang)}
+                  </Text>
+                </TouchableOpacity>
               )}
-
-              {!isExpanded && (
-                <Text
-                  className="mt-1 text-[10px]"
-                  style={{ color: skillTint(Colors.surfaceWhite, 0.25) }}
-                >
-                  Tap for explanation
-                </Text>
-              )}
-            </TouchableOpacity>
+            </View>
           );
         })}
       </View>
     </Reanimated.View>
+  );
+});
+
+/**
+ * Story 18-2: FR/EN pill toggle for the correction explanation. Rendered
+ * only when the correction carries a usable English explanation.
+ *
+ * R2 STRUCTURE CONTRACT: the toggle lives in the expanded-content block,
+ * a SIBLING of the header touchable (NOT nested inside it) — iOS
+ * VoiceOver flattens an accessible parent's nested touchables, making
+ * them unreachable to screen readers. Do NOT move it back inside the
+ * header TouchableOpacity. The expanded wrapper is `accessible={false}`
+ * so VoiceOver skips it but still reaches these pills; the pills win the
+ * tap over the wrapper's collapse-on-press (inner touchable wins).
+ *
+ * Touch targets: RN hitSlop is CLIPPED at the parent view's bounds, so
+ * the row carries paddingVertical to give the slop room — pill (~20pt) +
+ * row padding (2×6) + slop (2×6) ≈ 40pt+ effective. Horizontal slop
+ * (5pt) stays under half the inter-pill gap (10pt) so pills never
+ * overlap each other's touch areas.
+ */
+const ExplanationLanguageToggle = React.memo(function ExplanationLanguageToggle({
+  language,
+  onToggle,
+}: {
+  language: CorrectionExplanationLanguage;
+  onToggle: (lang: CorrectionExplanationLanguage) => void;
+}) {
+  return (
+    <View className="mt-1 flex-row" style={{ paddingVertical: 6 }}>
+      {(["fr", "en"] as const).map((lang) => {
+        const active = language === lang;
+        return (
+          <TouchableOpacity
+            key={lang}
+            onPress={() => onToggle(lang)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 6, bottom: 6, left: 5, right: 5 }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              lang === "fr" ? "Show explanation in French" : "Show explanation in English"
+            }
+            accessibilityState={{ selected: active }}
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: Radii.chip,
+              marginRight: 10,
+              minWidth: 32,
+              alignItems: "center",
+              backgroundColor: active ? Colors.accent20 : skillTint(Colors.surfaceWhite, 0.08),
+            }}
+          >
+            <Text
+              style={{
+                fontSize: Typography.label.fontSize,
+                fontWeight: "700",
+                color: active ? Colors.accent : skillTint(Colors.surfaceWhite, 0.45),
+              }}
+            >
+              {lang.toUpperCase()}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 });
 
@@ -188,6 +319,8 @@ interface SideNoteItemProps {
   isExpanded: boolean;
   onToggle: () => void;
   isLast: boolean;
+  explanationLang: CorrectionExplanationLanguage;
+  onToggleLanguage: (lang: CorrectionExplanationLanguage) => void;
 }
 
 const SideNoteItem = React.memo(function SideNoteItem({
@@ -196,6 +329,8 @@ const SideNoteItem = React.memo(function SideNoteItem({
   isExpanded,
   onToggle,
   isLast,
+  explanationLang,
+  onToggleLanguage,
 }: SideNoteItemProps) {
   const heightAnim = useSharedValue(isExpanded ? 1 : 0);
 
@@ -209,17 +344,7 @@ const SideNoteItem = React.memo(function SideNoteItem({
   }));
 
   return (
-    <TouchableOpacity
-      onPress={onToggle}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel={`Correction: "${correction.original}" should be "${correction.corrected}"`}
-      accessibilityHint={
-        isExpanded
-          ? "Double-tap to collapse correction details"
-          : "Double-tap to expand correction details"
-      }
-      accessibilityState={{ expanded: isExpanded }}
+    <View
       style={{
         borderLeftWidth: 3,
         borderLeftColor: Colors.accent,
@@ -232,69 +357,103 @@ const SideNoteItem = React.memo(function SideNoteItem({
         minHeight: 44,
       }}
     >
-      {/* Collapsed: badge + one-liner + tap hint */}
-      <View className="flex-row flex-wrap items-center">
-        <View className="mr-1.5 rounded px-1.5 py-0.5" style={{ backgroundColor: catStyle.bg }}>
-          <Text className="text-[9px] font-semibold" style={{ color: catStyle.text }}>
-            {catStyle.label}
+      {/* Review R1 + R2: touchable = header (see ExplanationLanguageToggle
+          JSDoc for the sibling-structure contract). Collapsed, hitSlop
+          restores the pre-R1 whole-card (44pt) tap area within the outer
+          card's bounds; expanded, the animated content below is itself
+          tappable-to-collapse so no slop is needed (and it would overlap
+          the toggle row). */}
+      <TouchableOpacity
+        onPress={onToggle}
+        activeOpacity={0.7}
+        hitSlop={isExpanded ? undefined : { top: 10, bottom: 10 }}
+        accessibilityRole="button"
+        accessibilityLabel={`Correction: "${correction.original}" should be "${correction.corrected}"`}
+        accessibilityHint={
+          isExpanded
+            ? "Double-tap to collapse correction details"
+            : "Double-tap to expand correction details"
+        }
+        accessibilityState={{ expanded: isExpanded }}
+      >
+        {/* Collapsed: badge + one-liner + tap hint */}
+        <View className="flex-row flex-wrap items-center">
+          <View className="mr-1.5 rounded px-1.5 py-0.5" style={{ backgroundColor: catStyle.bg }}>
+            <Text className="text-[9px] font-semibold" style={{ color: catStyle.text }}>
+              {catStyle.label}
+            </Text>
+          </View>
+          <Text
+            style={{
+              fontSize: Typography.caption.fontSize,
+              color: Colors.correctionOriginal,
+              fontStyle: "italic",
+            }}
+          >
+            {correction.original}
+          </Text>
+          <Text
+            style={{
+              fontSize: Typography.caption.fontSize,
+              color: skillTint(Colors.surfaceWhite, 0.3),
+              marginHorizontal: 4,
+            }}
+          >
+            {"\u2192"}
+          </Text>
+          <Text
+            style={{
+              fontSize: Typography.caption.fontSize,
+              fontWeight: "700",
+              color: Colors.success,
+            }}
+          >
+            {correction.corrected}
           </Text>
         </View>
-        <Text
-          style={{
-            fontSize: Typography.caption.fontSize,
-            color: Colors.correctionOriginal,
-            fontStyle: "italic",
-          }}
-        >
-          {correction.original}
-        </Text>
-        <Text
-          style={{
-            fontSize: Typography.caption.fontSize,
-            color: skillTint(Colors.surfaceWhite, 0.3),
-            marginHorizontal: 4,
-          }}
-        >
-          {"\u2192"}
-        </Text>
-        <Text
-          style={{
-            fontSize: Typography.caption.fontSize,
-            fontWeight: "700",
-            color: Colors.success,
-          }}
-        >
-          {correction.corrected}
-        </Text>
-      </View>
 
-      {/* Tap for details hint */}
-      {!isExpanded && (
-        <Text
-          style={{
-            fontSize: Typography.label.fontSize,
-            color: Colors.textOnDarkMuted,
-            marginTop: 2,
-          }}
-        >
-          Tap for details
-        </Text>
-      )}
+        {/* Tap for details hint */}
+        {!isExpanded && (
+          <Text
+            style={{
+              fontSize: Typography.label.fontSize,
+              color: Colors.textOnDarkMuted,
+              marginTop: 2,
+            }}
+          >
+            Tap for details
+          </Text>
+        )}
+      </TouchableOpacity>
 
-      {/* Expanded: explanation */}
-      <Reanimated.View style={[{ overflow: "hidden" }, expandStyle]}>
-        <Text
-          style={{
-            fontSize: Typography.caption.fontSize,
-            color: skillTint(Colors.surfaceWhite, 0.55),
-            fontStyle: "italic",
-            lineHeight: 18,
-            marginTop: 4,
-          }}
-        >
-          {correction.explanation}
-        </Text>
+      {/* Expanded: explanation (Story 18-2 bilingual). Toggle ABOVE the
+          text so a long explanation can never clip it past the animated
+          maxHeight (review R1); collapsed state hides the subtree from
+          screen readers (always-mounted for the animation). R2: content
+          is tappable-to-collapse via an accessible={false} wrapper —
+          same rationale as the default variant. */}
+      <Reanimated.View
+        style={[{ overflow: "hidden" }, expandStyle]}
+        accessibilityElementsHidden={!isExpanded}
+        importantForAccessibility={isExpanded ? "auto" : "no-hide-descendants"}
+      >
+        <TouchableOpacity accessible={false} activeOpacity={0.85} onPress={onToggle}>
+          {hasEnglishExplanation(correction) && (
+            <ExplanationLanguageToggle language={explanationLang} onToggle={onToggleLanguage} />
+          )}
+          <Text
+            style={{
+              fontSize: Typography.caption.fontSize,
+              color: skillTint(Colors.surfaceWhite, 0.55),
+              fontStyle: "italic",
+              lineHeight: 18,
+              marginTop: 4,
+            }}
+          >
+            {selectCorrectionExplanation(correction, explanationLang)}
+          </Text>
+        </TouchableOpacity>
       </Reanimated.View>
-    </TouchableOpacity>
+    </View>
   );
 });

@@ -74,7 +74,21 @@ function normalizeTranscriptForPrompt(input: string): string {
  */
 function safeStringifyCorrections(corrections: Correction[]): string {
   if (!Array.isArray(corrections) || corrections.length === 0) return "[]";
-  const capped = corrections.slice(0, MAX_CORRECTIONS_ELEMENTS);
+  // Story 18-2 review R1: strip `explanationEn` before serializing into the
+  // <USER_CORRECTIONS> block — the analysis model works from the French
+  // fields, and the English restatement would (a) roughly double the
+  // corrections payload's input tokens (up to ~12K extra at the 50 × 1000
+  // caps) for zero analysis-quality gain, and (b) risk English phrasing
+  // bleeding into the French-expected errorPatterns extraction (which feeds
+  // Story 11-6's embedding dedup).
+  const capped = corrections
+    .slice(0, MAX_CORRECTIONS_ELEMENTS)
+    // R2: preserve the function's "safe" contract — a malformed element
+    // (null / primitive from a future merge bug or offline-queue replay)
+    // must degrade, not throw: a destructure of null would TypeError and
+    // lose the ENTIRE analysis slot (facts + error patterns + feedback).
+    .filter((c): c is Correction => c !== null && typeof c === "object")
+    .map(({ explanationEn: _explanationEn, ...frenchOnly }) => frenchOnly);
   return JSON.stringify(capped);
 }
 

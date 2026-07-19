@@ -555,12 +555,66 @@ export const REPORT_CORRECTION_MAX_LENGTH = {
   explanation: 1000,
 } as const;
 
-export const reportCorrectionArgsSchema = z.object({
-  original: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.original),
-  corrected: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.corrected),
-  explanation: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation),
-  category: correctionCategorySchema,
-});
+/**
+ * Story 18-2: the model reports BOTH a French and an English explanation.
+ * French is the pedagogical primary (matches pre-18-2 stored corrections);
+ * English drives comprehension for lower CEFR levels (the UI's FR/EN toggle
+ * + CEFR-adaptive default live in `CorrectionBubble` /
+ * `defaultCorrectionExplanationLanguage`). Both share the same max-length
+ * cap (`REPORT_CORRECTION_MAX_LENGTH.explanation`).
+ *
+ * Review R1 — TOLERANT BOUNDARY (strict in what the tool def asks, liberal
+ * in what the pipeline accepts): a rejected correction is a LOST learning
+ * signal, so degrading beats dropping.
+ *   - `explanation_en` is OPTIONAL at the schema layer (the tool definition
+ *     still lists it as required, so the model ~always sends it) — a model
+ *     that omits the English records a French-only correction instead of
+ *     losing the correction entirely. The UI already renders French-only
+ *     rows (pre-18-2 stored corrections use the same path).
+ *   - The preprocess arm accepts the LEGACY 4-field shape (`explanation` →
+ *     `explanation_fr` when `explanation_fr` is absent) — gpt-realtime-mini
+ *     intermittently reverts to pre-18-2 arg names mid-rollout.
+ *   - Whitespace-only `explanation_en` is normalized to absent so a
+ *     degenerate emission can't produce a dead FR/EN toggle downstream.
+ */
+export const reportCorrectionArgsSchema = z.preprocess(
+  (raw) => {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
+    const obj = { ...(raw as Record<string, unknown>) };
+    // R2: a whitespace-only explanation_fr must not block the legacy
+    // fallback below from rescuing real French text in the old key
+    // (hybrid mid-rollout emissions: explanation_fr: "" + explanation:
+    // "<real text>").
+    if (typeof obj.explanation_fr === "string" && obj.explanation_fr.trim().length === 0) {
+      delete obj.explanation_fr;
+    }
+    if (typeof obj.explanation_fr !== "string" && typeof obj.explanation === "string") {
+      obj.explanation_fr = obj.explanation;
+    }
+    // R2: explanation_en is FULLY tolerant — it is the least important
+    // field, so no shape it arrives in may cost the whole correction:
+    //   - null / non-string (JSON null is the model's natural "no
+    //     English") → treated as absent (.optional() only accepts
+    //     undefined, so null would otherwise fail invalid_type)
+    //   - whitespace-only → absent (no dead FR/EN toggle downstream)
+    //   - over-max string → TRUNCATED to the cap, not rejected
+    if (typeof obj.explanation_en !== "string") {
+      delete obj.explanation_en;
+    } else if (obj.explanation_en.trim().length === 0) {
+      delete obj.explanation_en;
+    } else if (obj.explanation_en.length > REPORT_CORRECTION_MAX_LENGTH.explanation) {
+      obj.explanation_en = obj.explanation_en.slice(0, REPORT_CORRECTION_MAX_LENGTH.explanation);
+    }
+    return obj;
+  },
+  z.object({
+    original: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.original),
+    corrected: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.corrected),
+    explanation_fr: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation),
+    explanation_en: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation).optional(),
+    category: correctionCategorySchema,
+  })
+);
 
 export type ReportCorrectionArgs = z.infer<typeof reportCorrectionArgsSchema>;
 

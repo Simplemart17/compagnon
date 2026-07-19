@@ -249,3 +249,49 @@ describe("buildPostConversationAnalysisPrompt (Story 11-5)", () => {
     });
   });
 });
+
+describe("Story 18-2 R1+R2 — explanationEn stripped from the analysis payload (pinned)", () => {
+  const bilingualCorrections = [
+    {
+      original: "je suis allé",
+      corrected: "je suis allée",
+      explanation: "Accord du participe passé.",
+      explanationEn: "ENGLISH-SENTINEL past participle agreement.",
+      category: "grammar" as const,
+    },
+  ];
+
+  it("R1 pin: the serialized <USER_CORRECTIONS> block contains NO explanationEn (token cost + FR-extraction purity)", () => {
+    const { user } = buildPostConversationAnalysisPrompt({
+      cefrLevel: "B1",
+      transcript: "T".repeat(120),
+      corrections: bilingualCorrections,
+    });
+    expect(user).toContain("Accord du participe passé.");
+    expect(user).not.toContain("ENGLISH-SENTINEL");
+    expect(user).not.toContain("explanationEn");
+  });
+
+  it("R2 pin: a malformed (null) corrections element degrades instead of throwing (safe contract)", () => {
+    const withNull = [
+      bilingualCorrections[0],
+      null,
+      "stray-string",
+    ] as unknown as typeof bilingualCorrections;
+    expect(() =>
+      buildPostConversationAnalysisPrompt({
+        cefrLevel: "B1",
+        transcript: "T".repeat(120),
+        corrections: withNull,
+      })
+    ).not.toThrow();
+    const { user } = buildPostConversationAnalysisPrompt({
+      cefrLevel: "B1",
+      transcript: "T".repeat(120),
+      corrections: withNull,
+    });
+    // The valid element survives; the malformed ones are filtered.
+    expect(user).toContain("Accord du participe passé.");
+    expect(user).not.toContain("stray-string");
+  });
+});

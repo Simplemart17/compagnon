@@ -28,26 +28,45 @@ import {
   MAX_PENDING_CORRECTIONS,
   mergeOrphanCorrections,
   processReportCorrectionCall,
+  defaultCorrectionExplanationLanguage,
+  hasEnglishExplanation,
+  selectCorrectionExplanation,
+  toStoredCorrection,
 } from "../realtime-corrections";
 
 const VALID_GRAMMAR_ARGS = {
   original: "je suis allé",
   corrected: "je suis allée",
+  explanation_fr: "Accord du participe passé avec être au féminin.",
+  explanation_en: "The past participle agrees with être for a female speaker.",
+  category: "grammar" as const,
+};
+
+// Story 18-2 R1: fixtures use the PRODUCTION wire→stored mapping
+// (toStoredCorrection imported above) so tests can't drift from it;
+// EXPECTED_GRAMMAR_CORRECTION below stays a hand-written literal — the
+// independent oracle that pins the mapping itself.
+const EXPECTED_GRAMMAR_CORRECTION = {
+  original: "je suis allé",
+  corrected: "je suis allée",
   explanation: "Accord du participe passé avec être au féminin.",
+  explanationEn: "The past participle agrees with être for a female speaker.",
   category: "grammar" as const,
 };
 
 const VALID_VOCAB_ARGS = {
   original: "voiture",
   corrected: "automobile",
-  explanation: "Register more formal in this context.",
+  explanation_fr: "Registre plus formel dans ce contexte.",
+  explanation_en: "Register is more formal in this context.",
   category: "vocabulary" as const,
 };
 
 const VALID_PRONUNCIATION_ARGS = {
   original: "rouge",
   corrected: "rouge",
-  explanation: "Don't trill the R; use the French uvular [ʁ].",
+  explanation_fr: "Ne roulez pas le R; utilisez le R uvulaire français.",
+  explanation_en: "Don't trill the R; use the French uvular [ʁ].",
   category: "pronunciation" as const,
 };
 
@@ -56,7 +75,7 @@ describe("processReportCorrectionCall (Story 11-1)", () => {
     const result = processReportCorrectionCall(VALID_GRAMMAR_ARGS);
     expect(result.outcome).toBe("recorded");
     if (result.outcome === "recorded") {
-      expect(result.correction).toEqual(VALID_GRAMMAR_ARGS);
+      expect(result.correction).toEqual(EXPECTED_GRAMMAR_CORRECTION);
       // Story 11-1 review patch P8: short lowercase ack ("ok") prevents
       // the model from echoing the result in its audio response.
       expect(result.resultMessage).toBe(FUNCTION_RESULT_ACK);
@@ -159,10 +178,16 @@ describe("processReportCorrectionCall (Story 11-1)", () => {
 
 describe("drainPendingCorrections (Story 11-1)", () => {
   it("returns the buffer's contents and empties the original", () => {
-    const buffer: Correction[] = [VALID_GRAMMAR_ARGS, VALID_VOCAB_ARGS];
+    const buffer: Correction[] = [
+      toStoredCorrection(VALID_GRAMMAR_ARGS),
+      toStoredCorrection(VALID_VOCAB_ARGS),
+    ];
     const drained = drainPendingCorrections(buffer);
 
-    expect(drained).toEqual([VALID_GRAMMAR_ARGS, VALID_VOCAB_ARGS]);
+    expect(drained).toEqual([
+      toStoredCorrection(VALID_GRAMMAR_ARGS),
+      toStoredCorrection(VALID_VOCAB_ARGS),
+    ]);
     expect(buffer).toEqual([]);
     expect(buffer.length).toBe(0);
   });
@@ -191,23 +216,23 @@ describe("drainPendingCorrections (Story 11-1)", () => {
   });
 
   it("returns a defensive copy — mutations to the drained array do not refill the buffer", () => {
-    const buffer: Correction[] = [VALID_GRAMMAR_ARGS];
+    const buffer: Correction[] = [toStoredCorrection(VALID_GRAMMAR_ARGS)];
     const drained = drainPendingCorrections(buffer);
-    drained.push(VALID_VOCAB_ARGS);
+    drained.push(toStoredCorrection(VALID_VOCAB_ARGS));
 
     expect(buffer).toEqual([]);
     expect(drained).toHaveLength(2);
   });
 
   it("subsequent pushes after drain land in the same (now-empty) buffer", () => {
-    const buffer: Correction[] = [VALID_GRAMMAR_ARGS];
+    const buffer: Correction[] = [toStoredCorrection(VALID_GRAMMAR_ARGS)];
     drainPendingCorrections(buffer);
     // The hook reassigns `ref.current = []` in some paths and mutates the
     // existing array in the drain path. This test models the in-place
     // mutation case: after drain, the same buffer reference accepts new
     // pushes.
-    buffer.push(VALID_VOCAB_ARGS);
-    expect(buffer).toEqual([VALID_VOCAB_ARGS]);
+    buffer.push(toStoredCorrection(VALID_VOCAB_ARGS));
+    expect(buffer).toEqual([toStoredCorrection(VALID_VOCAB_ARGS)]);
   });
 });
 
@@ -220,10 +245,10 @@ describe("drainPendingCorrections (Story 11-1)", () => {
 
 describe("mergeOrphanCorrections (Story 11-1 P18)", () => {
   it("empty buffer → returns conversation unchanged + no breadcrumb", () => {
-    const conversation: Correction[] = [VALID_GRAMMAR_ARGS];
+    const conversation: Correction[] = [toStoredCorrection(VALID_GRAMMAR_ARGS)];
     const buffer: Correction[] = [];
     const result = mergeOrphanCorrections(conversation, buffer);
-    expect(result.conversation).toEqual([VALID_GRAMMAR_ARGS]);
+    expect(result.conversation).toEqual([toStoredCorrection(VALID_GRAMMAR_ARGS)]);
     expect(result.shouldBreadcrumb).toBe(false);
     // Conversation is returned as-is (same reference) when buffer empty.
     expect(result.conversation).toBe(conversation);
@@ -231,13 +256,16 @@ describe("mergeOrphanCorrections (Story 11-1 P18)", () => {
   });
 
   it("non-empty buffer → merges into conversation + emits breadcrumb signal + empties buffer", () => {
-    const conversation: Correction[] = [VALID_GRAMMAR_ARGS];
-    const buffer: Correction[] = [VALID_VOCAB_ARGS, VALID_PRONUNCIATION_ARGS];
+    const conversation: Correction[] = [toStoredCorrection(VALID_GRAMMAR_ARGS)];
+    const buffer: Correction[] = [
+      toStoredCorrection(VALID_VOCAB_ARGS),
+      toStoredCorrection(VALID_PRONUNCIATION_ARGS),
+    ];
     const result = mergeOrphanCorrections(conversation, buffer);
     expect(result.conversation).toEqual([
-      VALID_GRAMMAR_ARGS,
-      VALID_VOCAB_ARGS,
-      VALID_PRONUNCIATION_ARGS,
+      toStoredCorrection(VALID_GRAMMAR_ARGS),
+      toStoredCorrection(VALID_VOCAB_ARGS),
+      toStoredCorrection(VALID_PRONUNCIATION_ARGS),
     ]);
     expect(result.shouldBreadcrumb).toBe(true);
     expect(buffer).toEqual([]);
@@ -246,8 +274,8 @@ describe("mergeOrphanCorrections (Story 11-1 P18)", () => {
   });
 
   it("idempotent on already-empty buffer after a prior drain", () => {
-    const conversation: Correction[] = [VALID_GRAMMAR_ARGS];
-    const buffer: Correction[] = [VALID_VOCAB_ARGS];
+    const conversation: Correction[] = [toStoredCorrection(VALID_GRAMMAR_ARGS)];
+    const buffer: Correction[] = [toStoredCorrection(VALID_VOCAB_ARGS)];
     const first = mergeOrphanCorrections(conversation, buffer);
     expect(first.shouldBreadcrumb).toBe(true);
     expect(buffer).toEqual([]);
@@ -262,12 +290,12 @@ describe("mergeOrphanCorrections (Story 11-1 P18)", () => {
     let conversation: Correction[] = [];
 
     // Round 1: 2 corrections from turn N
-    buffer.push(VALID_GRAMMAR_ARGS, VALID_VOCAB_ARGS);
+    buffer.push(toStoredCorrection(VALID_GRAMMAR_ARGS), toStoredCorrection(VALID_VOCAB_ARGS));
     let merged = mergeOrphanCorrections(conversation, buffer);
     conversation = merged.conversation;
 
     // Round 2: 1 correction from turn N+1
-    buffer.push(VALID_PRONUNCIATION_ARGS);
+    buffer.push(toStoredCorrection(VALID_PRONUNCIATION_ARGS));
     merged = mergeOrphanCorrections(conversation, buffer);
     conversation = merged.conversation;
 
@@ -275,9 +303,9 @@ describe("mergeOrphanCorrections (Story 11-1 P18)", () => {
   });
 
   it("treats the conversation array as immutable (does NOT mutate input)", () => {
-    const conversation: Correction[] = [VALID_GRAMMAR_ARGS];
+    const conversation: Correction[] = [toStoredCorrection(VALID_GRAMMAR_ARGS)];
     const conversationSnapshot = [...conversation];
-    const buffer: Correction[] = [VALID_VOCAB_ARGS];
+    const buffer: Correction[] = [toStoredCorrection(VALID_VOCAB_ARGS)];
     mergeOrphanCorrections(conversation, buffer);
     // The input `conversation` array is unchanged; the new array is in result.
     expect(conversation).toEqual(conversationSnapshot);
@@ -291,8 +319,11 @@ describe("mergeOrphanCorrections (Story 11-1 P18)", () => {
     // that must be preserved into correctionsRef so the post-conversation
     // pipeline (extractErrorsFromCorrections + speaking-score) still sees
     // them. The new realtime.reconnecting event handler calls this helper.
-    const conversation: Correction[] = [VALID_GRAMMAR_ARGS]; // prior turn's corrections
-    const pendingBuffer: Correction[] = [VALID_VOCAB_ARGS, VALID_PRONUNCIATION_ARGS]; // current turn's, mid-drain at disconnect
+    const conversation: Correction[] = [toStoredCorrection(VALID_GRAMMAR_ARGS)]; // prior turn's corrections
+    const pendingBuffer: Correction[] = [
+      toStoredCorrection(VALID_VOCAB_ARGS),
+      toStoredCorrection(VALID_PRONUNCIATION_ARGS),
+    ]; // current turn's, mid-drain at disconnect
     const merged = mergeOrphanCorrections(conversation, pendingBuffer);
     expect(merged.conversation).toHaveLength(3);
     expect(merged.shouldBreadcrumb).toBe(true);
@@ -326,7 +357,7 @@ describe("buffer-cap integration scenario (Story 11-1 P9 + P18)", () => {
         rejectedCount++;
         continue;
       }
-      const r = processReportCorrectionCall({ ...VALID_GRAMMAR_ARGS, explanation: `e${i}` });
+      const r = processReportCorrectionCall({ ...VALID_GRAMMAR_ARGS, explanation_fr: `e${i}` });
       if (r.outcome === "recorded") {
         buffer.push(r.correction);
         acceptedCount++;
@@ -336,5 +367,160 @@ describe("buffer-cap integration scenario (Story 11-1 P9 + P18)", () => {
     expect(acceptedCount).toBe(MAX_PENDING_CORRECTIONS);
     expect(rejectedCount).toBe(5);
     expect(buffer).toHaveLength(MAX_PENDING_CORRECTIONS);
+  });
+});
+
+describe("Story 18-2 — bilingual explanation display policy (pure helpers)", () => {
+  it("defaultCorrectionExplanationLanguage: A1/A2 → en; B1+ → fr; undefined → fr", () => {
+    expect(defaultCorrectionExplanationLanguage("A1")).toBe("en");
+    expect(defaultCorrectionExplanationLanguage("A2")).toBe("en");
+    expect(defaultCorrectionExplanationLanguage("B1")).toBe("fr");
+    expect(defaultCorrectionExplanationLanguage("B2")).toBe("fr");
+    expect(defaultCorrectionExplanationLanguage("C1")).toBe("fr");
+    expect(defaultCorrectionExplanationLanguage("C2")).toBe("fr");
+    expect(defaultCorrectionExplanationLanguage(undefined)).toBe("fr");
+  });
+
+  it("selectCorrectionExplanation: returns the requested language when present", () => {
+    const c = {
+      original: "x",
+      corrected: "y",
+      explanation: "explication",
+      explanationEn: "explanation",
+      category: "grammar" as const,
+    };
+    expect(selectCorrectionExplanation(c, "fr")).toBe("explication");
+    expect(selectCorrectionExplanation(c, "en")).toBe("explanation");
+  });
+
+  it("selectCorrectionExplanation: falls back to French for pre-18-2 stored corrections (no explanationEn)", () => {
+    const legacy = {
+      original: "x",
+      corrected: "y",
+      explanation: "explication seulement",
+      category: "grammar" as const,
+    };
+    expect(selectCorrectionExplanation(legacy, "en")).toBe("explication seulement");
+    expect(selectCorrectionExplanation(legacy, "fr")).toBe("explication seulement");
+  });
+});
+
+describe("Story 18-2 R1 — tolerant boundary + unified predicates", () => {
+  it("legacy 4-field payload records a French-only correction (no explanationEn key)", () => {
+    const result = processReportCorrectionCall({
+      original: "je suis allé",
+      corrected: "je suis allée",
+      explanation: "Accord du participe passé.",
+      category: "grammar",
+    });
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanation).toBe("Accord du participe passé.");
+      expect(result.correction.explanationEn).toBeUndefined();
+      // R2: degraded shape is CLASSIFIED so the orchestrator can breadcrumb.
+      expect(result.degradedShape).toBe("legacy-explanation");
+    }
+  });
+
+  it("missing explanation_en records French-only instead of dropping the correction", () => {
+    const withoutEn: Record<string, unknown> = { ...VALID_GRAMMAR_ARGS };
+    delete withoutEn.explanation_en;
+    const result = processReportCorrectionCall(withoutEn);
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanationEn).toBeUndefined();
+      expect(result.degradedShape).toBe("english-missing");
+    }
+  });
+
+  it("R2: full bilingual shape carries NO degradedShape (compliance baseline)", () => {
+    const result = processReportCorrectionCall(VALID_GRAMMAR_ARGS);
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.degradedShape).toBeUndefined();
+    }
+  });
+
+  it("R2: explanation_en null is treated as absent (JSON null = the model's natural 'no English')", () => {
+    const result = processReportCorrectionCall({
+      original: "x",
+      corrected: "y",
+      explanation_fr: "z",
+      explanation_en: null,
+      category: "grammar",
+    });
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanationEn).toBeUndefined();
+      expect(result.degradedShape).toBe("english-missing");
+    }
+  });
+
+  it("R2: over-max explanation_en is TRUNCATED, not rejected (tolerant boundary consistency)", () => {
+    const long = "e".repeat(1200);
+    const result = processReportCorrectionCall({
+      original: "x",
+      corrected: "y",
+      explanation_fr: "z",
+      explanation_en: long,
+      category: "grammar",
+    });
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanationEn).toHaveLength(1000);
+    }
+  });
+
+  it("R2: whitespace explanation_fr does not block the legacy fallback from rescuing real French", () => {
+    const result = processReportCorrectionCall({
+      original: "x",
+      corrected: "y",
+      explanation_fr: "   ",
+      explanation: "La vraie explication.",
+      category: "grammar",
+    });
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanation).toBe("La vraie explication.");
+      expect(result.degradedShape).toBe("legacy-explanation");
+    }
+  });
+
+  it("toStoredCorrection: absent explanation_en serializes to JSONB WITHOUT the key (undefined dropped by JSON)", () => {
+    const stored = toStoredCorrection({
+      original: "a",
+      corrected: "b",
+      explanation_fr: "c",
+      category: "grammar",
+    });
+    expect(stored.explanationEn).toBeUndefined();
+    // The persisted bytes are what matter: JSON serialization (every
+    // Supabase JSONB write path) drops undefined-valued keys.
+    expect(JSON.parse(JSON.stringify(stored))).toEqual({
+      original: "a",
+      corrected: "b",
+      explanation: "c",
+      category: "grammar",
+    });
+  });
+
+  it("hasEnglishExplanation: true only for non-empty, non-whitespace explanationEn", () => {
+    const base = { original: "x", corrected: "y", explanation: "fr", category: "grammar" as const };
+    expect(hasEnglishExplanation({ ...base, explanationEn: "english" })).toBe(true);
+    expect(hasEnglishExplanation({ ...base, explanationEn: "" })).toBe(false);
+    expect(hasEnglishExplanation({ ...base, explanationEn: "   " })).toBe(false);
+    expect(hasEnglishExplanation(base)).toBe(false);
+  });
+
+  it("selectCorrectionExplanation agrees with hasEnglishExplanation on empty-string EN (no lying toggle)", () => {
+    const c = {
+      original: "x",
+      corrected: "y",
+      explanation: "fr",
+      explanationEn: "",
+      category: "grammar" as const,
+    };
+    expect(hasEnglishExplanation(c)).toBe(false);
+    expect(selectCorrectionExplanation(c, "en")).toBe("fr");
   });
 });
