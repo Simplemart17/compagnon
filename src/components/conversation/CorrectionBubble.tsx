@@ -16,12 +16,20 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import type { Correction } from "@/src/types/conversation";
+import {
+  defaultCorrectionExplanationLanguage,
+  selectCorrectionExplanation,
+  type CorrectionExplanationLanguage,
+} from "@/src/lib/realtime-corrections";
 import { Colors, Radii, Typography, skillTint } from "@/src/lib/design";
 
 interface CorrectionBubbleProps {
   corrections: Correction[];
   compact?: boolean;
   variant?: "default" | "sideNote";
+  /** Story 18-2: drives the CEFR-adaptive default explanation language
+   * (A1-A2 → English, B1+ → French). Omitted (history surfaces) → French. */
+  cefrLevel?: string;
 }
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -42,8 +50,15 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
   corrections,
   compact = false,
   variant = "default",
+  cefrLevel,
 }: CorrectionBubbleProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  // Story 18-2: one shared language state per bubble instance; default is
+  // CEFR-adaptive (A1-A2 → EN, else FR). Lazy initializer so the default
+  // computes once per mount.
+  const [explanationLang, setExplanationLang] = useState<CorrectionExplanationLanguage>(() =>
+    defaultCorrectionExplanationLanguage(cefrLevel)
+  );
 
   const translateY = useSharedValue(30);
   const opacity = useSharedValue(0);
@@ -85,6 +100,8 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
               isExpanded={isExpanded}
               onToggle={() => setExpandedIndex(isExpanded ? null : index)}
               isLast={index === visibleCorrections.length - 1}
+              explanationLang={explanationLang}
+              onToggleLanguage={setExplanationLang}
             />
           );
         })}
@@ -155,14 +172,22 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
                 <Text className="text-sm font-bold text-success">{correction.corrected}</Text>
               </View>
 
-              {/* Explanation (expandable) */}
+              {/* Explanation (expandable; Story 18-2 bilingual w/ toggle) */}
               {isExpanded && (
-                <Text
-                  className="mt-1.5 text-xs italic leading-[18px]"
-                  style={{ color: skillTint(Colors.surfaceWhite, 0.55) }}
-                >
-                  {correction.explanation}
-                </Text>
+                <>
+                  <Text
+                    className="mt-1.5 text-xs italic leading-[18px]"
+                    style={{ color: skillTint(Colors.surfaceWhite, 0.55) }}
+                  >
+                    {selectCorrectionExplanation(correction, explanationLang)}
+                  </Text>
+                  {correction.explanationEn !== undefined && (
+                    <ExplanationLanguageToggle
+                      language={explanationLang}
+                      onToggle={setExplanationLang}
+                    />
+                  )}
+                </>
               )}
 
               {!isExpanded && (
@@ -181,6 +206,59 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
   );
 });
 
+/**
+ * Story 18-2: FR/EN pill toggle for the correction explanation. Rendered
+ * only when the correction carries an English explanation (post-18-2
+ * corrections); nested inside the expandable touchable — inner touchables
+ * win in RN, so tapping a pill never collapses the correction.
+ */
+const ExplanationLanguageToggle = React.memo(function ExplanationLanguageToggle({
+  language,
+  onToggle,
+}: {
+  language: CorrectionExplanationLanguage;
+  onToggle: (lang: CorrectionExplanationLanguage) => void;
+}) {
+  return (
+    <View className="mt-1.5 flex-row">
+      {(["fr", "en"] as const).map((lang) => {
+        const active = language === lang;
+        return (
+          <TouchableOpacity
+            key={lang}
+            onPress={() => onToggle(lang)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={
+              lang === "fr" ? "Show explanation in French" : "Show explanation in English"
+            }
+            accessibilityState={{ selected: active }}
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: Radii.chip,
+              marginRight: 6,
+              minWidth: 32,
+              alignItems: "center",
+              backgroundColor: active ? Colors.accent20 : skillTint(Colors.surfaceWhite, 0.08),
+            }}
+          >
+            <Text
+              style={{
+                fontSize: Typography.label.fontSize,
+                fontWeight: "700",
+                color: active ? Colors.accent : skillTint(Colors.surfaceWhite, 0.45),
+              }}
+            >
+              {lang.toUpperCase()}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+});
+
 /** SideNote correction item — lighter amber left-border card */
 interface SideNoteItemProps {
   correction: Correction;
@@ -188,6 +266,8 @@ interface SideNoteItemProps {
   isExpanded: boolean;
   onToggle: () => void;
   isLast: boolean;
+  explanationLang: CorrectionExplanationLanguage;
+  onToggleLanguage: (lang: CorrectionExplanationLanguage) => void;
 }
 
 const SideNoteItem = React.memo(function SideNoteItem({
@@ -196,6 +276,8 @@ const SideNoteItem = React.memo(function SideNoteItem({
   isExpanded,
   onToggle,
   isLast,
+  explanationLang,
+  onToggleLanguage,
 }: SideNoteItemProps) {
   const heightAnim = useSharedValue(isExpanded ? 1 : 0);
 
@@ -281,7 +363,7 @@ const SideNoteItem = React.memo(function SideNoteItem({
         </Text>
       )}
 
-      {/* Expanded: explanation */}
+      {/* Expanded: explanation (Story 18-2 bilingual w/ toggle) */}
       <Reanimated.View style={[{ overflow: "hidden" }, expandStyle]}>
         <Text
           style={{
@@ -292,8 +374,11 @@ const SideNoteItem = React.memo(function SideNoteItem({
             marginTop: 4,
           }}
         >
-          {correction.explanation}
+          {selectCorrectionExplanation(correction, explanationLang)}
         </Text>
+        {correction.explanationEn !== undefined && (
+          <ExplanationLanguageToggle language={explanationLang} onToggle={onToggleLanguage} />
+        )}
       </Reanimated.View>
     </TouchableOpacity>
   );

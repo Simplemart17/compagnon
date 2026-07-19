@@ -26,6 +26,9 @@ interface TranscriptViewProps {
   pendingAiText: string;
   isAiSpeaking: boolean;
   condensed?: boolean;
+  /** Story 18-2: threaded to CorrectionBubble for the CEFR-adaptive
+   * explanation-language default. */
+  cefrLevel?: string;
 }
 
 interface AnimatedMessageProps {
@@ -34,6 +37,7 @@ interface AnimatedMessageProps {
   condensed?: boolean;
   /** Corrections from the following AI message, to render below this user message in sideNote mode */
   sideNoteCorrections?: TranscriptEntry["corrections"];
+  cefrLevel?: string;
   /** Whether sideNote corrections should be visible (hidden while AI is speaking for latest turn) */
   showSideNoteCorrections?: boolean;
 }
@@ -108,6 +112,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
   condensed = false,
   sideNoteCorrections,
   showSideNoteCorrections = true,
+  cefrLevel,
 }: AnimatedMessageProps) {
   const isUser = entry.role === "user";
 
@@ -174,7 +179,7 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
         entry.corrections &&
         entry.corrections.length > 0 && (
           <View className="mt-1.5">
-            <CorrectionBubble corrections={entry.corrections} compact />
+            <CorrectionBubble corrections={entry.corrections} compact cefrLevel={cefrLevel} />
           </View>
         )}
 
@@ -185,7 +190,12 @@ const AnimatedMessage = React.memo(function AnimatedMessage({
         sideNoteCorrections &&
         sideNoteCorrections.length > 0 && (
           <View className="mt-1.5" style={{ alignSelf: "flex-start" }}>
-            <CorrectionBubble corrections={sideNoteCorrections} compact variant="sideNote" />
+            <CorrectionBubble
+              corrections={sideNoteCorrections}
+              compact
+              variant="sideNote"
+              cefrLevel={cefrLevel}
+            />
           </View>
         )}
     </Reanimated.View>
@@ -285,6 +295,7 @@ export function TranscriptView({
   pendingAiText,
   isAiSpeaking,
   condensed = false,
+  cefrLevel,
 }: TranscriptViewProps) {
   const flatListRef = useRef<FlatList<TranscriptEntry>>(null);
   const prevLengthRef = useRef(transcript.length);
@@ -344,10 +355,11 @@ export function TranscriptView({
           condensed={condensed}
           sideNoteCorrections={sideNoteCorrections}
           showSideNoteCorrections={showSideNoteCorrections}
+          cefrLevel={cefrLevel}
         />
       );
     },
-    [condensed]
+    [condensed, cefrLevel]
   );
 
   /** Footer renders streaming AI text and typing indicator below the list */

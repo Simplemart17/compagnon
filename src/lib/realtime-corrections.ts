@@ -102,11 +102,49 @@ export function processReportCorrectionCall(parsed: unknown): ProcessReportCorre
       resultMessage: `Rejected: invalid-shape. Issue: ${code} at ${path}. Correction not recorded. Check field names + types + the 4-literal category enum.`,
     };
   }
+  // Story 18-2: map the bilingual tool args onto the stored Correction
+  // shape — `explanation` stays the French primary (back-compatible with
+  // pre-18-2 stored corrections), `explanationEn` carries the English.
+  const { explanation_fr, explanation_en, ...rest } = result.data;
   return {
     outcome: "recorded",
-    correction: result.data,
+    correction: { ...rest, explanation: explanation_fr, explanationEn: explanation_en },
     resultMessage: FUNCTION_RESULT_ACK,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Story 18-2 — bilingual explanation display policy (pure helpers)
+// ---------------------------------------------------------------------------
+
+export type CorrectionExplanationLanguage = "fr" | "en";
+
+/**
+ * CEFR-adaptive default language for correction explanations (Story 18-2,
+ * mirrors the Comprehension Support policy from Story 18-1): A1-A2 learners
+ * default to ENGLISH (comprehension unblocking beats immersion purity at
+ * this level); B1+ default to FRENCH (the pedagogical primary). The UI
+ * toggle makes the other language one tap away either way. Undefined level
+ * (history surfaces without profile context) defaults to French — safe for
+ * every stored correction since `explanation` is always present.
+ */
+export function defaultCorrectionExplanationLanguage(
+  cefrLevel?: string
+): CorrectionExplanationLanguage {
+  return cefrLevel === "A1" || cefrLevel === "A2" ? "en" : "fr";
+}
+
+/**
+ * Select the explanation text for the requested language, falling back to
+ * French when the English is absent (pre-18-2 stored corrections carry
+ * only `explanation`). Pure; never returns undefined.
+ */
+export function selectCorrectionExplanation(
+  correction: Correction,
+  language: CorrectionExplanationLanguage
+): string {
+  if (language === "en" && correction.explanationEn) return correction.explanationEn;
+  return correction.explanation;
 }
 
 /**

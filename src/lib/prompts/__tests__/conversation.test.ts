@@ -205,10 +205,15 @@ describe("buildConversationPrompt — Story 11-1 tool-call Correction Reporting 
     expect(prompt).toContain("## Correction Reporting (Tool-Call)");
     expect(prompt).toContain("invoke the `report_correction` function");
     expect(prompt).toContain("`category`");
-    // Each of the four required-arg names is mentioned by name
+    // Each of the five required-arg names is mentioned by name (Story 18-2
+    // split `explanation` into bilingual `explanation_fr` + `explanation_en`)
     expect(prompt).toContain("`original`");
     expect(prompt).toContain("`corrected`");
-    expect(prompt).toContain("`explanation`");
+    expect(prompt).toContain("`explanation_fr`");
+    expect(prompt).toContain("`explanation_en`");
+    expect(prompt).toContain("five required arguments");
+    // NEGATIVE: the legacy single-explanation arg name is GONE
+    expect(prompt).not.toContain("`explanation`:");
     // Each of the four enum categories appears
     expect(prompt).toContain(`"grammar"`);
     expect(prompt).toContain(`"pronunciation"`);

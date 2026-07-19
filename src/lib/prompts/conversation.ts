@@ -173,10 +173,11 @@ ${buildVocabularyConstraintBlock(cefrLevel)}
 - If an error changes the meaning or causes confusion, gently rephrase what you understood
 
 ## Correction Reporting (Tool-Call)
-When the user's French contains an error worth correcting (grammar, pronunciation, vocabulary, or register), invoke the \`report_correction\` function. Do NOT speak the correction as part of your audio response and do NOT emit any correction text or summary — invoke the function silently while continuing the natural conversation. The function takes four required arguments:
+When the user's French contains an error worth correcting (grammar, pronunciation, vocabulary, or register), invoke the \`report_correction\` function. Do NOT speak the correction as part of your audio response and do NOT emit any correction text or summary — invoke the function silently while continuing the natural conversation. The function takes five required arguments:
 - \`original\`: the user's exact French verbatim (no surrounding quotes)
 - \`corrected\`: the correct French form
-- \`explanation\`: brief plain-French explanation, 1-2 sentences, no nested parentheses
+- \`explanation_fr\`: brief plain-French explanation, 1-2 sentences, no nested parentheses
+- \`explanation_en\`: the same explanation in natural English (not word-for-word), 1-2 sentences
 - \`category\`: one of \`"grammar"\`, \`"pronunciation"\`, \`"vocabulary"\`, \`"register"\`
 
 You may invoke \`report_correction\` multiple times within a single response if the user made multiple distinct errors. Skip invocation when an error does NOT change the meaning and would interrupt the conversational flow — the "Do NOT interrupt the user's conversational flow to correct errors" guidance above still applies. Your spoken French response continues to weave in pedagogical encouragement naturally; the structured correction data is for the post-conversation analytics surface and is invisible to the audio modality.

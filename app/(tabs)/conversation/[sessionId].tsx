@@ -466,6 +466,7 @@ export default function ConversationSessionScreen() {
               pendingAiText={conversation.pendingAiText}
               isAiSpeaking={conversation.isAiSpeaking}
               condensed
+              cefrLevel={cefrLevel}
             />
 
             <View className="flex-1 items-center justify-center">
@@ -503,6 +504,7 @@ export default function ConversationSessionScreen() {
               transcript={conversation.transcript}
               pendingAiText={conversation.pendingAiText}
               isAiSpeaking={conversation.isAiSpeaking}
+              cefrLevel={cefrLevel}
             />
           </View>
         )}
@@ -963,7 +965,10 @@ export default function ConversationSessionScreen() {
                 {/* Corrections or "Impeccable" message */}
                 {conversation.allCorrections.length > 0 ? (
                   <View className="mb-3">
-                    <CorrectionBubble corrections={conversation.allCorrections} />
+                    <CorrectionBubble
+                      corrections={conversation.allCorrections}
+                      cefrLevel={cefrLevel}
+                    />
                   </View>
                 ) : (
                   <View

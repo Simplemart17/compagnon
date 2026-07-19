@@ -33,7 +33,13 @@ export interface ConversationMessage {
 export interface Correction {
   original: string;
   corrected: string;
+  /** French explanation — the pedagogical primary. Pre-18-2 stored
+   * corrections carry ONLY this field. */
   explanation: string;
+  /** Story 18-2: English explanation for comprehension support. Optional
+   * because pre-18-2 stored corrections (conversation_messages.corrections
+   * JSONB) lack it — the UI's FR/EN toggle renders only when present. */
+  explanationEn?: string;
   category: "grammar" | "pronunciation" | "vocabulary" | "register";
 }
 

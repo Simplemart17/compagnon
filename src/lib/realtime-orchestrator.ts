@@ -2105,10 +2105,15 @@ export class RealtimeOrchestrator {
                   type: "string",
                   description: "The correct French form.",
                 },
-                explanation: {
+                explanation_fr: {
                   type: "string",
                   description:
                     "Brief plain-French explanation of why the correction applies. Avoid nested parentheses. 1-2 sentences.",
+                },
+                explanation_en: {
+                  type: "string",
+                  description:
+                    "The same explanation in natural English (not a word-for-word translation). 1-2 sentences. Helps lower-level learners understand the correction.",
                 },
                 category: {
                   type: "string",
@@ -2116,7 +2121,7 @@ export class RealtimeOrchestrator {
                   description: "The error category. Pick the single best fit.",
                 },
               },
-              required: ["original", "corrected", "explanation", "category"],
+              required: ["original", "corrected", "explanation_fr", "explanation_en", "category"],
             },
           },
         ],

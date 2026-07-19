@@ -555,10 +555,19 @@ export const REPORT_CORRECTION_MAX_LENGTH = {
   explanation: 1000,
 } as const;
 
+/**
+ * Story 18-2: the model reports BOTH a French and an English explanation.
+ * French is the pedagogical primary (matches pre-18-2 stored corrections);
+ * English drives comprehension for lower CEFR levels (the UI's FR/EN toggle
+ * + CEFR-adaptive default live in `CorrectionBubble` /
+ * `defaultCorrectionExplanationLanguage`). Both share the same max-length
+ * cap (`REPORT_CORRECTION_MAX_LENGTH.explanation`).
+ */
 export const reportCorrectionArgsSchema = z.object({
   original: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.original),
   corrected: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.corrected),
-  explanation: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation),
+  explanation_fr: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation),
+  explanation_en: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation),
   category: correctionCategorySchema,
 });
 

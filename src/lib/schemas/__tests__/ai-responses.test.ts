@@ -996,20 +996,33 @@ describe("speakingTaskEvaluationSchema (story 9-8 + 10-6)", () => {
 // Story 11-1 — reportCorrectionArgsSchema (Realtime tool-call args)
 // ---------------------------------------------------------------------------
 
-describe("reportCorrectionArgsSchema (Story 11-1)", () => {
-  it("accepts a well-formed grammar correction", () => {
+describe("reportCorrectionArgsSchema (Story 11-1; bilingual per Story 18-2)", () => {
+  it("accepts a well-formed bilingual grammar correction", () => {
     const result = reportCorrectionArgsSchema.safeParse({
       original: "je suis allé",
       corrected: "je suis allée",
-      explanation: "Accord du participe passé avec être au féminin.",
+      explanation_fr: "Accord du participe passé avec être au féminin.",
+      explanation_en: "Past participle agrees with être for a female speaker.",
       category: "grammar",
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.original).toBe("je suis allé");
       expect(result.data.corrected).toBe("je suis allée");
+      expect(result.data.explanation_fr).toContain("Accord");
+      expect(result.data.explanation_en).toContain("Past participle");
       expect(result.data.category).toBe("grammar");
     }
+  });
+
+  it("Story 18-2: rejects the legacy single-explanation shape (explanation without _fr/_en)", () => {
+    const result = reportCorrectionArgsSchema.safeParse({
+      original: "x",
+      corrected: "y",
+      explanation: "z",
+      category: "grammar",
+    });
+    expect(result.success).toBe(false);
   });
 
   it.each(["grammar", "pronunciation", "vocabulary", "register"] as const)(
@@ -1018,7 +1031,8 @@ describe("reportCorrectionArgsSchema (Story 11-1)", () => {
       const result = reportCorrectionArgsSchema.safeParse({
         original: "x",
         corrected: "y",
-        explanation: "z",
+        explanation_fr: "z",
+        explanation_en: "z",
         category,
       });
       expect(result.success).toBe(true);
@@ -1029,7 +1043,8 @@ describe("reportCorrectionArgsSchema (Story 11-1)", () => {
     const result = reportCorrectionArgsSchema.safeParse({
       original: "x",
       corrected: "y",
-      explanation: "z",
+      explanation_fr: "z",
+      explanation_en: "z",
       category: "nonsense",
     });
     expect(result.success).toBe(false);
@@ -1039,13 +1054,14 @@ describe("reportCorrectionArgsSchema (Story 11-1)", () => {
     }
   });
 
-  it.each(["original", "corrected", "explanation"] as const)(
+  it.each(["original", "corrected", "explanation_fr", "explanation_en"] as const)(
     "rejects empty string on field=%s",
     (field) => {
       const payload: Record<string, string> = {
         original: "a",
         corrected: "b",
-        explanation: "c",
+        explanation_fr: "c",
+        explanation_en: "d",
         category: "grammar",
       };
       payload[field] = "";
@@ -1054,42 +1070,55 @@ describe("reportCorrectionArgsSchema (Story 11-1)", () => {
     }
   );
 
-  it("rejects missing required fields", () => {
-    const result = reportCorrectionArgsSchema.safeParse({
-      original: "a",
-      corrected: "b",
-      // explanation missing
-      category: "grammar",
-    });
-    expect(result.success).toBe(false);
-  });
+  it.each(["explanation_fr", "explanation_en"] as const)(
+    "rejects missing required field %s (both languages are mandatory from the model)",
+    (missing) => {
+      const payload: Record<string, string> = {
+        original: "a",
+        corrected: "b",
+        explanation_fr: "c",
+        explanation_en: "d",
+        category: "grammar",
+      };
+      delete payload[missing];
+      const result = reportCorrectionArgsSchema.safeParse(payload);
+      expect(result.success).toBe(false);
+    }
+  );
 
   it("rejects non-string field types", () => {
     const result = reportCorrectionArgsSchema.safeParse({
       original: 42,
       corrected: "b",
-      explanation: "c",
+      explanation_fr: "c",
+      explanation_en: "d",
       category: "grammar",
     });
     expect(result.success).toBe(false);
   });
 
-  it("ReportCorrectionArgs is bidirectionally structurally compatible with Correction", () => {
-    // Compile-time: bidirectional assignability check. If the schema and
-    // the Correction interface diverge in EITHER direction (schema adds
-    // a field, interface adds a field), this fails type-check. Review
-    // patch P7 (MED).
+  it("Story 18-2: ReportCorrectionArgs maps onto Correction via the documented field mapping", () => {
+    // Post-18-2 the wire shape (explanation_fr/explanation_en) deliberately
+    // DIFFERS from the stored Correction shape (explanation/explanationEn)
+    // — pre-18-2 stored corrections carry only `explanation`, so the
+    // stored shape keeps French in the legacy field. This test pins the
+    // mapping contract that processReportCorrectionCall implements.
     const args: ReportCorrectionArgs = {
       original: "x",
       corrected: "y",
-      explanation: "z",
+      explanation_fr: "z-fr",
+      explanation_en: "z-en",
       category: "grammar",
     };
-    const correction: Correction = args;
-    // Inverse direction — proves the interface ↔ schema equivalence.
-    const argsRoundTrip: ReportCorrectionArgs = correction;
-    expect(correction.original).toBe("x");
-    expect(argsRoundTrip.category).toBe("grammar");
+    const { explanation_fr, explanation_en, ...rest } = args;
+    const correction: Correction = {
+      ...rest,
+      explanation: explanation_fr,
+      explanationEn: explanation_en,
+    };
+    expect(correction.explanation).toBe("z-fr");
+    expect(correction.explanationEn).toBe("z-en");
+    expect(correction.category).toBe("grammar");
   });
 
   it("correctionCategorySchema exposes the 4-literal enum members (order-independent)", () => {
