@@ -562,14 +562,41 @@ export const REPORT_CORRECTION_MAX_LENGTH = {
  * + CEFR-adaptive default live in `CorrectionBubble` /
  * `defaultCorrectionExplanationLanguage`). Both share the same max-length
  * cap (`REPORT_CORRECTION_MAX_LENGTH.explanation`).
+ *
+ * Review R1 — TOLERANT BOUNDARY (strict in what the tool def asks, liberal
+ * in what the pipeline accepts): a rejected correction is a LOST learning
+ * signal, so degrading beats dropping.
+ *   - `explanation_en` is OPTIONAL at the schema layer (the tool definition
+ *     still lists it as required, so the model ~always sends it) — a model
+ *     that omits the English records a French-only correction instead of
+ *     losing the correction entirely. The UI already renders French-only
+ *     rows (pre-18-2 stored corrections use the same path).
+ *   - The preprocess arm accepts the LEGACY 4-field shape (`explanation` →
+ *     `explanation_fr` when `explanation_fr` is absent) — gpt-realtime-mini
+ *     intermittently reverts to pre-18-2 arg names mid-rollout.
+ *   - Whitespace-only `explanation_en` is normalized to absent so a
+ *     degenerate emission can't produce a dead FR/EN toggle downstream.
  */
-export const reportCorrectionArgsSchema = z.object({
-  original: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.original),
-  corrected: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.corrected),
-  explanation_fr: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation),
-  explanation_en: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation),
-  category: correctionCategorySchema,
-});
+export const reportCorrectionArgsSchema = z.preprocess(
+  (raw) => {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
+    const obj = { ...(raw as Record<string, unknown>) };
+    if (typeof obj.explanation_fr !== "string" && typeof obj.explanation === "string") {
+      obj.explanation_fr = obj.explanation;
+    }
+    if (typeof obj.explanation_en === "string" && obj.explanation_en.trim().length === 0) {
+      delete obj.explanation_en;
+    }
+    return obj;
+  },
+  z.object({
+    original: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.original),
+    corrected: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.corrected),
+    explanation_fr: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation),
+    explanation_en: z.string().min(1).max(REPORT_CORRECTION_MAX_LENGTH.explanation).optional(),
+    category: correctionCategorySchema,
+  })
+);
 
 export type ReportCorrectionArgs = z.infer<typeof reportCorrectionArgsSchema>;
 

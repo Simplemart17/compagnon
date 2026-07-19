@@ -29,7 +29,9 @@ import {
   mergeOrphanCorrections,
   processReportCorrectionCall,
   defaultCorrectionExplanationLanguage,
+  hasEnglishExplanation,
   selectCorrectionExplanation,
+  toStoredCorrection,
 } from "../realtime-corrections";
 
 const VALID_GRAMMAR_ARGS = {
@@ -40,21 +42,10 @@ const VALID_GRAMMAR_ARGS = {
   category: "grammar" as const,
 };
 
-/** Story 18-2: the stored Correction shape the wire args map onto. */
-const toStoredCorrection = (args: {
-  original: string;
-  corrected: string;
-  explanation_fr: string;
-  explanation_en: string;
-  category: "grammar" | "pronunciation" | "vocabulary" | "register";
-}) => ({
-  original: args.original,
-  corrected: args.corrected,
-  explanation: args.explanation_fr,
-  explanationEn: args.explanation_en,
-  category: args.category,
-});
-
+// Story 18-2 R1: fixtures use the PRODUCTION wire→stored mapping
+// (toStoredCorrection imported above) so tests can't drift from it;
+// EXPECTED_GRAMMAR_CORRECTION below stays a hand-written literal — the
+// independent oracle that pins the mapping itself.
 const EXPECTED_GRAMMAR_CORRECTION = {
   original: "je suis allé",
   corrected: "je suis allée",
@@ -411,5 +402,66 @@ describe("Story 18-2 — bilingual explanation display policy (pure helpers)", (
     };
     expect(selectCorrectionExplanation(legacy, "en")).toBe("explication seulement");
     expect(selectCorrectionExplanation(legacy, "fr")).toBe("explication seulement");
+  });
+});
+
+describe("Story 18-2 R1 — tolerant boundary + unified predicates", () => {
+  it("legacy 4-field payload records a French-only correction (no explanationEn key)", () => {
+    const result = processReportCorrectionCall({
+      original: "je suis allé",
+      corrected: "je suis allée",
+      explanation: "Accord du participe passé.",
+      category: "grammar",
+    });
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanation).toBe("Accord du participe passé.");
+      expect("explanationEn" in result.correction).toBe(false);
+    }
+  });
+
+  it("missing explanation_en records French-only instead of dropping the correction", () => {
+    const withoutEn: Record<string, unknown> = { ...VALID_GRAMMAR_ARGS };
+    delete withoutEn.explanation_en;
+    const result = processReportCorrectionCall(withoutEn);
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanationEn).toBeUndefined();
+    }
+  });
+
+  it("toStoredCorrection omits the explanationEn key entirely when absent (clean JSONB)", () => {
+    const stored = toStoredCorrection({
+      original: "a",
+      corrected: "b",
+      explanation_fr: "c",
+      category: "grammar",
+    });
+    expect(Object.keys(stored).sort()).toEqual([
+      "category",
+      "corrected",
+      "explanation",
+      "original",
+    ]);
+  });
+
+  it("hasEnglishExplanation: true only for non-empty, non-whitespace explanationEn", () => {
+    const base = { original: "x", corrected: "y", explanation: "fr", category: "grammar" as const };
+    expect(hasEnglishExplanation({ ...base, explanationEn: "english" })).toBe(true);
+    expect(hasEnglishExplanation({ ...base, explanationEn: "" })).toBe(false);
+    expect(hasEnglishExplanation({ ...base, explanationEn: "   " })).toBe(false);
+    expect(hasEnglishExplanation(base)).toBe(false);
+  });
+
+  it("selectCorrectionExplanation agrees with hasEnglishExplanation on empty-string EN (no lying toggle)", () => {
+    const c = {
+      original: "x",
+      corrected: "y",
+      explanation: "fr",
+      explanationEn: "",
+      category: "grammar" as const,
+    };
+    expect(hasEnglishExplanation(c)).toBe(false);
+    expect(selectCorrectionExplanation(c, "en")).toBe("fr");
   });
 });

@@ -31,7 +31,11 @@
 import type { ZodIssueCode } from "zod";
 
 import type { Correction } from "@/src/types/conversation";
-import { reportCorrectionArgsSchema } from "@/src/lib/schemas/ai-responses";
+import { isBeginnerCefrLevel, type CEFRLevel } from "@/src/types/cefr";
+import {
+  reportCorrectionArgsSchema,
+  type ReportCorrectionArgs,
+} from "@/src/lib/schemas/ai-responses";
 
 /**
  * Per-turn upper bound on accumulated `report_correction` tool-calls. A
@@ -102,16 +106,38 @@ export function processReportCorrectionCall(parsed: unknown): ProcessReportCorre
       resultMessage: `Rejected: invalid-shape. Issue: ${code} at ${path}. Correction not recorded. Check field names + types + the 4-literal category enum.`,
     };
   }
-  // Story 18-2: map the bilingual tool args onto the stored Correction
-  // shape — `explanation` stays the French primary (back-compatible with
-  // pre-18-2 stored corrections), `explanationEn` carries the English.
-  const { explanation_fr, explanation_en, ...rest } = result.data;
   return {
     outcome: "recorded",
-    correction: { ...rest, explanation: explanation_fr, explanationEn: explanation_en },
+    correction: toStoredCorrection(result.data),
     resultMessage: FUNCTION_RESULT_ACK,
   };
 }
+
+/**
+ * Story 18-2 (review R1): THE wire→stored mapping — exported so production
+ * and tests consume the same function (the review found the test file
+ * re-implementing this mapping locally, the mirrored-logic vacuous-pass
+ * mode the repo's drift discipline exists to prevent). Explicit
+ * field-by-field construction (NO spread) so a future wire field can never
+ * leak raw into persisted JSONB; the `_WireFieldsCovered` assertion below
+ * turns "schema gained a field this mapping doesn't handle" into a
+ * compile error (successor to the Story 11-1 P7 bidirectional pin).
+ */
+export function toStoredCorrection(args: ReportCorrectionArgs): Correction {
+  return {
+    original: args.original,
+    corrected: args.corrected,
+    explanation: args.explanation_fr,
+    ...(args.explanation_en !== undefined ? { explanationEn: args.explanation_en } : {}),
+    category: args.category,
+  };
+}
+
+type MappedWireFields = "original" | "corrected" | "explanation_fr" | "explanation_en" | "category";
+type AssertNever<T extends never> = T;
+/** Compile-time guard: fails the build if reportCorrectionArgsSchema gains
+ * a field this mapping doesn't deliberately handle. */
+export type _WireFieldsCovered = AssertNever<Exclude<keyof ReportCorrectionArgs, MappedWireFields>>;
 
 // ---------------------------------------------------------------------------
 // Story 18-2 — bilingual explanation display policy (pure helpers)
@@ -129,9 +155,21 @@ export type CorrectionExplanationLanguage = "fr" | "en";
  * every stored correction since `explanation` is always present.
  */
 export function defaultCorrectionExplanationLanguage(
-  cefrLevel?: string
+  cefrLevel?: CEFRLevel
 ): CorrectionExplanationLanguage {
-  return cefrLevel === "A1" || cefrLevel === "A2" ? "en" : "fr";
+  return isBeginnerCefrLevel(cefrLevel) ? "en" : "fr";
+}
+
+/**
+ * Story 18-2 review R1: THE single predicate for "this correction has a
+ * usable English explanation" — used by BOTH the toggle-visibility gate in
+ * CorrectionBubble AND selectCorrectionExplanation, so a stored
+ * `explanationEn: ""` (backfill script, hand-edited JSONB — the wire-side
+ * min(1) never sees stored rows read back) can't render a dead toggle
+ * whose EN state shows French.
+ */
+export function hasEnglishExplanation(correction: Correction): boolean {
+  return typeof correction.explanationEn === "string" && correction.explanationEn.trim().length > 0;
 }
 
 /**
@@ -143,7 +181,9 @@ export function selectCorrectionExplanation(
   correction: Correction,
   language: CorrectionExplanationLanguage
 ): string {
-  if (language === "en" && correction.explanationEn) return correction.explanationEn;
+  if (language === "en" && hasEnglishExplanation(correction)) {
+    return correction.explanationEn as string;
+  }
   return correction.explanation;
 }
 

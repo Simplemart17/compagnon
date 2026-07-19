@@ -136,6 +136,18 @@ export const CEFR_LEVELS: Record<CEFRLevel, CEFRLevelInfo> = {
 /** Ordered list of CEFR levels for progression */
 export const CEFR_ORDER: CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
+/**
+ * Story 18-2 review R1: single source of truth for the "beginner band"
+ * (A1-A2) used by English-comprehension-support policies — the Story 18-1
+ * Comprehension Support prompt banding and the Story 18-2 correction-
+ * explanation display default both key off this predicate so the band
+ * cannot drift between surfaces. `undefined` (profile not yet hydrated /
+ * history surfaces) is NOT beginner — French-primary is the safe default.
+ */
+export function isBeginnerCefrLevel(level: CEFRLevel | undefined): boolean {
+  return level === "A1" || level === "A2";
+}
+
 /** Determine CEFR level from a TCF score.
  *  Returns null only for score 0 (no data). Scores 1-99 map to "Below A1"
  *  conceptually but return null since there is no CEFR level for that range. */

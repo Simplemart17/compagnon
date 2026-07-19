@@ -446,7 +446,11 @@ describe("Story 12-4 — Story 11-1 / 11-2 paths preserved via helper", () => {
       delta: "Bonjour",
     });
 
-    // Now invoke report_correction with valid args.
+    // Now invoke report_correction with valid args. Story 18-2 review R1:
+    // this LEGACY 4-field shape is deliberately kept — the schema's
+    // preprocess fallback maps `explanation` → `explanation_fr`, so this
+    // case doubles as orchestrator-path coverage that pre-18-2-shaped
+    // model output still routes through the RECORDED arm (not rejection).
     mockRegisteredHandleEvent!({
       type: "response.function_call_arguments.done",
       name: "report_correction",

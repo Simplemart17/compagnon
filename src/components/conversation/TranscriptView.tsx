@@ -17,6 +17,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import type { TranscriptEntry } from "@/src/hooks/use-realtime-voice";
+import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors, skillTint } from "@/src/lib/design";
 
 import { CorrectionBubble } from "./CorrectionBubble";
@@ -28,7 +29,7 @@ interface TranscriptViewProps {
   condensed?: boolean;
   /** Story 18-2: threaded to CorrectionBubble for the CEFR-adaptive
    * explanation-language default. */
-  cefrLevel?: string;
+  cefrLevel?: CEFRLevel;
 }
 
 interface AnimatedMessageProps {
@@ -37,7 +38,7 @@ interface AnimatedMessageProps {
   condensed?: boolean;
   /** Corrections from the following AI message, to render below this user message in sideNote mode */
   sideNoteCorrections?: TranscriptEntry["corrections"];
-  cefrLevel?: string;
+  cefrLevel?: CEFRLevel;
   /** Whether sideNote corrections should be visible (hidden while AI is speaking for latest turn) */
   showSideNoteCorrections?: boolean;
 }

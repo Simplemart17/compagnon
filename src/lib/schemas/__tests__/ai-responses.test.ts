@@ -1015,11 +1015,67 @@ describe("reportCorrectionArgsSchema (Story 11-1; bilingual per Story 18-2)", ()
     }
   });
 
-  it("Story 18-2: rejects the legacy single-explanation shape (explanation without _fr/_en)", () => {
+  it("Story 18-2 R1: ACCEPTS the legacy 4-field shape — explanation maps to explanation_fr (tolerant boundary)", () => {
+    // A rejected correction is a lost learning signal; gpt-realtime-mini
+    // intermittently reverts to pre-18-2 arg names. The preprocess arm
+    // records the correction French-only instead of dropping it.
     const result = reportCorrectionArgsSchema.safeParse({
       original: "x",
       corrected: "y",
       explanation: "z",
+      category: "grammar",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.explanation_fr).toBe("z");
+      expect(result.data.explanation_en).toBeUndefined();
+    }
+  });
+
+  it("Story 18-2 R1: hybrid payload (legacy explanation + new explanation_fr) — explanation_fr wins", () => {
+    const result = reportCorrectionArgsSchema.safeParse({
+      original: "x",
+      corrected: "y",
+      explanation: "legacy",
+      explanation_fr: "nouveau",
+      explanation_en: "new",
+      category: "grammar",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.explanation_fr).toBe("nouveau");
+      expect(result.data.explanation_en).toBe("new");
+    }
+  });
+
+  it("Story 18-2 R1: missing explanation_en is ACCEPTED (French-only correction beats no correction)", () => {
+    const result = reportCorrectionArgsSchema.safeParse({
+      original: "x",
+      corrected: "y",
+      explanation_fr: "z",
+      category: "grammar",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.explanation_en).toBeUndefined();
+  });
+
+  it("Story 18-2 R1: whitespace-only explanation_en normalizes to absent (no dead FR/EN toggle downstream)", () => {
+    const result = reportCorrectionArgsSchema.safeParse({
+      original: "x",
+      corrected: "y",
+      explanation_fr: "z",
+      explanation_en: "   ",
+      category: "grammar",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.explanation_en).toBeUndefined();
+  });
+
+  it("Story 18-2 R1: missing BOTH explanation_fr and legacy explanation is rejected", () => {
+    const result = reportCorrectionArgsSchema.safeParse({
+      original: "x",
+      corrected: "y",
+      explanation_en: "english only",
       category: "grammar",
     });
     expect(result.success).toBe(false);
@@ -1054,7 +1110,7 @@ describe("reportCorrectionArgsSchema (Story 11-1; bilingual per Story 18-2)", ()
     }
   });
 
-  it.each(["original", "corrected", "explanation_fr", "explanation_en"] as const)(
+  it.each(["original", "corrected", "explanation_fr"] as const)(
     "rejects empty string on field=%s",
     (field) => {
       const payload: Record<string, string> = {
@@ -1070,21 +1126,16 @@ describe("reportCorrectionArgsSchema (Story 11-1; bilingual per Story 18-2)", ()
     }
   );
 
-  it.each(["explanation_fr", "explanation_en"] as const)(
-    "rejects missing required field %s (both languages are mandatory from the model)",
-    (missing) => {
-      const payload: Record<string, string> = {
-        original: "a",
-        corrected: "b",
-        explanation_fr: "c",
-        explanation_en: "d",
-        category: "grammar",
-      };
-      delete payload[missing];
-      const result = reportCorrectionArgsSchema.safeParse(payload);
-      expect(result.success).toBe(false);
-    }
-  );
+  it("rejects missing required field explanation_fr (with no legacy fallback key)", () => {
+    const payload: Record<string, string> = {
+      original: "a",
+      corrected: "b",
+      explanation_en: "d",
+      category: "grammar",
+    };
+    const result = reportCorrectionArgsSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
 
   it("rejects non-string field types", () => {
     const result = reportCorrectionArgsSchema.safeParse({
