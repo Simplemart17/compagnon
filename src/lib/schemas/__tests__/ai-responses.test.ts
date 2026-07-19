@@ -10,6 +10,7 @@
  */
 
 import type { Correction } from "@/src/types/conversation";
+import { toStoredCorrection } from "@/src/lib/realtime-corrections";
 
 import {
   cefrLevelSchema,
@@ -1126,17 +1127,6 @@ describe("reportCorrectionArgsSchema (Story 11-1; bilingual per Story 18-2)", ()
     }
   );
 
-  it("rejects missing required field explanation_fr (with no legacy fallback key)", () => {
-    const payload: Record<string, string> = {
-      original: "a",
-      corrected: "b",
-      explanation_en: "d",
-      category: "grammar",
-    };
-    const result = reportCorrectionArgsSchema.safeParse(payload);
-    expect(result.success).toBe(false);
-  });
-
   it("rejects non-string field types", () => {
     const result = reportCorrectionArgsSchema.safeParse({
       original: 42,
@@ -1148,12 +1138,10 @@ describe("reportCorrectionArgsSchema (Story 11-1; bilingual per Story 18-2)", ()
     expect(result.success).toBe(false);
   });
 
-  it("Story 18-2: ReportCorrectionArgs maps onto Correction via the documented field mapping", () => {
-    // Post-18-2 the wire shape (explanation_fr/explanation_en) deliberately
-    // DIFFERS from the stored Correction shape (explanation/explanationEn)
-    // — pre-18-2 stored corrections carry only `explanation`, so the
-    // stored shape keeps French in the legacy field. This test pins the
-    // mapping contract that processReportCorrectionCall implements.
+  it("Story 18-2 R2: PRODUCTION toStoredCorrection maps wire onto stored shape (literal oracle)", () => {
+    // R2: this test previously re-implemented the mapping locally — the
+    // mirrored-logic vacuous-pass mode. It now invokes the PRODUCTION
+    // mapping and pins it against a hand-written literal oracle.
     const args: ReportCorrectionArgs = {
       original: "x",
       corrected: "y",
@@ -1161,15 +1149,14 @@ describe("reportCorrectionArgsSchema (Story 11-1; bilingual per Story 18-2)", ()
       explanation_en: "z-en",
       category: "grammar",
     };
-    const { explanation_fr, explanation_en, ...rest } = args;
-    const correction: Correction = {
-      ...rest,
-      explanation: explanation_fr,
-      explanationEn: explanation_en,
-    };
-    expect(correction.explanation).toBe("z-fr");
-    expect(correction.explanationEn).toBe("z-en");
-    expect(correction.category).toBe("grammar");
+    const correction: Correction = toStoredCorrection(args);
+    expect(correction).toEqual({
+      original: "x",
+      corrected: "y",
+      explanation: "z-fr",
+      explanationEn: "z-en",
+      category: "grammar",
+    });
   });
 
   it("correctionCategorySchema exposes the 4-literal enum members (order-independent)", () => {

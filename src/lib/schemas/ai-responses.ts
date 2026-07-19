@@ -581,11 +581,29 @@ export const reportCorrectionArgsSchema = z.preprocess(
   (raw) => {
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
     const obj = { ...(raw as Record<string, unknown>) };
+    // R2: a whitespace-only explanation_fr must not block the legacy
+    // fallback below from rescuing real French text in the old key
+    // (hybrid mid-rollout emissions: explanation_fr: "" + explanation:
+    // "<real text>").
+    if (typeof obj.explanation_fr === "string" && obj.explanation_fr.trim().length === 0) {
+      delete obj.explanation_fr;
+    }
     if (typeof obj.explanation_fr !== "string" && typeof obj.explanation === "string") {
       obj.explanation_fr = obj.explanation;
     }
-    if (typeof obj.explanation_en === "string" && obj.explanation_en.trim().length === 0) {
+    // R2: explanation_en is FULLY tolerant — it is the least important
+    // field, so no shape it arrives in may cost the whole correction:
+    //   - null / non-string (JSON null is the model's natural "no
+    //     English") → treated as absent (.optional() only accepts
+    //     undefined, so null would otherwise fail invalid_type)
+    //   - whitespace-only → absent (no dead FR/EN toggle downstream)
+    //   - over-max string → TRUNCATED to the cap, not rejected
+    if (typeof obj.explanation_en !== "string") {
       delete obj.explanation_en;
+    } else if (obj.explanation_en.trim().length === 0) {
+      delete obj.explanation_en;
+    } else if (obj.explanation_en.length > REPORT_CORRECTION_MAX_LENGTH.explanation) {
+      obj.explanation_en = obj.explanation_en.slice(0, REPORT_CORRECTION_MAX_LENGTH.explanation);
     }
     return obj;
   },

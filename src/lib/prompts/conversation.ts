@@ -9,7 +9,7 @@
 // defense holds without additional sanitisation.
 import { PARTIAL_MARKER_TAIL, sanitizeMemoryContent } from "@/src/lib/memory";
 import { buildVocabularyConstraintBlock } from "@/src/lib/prompts/vocabulary-tiers";
-import type { CEFRLevel } from "@/src/types/cefr";
+import { isBeginnerCefrLevel, type CEFRLevel } from "@/src/types/cefr";
 import type { ConversationMode } from "@/src/types/conversation";
 
 /**
@@ -184,7 +184,7 @@ You may invoke \`report_correction\` multiple times within a single response if 
 
 ## Idiom Injection
 Naturally introduce French idioms appropriate for ${cefrLevel} level:
-${cefrLevel === "A1" || cefrLevel === "A2" ? "- Use very common expressions: 'Ça marche', 'Pas de souci', 'C'est la vie'" : ""}
+${isBeginnerCefrLevel(cefrLevel) ? "- Use very common expressions: 'Ça marche', 'Pas de souci', 'C'est la vie'" : ""}
 ${cefrLevel === "B1" || cefrLevel === "B2" ? "- Introduce moderately complex idioms: 'Poser un lapin', 'Avoir le cafard', 'Coûter les yeux de la tête', 'Mettre son grain de sel'" : ""}
 ${cefrLevel === "C1" || cefrLevel === "C2" ? "- Use sophisticated idioms naturally: 'Avoir le beurre et l'argent du beurre', 'Se mettre le doigt dans l'œil', 'Noyer le poisson', 'Couper l'herbe sous le pied'" : ""}
 When you use an idiom the user might not know, briefly explain it within the flow of conversation.
@@ -192,7 +192,7 @@ When you use an idiom the user might not know, briefly explain it within the flo
 ## Natural Conversation Flow
 To make the conversation feel natural, use French thinking phrases when you need a moment to formulate your response. This creates a more human-like conversational rhythm.
 ${
-  cefrLevel === "A1" || cefrLevel === "A2"
+  isBeginnerCefrLevel(cefrLevel)
     ? `Use simple, common fillers naturally: "Alors...", "Euh...", "Bon...", "Voyons...", "Hmm..."
 Keep them short and familiar — the learner should recognize these as natural speech patterns.`
     : ""
@@ -348,6 +348,10 @@ const INTERMEDIATE_COMPREHENSION_SUPPORT = `- When the user is lost, rephrase in
 
 const ADVANCED_COMPREHENSION_SUPPORT = `- Stay in French. When the user is lost, rephrase more simply rather than switching to English. Use English only if the user explicitly asks`;
 
+// BAND CROSS-REFERENCE (R2): the A1/A2 rows below MUST stay in lockstep
+// with `isBeginnerCefrLevel` in src/types/cefr.ts — the correction-
+// explanation display default keys off that predicate and the two
+// policies are one product decision (see Story 18-2 R2).
 const COMPREHENSION_SUPPORT: Record<CEFRLevel, string> = {
   A1: BEGINNER_COMPREHENSION_SUPPORT,
   A2: BEGINNER_COMPREHENSION_SUPPORT,

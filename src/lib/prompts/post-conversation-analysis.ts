@@ -83,6 +83,11 @@ function safeStringifyCorrections(corrections: Correction[]): string {
   // Story 11-6's embedding dedup).
   const capped = corrections
     .slice(0, MAX_CORRECTIONS_ELEMENTS)
+    // R2: preserve the function's "safe" contract — a malformed element
+    // (null / primitive from a future merge bug or offline-queue replay)
+    // must degrade, not throw: a destructure of null would TypeError and
+    // lose the ENTIRE analysis slot (facts + error patterns + feedback).
+    .filter((c): c is Correction => c !== null && typeof c === "object")
     .map(({ explanationEn: _explanationEn, ...frenchOnly }) => frenchOnly);
   return JSON.stringify(capped);
 }

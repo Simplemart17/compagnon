@@ -1081,6 +1081,21 @@ export class RealtimeOrchestrator {
             },
           });
         } else {
+          // Story 18-2 R2: degraded-but-accepted shapes (legacy 4-field /
+          // missing English) are recorded French-only — breadcrumb so the
+          // operator can measure model compliance with the bilingual
+          // contract and knows when the legacy tolerance can be retired.
+          if (callResult.degradedShape !== undefined) {
+            addBreadcrumb({
+              category: "ai",
+              level: "warning",
+              message: "report_correction degraded shape accepted",
+              data: {
+                feature: "report-correction-degraded",
+                code: callResult.degradedShape,
+              },
+            });
+          }
           this.pendingToolCorrections.push(callResult.correction);
         }
         this.safeSessionCall(

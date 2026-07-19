@@ -72,8 +72,23 @@ export const FUNCTION_RESULT_ACK = "ok";
  *   message includes the issue path (e.g., "category") so the model has
  *   a concrete signal to fix.
  */
+/**
+ * R2: degraded-but-accepted shapes the tolerant boundary coerced. The
+ * helper stays pure (no Sentry import) — the ORCHESTRATOR breadcrumbs
+ * when this field is present (`feature: "report-correction-degraded"`),
+ * giving operators the compliance signal needed to know when the legacy
+ * tolerance can be retired (repo discipline: silent degradation must be
+ * observable — 11-5 P2 / 11-6 P6 / 12-4).
+ */
+export type DegradedCorrectionShape = "legacy-explanation" | "english-missing";
+
 export type ProcessReportCorrectionResult =
-  | { outcome: "recorded"; correction: Correction; resultMessage: string }
+  | {
+      outcome: "recorded";
+      correction: Correction;
+      resultMessage: string;
+      degradedShape?: DegradedCorrectionShape;
+    }
   | {
       outcome: "invalid";
       issueCode: ZodIssueCode | "unknown";
@@ -106,10 +121,23 @@ export function processReportCorrectionCall(parsed: unknown): ProcessReportCorre
       resultMessage: `Rejected: invalid-shape. Issue: ${code} at ${path}. Correction not recorded. Check field names + types + the 4-literal category enum.`,
     };
   }
+  // R2: classify degraded-but-accepted shapes from the RAW input so the
+  // orchestrator can breadcrumb model-compliance drift. Legacy takes
+  // precedence (a legacy-shaped call is trivially also english-missing).
+  let degradedShape: DegradedCorrectionShape | undefined;
+  const raw = parsed as Record<string, unknown> | null;
+  const rawFrIsUsable =
+    typeof raw?.explanation_fr === "string" && raw.explanation_fr.trim().length > 0;
+  if (typeof raw?.explanation === "string" && !rawFrIsUsable) {
+    degradedShape = "legacy-explanation";
+  } else if (result.data.explanation_en === undefined) {
+    degradedShape = "english-missing";
+  }
   return {
     outcome: "recorded",
     correction: toStoredCorrection(result.data),
     resultMessage: FUNCTION_RESULT_ACK,
+    ...(degradedShape !== undefined ? { degradedShape } : {}),
   };
 }
 
@@ -124,20 +152,26 @@ export function processReportCorrectionCall(parsed: unknown): ProcessReportCorre
  * compile error (successor to the Story 11-1 P7 bidirectional pin).
  */
 export function toStoredCorrection(args: ReportCorrectionArgs): Correction {
+  // R2: exhaustive destructure — if the schema gains a field, `unmapped`
+  // becomes non-empty and the assignment below fails the BUILD at the
+  // mapping site itself (stronger than the previous hand-maintained
+  // union, which could be silenced without actually mapping the field).
+  // NOTE (documented asymmetry): this guards wire→stored only; a future
+  // OPTIONAL field added to `Correction` from a non-wire path is not
+  // covered and must be populated deliberately by its own producer.
+  const { original, corrected, explanation_fr, explanation_en, category, ...unmapped } = args;
+  const _exhaustivenessCheck: Record<string, never> = unmapped;
+  void _exhaustivenessCheck;
+  // JSON serialization drops undefined-valued keys at every persist path,
+  // so plain assignment is byte-equivalent to key-omission in stored JSONB.
   return {
-    original: args.original,
-    corrected: args.corrected,
-    explanation: args.explanation_fr,
-    ...(args.explanation_en !== undefined ? { explanationEn: args.explanation_en } : {}),
-    category: args.category,
+    original,
+    corrected,
+    explanation: explanation_fr,
+    explanationEn: explanation_en,
+    category,
   };
 }
-
-type MappedWireFields = "original" | "corrected" | "explanation_fr" | "explanation_en" | "category";
-type AssertNever<T extends never> = T;
-/** Compile-time guard: fails the build if reportCorrectionArgsSchema gains
- * a field this mapping doesn't deliberately handle. */
-export type _WireFieldsCovered = AssertNever<Exclude<keyof ReportCorrectionArgs, MappedWireFields>>;
 
 // ---------------------------------------------------------------------------
 // Story 18-2 — bilingual explanation display policy (pure helpers)
@@ -168,7 +202,9 @@ export function defaultCorrectionExplanationLanguage(
  * min(1) never sees stored rows read back) can't render a dead toggle
  * whose EN state shows French.
  */
-export function hasEnglishExplanation(correction: Correction): boolean {
+export function hasEnglishExplanation(
+  correction: Correction
+): correction is Correction & { explanationEn: string } {
   return typeof correction.explanationEn === "string" && correction.explanationEn.trim().length > 0;
 }
 
@@ -182,7 +218,7 @@ export function selectCorrectionExplanation(
   language: CorrectionExplanationLanguage
 ): string {
   if (language === "en" && hasEnglishExplanation(correction)) {
-    return correction.explanationEn as string;
+    return correction.explanationEn;
   }
   return correction.explanation;
 }

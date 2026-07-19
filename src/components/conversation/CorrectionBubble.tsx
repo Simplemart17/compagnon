@@ -33,6 +33,13 @@ interface CorrectionBubbleProps {
    * (A1-A2 → English, B1+ → French). Omitted / not-yet-hydrated → French
    * (the default re-derives when the prop arrives — review R1). */
   cefrLevel?: CEFRLevel;
+  /** R2: optional CONTROLLED language override. The live transcript lifts
+   * this to TranscriptView so the user's FR/EN choice survives across
+   * bubbles and FlatList row remounts (per-instance state reset on every
+   * new correction turn — the toggle read as flaky). Uncontrolled when
+   * omitted (end-sheet summary bubble). */
+  explanationLangOverride?: CorrectionExplanationLanguage | null;
+  onExplanationLangChange?: (lang: CorrectionExplanationLanguage) => void;
 }
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -54,6 +61,8 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
   compact = false,
   variant = "default",
   cefrLevel,
+  explanationLangOverride,
+  onExplanationLangChange,
 }: CorrectionBubbleProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   // Story 18-2 review R1: store only the user's EXPLICIT choice; DERIVE the
@@ -61,8 +70,14 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
   // initializer froze the default at mount — a bubble mounted before the
   // profile hydrated locked the wrong language for its whole life. Derived
   // form self-corrects when cefrLevel arrives, and the user's tap always
-  // wins.
-  const [langOverride, setLangOverride] = useState<CorrectionExplanationLanguage | null>(null);
+  // wins. R2: optionally CONTROLLED (see props) so the live surface can
+  // persist the preference across bubbles.
+  const [internalOverride, setInternalOverride] = useState<CorrectionExplanationLanguage | null>(
+    null
+  );
+  const langOverride =
+    explanationLangOverride !== undefined ? explanationLangOverride : internalOverride;
+  const setLangOverride = onExplanationLangChange ?? setInternalOverride;
   const explanationLang = langOverride ?? defaultCorrectionExplanationLanguage(cefrLevel);
 
   const translateY = useSharedValue(30);
@@ -197,9 +212,18 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
 
               {/* Expanded explanation (Story 18-2 bilingual). Toggle ABOVE
                   the text so a long explanation can never push it out of
-                  reach (review R1). */}
+                  reach (review R1). R2: the block is itself tappable-to-
+                  collapse with accessible={false} — sighted users regain
+                  the pre-R1 tap-anywhere-to-dismiss gesture, while
+                  VoiceOver skips the wrapper (not an accessibility
+                  element) and still reaches the FR/EN pills inside; the
+                  header remains the screen-reader collapse control. */}
               {isExpanded && (
-                <View>
+                <TouchableOpacity
+                  accessible={false}
+                  activeOpacity={0.85}
+                  onPress={() => setExpandedIndex(null)}
+                >
                   {hasEnglishExplanation(correction) && (
                     <ExplanationLanguageToggle
                       language={explanationLang}
@@ -212,7 +236,7 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
                   >
                     {selectCorrectionExplanation(correction, explanationLang)}
                   </Text>
-                </View>
+                </TouchableOpacity>
               )}
             </View>
           );
@@ -224,9 +248,21 @@ export const CorrectionBubble = React.memo(function CorrectionBubble({
 
 /**
  * Story 18-2: FR/EN pill toggle for the correction explanation. Rendered
- * only when the correction carries an English explanation (post-18-2
- * corrections); nested inside the expandable touchable — inner touchables
- * win in RN, so tapping a pill never collapses the correction.
+ * only when the correction carries a usable English explanation.
+ *
+ * R2 STRUCTURE CONTRACT: the toggle lives in the expanded-content block,
+ * a SIBLING of the header touchable (NOT nested inside it) — iOS
+ * VoiceOver flattens an accessible parent's nested touchables, making
+ * them unreachable to screen readers. Do NOT move it back inside the
+ * header TouchableOpacity. The expanded wrapper is `accessible={false}`
+ * so VoiceOver skips it but still reaches these pills; the pills win the
+ * tap over the wrapper's collapse-on-press (inner touchable wins).
+ *
+ * Touch targets: RN hitSlop is CLIPPED at the parent view's bounds, so
+ * the row carries paddingVertical to give the slop room — pill (~20pt) +
+ * row padding (2×6) + slop (2×6) ≈ 40pt+ effective. Horizontal slop
+ * (5pt) stays under half the inter-pill gap (10pt) so pills never
+ * overlap each other's touch areas.
  */
 const ExplanationLanguageToggle = React.memo(function ExplanationLanguageToggle({
   language,
@@ -236,7 +272,7 @@ const ExplanationLanguageToggle = React.memo(function ExplanationLanguageToggle(
   onToggle: (lang: CorrectionExplanationLanguage) => void;
 }) {
   return (
-    <View className="mt-1.5 flex-row">
+    <View className="mt-1 flex-row" style={{ paddingVertical: 6 }}>
       {(["fr", "en"] as const).map((lang) => {
         const active = language === lang;
         return (
@@ -244,10 +280,7 @@ const ExplanationLanguageToggle = React.memo(function ExplanationLanguageToggle(
             key={lang}
             onPress={() => onToggle(lang)}
             activeOpacity={0.7}
-            // Review R1: visual pills are small; hitSlop extends the touch
-            // target toward the 44pt convention so a miss-tap can't land on
-            // surrounding content.
-            hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+            hitSlop={{ top: 6, bottom: 6, left: 5, right: 5 }}
             accessibilityRole="button"
             accessibilityLabel={
               lang === "fr" ? "Show explanation in French" : "Show explanation in English"
@@ -257,7 +290,7 @@ const ExplanationLanguageToggle = React.memo(function ExplanationLanguageToggle(
               paddingHorizontal: 8,
               paddingVertical: 3,
               borderRadius: Radii.chip,
-              marginRight: 6,
+              marginRight: 10,
               minWidth: 32,
               alignItems: "center",
               backgroundColor: active ? Colors.accent20 : skillTint(Colors.surfaceWhite, 0.08),
@@ -324,12 +357,16 @@ const SideNoteItem = React.memo(function SideNoteItem({
         minHeight: 44,
       }}
     >
-      {/* Review R1: touchable = header only; expanded content is a SIBLING
-          so the FR/EN toggle stays reachable by VoiceOver (nested
-          touchables inside an accessible parent are flattened on iOS). */}
+      {/* Review R1 + R2: touchable = header (see ExplanationLanguageToggle
+          JSDoc for the sibling-structure contract). Collapsed, hitSlop
+          restores the pre-R1 whole-card (44pt) tap area within the outer
+          card's bounds; expanded, the animated content below is itself
+          tappable-to-collapse so no slop is needed (and it would overlap
+          the toggle row). */}
       <TouchableOpacity
         onPress={onToggle}
         activeOpacity={0.7}
+        hitSlop={isExpanded ? undefined : { top: 10, bottom: 10 }}
         accessibilityRole="button"
         accessibilityLabel={`Correction: "${correction.original}" should be "${correction.corrected}"`}
         accessibilityHint={
@@ -392,26 +429,30 @@ const SideNoteItem = React.memo(function SideNoteItem({
       {/* Expanded: explanation (Story 18-2 bilingual). Toggle ABOVE the
           text so a long explanation can never clip it past the animated
           maxHeight (review R1); collapsed state hides the subtree from
-          screen readers (always-mounted for the animation). */}
+          screen readers (always-mounted for the animation). R2: content
+          is tappable-to-collapse via an accessible={false} wrapper —
+          same rationale as the default variant. */}
       <Reanimated.View
         style={[{ overflow: "hidden" }, expandStyle]}
         accessibilityElementsHidden={!isExpanded}
         importantForAccessibility={isExpanded ? "auto" : "no-hide-descendants"}
       >
-        {hasEnglishExplanation(correction) && (
-          <ExplanationLanguageToggle language={explanationLang} onToggle={onToggleLanguage} />
-        )}
-        <Text
-          style={{
-            fontSize: Typography.caption.fontSize,
-            color: skillTint(Colors.surfaceWhite, 0.55),
-            fontStyle: "italic",
-            lineHeight: 18,
-            marginTop: 4,
-          }}
-        >
-          {selectCorrectionExplanation(correction, explanationLang)}
-        </Text>
+        <TouchableOpacity accessible={false} activeOpacity={0.85} onPress={onToggle}>
+          {hasEnglishExplanation(correction) && (
+            <ExplanationLanguageToggle language={explanationLang} onToggle={onToggleLanguage} />
+          )}
+          <Text
+            style={{
+              fontSize: Typography.caption.fontSize,
+              color: skillTint(Colors.surfaceWhite, 0.55),
+              fontStyle: "italic",
+              lineHeight: 18,
+              marginTop: 4,
+            }}
+          >
+            {selectCorrectionExplanation(correction, explanationLang)}
+          </Text>
+        </TouchableOpacity>
       </Reanimated.View>
     </View>
   );

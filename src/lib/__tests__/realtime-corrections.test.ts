@@ -416,7 +416,9 @@ describe("Story 18-2 R1 — tolerant boundary + unified predicates", () => {
     expect(result.outcome).toBe("recorded");
     if (result.outcome === "recorded") {
       expect(result.correction.explanation).toBe("Accord du participe passé.");
-      expect("explanationEn" in result.correction).toBe(false);
+      expect(result.correction.explanationEn).toBeUndefined();
+      // R2: degraded shape is CLASSIFIED so the orchestrator can breadcrumb.
+      expect(result.degradedShape).toBe("legacy-explanation");
     }
   });
 
@@ -427,22 +429,79 @@ describe("Story 18-2 R1 — tolerant boundary + unified predicates", () => {
     expect(result.outcome).toBe("recorded");
     if (result.outcome === "recorded") {
       expect(result.correction.explanationEn).toBeUndefined();
+      expect(result.degradedShape).toBe("english-missing");
     }
   });
 
-  it("toStoredCorrection omits the explanationEn key entirely when absent (clean JSONB)", () => {
+  it("R2: full bilingual shape carries NO degradedShape (compliance baseline)", () => {
+    const result = processReportCorrectionCall(VALID_GRAMMAR_ARGS);
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.degradedShape).toBeUndefined();
+    }
+  });
+
+  it("R2: explanation_en null is treated as absent (JSON null = the model's natural 'no English')", () => {
+    const result = processReportCorrectionCall({
+      original: "x",
+      corrected: "y",
+      explanation_fr: "z",
+      explanation_en: null,
+      category: "grammar",
+    });
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanationEn).toBeUndefined();
+      expect(result.degradedShape).toBe("english-missing");
+    }
+  });
+
+  it("R2: over-max explanation_en is TRUNCATED, not rejected (tolerant boundary consistency)", () => {
+    const long = "e".repeat(1200);
+    const result = processReportCorrectionCall({
+      original: "x",
+      corrected: "y",
+      explanation_fr: "z",
+      explanation_en: long,
+      category: "grammar",
+    });
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanationEn).toHaveLength(1000);
+    }
+  });
+
+  it("R2: whitespace explanation_fr does not block the legacy fallback from rescuing real French", () => {
+    const result = processReportCorrectionCall({
+      original: "x",
+      corrected: "y",
+      explanation_fr: "   ",
+      explanation: "La vraie explication.",
+      category: "grammar",
+    });
+    expect(result.outcome).toBe("recorded");
+    if (result.outcome === "recorded") {
+      expect(result.correction.explanation).toBe("La vraie explication.");
+      expect(result.degradedShape).toBe("legacy-explanation");
+    }
+  });
+
+  it("toStoredCorrection: absent explanation_en serializes to JSONB WITHOUT the key (undefined dropped by JSON)", () => {
     const stored = toStoredCorrection({
       original: "a",
       corrected: "b",
       explanation_fr: "c",
       category: "grammar",
     });
-    expect(Object.keys(stored).sort()).toEqual([
-      "category",
-      "corrected",
-      "explanation",
-      "original",
-    ]);
+    expect(stored.explanationEn).toBeUndefined();
+    // The persisted bytes are what matter: JSON serialization (every
+    // Supabase JSONB write path) drops undefined-valued keys.
+    expect(JSON.parse(JSON.stringify(stored))).toEqual({
+      original: "a",
+      corrected: "b",
+      explanation: "c",
+      category: "grammar",
+    });
   });
 
   it("hasEnglishExplanation: true only for non-empty, non-whitespace explanationEn", () => {
