@@ -104,8 +104,13 @@ export function compareSentences(
   accuracy: number;
   isFullyCorrect: boolean;
 } {
+  // Display-word strip mirrors normalizeForComparison's punctuation class:
+  // apostrophes are PRESERVED (P2-25 review) \u2014 pre-fix the display stripped
+  // them while the comparison graded them, so the UI showed the baffling
+  // "leau \u2260 leau" for a wrong `l'eau`. Curly apostrophes stay as-typed in
+  // display (fidelity); only grading canonicalizes them.
   const originalWords = original
-    .replace(/[.,;:!?'"()\-\u2013\u2014\u00AB\u00BB\u2018\u2019\u201C\u201D]/g, "")
+    .replace(/[.,;:!?"()\-\u2013\u2014\u00AB\u00BB\u201C\u201D]/g, "")
     .trim()
     .split(/\s+/)
     .filter((w) => w.length > 0);
@@ -130,7 +135,7 @@ export function compareSentences(
         status: "wrong",
         typed:
           userInput
-            .replace(/[.,;:!?'"()\-\u2013\u2014\u00AB\u00BB\u2018\u2019\u201C\u201D]/g, "")
+            .replace(/[.,;:!?"()\-\u2013\u2014\u00AB\u00BB\u201C\u201D]/g, "")
             .trim()
             .split(/\s+/)[i] ?? userTokens[i],
       });

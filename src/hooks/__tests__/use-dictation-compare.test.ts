@@ -234,6 +234,17 @@ describe("Story 15-1 — compareSentences (dictation word comparison)", () => {
       expect(right.isFullyCorrect).toBe(true);
     });
 
+    it("Case 14f (P2-25 review): display word PRESERVES the apostrophe — never 'leau ≠ leau'", () => {
+      // Pre-review the display-word strip regex still removed apostrophes,
+      // so a wrong `leau` was shown against a displayed original of "leau"
+      // — visually identical to the user's input while marked wrong.
+      const result = compareSentences("l'eau", "leau");
+      expect(result.wordResults[0].word).toBe("l'eau");
+      // And the typed echo preserves the user's apostrophe when present.
+      const typedResult = compareSentences("le monde", "l'monde");
+      expect(typedResult.wordResults[0].typed).toBe("l'monde");
+    });
+
     it("Case 14e (P2-25): edge-of-token apostrophes (quote usage) are still stripped", () => {
       // Single-quote quotation marks around a word must not create a
       // mismatch — only INTERIOR (elision) apostrophes are significant.
