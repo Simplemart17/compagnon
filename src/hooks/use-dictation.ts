@@ -61,7 +61,12 @@ const SENTENCE_COUNT = 5;
 /**
  * Normalize a string for comparison purposes:
  * - Lowercase
- * - Remove common French punctuation
+ * - Canonicalize curly apostrophes (U+2018/U+2019 \u2014 iOS smart punctuation)
+ *   to ASCII `'` so keyboard differences never punish the user
+ * - Remove common French punctuation EXCEPT apostrophes \u2014 apostrophes are
+ *   semantically required in French (audit P2-25: `l'eau` vs `leau` is a
+ *   real error; the elision `l'` / `d'` / `c'` / `j'` / `n'` / `s'` / `qu'`
+ *   distinction must be graded, not silently forgiven)
  * - Normalize accents for comparison (remove diacritics)
  * - Trim whitespace
  */
@@ -70,15 +75,21 @@ function normalizeForComparison(text: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // strip diacritics
-    .replace(/[.,;:!?'"()\-\u2013\u2014\u00AB\u00BB\u2018\u2019\u201C\u201D]/g, "")
+    .replace(/[\u2018\u2019]/g, "'") // canonicalize curly apostrophes \u2192 ASCII
+    .replace(/[.,;:!?"()\-\u2013\u2014\u00AB\u00BB\u201C\u201D]/g, "")
     .trim();
 }
 
 /** Split text into normalized word tokens */
 function tokenize(text: string): string[] {
-  return normalizeForComparison(text)
-    .split(/\s+/)
-    .filter((w) => w.length > 0);
+  return (
+    normalizeForComparison(text)
+      .split(/\s+/)
+      // Strip apostrophes only at token edges (quote usage like 'bonjour');
+      // interior apostrophes (l'eau, aujourd'hui) stay significant.
+      .map((w) => w.replace(/^'+|'+$/g, ""))
+      .filter((w) => w.length > 0)
+  );
 }
 
 /**
@@ -93,8 +104,13 @@ export function compareSentences(
   accuracy: number;
   isFullyCorrect: boolean;
 } {
+  // Display-word strip mirrors normalizeForComparison's punctuation class:
+  // apostrophes are PRESERVED (P2-25 review) \u2014 pre-fix the display stripped
+  // them while the comparison graded them, so the UI showed the baffling
+  // "leau \u2260 leau" for a wrong `l'eau`. Curly apostrophes stay as-typed in
+  // display (fidelity); only grading canonicalizes them.
   const originalWords = original
-    .replace(/[.,;:!?'"()\-\u2013\u2014\u00AB\u00BB\u2018\u2019\u201C\u201D]/g, "")
+    .replace(/[.,;:!?"()\-\u2013\u2014\u00AB\u00BB\u201C\u201D]/g, "")
     .trim()
     .split(/\s+/)
     .filter((w) => w.length > 0);
@@ -119,7 +135,7 @@ export function compareSentences(
         status: "wrong",
         typed:
           userInput
-            .replace(/[.,;:!?'"()\-\u2013\u2014\u00AB\u00BB\u2018\u2019\u201C\u201D]/g, "")
+            .replace(/[.,;:!?"()\-\u2013\u2014\u00AB\u00BB\u201C\u201D]/g, "")
             .trim()
             .split(/\s+/)[i] ?? userTokens[i],
       });

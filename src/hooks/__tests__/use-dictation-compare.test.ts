@@ -202,11 +202,53 @@ describe("Story 15-1 — compareSentences (dictation word comparison)", () => {
       expect(result.wordResults[1].typed).toBe("MARIA");
     });
 
-    it("Case 14: apostrophe stripped — 'l'eau' compared as 'leau' against user 'leau'", () => {
-      // The normalize regex strips standard apostrophe + curly quotes. So
-      // l'eau (normalized: "leau") matches "leau" exactly when user types it
-      // without the apostrophe.
+    it("Case 14 (P2-25 fix): apostrophes are SIGNIFICANT — 'leau' does NOT match 'l'eau'", () => {
+      // Audit P2-25: pre-fix the normalize regex stripped apostrophes, so a
+      // learner typing `leau` for `l'eau` was graded correct — teaching wrong
+      // French. Elision apostrophes (l' / d' / c' / j' / n' / s' / qu') are
+      // semantically required and must be graded.
       const result = compareSentences("l'eau", "leau");
+      expect(result.wordResults).toHaveLength(1);
+      expect(result.wordResults[0].status).toBe("wrong");
+    });
+
+    it("Case 14b (P2-25): correctly-typed apostrophe still matches — 'l'eau' vs 'l'eau'", () => {
+      const result = compareSentences("l'eau", "l'eau");
+      expect(result.wordResults).toHaveLength(1);
+      expect(result.wordResults[0].status).toBe("correct");
+      expect(result.isFullyCorrect).toBe(true);
+    });
+
+    it("Case 14c (P2-25): curly apostrophe (iOS smart punctuation) matches ASCII apostrophe", () => {
+      // Original uses U+2019 (what TTS-source text often carries); the user's
+      // keyboard produces ASCII '. Keyboard differences must never punish.
+      const result = compareSentences("l’eau est fraîche", "l'eau est fraiche");
+      expect(result.isFullyCorrect).toBe(true);
+    });
+
+    it("Case 14d (P2-25): interior apostrophe words like aujourd'hui stay one significant token", () => {
+      const wrong = compareSentences("aujourd'hui", "aujourdhui");
+      expect(wrong.wordResults).toHaveLength(1);
+      expect(wrong.wordResults[0].status).toBe("wrong");
+      const right = compareSentences("aujourd'hui", "aujourd'hui");
+      expect(right.isFullyCorrect).toBe(true);
+    });
+
+    it("Case 14f (P2-25 review): display word PRESERVES the apostrophe — never 'leau ≠ leau'", () => {
+      // Pre-review the display-word strip regex still removed apostrophes,
+      // so a wrong `leau` was shown against a displayed original of "leau"
+      // — visually identical to the user's input while marked wrong.
+      const result = compareSentences("l'eau", "leau");
+      expect(result.wordResults[0].word).toBe("l'eau");
+      // And the typed echo preserves the user's apostrophe when present.
+      const typedResult = compareSentences("le monde", "l'monde");
+      expect(typedResult.wordResults[0].typed).toBe("l'monde");
+    });
+
+    it("Case 14e (P2-25): edge-of-token apostrophes (quote usage) are still stripped", () => {
+      // Single-quote quotation marks around a word must not create a
+      // mismatch — only INTERIOR (elision) apostrophes are significant.
+      const result = compareSentences("'bonjour'", "bonjour");
       expect(result.wordResults).toHaveLength(1);
       expect(result.wordResults[0].status).toBe("correct");
     });
