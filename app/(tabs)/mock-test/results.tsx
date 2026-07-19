@@ -113,6 +113,39 @@ export default function MockTestResultsScreen() {
           official sample test before booking the exam.
         </Text>
 
+        {/* Story 20-4 (v2-vision-roadmap Epic 20): speaking-honesty note.
+            Speaking tasks are scored from a Whisper TRANSCRIPT, which
+            normalizes pronunciation — the evaluator cannot hear articulation,
+            intonation, or accent (the rubric's dimension 1 is scored on
+            transcript-observable fluency/coherence only). Azure phoneme-level
+            assessment caps at ~30s of PCM audio, so full 5.5-min AAC task
+            recordings cannot be routed through it at this architecture tier;
+            the honest path is disclosure + a pointer to the surface that DOES
+            assess pronunciation. */}
+        {results.testType === "speaking" && (
+          <View className="mt-3 items-center" style={{ maxWidth: 300 }}>
+            <Text
+              className="text-xs text-center"
+              style={{ color: Colors.gray500 }}
+              accessibilityRole="text"
+            >
+              This estimate covers fluency, vocabulary, grammar, interaction, and register —
+              pronunciation is not scored from exam recordings.
+            </Text>
+            <TouchableOpacity
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any -- pre-existing typed-routes widening pattern in this file
+              onPress={() => router.push("/(tabs)/practice/pronunciation" as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Get phoneme-level pronunciation feedback in Pronunciation Practice"
+              accessibilityHint="Opens the Pronunciation Practice screen"
+            >
+              <Text className="text-xs mt-1 font-semibold" style={{ color: Colors.accentText }}>
+                Get pronunciation feedback in Pronunciation Practice →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Distance to C1 */}
         {distanceToC1 > 0 && (
           <View
