@@ -41,6 +41,28 @@ export const MAX_PROMPT_ERROR_PATTERNS = 3;
 export const MAX_PROMPT_ITEM_CHARS = 80;
 
 /**
+ * Story 18-1 (review R1): single source of truth for the mode-capability
+ * decision "does this mode get conversation-driving + silence-relance?".
+ * Consumed by BOTH `buildConversationPrompt` (renders the driver +
+ * comprehension blocks) and `RealtimeOrchestrator.armRelanceTimer` (arms
+ * the silence nudge) so the two gates can never drift apart.
+ * `tcf_simulation` is excluded per the Story 10-6 prep-window contract:
+ * exam silence is legitimate and exam conditions are French-only.
+ */
+export function modeSupportsConversationDriving(mode: ConversationMode): boolean {
+  return mode !== "tcf_simulation";
+}
+
+/**
+ * Story 18-1 (review R1): the system-role nudge injected by the
+ * orchestrator's silence relance. Lives HERE (prompt domain) alongside the
+ * driver block that primes the model for it, so the delivery-time text and
+ * the prompt-side handling instruction are sourced from one file.
+ */
+export const RELANCE_NUDGE_TEXT =
+  "[SYSTEM NUDGE] The user has been quiet for a while. Re-engage them warmly in French with ONE short question related to the current topic, appropriate for their level. Do not mention the silence, do not scold, do not pressure.";
+
+/**
  * Truncate `text` to at most `max` UTF-16 code units. Predictable hard slice
  * with no ellipsis marker, no word-boundary heuristics — predictability +
  * minimal output tax beats prettier cuts.
@@ -117,10 +139,18 @@ export function buildConversationPrompt(params: {
 
   const levelGuidance = LEVEL_GUIDELINES[cefrLevel];
 
+  // Story 18-1 review R1 (contradiction fix): the French-only Role rule must
+  // not contradict the Comprehension Support block. In driving-enabled modes
+  // the rule DEFERS to that block (which authorizes proactive English at
+  // A1-A2); in tcf_simulation the strict exam-conditions rule stands alone.
+  const frenchRule = modeSupportsConversationDriving(mode)
+    ? "- You speak French during the conversation; the Comprehension Support section below defines exactly when brief English help is appropriate"
+    : "- You speak ONLY in French during the conversation (unless the user explicitly asks for English help)";
+
   let prompt = `You are a native French speaker and expert language tutor acting as a friendly companion for someone learning French. Your name is "Compagnon."
 
 ## Your Role
-- You speak ONLY in French during the conversation (unless the user explicitly asks for English help)
+${frenchRule}
 - You are warm, patient, and encouraging
 - You adapt your French to the user's level: ${cefrLevel}
 - You act as a real conversation partner — not a textbook
@@ -179,10 +209,12 @@ Vary them naturally — do not use the same filler repeatedly.`
 Do not force these into every response. Use them when they fit naturally, especially when transitioning between ideas or responding to complex questions.`;
 
   // Story 18-1: conversation-driver + comprehension-support blocks. Gated
-  // OUT of tcf_simulation — the examiner format is rigid (Story 10-6
-  // prep-window contract: silence during Task 2 prep must NOT trigger
-  // re-engagement) and real exam conditions are French-only.
-  if (mode !== "tcf_simulation") {
+  // via the shared modeSupportsConversationDriving helper (single source of
+  // truth with the orchestrator's silence-relance gate) — tcf_simulation is
+  // excluded: the examiner format is rigid (Story 10-6 prep-window contract:
+  // silence during Task 2 prep must NOT trigger re-engagement) and real exam
+  // conditions are French-only.
+  if (modeSupportsConversationDriving(mode)) {
     prompt += `
 
 ## Driving the Conversation
@@ -191,10 +223,10 @@ You lead. The user should never wonder what to say next.
 - If the user gives a very short answer, do not change topics — follow up with an easier, related question
 - If the user seems stuck, offer a choice: "Préférez-vous parler de ceci ou de cela ?"
 - When the topic runs dry, steer toward something you remember about the user (see the What You Remember About This User section, when present) — ask about their life the way a close friend who remembers would
-- If a system message says the user has gone quiet, re-engage warmly with ONE short question about the current topic. Never mention the silence and never scold.
+- A [SYSTEM NUDGE] message means the user has gone quiet — follow its instructions
 
 ## Comprehension Support
-This section refines the French-only rule above:
+This section defines when brief English help is appropriate:
 ${COMPREHENSION_SUPPORT[cefrLevel]}`;
   }
 
@@ -301,18 +333,27 @@ ${safeErrors.map((e) => `- ${e}`).join("\n")}
  * get proactive one-line English clarifications (comprehension unblocking
  * beats immersion purity at this level); B1 gets English as a fallback after
  * simpler-French rephrasing fails; B2+ stays French-only unless explicitly
- * asked. Rendered only for companion + debate modes — tcf_simulation is
- * exam-conditions French-only (see the mode gate in buildConversationPrompt).
+ * asked. Rendered only for driving-enabled modes — tcf_simulation is
+ * exam-conditions French-only (see modeSupportsConversationDriving).
+ *
+ * Review R1: band-shared strings are hoisted to consts so a future edit to
+ * one band cannot silently fork its byte-identical twin (A1/A2 and B2/C1/C2
+ * share policy by design).
  */
+const BEGINNER_COMPREHENSION_SUPPORT = `- If the user seems lost or asks for help, give ONE short English clarification, then return to French immediately
+- After introducing a new word or idiom, you may add a very brief English gloss so the user always understands what was said`;
+
+const INTERMEDIATE_COMPREHENSION_SUPPORT = `- When the user is lost, rephrase in simpler French first; offer ONE short English clarification only if that fails, then return to French`;
+
+const ADVANCED_COMPREHENSION_SUPPORT = `- Stay in French. When the user is lost, rephrase more simply rather than switching to English. Use English only if the user explicitly asks`;
+
 const COMPREHENSION_SUPPORT: Record<CEFRLevel, string> = {
-  A1: `- If the user seems lost or asks for help, give ONE short English clarification, then return to French immediately
-- After introducing a new word or idiom, you may add a very brief English gloss so the user always understands what was said`,
-  A2: `- If the user seems lost or asks for help, give ONE short English clarification, then return to French immediately
-- After introducing a new word or idiom, you may add a very brief English gloss so the user always understands what was said`,
-  B1: `- When the user is lost, rephrase in simpler French first; offer ONE short English clarification only if that fails, then return to French`,
-  B2: `- Stay in French. When the user is lost, rephrase more simply rather than switching to English. Use English only if the user explicitly asks`,
-  C1: `- Stay in French. When the user is lost, rephrase more simply rather than switching to English. Use English only if the user explicitly asks`,
-  C2: `- Stay in French. When the user is lost, rephrase more simply rather than switching to English. Use English only if the user explicitly asks`,
+  A1: BEGINNER_COMPREHENSION_SUPPORT,
+  A2: BEGINNER_COMPREHENSION_SUPPORT,
+  B1: INTERMEDIATE_COMPREHENSION_SUPPORT,
+  B2: ADVANCED_COMPREHENSION_SUPPORT,
+  C1: ADVANCED_COMPREHENSION_SUPPORT,
+  C2: ADVANCED_COMPREHENSION_SUPPORT,
 };
 
 const LEVEL_GUIDELINES: Record<CEFRLevel, string> = {

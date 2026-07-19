@@ -15,7 +15,11 @@
 import type { CEFRLevel } from "@/src/types/cefr";
 import type { ConversationMode } from "@/src/types/conversation";
 
-import { buildConversationPrompt } from "../conversation";
+import {
+  buildConversationPrompt,
+  modeSupportsConversationDriving,
+  RELANCE_NUDGE_TEXT,
+} from "../conversation";
 
 jest.mock("@/src/lib/memory", () => ({
   __esModule: true,
@@ -301,5 +305,56 @@ describe("buildConversationPrompt — Story 11-1 tool-call Correction Reporting 
     expect(prompt).toContain("Task 1 (2 minutes):");
     expect(prompt).toContain("Task 2 (5.5 minutes):");
     expect(prompt).toContain("Task 3 (4.5 minutes):");
+  });
+});
+
+describe("Story 18-1 — conversation-driver + comprehension-support mode gating (review R1 content pins)", () => {
+  const DRIVER_HEADER = "## Driving the Conversation";
+  const COMPREHENSION_HEADER = "## Comprehension Support";
+
+  it.each(["companion", "debate"] as const)(
+    "%s mode renders the driver + comprehension blocks",
+    (mode) => {
+      const prompt = buildConversationPrompt({ cefrLevel: "B1", mode, topic: "vie quotidienne" });
+      expect(prompt).toContain(DRIVER_HEADER);
+      expect(prompt).toContain(COMPREHENSION_HEADER);
+      // The [SYSTEM NUDGE] priming line must exist so relance items are
+      // understood as system-legit (pairs with RELANCE_NUDGE_TEXT).
+      expect(prompt).toContain("[SYSTEM NUDGE]");
+    }
+  );
+
+  it("tcf_simulation renders NEITHER block (Story 10-6 prep-window contract — exam silence is legitimate, exam conditions are French-only)", () => {
+    const prompt = buildConversationPrompt({
+      cefrLevel: "B1",
+      mode: "tcf_simulation",
+      topic: "examen",
+    });
+    expect(prompt).not.toContain(DRIVER_HEADER);
+    expect(prompt).not.toContain(COMPREHENSION_HEADER);
+    expect(prompt).not.toContain("[SYSTEM NUDGE]");
+    // Exam mode keeps the strict French-only Role rule.
+    expect(prompt).toContain("You speak ONLY in French during the conversation");
+  });
+
+  it("driving-enabled modes use the deferential French rule (no contradiction with proactive English at A1-A2)", () => {
+    const prompt = buildConversationPrompt({ cefrLevel: "A1", mode: "companion", topic: "salut" });
+    expect(prompt).not.toContain("You speak ONLY in French during the conversation");
+    expect(prompt).toContain(
+      "the Comprehension Support section below defines exactly when brief English help is appropriate"
+    );
+    // A1 gets the proactive-English beginner policy.
+    expect(prompt).toContain("give ONE short English clarification");
+  });
+
+  it("modeSupportsConversationDriving is the single source of truth for the gate", () => {
+    expect(modeSupportsConversationDriving("companion")).toBe(true);
+    expect(modeSupportsConversationDriving("debate")).toBe(true);
+    expect(modeSupportsConversationDriving("tcf_simulation")).toBe(false);
+  });
+
+  it("RELANCE_NUDGE_TEXT is exported from the prompt module (single source with the orchestrator)", () => {
+    expect(RELANCE_NUDGE_TEXT).toContain("[SYSTEM NUDGE]");
+    expect(RELANCE_NUDGE_TEXT).toContain("Do not mention the silence");
   });
 });
