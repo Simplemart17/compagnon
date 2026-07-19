@@ -76,6 +76,7 @@ import {
   processReportCorrectionCall,
 } from "@/src/lib/realtime-corrections";
 import { computeBargeInDirective } from "@/src/lib/realtime-barge-in";
+import { pcm16Base64Level } from "@/src/lib/audio-amplitude";
 import { computeSpeakingScore } from "@/src/lib/speaking-score";
 import { supabase } from "@/src/lib/supabase";
 // Story 11-5: consolidated post-conversation analysis replaces the pre-11-5
@@ -144,6 +145,16 @@ export interface RealtimeOrchestratorOptions {
   errorPatterns?: string[];
   onTranscriptUpdate?: (transcript: TranscriptEntry[]) => void;
   onConversationEnd?: (transcript: TranscriptEntry[], corrections: Correction[]) => void;
+  /**
+   * Story 18-4 (Avatar v1): AI output-audio level, 0..1, emitted at
+   * audio-delta cadence (~10-50Hz) and zeroed at every turn boundary
+   * (audio done / response done / barge-in / error / reconnect).
+   *
+   * PERF CONTRACT (Story 13-1): the consumer MUST route this into a
+   * Reanimated SharedValue (or equivalent non-React sink) — calling
+   * setState here would recreate the render storm Story 13-1 removed.
+   */
+  onAudioAmplitude?: (level: number) => void;
 }
 
 /**
@@ -643,6 +654,12 @@ export class RealtimeOrchestrator {
    * disposed orchestrator.
    */
   private cancelPendingAiTextRaf(): void {
+    // Story 18-4: every caller of this helper is an AI-output-stream
+    // boundary (start reset, the three .done arms, barge-in, response.done,
+    // error, reconnect) — exactly the set of moments the avatar mouth must
+    // close. Zeroing here covers all boundaries by construction, and any
+    // future boundary that cancels the rAF inherits the zero for free.
+    this.emitAudioAmplitude(0);
     if (this.aiTextRafHandle !== null) {
       cancelAnimationFrame(this.aiTextRafHandle);
       this.aiTextRafHandle = null;
@@ -1298,6 +1315,8 @@ export class RealtimeOrchestrator {
         // Stream each audio chunk immediately for low-latency playback.
         const turnId = `turn_${this.turnIdCounter}`;
         void ExpoPlayAudioStream.playSound(event.delta, turnId, "pcm_s16le");
+        // Story 18-4: drive the avatar mouth from this chunk's RMS level.
+        this.emitAudioAmplitude(pcm16Base64Level(event.delta as string));
         // Story 11-2 barge-in: capture AI-speaking start time on first delta.
         if (this.aiSpeakingStartedAtMs === null) {
           this.aiSpeakingStartedAtMs = Date.now();
@@ -1460,6 +1479,30 @@ export class RealtimeOrchestrator {
    * (2) send response.cancel, (3) send conversation.item.truncate to
    * synchronize server-side transcript with what was actually played.
    */
+  /**
+   * Story 18-4: forward an amplitude sample to the avatar sink. A throwing
+   * consumer callback must never break the audio pipeline — swallow, with a
+   * one-shot breadcrumb (error-tier at delta cadence would spam Sentry).
+   */
+  private amplitudeCallbackErrorLatched = false;
+
+  private emitAudioAmplitude(level: number): void {
+    if (!this.options.onAudioAmplitude) return;
+    try {
+      this.options.onAudioAmplitude(level);
+    } catch {
+      if (!this.amplitudeCallbackErrorLatched) {
+        this.amplitudeCallbackErrorLatched = true;
+        addBreadcrumb({
+          category: "realtime",
+          level: "warning",
+          message: "onAudioAmplitude callback threw; amplitude muted for session",
+          data: { feature: "avatar-amplitude-callback-error" },
+        });
+      }
+    }
+  }
+
   private handleSpeechStarted(): void {
     // Story 18-1: sound detected — cancel any pending relance so we never
     // nudge over the user. Review R1: the consecutive counter is NOT reset

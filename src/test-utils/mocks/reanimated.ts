@@ -85,6 +85,8 @@ export function reanimatedMockFactory() {
       createAnimatedComponent: (c: unknown) => c,
     },
     useSharedValue: (v: unknown) => ({ value: v }),
+    // Story 18-4: computed shared values (CompanionAvatar smoothedLevel).
+    useDerivedValue: (fn: () => unknown) => ({ value: fn() }),
     useAnimatedStyle: (fn: () => Record<string, unknown>) => fn(),
     withTiming: (v: unknown) => v,
     withDelay: (_delay: unknown, v: unknown) => v,
@@ -103,7 +105,10 @@ export function reanimatedMockFactory() {
       // NB: stubs return 0 (or factory-of-0); see scope note above. Current
       // consumers never invoke the easing because `withTiming` is identity.
       out: () => () => 0,
+      in: () => () => 0,
       quad: () => 0,
+      cubic: () => 0,
+      sin: () => 0,
       linear: () => 0,
       inOut: () => () => 0,
     },
