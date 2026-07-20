@@ -49,6 +49,16 @@ describe("Story 19-1 — content integrity (CI gate)", () => {
     expect(registeredIds).toEqual(fileIds);
   });
 
+  it("spine totals are pinned (review R1 — the directory-walk let the prose vocab count drift)", () => {
+    // Slice 4: A1 (309) + A2 Units 1-3 (122) = 431 across 9 units / 45
+    // lessons. Making the aggregate a tripwire so the CLAUDE.md/roadmap
+    // count can never silently diverge from the shipped content again.
+    expect(CURRICULUM_UNITS).toHaveLength(9);
+    expect(CURRICULUM_LESSONS).toHaveLength(45);
+    const totalVocab = CURRICULUM_LESSONS.reduce((n, l) => n + l.vocab.length, 0);
+    expect(totalVocab).toBe(431);
+  });
+
   it("no vocab item is introduced in two different UNITS (cross-unit dedup — the schema only sees one file)", () => {
     // Recycling happens in scenarios and teach text; re-LISTING a word in a
     // later unit's vocab wastes a flashcard slot and double-drills the SRS.
@@ -136,8 +146,11 @@ describe("Story 19-1 — position helpers", () => {
     expect(nextLesson("zz-u9-l1")).toBeUndefined();
   });
 
-  it("firstLessonAtLevel: A1 resolves to the first A1 lesson; unshipped levels are undefined", () => {
+  it("firstLessonAtLevel: A1/A2 resolve to their level's first lesson by order; unshipped levels are undefined", () => {
     expect(firstLessonAtLevel("A1")?.id).toBe(first.id);
+    // Slice 4: A2 is a shipped level — pin its start directly (previously
+    // covered only transitively via entryLessonForLevel). Review R1.
+    expect(firstLessonAtLevel("A2")?.id).toBe("a2-u1-l1");
     expect(firstLessonAtLevel("C2")).toBeUndefined();
   });
 
