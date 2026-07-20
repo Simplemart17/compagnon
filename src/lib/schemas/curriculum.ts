@@ -22,6 +22,22 @@ import { z } from "zod";
 
 import { cefrLevelSchema } from "@/src/lib/schemas/ai-responses";
 
+/**
+ * Canonical vocab-dedup key — review R2 (slice-2): exported so the
+ * cross-unit registry test consumes the SAME key as the schema's
+ * within-unit superRefine (a mirrored copy could drift, 18-2 R2-P8 class).
+ * NFKC does NOT fold curly apostrophes (U+2019 survives normalization —
+ * verified), so the fold is explicit.
+ */
+export function normalizeVocabKey(fr: string): string {
+  return fr
+    .replace(/\u2019/g, "'")
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 /** One vocabulary item — FR word/phrase + EN gloss. */
 export const curriculumVocabItemSchema = z.object({
   fr: z.string().min(1).max(60),
@@ -132,9 +148,7 @@ export const curriculumUnitSchema = z
     const vocabSeen = new Map<string, string>();
     unit.lessons.forEach((lesson, i) => {
       lesson.vocab.forEach((item, j) => {
-        // Review R1: NFKC + whitespace-collapse (memory.ts precedent) so
-        // NFD-accented or curly-apostrophe duplicates can't slip past.
-        const key = item.fr.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+        const key = normalizeVocabKey(item.fr);
         const firstIn = vocabSeen.get(key);
         if (firstIn !== undefined) {
           ctx.addIssue({

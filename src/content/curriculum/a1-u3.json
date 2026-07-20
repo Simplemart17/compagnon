@@ -72,7 +72,7 @@
         "conversationScenario": {
           "titleFr": "C'est quel jour ?",
           "goalEn": "Say the days and talk about your week",
-          "promptSeed": "Role-play planning the learner's week, day by day. Ask 'C'est quel jour aujourd'hui ?' and walk through the seven days in order, eliciting each one out loud from lundi to dimanche. Then build habits with the flagship 'le + day' pattern: model 'Le lundi, je travaille' and elicit 'Le mardi, je...' sentences using -er verbs the learner knows (danser, chanter, parler). Finish by asking about demain and la fin de semaine. Stay within this lesson's day words plus verbs from Unit 2, keep utterances short and slow, and repeat any day the learner mixes up."
+          "promptSeed": "Role-play planning the learner's week, day by day. Ask 'C'est quel jour aujourd'hui ?' and walk through the seven days in order, eliciting each one out loud from lundi to dimanche. Then build habits with the flagship 'le + day' pattern: model 'Le lundi, je travaille' and elicit 'Le mardi, je...' sentences using -er verbs the learner knows (travailler, danser, chanter). Finish by asking about demain and la fin de semaine. Stay within this lesson's day words plus -er verbs from Units 1-2, keep utterances short and slow, and repeat any day the learner mixes up."
         }
       },
       {
@@ -212,7 +212,7 @@
         "conversationScenario": {
           "titleFr": "Je me lève tôt",
           "goalEn": "Describe your daily routine",
-          "promptSeed": "Role-play comparing daily routines with a friend. Model your day first ('Tous les jours, je me lève à sept heures. Je mange le déjeuner. Le soir, je me couche tard.'), then ask the learner short questions: 'Tu te lèves tôt ?', 'Tu rentres à quelle heure ?', 'Tu manges le souper à six heures ?'. Elicit the flagship 'je me lève' and 'je me couche' with real times, plus manger, arriver, rentrer, and the Canadian meal words le déjeuner, le dîner, le souper. If the learner says 'je se lève', recast the correct pronoun; keep every utterance short and slow."
+          "promptSeed": "Role-play comparing daily routines with a friend. Model your day first ('Tous les jours, je me lève à sept heures. Je mange mon déjeuner. Le soir, je me couche tard.'), then ask the learner short questions: 'Tu te lèves tôt ?', 'Tu rentres à quelle heure ?', 'Tu manges ton souper à six heures ?'. Elicit the flagship 'je me lève' and 'je me couche' with real times, plus manger, arriver, rentrer, and the Canadian meal words le déjeuner, le dîner, le souper. If the learner says 'je se lève', recast the correct pronoun; keep every utterance short and slow."
         }
       },
       {

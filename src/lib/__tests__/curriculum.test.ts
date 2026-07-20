@@ -21,7 +21,7 @@ import {
   getUnitForLesson,
   nextLesson,
 } from "@/src/lib/curriculum";
-import { curriculumUnitFileSchema } from "@/src/lib/schemas/curriculum";
+import { curriculumUnitFileSchema, normalizeVocabKey } from "@/src/lib/schemas/curriculum";
 
 const CONTENT_DIR = join(__dirname, "../../content/curriculum");
 
@@ -58,9 +58,12 @@ describe("Story 19-1 — content integrity (CI gate)", () => {
     for (const unit of CURRICULUM_UNITS) {
       for (const lesson of unit.lessons) {
         for (const item of lesson.vocab) {
-          const key = item.fr.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+          const key = normalizeVocabKey(item.fr);
           const firstIn = seen.get(key);
-          if (firstIn !== undefined && !firstIn.startsWith(unit.id)) {
+          // R2: anchor with "-l" — "a1-u10-l1".startsWith("a1-u1") is TRUE,
+          // so the bare unit.id prefix would silently skip a future
+          // unit-10-vs-unit-1 collision (the schema's own lesson-id anchor).
+          if (firstIn !== undefined && !firstIn.startsWith(`${unit.id}-l`)) {
             throw new Error(
               `vocab "${item.fr}" in ${lesson.id} was already introduced in ${firstIn}`
             );

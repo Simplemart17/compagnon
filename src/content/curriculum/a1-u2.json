@@ -14,7 +14,7 @@
         "canDoFr": "Je peux parler de ma famille.",
         "grammarTarget": "Possessive adjectives mon/ma/mes + family nouns with gender",
         "teachEn": "French has three words for 'my', and the right one depends on the noun that follows, not on you: mon before a masculine noun (mon père, mon frère, mon fils), ma before a feminine noun (ma mère, ma sœur, ma fille), and mes before any plural (mes parents). To say who is in your family (la famille), recycle avoir from Unit 1: 'J'ai un frère et une sœur.' A woman's husband is mon mari, and a man's wife is ma femme — femme also means 'woman'. Pets count too: le chien (dog) and le chat (cat) are masculine words, so it is mon chien and mon chat.",
-        "teachFr": "J'ai une famille : mon père, ma mère, mon frère et ma sœur. Mon fils a cinq ans et ma fille a huit ans. Mes parents habitent à Québec.",
+        "teachFr": "J'ai une famille : mon père, ma mère, mon frère et ma sœur. Mon fils a cinq ans et ma fille a huit ans. J'ai un chien et un chat.",
         "vocab": [
           {
             "fr": "la famille",
@@ -82,7 +82,7 @@
         "canDoFr": "Je peux poser des questions sur ta famille.",
         "grammarTarget": "Possessive adjectives ton/ta/tes and son/sa/ses + mon/ton/son before a vowel (mon amie)",
         "teachEn": "To talk about someone else's family, use ton/ta/tes for 'your' (informal) and son/sa/ses for 'his' or 'her': ton frère, ta tante, tes cousins. The possessive matches the noun, not the owner — sa sœur can mean his sister OR her sister. Before a feminine noun that starts with a vowel, ma/ta/sa switch to mon/ton/son: un ami is a male friend and une amie a female friend, and you say mon amie, ton amie, son amie — never 'ma amie'. The elision you know from j'ai and j'habite also appears in l'oncle: le shrinks to l' before the vowel of oncle. One family surprise: in la grand-mère, grand never takes an -e even though mère is feminine, but the plural les grands-parents does add an -s to grand.",
-        "teachFr": "Mon oncle et ma tante habitent à Ottawa. Ton grand-père parle français ? Sa cousine est canadienne.",
+        "teachFr": "J'ai un oncle et une tante. Ton grand-père est canadien ? Sa cousine est canadienne.",
         "vocab": [
           {
             "fr": "ton / ta / tes",
@@ -124,7 +124,7 @@
         "conversationScenario": {
           "titleFr": "Ta famille et tes amis",
           "goalEn": "Ask about someone's family and friends",
-          "promptSeed": "Role-play two classmates swapping family stories. Ask short intonation questions with ton/ta/tes ('Ta mère parle français ?', 'Ton oncle habite où ?'), then invite the learner to ask about YOUR family so they produce ton/ta/tes themselves. Talk about un ami or une amie so the learner must say the flagship 'mon amie / ton amie' — recast 'ma amie' immediately. Cover le grand-père, la grand-mère, les grands-parents, l'oncle, la tante and le cousin / la cousine as they come up. Stay within this lesson's family words plus Lessons 1 and Unit 1, keeping utterances short and slow."
+          "promptSeed": "Role-play two classmates swapping family stories. Ask short intonation questions with ton/ta/tes ('Ta mère est canadienne ?', 'Tu as un oncle ?'), then invite the learner to ask about YOUR family so they produce ton/ta/tes themselves. Talk about un ami or une amie so the learner must say the flagship 'mon amie / ton amie' — recast 'ma amie' immediately. Cover le grand-père, la grand-mère, les grands-parents, l'oncle, la tante and le cousin / la cousine as they come up. Stay within this lesson's family words plus Lessons 1 and Unit 1, keeping utterances short and slow."
         }
       },
       {

@@ -94,6 +94,13 @@ describe("Story 19-1 — curriculumUnitFileSchema", () => {
     expect(curriculumUnitFileSchema.safeParse(file).success).toBe(false);
   });
 
+  it("R2: rejects a curly-apostrophe duplicate (U+2019 survives NFKC — the fold is explicit)", () => {
+    const file = validFile();
+    file.unit.lessons[0].vocab[0] = { fr: "aujourd'hui", en: "today" };
+    file.unit.lessons[1].vocab[0] = { fr: "aujourd\u2019hui", en: "dup" };
+    expect(curriculumUnitFileSchema.safeParse(file).success).toBe(false);
+  });
+
   it("R1: rejects an NFD-accented duplicate vocab item (Unicode-normalized dedup)", () => {
     const file = validFile();
     file.unit.lessons[0].vocab[0] = { fr: "enchant\u00e9", en: "nice to meet you" };
