@@ -14,7 +14,7 @@
         "canDoFr": "Je peux dire ce que je vais faire bientôt.",
         "grammarTarget": "Near future (aller + infinitive) across all persons; complete present of aller (nous allons, vous allez, ils vont) + future time markers",
         "teachEn": "You met the near future in A1 with je vais, tu vas, elle va + a dictionary-form verb. Now complete aller so you can plan with anyone: je vais, tu vas, il/elle va, nous allons, vous allez, ils/elles vont. Add an infinitive for a plan: 'Demain, nous allons organiser une fête', 'Vous allez préparer le souper ?', 'Ils vont visiter le musée.' New time words set the schedule: bientôt (soon), plus tard (later), le mois prochain (next month) and l'année prochaine (next year) — prochain comes AFTER the noun and agrees, like la semaine prochaine in A1: le mois prochain (masculine), l'année prochaine (feminine).",
-        "teachFr": "La semaine prochaine, nous allons organiser une fête. Le mois prochain, je vais visiter ma famille. Et toi, qu'est-ce que tu vas faire bientôt ?",
+        "teachFr": "La semaine prochaine, nous allons organiser une fête. Le mois prochain, je vais visiter ma famille. J'ai un projet pour l'année prochaine. Et toi, qu'est-ce que tu vas faire bientôt ?",
         "vocab": [
           {
             "fr": "un projet",
@@ -56,7 +56,7 @@
         "conversationScenario": {
           "titleFr": "Mes projets",
           "goalEn": "Say your upcoming plans with the near future",
-          "promptSeed": "Role-play two friends planning the days and weeks ahead. Model the full near future — 'Demain, je vais préparer un souper', 'La semaine prochaine, nous allons organiser une fête', 'Le mois prochain, mes amis vont visiter Montréal' — then elicit the learner's plans: 'Qu'est-ce que tu vas faire demain ?', 'Vous allez magasiner bientôt ?'. Push one nous form and one ils form, and bring in plus tard and l'année prochaine. Recast the participle slip 'je vais préparé' to the infinitive 'je vais préparer'. Keep utterances short and slow."
+          "promptSeed": "Role-play two friends planning the days and weeks ahead. Model the full near future — 'Demain, je vais préparer un souper', 'La semaine prochaine, nous allons organiser une fête', 'Le mois prochain, mes amis vont visiter Montréal' — then elicit the learner's plans: 'Qu'est-ce que tu vas faire demain ?', 'Vous allez magasiner bientôt ?'. Push one nous form and one ils form, and bring in plus tard and l'année prochaine. When the learner proposes a plan, model 'J'ai une idée !'. Recast the participle slip 'je vais préparé' to the infinitive 'je vais préparer'. Keep utterances short and slow."
         }
       },
       {
