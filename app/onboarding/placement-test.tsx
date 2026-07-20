@@ -29,6 +29,7 @@ import {
   TOTAL_PLACEMENT_QUESTIONS,
 } from "@/src/lib/prompts/placement";
 import { placementTestSchema } from "@/src/lib/schemas/ai-responses";
+import { entryLessonForLevel, getUnitForLesson } from "@/src/lib/curriculum";
 import { determinePlacementLevel } from "@/src/lib/placement-scoring";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { LEVEL_COLORS } from "@/src/lib/constants";
@@ -851,6 +852,52 @@ export default function PlacementTestScreen() {
               );
             })}
           </View>
+
+          {/* Story 19-3: placement maps to a curriculum position — show the
+              learner exactly where the guided path starts for their level.
+              entryLessonForLevel falls DOWN to the highest shipped level, so
+              this renders honestly even before A2+ content exists. */}
+          {(() => {
+            const entryLesson = entryLessonForLevel(determinedLevel);
+            const entryUnit = entryLesson ? getUnitForLesson(entryLesson.id) : undefined;
+            if (!entryLesson || !entryUnit) return null;
+            const fellDown = entryUnit.level !== determinedLevel;
+            return (
+              <View
+                className="rounded-2xl p-4 mb-4 flex-row items-center gap-3"
+                style={{
+                  backgroundColor: Colors.accent10,
+                  borderColor: Colors.accent,
+                  borderWidth: 1,
+                }}
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={`Your starting point: ${entryUnit.titleEn}, lesson ${entryLesson.order}. ${entryLesson.canDoEn}.${
+                  fellDown
+                    ? ` Guided lessons currently start at ${entryUnit.level}; higher levels are on the way.`
+                    : ""
+                }`}
+              >
+                <View className="flex-1">
+                  <Text className="text-[12px] font-extrabold tracking-[1px] text-primary mb-1">
+                    YOUR STARTING POINT
+                  </Text>
+                  <Text className="text-sm font-semibold text-primary">
+                    {entryUnit.titleEn} — Lesson {entryLesson.order}
+                  </Text>
+                  <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
+                    {entryLesson.canDoEn}
+                  </Text>
+                  {fellDown && (
+                    <Text className="text-[12px] mt-1" style={{ color: Colors.gray500 }}>
+                      Guided lessons currently start at {entryUnit.level} — higher levels are on the
+                      way. Your practice stays calibrated to {determinedLevel}.
+                    </Text>
+                  )}
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Error message if saving failed */}
           {error && (

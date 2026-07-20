@@ -396,7 +396,7 @@ export default function HomeScreen() {
                   iconColor={item.iconColor}
                   iconName={item.iconName}
                   badge={item.badge}
-                  disabled={!isConnected}
+                  disabled={!isConnected && !item.offlineCapable}
                   onPress={() => handlePlanItemPress(item.route, item.params)}
                 />
               ))}

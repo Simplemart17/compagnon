@@ -68,7 +68,12 @@ describe("Story 19-2 — player + list + entry surfaces", () => {
 
   it("the lesson list derives the resume pointer and refetches completion on focus", () => {
     const list = readSrc("app/(tabs)/practice/lessons.tsx");
-    expect(list).toMatch(/nextLessonForUser\(completedIds\)/);
+    // Story 19-3 (R1-tightened): pin the FULL placement-aware shape here
+    // too — a hardcoded entry id must fail BOTH suites, not rely on the
+    // sibling 19-3 drift file existing (paired-pin posture).
+    expect(list).toMatch(
+      /nextLessonForUser\(completedIds,\s*entryLessonIdForLevel\(profile\?\.current_cefr_level\)\)/
+    );
     expect(list).toMatch(/useFocusEffect/);
     expect(list).toMatch(/getCompletedLessonIds\(user\.id\)/);
   });

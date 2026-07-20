@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { cacheWithFallback, CACHE_KEYS, CACHE_TTL, invalidateCache } from "@/src/lib/cache";
 import { SKILL_LABELS } from "@/src/lib/constants";
@@ -17,6 +18,11 @@ import {
   type HomeAggregate,
   type HomeAggregateError,
 } from "@/src/lib/home-aggregate";
+import {
+  entryLessonIdForLevel,
+  getCompletedLessonIds,
+  nextLessonForUser,
+} from "@/src/lib/lesson-progress";
 import { retrieveDailyGreetingMemories, sanitizeMemoryContent } from "@/src/lib/memory";
 import { captureError } from "@/src/lib/sentry";
 import { getLocalDateString } from "@/src/lib/activity";
@@ -38,6 +44,10 @@ export interface TodayPlanItem {
   badge: "due" | "suggested" | "error";
   route: string;
   params?: Record<string, string>;
+  /** Review R1: the lesson player renders bundled in-repo content — the
+   * only plan target that works fully offline; home's blanket
+   * `disabled={!isConnected}` honors this flag. */
+  offlineCapable?: boolean;
 }
 
 export interface UseDailyBriefingReturn {
@@ -68,7 +78,8 @@ interface WeakestSkill {
   average_score: number;
 }
 
-interface BriefingData {
+/** @internal exported for buildTodayPlan runtime tests (Story 19-3). */
+export interface BriefingData {
   memories: string[];
   srsDueCount: number;
   weakestSkill: WeakestSkill | null;
@@ -86,6 +97,10 @@ interface BriefingData {
   hasActivityToday: boolean;
   totalErrors: number;
   resolvedErrors: number;
+  /** Story 19-3: the learner's next uncompleted curriculum lesson (from
+   * the placement-aware resume pointer), or null when the spine is done
+   * or the fetch failed soft. */
+  nextLesson: { id: string; canDoEn: string } | null;
 }
 
 function getGreeting(): string {
@@ -166,12 +181,34 @@ function composeMessage(name: string | null, data: BriefingData): string {
   return parts.join(" ");
 }
 
-function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
+/** @internal exported for runtime tests (Story 19-3) — pure plan builder. */
+export function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
   const items: TodayPlanItem[] = [];
   const usedRoutes = new Set<string>();
 
-  // Priority 1: SRS vocabulary due
-  if (data.srsDueCount > 0) {
+  // Priority 1 (Story 19-3): the guided path leads — Today's Plan pulls the
+  // learner's next curriculum lesson (teach → drill → apply loop).
+  if (data.nextLesson) {
+    const route = `/(tabs)/practice/lesson/${data.nextLesson.id}`;
+    // Code-POINT-safe truncation (18-3 R1-P7 class — a bare .slice can
+    // split a surrogate pair into U+FFFD).
+    const canDoChars = [...data.nextLesson.canDoEn];
+    items.push({
+      id: `lesson-${data.nextLesson.id}`,
+      title: "Continue your lessons",
+      subtitle:
+        canDoChars.length > 48 ? canDoChars.slice(0, 45).join("") + "..." : data.nextLesson.canDoEn,
+      iconColor: Colors.accent,
+      iconName: "book-open",
+      badge: "suggested",
+      route,
+      offlineCapable: true,
+    });
+    usedRoutes.add(route);
+  }
+
+  // Priority 2: SRS vocabulary due
+  if (data.srsDueCount > 0 && items.length < 3) {
     const route = "/(tabs)/practice/vocabulary";
     items.push({
       id: "srs-due",
@@ -185,7 +222,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
     usedRoutes.add(route);
   }
 
-  // Priority 2: Error pattern drills. Read-time sanitize on error_description
+  // Priority 3: Error pattern drills. Read-time sanitize on error_description
   // — same reasoning as the memory greeting above. Skip the slot if the
   // sanitized description is empty (don't early-return — Priority 3+ still apply).
   if (data.errorPatterns.length > 0 && items.length < 3) {
@@ -208,7 +245,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
     }
   }
 
-  // Priority 3: Weakest skill
+  // Priority 4: Weakest skill
   if (data.weakestSkill && items.length < 3) {
     const skill = data.weakestSkill.skill;
     // speaking has no practice screen — route to conversation instead
@@ -234,7 +271,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
     }
   }
 
-  // Priority 4: Fallback — daily conversation
+  // Priority 5: Fallback — daily conversation
   if (items.length < 3) {
     const route = "/(tabs)/conversation";
     if (!usedRoutes.has(route)) {
@@ -271,93 +308,118 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
 
   const mountedRef = useRef(true);
 
-  const refresh = useCallback(async () => {
-    if (!user) return;
+  // Review R1: `silent` skips the loading flag so the focus-driven refetch
+  // below updates the plan IN PLACE without flashing the home skeletons.
+  const runRefresh = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!user) return;
 
-    setIsLoading(true);
-    setError(null);
+      if (!opts?.silent) setIsLoading(true);
+      setError(null);
 
-    const userId = user.id;
-    const firstName = extractFirstName(profile?.full_name ?? null);
+      const userId = user.id;
+      const firstName = extractFirstName(profile?.full_name ?? null);
+      // Story 19-3: uncoerced profile level (18-2 R1-P3 — never `?? "A1"`);
+      // undefined during hydration means the pointer scans from the spine start.
+      const entryLessonId = entryLessonIdForLevel(profile?.current_cefr_level);
 
-    // Story 13-2: 6-slot Promise.allSettled DELETED ("delete don't alias"
-    // pattern). 5 of the 6 slots (SRS due / weakest skill / errors / today
-    // activity / error counts) are now backed by the single
-    // get_home_aggregate RPC; the memories slot uses retrieveDailyGreetingMemories
-    // with module-level embedding memoization. Net: 6 slots → 2; closes
-    // audit P2-5.
-    const [aggregateResult, memoriesResult] = await Promise.allSettled([
-      // 1. Home aggregate (shared with use-progress.ts via CACHE_KEYS.HOME_AGGREGATE)
-      cacheWithFallback<HomeAggregate>(
-        userId,
-        CACHE_KEYS.HOME_AGGREGATE,
-        () => getHomeAggregate(userId, getLocalDateString()),
-        CACHE_TTL.HOME_AGGREGATE
-      ),
+      // Story 13-2: 6-slot Promise.allSettled DELETED ("delete don't alias"
+      // pattern). 5 of the 6 slots (SRS due / weakest skill / errors / today
+      // activity / error counts) are now backed by the single
+      // get_home_aggregate RPC; the memories slot uses retrieveDailyGreetingMemories
+      // with module-level embedding memoization. Net: 6 slots → 2; closes
+      // audit P2-5.
+      const [aggregateResult, memoriesResult, completedLessonsResult] = await Promise.allSettled([
+        // 1. Home aggregate (shared with use-progress.ts via CACHE_KEYS.HOME_AGGREGATE)
+        cacheWithFallback<HomeAggregate>(
+          userId,
+          CACHE_KEYS.HOME_AGGREGATE,
+          () => getHomeAggregate(userId, getLocalDateString()),
+          CACHE_TTL.HOME_AGGREGATE
+        ),
 
-      // 2. Companion memories with module-level embedding cache
-      cacheWithFallback<string[]>(
-        userId,
-        CACHE_KEYS.DAILY_BRIEFING,
-        () => retrieveDailyGreetingMemories(userId, 3),
-        CACHE_TTL.DAILY_BRIEFING
-      ),
-    ]);
+        // 2. Companion memories with module-level embedding cache
+        cacheWithFallback<string[]>(
+          userId,
+          CACHE_KEYS.DAILY_BRIEFING,
+          () => retrieveDailyGreetingMemories(userId, 3),
+          CACHE_TTL.DAILY_BRIEFING
+        ),
 
-    if (!mountedRef.current) return;
+        // 3. Story 19-3: completed lesson ids for the next-lesson plan item.
+        // Deliberately UNCACHED — one cheap indexed select, and a stale set
+        // would keep pointing the plan at an already-completed lesson; the
+        // helper itself fails soft to an empty set (Story 19-2).
+        getCompletedLessonIds(userId),
+      ]);
 
-    // Extract aggregate with graceful degradation. Single Sentry tag
-    // "daily-briefing-aggregate" replaces the pre-13-2 5-tag fan-out
-    // (Story 9-3 telemetry allowlist preserved — no new tags added; the
-    // existing `feature` extras key already accepts categorical strings).
-    const aggregate: HomeAggregate | null =
-      aggregateResult.status === "fulfilled" ? (aggregateResult.value.data ?? null) : null;
-    if (aggregateResult.status === "rejected") {
-      captureError(aggregateResult.reason, "daily-briefing-aggregate");
-    }
+      if (!mountedRef.current) return;
 
-    const memories = memoriesResult.status === "fulfilled" ? (memoriesResult.value.data ?? []) : [];
-    if (memoriesResult.status === "rejected") {
-      captureError(memoriesResult.reason, "daily-briefing-memories");
-    }
+      // Extract aggregate with graceful degradation. Single Sentry tag
+      // "daily-briefing-aggregate" replaces the pre-13-2 5-tag fan-out
+      // (Story 9-3 telemetry allowlist preserved — no new tags added; the
+      // existing `feature` extras key already accepts categorical strings).
+      const aggregate: HomeAggregate | null =
+        aggregateResult.status === "fulfilled" ? (aggregateResult.value.data ?? null) : null;
+      if (aggregateResult.status === "rejected") {
+        captureError(aggregateResult.reason, "daily-briefing-aggregate");
+      }
 
-    // Map the aggregate (or null/empty fallback) to BriefingData. Shape
-    // is byte-identical to pre-13-2 — composeMessage + buildTodayPlan
-    // consumer paths unchanged. Story 9-4 sanitizeMemoryContent calls at
-    // those consumer sites still run at read-time on every memory +
-    // error_description that flows to the UI.
-    const briefingData: BriefingData = {
-      memories,
-      srsDueCount: aggregate?.srs_due_count ?? 0,
-      weakestSkill: aggregate?.weakest_skill
-        ? {
-            skill: aggregate.weakest_skill.skill,
-            average_score: aggregate.weakest_skill.average_score,
-          }
-        : null,
-      errorPatterns: (aggregate?.top_errors ?? []).slice(0, 3),
-      hasActivityToday: aggregate?.has_activity_today ?? false,
-      totalErrors: aggregate?.error_counts?.total ?? 0,
-      resolvedErrors: aggregate?.error_counts?.resolved ?? 0,
-    };
+      const memories =
+        memoriesResult.status === "fulfilled" ? (memoriesResult.value.data ?? []) : [];
+      if (memoriesResult.status === "rejected") {
+        captureError(memoriesResult.reason, "daily-briefing-memories");
+      }
 
-    const errorCounts = {
-      total: briefingData.totalErrors,
-      resolved: briefingData.resolvedErrors,
-    };
-    const srs = briefingData.srsDueCount;
+      // Story 19-3: placement-aware resume pointer → the plan's lesson item.
+      // getCompletedLessonIds never rejects (fail-soft), so the fallback arm
+      // is belt-and-suspenders only.
+      const completedLessons =
+        completedLessonsResult.status === "fulfilled"
+          ? completedLessonsResult.value
+          : new Set<string>();
+      const pointer = nextLessonForUser(completedLessons, entryLessonId);
 
-    setCompanionMessage(composeMessage(firstName, briefingData));
-    setTodayPlan(buildTodayPlan(briefingData));
-    setTotalErrors(errorCounts.total);
-    setResolvedErrors(errorCounts.resolved);
-    setSrsDueCount(srs);
-    setIsLoading(false);
-  }, [user, profile?.full_name]);
+      // Map the aggregate (or null/empty fallback) to BriefingData. Shape
+      // is byte-identical to pre-13-2 — composeMessage + buildTodayPlan
+      // consumer paths unchanged. Story 9-4 sanitizeMemoryContent calls at
+      // those consumer sites still run at read-time on every memory +
+      // error_description that flows to the UI.
+      const briefingData: BriefingData = {
+        memories,
+        srsDueCount: aggregate?.srs_due_count ?? 0,
+        weakestSkill: aggregate?.weakest_skill
+          ? {
+              skill: aggregate.weakest_skill.skill,
+              average_score: aggregate.weakest_skill.average_score,
+            }
+          : null,
+        errorPatterns: (aggregate?.top_errors ?? []).slice(0, 3),
+        hasActivityToday: aggregate?.has_activity_today ?? false,
+        totalErrors: aggregate?.error_counts?.total ?? 0,
+        resolvedErrors: aggregate?.error_counts?.resolved ?? 0,
+        nextLesson: pointer ? { id: pointer.id, canDoEn: pointer.canDoEn } : null,
+      };
+
+      const errorCounts = {
+        total: briefingData.totalErrors,
+        resolved: briefingData.resolvedErrors,
+      };
+      const srs = briefingData.srsDueCount;
+
+      setCompanionMessage(composeMessage(firstName, briefingData));
+      setTodayPlan(buildTodayPlan(briefingData));
+      setTotalErrors(errorCounts.total);
+      setResolvedErrors(errorCounts.resolved);
+      setSrsDueCount(srs);
+      setIsLoading(false);
+    },
+    [user, profile?.full_name, profile?.current_cefr_level]
+  );
 
   useEffect(() => {
     mountedRef.current = true;
-    refresh().catch((err) => {
+    runRefresh().catch((err) => {
       if (mountedRef.current) {
         captureError(err, "daily-briefing-init");
         setError(err instanceof Error ? err.message : "Failed to load briefing");
@@ -368,7 +430,27 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
     return () => {
       mountedRef.current = false;
     };
-  }, [refresh]);
+  }, [runRefresh]);
+
+  // Review R1: the "deliberately UNCACHED" completion slot only stays fresh
+  // if the fetch RE-RUNS — tab screens stay mounted, so without a focus
+  // hook the flagship "Continue your lessons" item kept pointing at a
+  // lesson the user just completed (both sibling 19-3 surfaces refetch on
+  // focus; the highest-visibility one didn't). Silent so cached aggregate/
+  // memories serve instantly and only the plan updates in place. The first
+  // focus after mount is skipped — the mount effect above already fetched.
+  const firstFocusRef = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocusRef.current) {
+        firstFocusRef.current = false;
+        return;
+      }
+      runRefresh({ silent: true }).catch((err) => {
+        captureError(err, "daily-briefing-focus-refresh");
+      });
+    }, [runRefresh])
+  );
 
   const refreshAndInvalidate = useCallback(async () => {
     if (!user) return;
@@ -385,8 +467,8 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
       invalidateCache(user.id, CACHE_KEYS.HOME_AGGREGATE),
       invalidateCache(user.id, CACHE_KEYS.DAILY_BRIEFING),
     ]);
-    await refresh();
-  }, [user, refresh]);
+    await runRefresh();
+  }, [user, runRefresh]);
 
   return {
     companionMessage,
