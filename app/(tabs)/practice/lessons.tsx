@@ -16,13 +16,18 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Icon } from "@/src/components/common/Icon";
 import { ListItemCard } from "@/src/components/common/ListItemCard";
 import { CURRICULUM_UNITS } from "@/src/lib/curriculum";
-import { getCompletedLessonIds, nextLessonForUser } from "@/src/lib/lesson-progress";
+import {
+  entryLessonIdForLevel,
+  getCompletedLessonIds,
+  nextLessonForUser,
+} from "@/src/lib/lesson-progress";
 import { Colors } from "@/src/lib/design";
 import { useAuthStore } from "@/src/store/auth-store";
 
 export default function LessonsScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const profile = useAuthStore((s) => s.profile);
   // Review R1: null = completion not yet loaded — the NEXT badge and
   // strips hold until the first fetch settles so returning learners never
   // see the badge flash onto lesson 1 before their checkmarks arrive.
@@ -44,7 +49,13 @@ export default function LessonsScreen() {
     }, [user?.id])
   );
 
-  const resumeLesson = completedIds !== null ? nextLessonForUser(completedIds) : undefined;
+  // Story 19-3: the resume pointer starts at the learner's placement entry
+  // (uncoerced profile level — undefined during hydration scans from the
+  // spine start, which is identical while A1 is the only shipped level).
+  const resumeLesson =
+    completedIds !== null
+      ? nextLessonForUser(completedIds, entryLessonIdForLevel(profile?.current_cefr_level))
+      : undefined;
 
   return (
     <ScrollView

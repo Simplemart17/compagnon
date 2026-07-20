@@ -17,6 +17,11 @@ import {
   type HomeAggregate,
   type HomeAggregateError,
 } from "@/src/lib/home-aggregate";
+import {
+  entryLessonIdForLevel,
+  getCompletedLessonIds,
+  nextLessonForUser,
+} from "@/src/lib/lesson-progress";
 import { retrieveDailyGreetingMemories, sanitizeMemoryContent } from "@/src/lib/memory";
 import { captureError } from "@/src/lib/sentry";
 import { getLocalDateString } from "@/src/lib/activity";
@@ -68,7 +73,8 @@ interface WeakestSkill {
   average_score: number;
 }
 
-interface BriefingData {
+/** @internal exported for buildTodayPlan runtime tests (Story 19-3). */
+export interface BriefingData {
   memories: string[];
   srsDueCount: number;
   weakestSkill: WeakestSkill | null;
@@ -86,6 +92,10 @@ interface BriefingData {
   hasActivityToday: boolean;
   totalErrors: number;
   resolvedErrors: number;
+  /** Story 19-3: the learner's next uncompleted curriculum lesson (from
+   * the placement-aware resume pointer), or null when the spine is done
+   * or the fetch failed soft. */
+  nextLesson: { id: string; canDoEn: string } | null;
 }
 
 function getGreeting(): string {
@@ -166,12 +176,30 @@ function composeMessage(name: string | null, data: BriefingData): string {
   return parts.join(" ");
 }
 
-function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
+/** @internal exported for runtime tests (Story 19-3) — pure plan builder. */
+export function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
   const items: TodayPlanItem[] = [];
   const usedRoutes = new Set<string>();
 
-  // Priority 1: SRS vocabulary due
-  if (data.srsDueCount > 0) {
+  // Priority 1 (Story 19-3): the guided path leads — Today's Plan pulls the
+  // learner's next curriculum lesson (teach → drill → apply loop).
+  if (data.nextLesson) {
+    const route = `/(tabs)/practice/lesson/${data.nextLesson.id}`;
+    const canDo = data.nextLesson.canDoEn;
+    items.push({
+      id: `lesson-${data.nextLesson.id}`,
+      title: "Continue your lessons",
+      subtitle: canDo.length > 48 ? canDo.slice(0, 45) + "..." : canDo,
+      iconColor: Colors.accent,
+      iconName: "book-open",
+      badge: "suggested",
+      route,
+    });
+    usedRoutes.add(route);
+  }
+
+  // Priority 2: SRS vocabulary due
+  if (data.srsDueCount > 0 && items.length < 3) {
     const route = "/(tabs)/practice/vocabulary";
     items.push({
       id: "srs-due",
@@ -185,7 +213,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
     usedRoutes.add(route);
   }
 
-  // Priority 2: Error pattern drills. Read-time sanitize on error_description
+  // Priority 3: Error pattern drills. Read-time sanitize on error_description
   // — same reasoning as the memory greeting above. Skip the slot if the
   // sanitized description is empty (don't early-return — Priority 3+ still apply).
   if (data.errorPatterns.length > 0 && items.length < 3) {
@@ -208,7 +236,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
     }
   }
 
-  // Priority 3: Weakest skill
+  // Priority 4: Weakest skill
   if (data.weakestSkill && items.length < 3) {
     const skill = data.weakestSkill.skill;
     // speaking has no practice screen — route to conversation instead
@@ -234,7 +262,7 @@ function buildTodayPlan(data: BriefingData): TodayPlanItem[] {
     }
   }
 
-  // Priority 4: Fallback — daily conversation
+  // Priority 5: Fallback — daily conversation
   if (items.length < 3) {
     const route = "/(tabs)/conversation";
     if (!usedRoutes.has(route)) {
@@ -279,6 +307,9 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
 
     const userId = user.id;
     const firstName = extractFirstName(profile?.full_name ?? null);
+    // Story 19-3: uncoerced profile level (18-2 R1-P3 — never `?? "A1"`);
+    // undefined during hydration means the pointer scans from the spine start.
+    const entryLessonId = entryLessonIdForLevel(profile?.current_cefr_level);
 
     // Story 13-2: 6-slot Promise.allSettled DELETED ("delete don't alias"
     // pattern). 5 of the 6 slots (SRS due / weakest skill / errors / today
@@ -286,7 +317,7 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
     // get_home_aggregate RPC; the memories slot uses retrieveDailyGreetingMemories
     // with module-level embedding memoization. Net: 6 slots → 2; closes
     // audit P2-5.
-    const [aggregateResult, memoriesResult] = await Promise.allSettled([
+    const [aggregateResult, memoriesResult, completedLessonsResult] = await Promise.allSettled([
       // 1. Home aggregate (shared with use-progress.ts via CACHE_KEYS.HOME_AGGREGATE)
       cacheWithFallback<HomeAggregate>(
         userId,
@@ -302,6 +333,12 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
         () => retrieveDailyGreetingMemories(userId, 3),
         CACHE_TTL.DAILY_BRIEFING
       ),
+
+      // 3. Story 19-3: completed lesson ids for the next-lesson plan item.
+      // Deliberately UNCACHED — one cheap indexed select, and a stale set
+      // would keep pointing the plan at an already-completed lesson; the
+      // helper itself fails soft to an empty set (Story 19-2).
+      getCompletedLessonIds(userId),
     ]);
 
     if (!mountedRef.current) return;
@@ -321,6 +358,15 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
       captureError(memoriesResult.reason, "daily-briefing-memories");
     }
 
+    // Story 19-3: placement-aware resume pointer → the plan's lesson item.
+    // getCompletedLessonIds never rejects (fail-soft), so the fallback arm
+    // is belt-and-suspenders only.
+    const completedLessons =
+      completedLessonsResult.status === "fulfilled"
+        ? completedLessonsResult.value
+        : new Set<string>();
+    const pointer = nextLessonForUser(completedLessons, entryLessonId);
+
     // Map the aggregate (or null/empty fallback) to BriefingData. Shape
     // is byte-identical to pre-13-2 — composeMessage + buildTodayPlan
     // consumer paths unchanged. Story 9-4 sanitizeMemoryContent calls at
@@ -339,6 +385,7 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
       hasActivityToday: aggregate?.has_activity_today ?? false,
       totalErrors: aggregate?.error_counts?.total ?? 0,
       resolvedErrors: aggregate?.error_counts?.resolved ?? 0,
+      nextLesson: pointer ? { id: pointer.id, canDoEn: pointer.canDoEn } : null,
     };
 
     const errorCounts = {
@@ -353,7 +400,7 @@ export function useDailyBriefing(): UseDailyBriefingReturn {
     setResolvedErrors(errorCounts.resolved);
     setSrsDueCount(srs);
     setIsLoading(false);
-  }, [user, profile?.full_name]);
+  }, [user, profile?.full_name, profile?.current_cefr_level]);
 
   useEffect(() => {
     mountedRef.current = true;

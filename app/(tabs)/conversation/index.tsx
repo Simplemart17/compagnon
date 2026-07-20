@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { View, Text, FlatList, TouchableOpacity, StatusBar } from "react-native";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { useAuthStore } from "@/src/store/auth-store";
 import { CONVERSATION_TOPICS, LEVEL_COLORS } from "@/src/lib/constants";
@@ -8,6 +9,11 @@ import type { ConversationTopic, ConversationMode } from "@/src/types/conversati
 import type { CEFRLevel } from "@/src/types/cefr";
 import { CEFR_ORDER } from "@/src/types/cefr";
 import { Colors, skillTint } from "@/src/lib/design";
+import {
+  entryLessonIdForLevel,
+  getCompletedLessonIds,
+  nextLessonForUser,
+} from "@/src/lib/lesson-progress";
 import { Icon, type IconName } from "@/src/components/common/Icon";
 import { ListItemCard } from "@/src/components/common/ListItemCard";
 import { HeroHeader } from "@/src/components/common/HeroHeader";
@@ -115,12 +121,38 @@ function CardItem({ item, index, onPress }: CardItemProps) {
 
 export default function ConversationTopicsScreen() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
   const userLevel = (profile?.current_cefr_level ?? "A1") as CEFRLevel;
   const streak = profile?.streak_days ?? 0;
 
   const [selectedLevel, setSelectedLevel] = useState<LevelFilter>("All");
   const [selectedMode, setSelectedMode] = useState<ConversationMode>("companion");
+  // Story 19-3: null = completion not yet loaded — the "Continue my lesson"
+  // default holds until the first fetch settles (19-2 R1-P7 no-flash rule).
+  const [completedIds, setCompletedIds] = useState<Set<string> | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      if (user?.id) {
+        void getCompletedLessonIds(user.id).then((ids) => {
+          if (active) setCompletedIds(ids);
+        });
+      }
+      return () => {
+        active = false;
+      };
+    }, [user?.id])
+  );
+
+  // Story 19-3: the picker's DEFAULT is the guided path — the learner's next
+  // curriculum lesson (uncoerced profile level per 18-2 R1-P3; undefined
+  // during hydration scans from the spine start).
+  const continueLesson =
+    completedIds !== null
+      ? nextLessonForUser(completedIds, entryLessonIdForLevel(profile?.current_cefr_level))
+      : undefined;
 
   // Show topics at or below user's level, plus one level above for challenge
   const userLevelIdx = CEFR_ORDER.indexOf(userLevel);
@@ -326,6 +358,34 @@ export default function ConversationTopicsScreen() {
         data={filteredTopics}
         keyExtractor={(item) => item.id}
         renderItem={renderTopic}
+        ListHeaderComponent={
+          continueLesson ? (
+            <View className="mx-5 mb-3">
+              {/* Story 19-3: "continue my lesson" default — routes to the
+                  lesson PLAYER (not straight into a conversation) so the
+                  teach → drill → apply loop stays intact. */}
+              <ListItemCard
+                leftStripColor={Colors.accent}
+                iconNode={<Icon name="book-open" size={22} color={Colors.accent} />}
+                iconColor={Colors.accent}
+                titlePrimary="Continue my lesson"
+                titleSecondary={continueLesson.canDoFr}
+                description={continueLesson.canDoEn}
+                rightContent={
+                  <Text className="text-lg font-bold" style={{ color: Colors.accent }}>
+                    {"\u2192"}
+                  </Text>
+                }
+                accessibilityLabel={`Continue my lesson: ${continueLesson.canDoEn}`}
+                accessibilityHint="Double tap to open your next lesson"
+                onPress={() =>
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- typed-routes lag for the dynamic lesson route
+                  router.push(`/(tabs)/practice/lesson/${continueLesson.id}` as any)
+                }
+              />
+            </View>
+          ) : null
+        }
         contentContainerStyle={{ paddingTop: 12, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       />

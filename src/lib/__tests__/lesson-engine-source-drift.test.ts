@@ -68,7 +68,9 @@ describe("Story 19-2 — player + list + entry surfaces", () => {
 
   it("the lesson list derives the resume pointer and refetches completion on focus", () => {
     const list = readSrc("app/(tabs)/practice/lessons.tsx");
-    expect(list).toMatch(/nextLessonForUser\(completedIds\)/);
+    // Story 19-3: the pointer became placement-aware — accept the entry-id
+    // second argument (the 19-3 drift suite pins its exact shape).
+    expect(list).toMatch(/nextLessonForUser\(completedIds,/);
     expect(list).toMatch(/useFocusEffect/);
     expect(list).toMatch(/getCompletedLessonIds\(user\.id\)/);
   });

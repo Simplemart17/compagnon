@@ -31,6 +31,7 @@ jest.mock("@/src/lib/sentry", () => ({
 
 import { CURRICULUM_LESSONS } from "@/src/lib/curriculum";
 import {
+  entryLessonIdForLevel,
   getCompletedLessonIds,
   markLessonCompleted,
   nextLessonForUser,
@@ -95,5 +96,45 @@ describe("Story 19-2 — nextLessonForUser (pure resume pointer)", () => {
 
   it("all shipped content completed → undefined (ahead of the curriculum)", () => {
     expect(nextLessonForUser(new Set(CURRICULUM_LESSONS.map((l) => l.id)))).toBeUndefined();
+  });
+
+  // Story 19-3: placement-aware entry point. Exercised with a MID-SPINE
+  // entry id against the REAL registry (with only A1 shipped, every
+  // level's entryLessonForLevel falls down to the spine start, so the
+  // level→id mapping alone cannot exercise the scan semantics).
+  describe("Story 19-3 — placement-aware entry", () => {
+    const midEntry = "a1-u3-l1";
+    const midIdx = CURRICULUM_LESSONS.findIndex((l) => l.id === midEntry);
+    if (midIdx <= 0) {
+      throw new Error(`Stale test fixture: mid-spine lesson "${midEntry}" no longer exists`);
+    }
+
+    it("scans FROM the entry lesson — earlier uncompleted lessons are skipped", () => {
+      expect(nextLessonForUser(new Set(), midEntry)?.id).toBe(midEntry);
+    });
+
+    it("first uncompleted AT OR AFTER entry wins when the entry lesson is done", () => {
+      expect(nextLessonForUser(new Set([midEntry]), midEntry)?.id).toBe(
+        CURRICULUM_LESSONS[midIdx + 1].id
+      );
+    });
+
+    it("never regresses below placement: everything at/after entry done → undefined, even with earlier gaps", () => {
+      const fromEntryOn = new Set(CURRICULUM_LESSONS.slice(midIdx).map((l) => l.id));
+      expect(nextLessonForUser(fromEntryOn, midEntry)).toBeUndefined();
+    });
+
+    it("unknown entry id falls back to the spine start", () => {
+      expect(nextLessonForUser(new Set(), "z9-u1-l1")?.id).toBe(CURRICULUM_LESSONS[0].id);
+    });
+
+    it("entryLessonIdForLevel: undefined level (profile hydrating) → undefined; any level falls DOWN to the highest shipped level's start", () => {
+      expect(entryLessonIdForLevel(undefined)).toBeUndefined();
+      // With A1 as the only shipped level, every placement maps to the
+      // spine start — the honest current behavior this pin documents.
+      expect(entryLessonIdForLevel("A1")).toBe(CURRICULUM_LESSONS[0].id);
+      expect(entryLessonIdForLevel("B1")).toBe(CURRICULUM_LESSONS[0].id);
+      expect(entryLessonIdForLevel("C2")).toBe(CURRICULUM_LESSONS[0].id);
+    });
   });
 });
