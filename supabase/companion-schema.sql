@@ -273,6 +273,20 @@ CREATE TABLE IF NOT EXISTS companion.notification_log (
 );
 
 -- ── 1.14 rate_limit_counters (no FK — sentinel cron user_id) ─────────────────
+-- ── Story 19-2: lesson_progress ─────────────────────────────────────────────
+-- One row per completed curriculum lesson (Epic 19 lesson engine). Lesson ids
+-- reference IN-REPO content (src/content/curriculum), not a DB table — the
+-- spine is versioned code, so there is no FK target for lesson_id.
+CREATE TABLE IF NOT EXISTS companion.lesson_progress (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES companion.profiles(id) ON DELETE CASCADE,
+  lesson_id     TEXT NOT NULL,
+  completed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, lesson_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_user ON companion.lesson_progress(user_id);
+
 CREATE TABLE IF NOT EXISTS companion.rate_limit_counters (
   user_id        UUID        NOT NULL,
   key            TEXT        NOT NULL,
@@ -1376,6 +1390,21 @@ CREATE POLICY "Users can delete own profile" ON companion.profiles
 
 -- 5.2 skill_progress
 ALTER TABLE companion.skill_progress ENABLE ROW LEVEL SECURITY;
+
+-- Story 19-2: lesson_progress RLS (same auth.uid() = user_id discipline).
+ALTER TABLE companion.lesson_progress ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own lesson progress" ON companion.lesson_progress;
+CREATE POLICY "Users can view own lesson progress" ON companion.lesson_progress
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own lesson progress" ON companion.lesson_progress;
+CREATE POLICY "Users can insert own lesson progress" ON companion.lesson_progress
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own lesson progress" ON companion.lesson_progress;
+CREATE POLICY "Users can delete own lesson progress" ON companion.lesson_progress
+  FOR DELETE USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Users can manage own skill progress" ON companion.skill_progress;
 CREATE POLICY "Users can manage own skill progress" ON companion.skill_progress
   FOR ALL USING (auth.uid() = user_id);
