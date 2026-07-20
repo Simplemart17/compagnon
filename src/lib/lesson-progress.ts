@@ -61,8 +61,8 @@ export async function getCompletedLessonIds(userId: string): Promise<Set<string>
  *
  * Undefined level (profile still hydrating — 18-2 R1-P3 lesson: pass the
  * UNCOERCED value, never `?? "A1"`) → undefined → the pointer scans from
- * the spine start, which is also today's only real entry point while A1
- * is the sole shipped level.
+ * the spine start. With A1 + A2 shipped (19-1 slice 4), B1+ levels fall
+ * DOWN to the A2 start — the mid-spine entry is now a real production path.
  */
 export function entryLessonIdForLevel(level: CEFRLevel | undefined): string | undefined {
   return level ? entryLessonForLevel(level)?.id : undefined;

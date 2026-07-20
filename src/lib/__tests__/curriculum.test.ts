@@ -142,9 +142,11 @@ describe("Story 19-1 — position helpers", () => {
   });
 
   it("entryLessonForLevel falls DOWN to the highest shipped level (placement above shipped content)", () => {
-    // Only A1 ships in this slice: every placement enters at the A1 start.
-    for (const level of ["A1", "A2", "B1", "B2", "C1", "C2"] as const) {
-      expect(entryLessonForLevel(level)?.id).toBe(first.id);
+    // Slice 4: A1 + A2 ship. A1 enters at the A1 start; A2 enters at the
+    // A2 start; B1+ falls DOWN to A2 (the highest shipped level).
+    expect(entryLessonForLevel("A1")?.id).toBe(first.id);
+    for (const level of ["A2", "B1", "B2", "C1", "C2"] as const) {
+      expect(entryLessonForLevel(level)?.id).toBe("a2-u1-l1");
     }
   });
 });
