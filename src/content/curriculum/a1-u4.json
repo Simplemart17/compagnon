@@ -141,8 +141,8 @@
         "canDoEn": "I can say what I don't eat and ask for quantities.",
         "canDoFr": "Je peux dire ce que je ne mange pas.",
         "grammarTarget": "Negation ne … pas + pas de replacing du / de la / des; quantity words with de",
-        "teachEn": "To say NOT, wrap the verb with ne … pas — 'Je ne mange pas' — and ne becomes n' before a vowel: 'Je n'aime pas.' After pas, the partitives du, de la, de l' and des all shrink to plain de (d' before a vowel): 'Je mange de la viande' → 'Je ne mange pas de viande'; 'Il boit de l'eau' → 'Il ne boit pas d'eau.' But after aimer, the article stays: 'Je n'aime pas le fromage.' Quantity words also take de: beaucoup de (a lot of), un peu de (a little), un verre de (a glass of), une tasse de (a cup of) — 'un verre de jus', 'une tasse de café', 'un peu de lait', 'beaucoup de sucre'. A very useful sentence: 'Je suis végétarien / végétarienne, je ne mange pas de viande.'",
-        "teachFr": "Je suis végétarienne : je ne mange pas de viande. Dans mon café, je voudrais un peu de lait et pas de sucre. Le matin, je bois une tasse de thé et un verre de jus.",
+        "teachEn": "To say NOT, wrap the verb with ne … pas — 'Je ne mange pas' — and ne becomes n' before a vowel: 'Je n'aime pas.' After pas, the partitives du, de la, de l' and des all shrink to plain de (d' before a vowel): 'Je mange de la viande' → 'Je ne mange pas de viande'; 'Il boit de l'eau' → 'Il ne boit pas d'eau.' But after aimer, the article stays: 'Je n'aime pas le fromage.' Quantity words also take de: beaucoup de (a lot of), un peu de (a little), un verre de (a glass of), une tasse de (a cup of) — 'un verre de jus', 'une tasse de café', 'un peu de lait', 'beaucoup de sucre'. For the drink in front of you, use the possessive: 'un peu de lait dans mon café' (in my coffee). A very useful sentence: 'Je suis végétarien / végétarienne, je ne mange pas de viande.'",
+        "teachFr": "Je suis végétarienne : je ne mange pas de viande. Je voudrais un peu de lait dans mon café, et pas de sucre. Le matin, je bois une tasse de thé et un verre de jus.",
         "vocab": [
           {
             "fr": "ne … pas",
