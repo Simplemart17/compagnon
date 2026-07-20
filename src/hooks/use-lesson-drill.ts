@@ -10,9 +10,10 @@
  * banded score) — consistent with the practice screens.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ANALYTICS_EVENTS, scoreBand, trackEvent } from "@/src/lib/analytics";
+import { getUnitForLesson } from "@/src/lib/curriculum";
 import { chatCompletionJSON } from "@/src/lib/openai";
 import { buildLessonDrillPrompt } from "@/src/lib/prompts/lesson-drill";
 import { lessonDrillSchema } from "@/src/lib/schemas/ai-responses";
@@ -51,17 +52,43 @@ export function useLessonDrill(lesson: CurriculumLesson | undefined): UseLessonD
   const [state, setState] = useState<LessonDrillState>({ kind: "idle" });
   // Synchronous double-tap guard (Story 9-10 / 12-9 ref pattern).
   const generatingRef = useRef(false);
+  // Review R1: unmount guard (12-9/13-3/13-4 convention) — the awaited AI
+  // response must not setState against a dead screen.
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    []
+  );
+  // Review R1: one analytics emission per drill ROUND (reset by generate).
+  const completionTrackedRef = useRef(false);
+
+  // Review R1: the lesson's CEFR level comes from its UNIT — hardcoding
+  // "A1" would mislabel every post-A1 drill (prompt difficulty AND the
+  // analytics funnel; the 21-2 R2 banding-bug class).
+  const level = lesson ? (getUnitForLesson(lesson.id)?.level ?? "A1") : "A1";
 
   const generate = useCallback(async () => {
     if (!lesson || generatingRef.current) return;
     generatingRef.current = true;
+    completionTrackedRef.current = false;
     setState({ kind: "generating" });
     try {
+      const earlierVocabFr = getUnitForLesson(lesson.id)
+        ?.lessons.filter((l) => l.order < lesson.order)
+        .flatMap((l) => l.vocab.map((v) => v.fr));
       const result = await chatCompletionJSON(
-        [{ role: "system", content: buildLessonDrillPrompt(lesson) }],
+        [
+          {
+            role: "system",
+            content: buildLessonDrillPrompt(lesson, level, earlierVocabFr ?? []),
+          },
+        ],
         lessonDrillSchema,
         { temperature: 0.4, maxTokens: LESSON_DRILL_MAX_TOKENS, feature: "lesson-drill" }
       );
+      if (!mountedRef.current) return;
       setState({
         kind: "active",
         questions: result.questions,
@@ -72,11 +99,28 @@ export function useLessonDrill(lesson: CurriculumLesson | undefined): UseLessonD
       });
     } catch (err) {
       captureError(err, "lesson-drill-generate", { lessonId: lesson.id });
+      if (!mountedRef.current) return;
       setState({ kind: "error", message: "Could not load the drill. Please try again." });
     } finally {
       generatingRef.current = false;
     }
-  }, [lesson]);
+  }, [lesson, level]);
+
+  // Review R1: the completion analytics live in an EFFECT, not inside the
+  // setState updater — updaters must be pure (StrictMode double-invokes
+  // them and concurrent React replays queued updaters; the exact
+  // Story 13-4 R1-P15 anti-pattern). The per-round ref guarantees one
+  // emission even across re-renders of the done state.
+  useEffect(() => {
+    if (state.kind === "done" && !completionTrackedRef.current) {
+      completionTrackedRef.current = true;
+      trackEvent(ANALYTICS_EVENTS.EXERCISE_COMPLETED, {
+        skill: "grammar",
+        cefr_level: level,
+        score_band: scoreBand(Math.round((state.correctCount / state.total) * 100)),
+      });
+    }
+  }, [state, level]);
 
   const select = useCallback((answerId: string) => {
     setState((prev) => {
@@ -97,13 +141,9 @@ export function useLessonDrill(lesson: CurriculumLesson | undefined): UseLessonD
       if (prev.kind !== "active" || !prev.showResult) return prev;
       const nextIndex = prev.index + 1;
       if (nextIndex >= prev.questions.length) {
-        const total = prev.questions.length;
-        trackEvent(ANALYTICS_EVENTS.EXERCISE_COMPLETED, {
-          skill: "grammar",
-          cefr_level: "A1",
-          score_band: scoreBand(Math.round((prev.correctCount / total) * 100)),
-        });
-        return { kind: "done", correctCount: prev.correctCount, total };
+        // Pure transition only — the completion analytics fire from the
+        // effect above (review R1: no side effects inside updaters).
+        return { kind: "done", correctCount: prev.correctCount, total: prev.questions.length };
       }
       return { ...prev, index: nextIndex, selected: null, showResult: false };
     });

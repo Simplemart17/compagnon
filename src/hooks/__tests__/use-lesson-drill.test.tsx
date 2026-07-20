@@ -21,25 +21,33 @@ jest.mock("@/src/lib/sentry", () => ({
   addBreadcrumb: jest.fn(),
 }));
 
-jest.mock("@/src/lib/analytics", () => ({
-  __esModule: true,
-  ANALYTICS_EVENTS: { EXERCISE_COMPLETED: "exercise_completed" },
-  scoreBand:
-    jest.requireActual<typeof import("@/src/lib/analytics")>("@/src/lib/analytics").scoreBand,
-  trackEvent: jest.fn(),
-}));
+jest.mock("@/src/lib/analytics", () => {
+  // Review R1: spread the REAL taxonomy + banding — a production event
+  // rename or band change must fail this suite, not pass a stale literal.
+  const actual = jest.requireActual<typeof import("@/src/lib/analytics")>("@/src/lib/analytics");
+  return {
+    __esModule: true,
+    ANALYTICS_EVENTS: actual.ANALYTICS_EVENTS,
+    scoreBand: actual.scoreBand,
+    trackEvent: jest.fn(),
+  };
+});
 
 import { act } from "react-test-renderer";
 
 import { useLessonDrill, type UseLessonDrillReturn } from "@/src/hooks/use-lesson-drill";
-import { getLesson } from "@/src/lib/curriculum";
+import { getLesson, getUnitForLesson } from "@/src/lib/curriculum";
 import { captureError } from "@/src/lib/sentry";
 import { trackEvent } from "@/src/lib/analytics";
 import { mountWithAct, registerMountCleanup } from "@/src/test-utils/react-test-renderer";
 
 registerMountCleanup();
 
-const LESSON = getLesson("a1-u1-l1")!;
+const maybeLesson = getLesson("a1-u1-l1");
+if (!maybeLesson) {
+  throw new Error('Stale test fixture: curriculum lesson "a1-u1-l1" no longer exists');
+}
+const LESSON = maybeLesson;
 
 function q(correctId: string) {
   return {
@@ -92,11 +100,13 @@ describe("Story 19-2 — useLessonDrill", () => {
     await act(async () => {
       await ref.current.generate();
     });
-    // Q1: correct (a). Second select while showResult is a no-op.
+    // Q1: correct (a). Second select while showResult is a no-op — the
+    // score AND the highlighted selection must both stay locked (review R1).
     act(() => ref.current.select("a"));
     act(() => ref.current.select("d"));
     let s = ref.current.state;
     expect(s.kind === "active" && s.correctCount).toBe(1);
+    expect(s.kind === "active" && s.selected).toBe("a");
     act(() => ref.current.next());
     // Q2: wrong (correct is b).
     act(() => ref.current.select("d"));
@@ -107,11 +117,30 @@ describe("Story 19-2 — useLessonDrill", () => {
     s = ref.current.state;
     expect(s).toEqual({ kind: "done", correctCount: 2, total: 3 });
     expect(trackEvent).toHaveBeenCalledTimes(1);
+    // Review R1: the level is DERIVED from the lesson's unit, never a
+    // hardcoded "A1" (the 21-2 R2 banding-bug class).
     expect(trackEvent).toHaveBeenCalledWith("exercise_completed", {
       skill: "grammar",
-      cefr_level: "A1",
+      cefr_level: getUnitForLesson(LESSON.id)!.level,
       score_band: "51-75", // 2/3 → 67
     });
+  });
+
+  it("a SECOND round ('New round') emits its own completion event — the per-round guard resets", async () => {
+    const ref = mountHook();
+    for (let round = 0; round < 2; round++) {
+      await act(async () => {
+        await ref.current.generate();
+      });
+      act(() => ref.current.select("a"));
+      act(() => ref.current.next());
+      act(() => ref.current.select("b"));
+      act(() => ref.current.next());
+      act(() => ref.current.select("c"));
+      act(() => ref.current.next());
+      expect(ref.current.state.kind).toBe("done");
+    }
+    expect(trackEvent).toHaveBeenCalledTimes(2);
   });
 
   it("double-tap guard: concurrent generate() calls fire ONE completion request", async () => {
