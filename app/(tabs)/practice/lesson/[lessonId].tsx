@@ -18,6 +18,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Icon } from "@/src/components/common/Icon";
 import { getLesson, getUnitForLesson } from "@/src/lib/curriculum";
 import { getCompletedLessonIds } from "@/src/lib/lesson-progress";
+import { useLessonDrill } from "@/src/hooks/use-lesson-drill";
+import { MCQCard } from "@/src/components/practice/MCQCard";
 import { Colors } from "@/src/lib/design";
 import { useAuthStore } from "@/src/store/auth-store";
 
@@ -47,6 +49,9 @@ export default function LessonPlayerScreen() {
       };
     }, [user?.id, rawLessonId])
   );
+
+  // Story 19-2 (drill slice): the teach → DRILL → apply middle step.
+  const drill = useLessonDrill(lesson);
 
   if (!lesson || !unit) {
     return (
@@ -140,6 +145,104 @@ export default function LessonPlayerScreen() {
               </Text>
             </View>
           ))}
+        </View>
+
+        {/* Quick drill (Story 19-2 drill slice): 3 lesson-scoped MCQs —
+            practice-only (no skill_progress write; the conversation step
+            owns the progress pipeline). */}
+        <View className="bg-white rounded-2xl p-4 border border-surface-300 mb-4">
+          <View className="flex-row items-center gap-2 mb-2">
+            <Icon name="zap" size={16} color={Colors.accent} />
+            <Text className="text-[13px] font-bold text-primary">Quick drill</Text>
+          </View>
+
+          {drill.state.kind === "idle" && (
+            <TouchableOpacity
+              onPress={() => void drill.generate()}
+              accessibilityRole="button"
+              accessibilityLabel="Start the quick drill: three questions on this lesson's grammar"
+              accessibilityHint="Double tap to generate three practice questions"
+              className="bg-accent/10 border border-accent/25 rounded-xl p-3 items-center"
+            >
+              <Text className="text-[14px] font-bold" style={{ color: Colors.accentText }}>
+                3 questions on{" "}
+                {lesson.grammarTarget.length > 40 ? "this grammar point" : lesson.grammarTarget}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {drill.state.kind === "generating" && (
+            <Text className="text-[13px]" style={{ color: Colors.gray500 }}>
+              Writing your questions…
+            </Text>
+          )}
+
+          {drill.state.kind === "error" && (
+            <View>
+              <Text className="text-[13px] mb-2" style={{ color: Colors.error }}>
+                {drill.state.message}
+              </Text>
+              <TouchableOpacity
+                onPress={() => void drill.generate()}
+                accessibilityRole="button"
+                accessibilityLabel="Retry the quick drill"
+                className="bg-accent/10 border border-accent/25 rounded-xl p-3 items-center"
+              >
+                <Text className="text-[14px] font-bold" style={{ color: Colors.accentText }}>
+                  Try again
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {drill.state.kind === "active" && (
+            <View>
+              <Text className="text-[12px] mb-2" style={{ color: Colors.gray500 }}>
+                Question {drill.state.index + 1} of {drill.state.questions.length}
+              </Text>
+              <MCQCard
+                question={drill.state.questions[drill.state.index]}
+                selectedAnswer={drill.state.selected}
+                showResult={drill.state.showResult}
+                onSelect={drill.select}
+              />
+              {drill.state.showResult && (
+                <TouchableOpacity
+                  onPress={drill.next}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    drill.state.index + 1 >= drill.state.questions.length
+                      ? "Finish the drill"
+                      : "Next question"
+                  }
+                  className="bg-primary rounded-xl p-3 items-center mt-3"
+                >
+                  <Text className="text-white text-[14px] font-bold">
+                    {drill.state.index + 1 >= drill.state.questions.length ? "Finish" : "Next"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {drill.state.kind === "done" && (
+            <View className="flex-row items-center justify-between">
+              <Text className="text-[14px] font-bold" style={{ color: Colors.success }}>
+                {drill.state.correctCount}/{drill.state.total} correct
+                {drill.state.correctCount === drill.state.total ? " — perfect!" : ""}
+              </Text>
+              <TouchableOpacity
+                onPress={() => void drill.generate()}
+                accessibilityRole="button"
+                accessibilityLabel="Try three new questions"
+                className="bg-accent/10 border border-accent/25 rounded-full px-3 py-1.5"
+              >
+                <Text className="text-[12px] font-bold" style={{ color: Colors.accentText }}>
+                  New round
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Completed banner (Review R1: the post-conversation landing spot

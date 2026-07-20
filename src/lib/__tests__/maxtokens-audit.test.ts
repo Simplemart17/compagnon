@@ -75,6 +75,12 @@ describe("Story 11-5 maxTokens audit — drift detector", () => {
     expect(window).toMatch(/maxTokens:\s*1024/);
   });
 
+  it("use-lesson-drill.ts right-sized to 900 (Story 19-2 drill: 3 MCQs)", () => {
+    const src = read("../../hooks/use-lesson-drill.ts");
+    expect(src).toMatch(/LESSON_DRILL_MAX_TOKENS = 900/);
+    expect(src).toMatch(/maxTokens: LESSON_DRILL_MAX_TOKENS/);
+  });
+
   it("post-conversation-analysis.ts (consolidated module) uses maxTokens=1500", () => {
     const src = read("../post-conversation-analysis.ts");
     expect(src).toMatch(/POST_CONVERSATION_ANALYSIS_MAX_TOKENS\s*=\s*1500/);
