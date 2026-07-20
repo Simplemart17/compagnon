@@ -1,0 +1,216 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a2-u5",
+    "level": "A2",
+    "order": 5,
+    "titleEn": "Memories and Habits",
+    "titleFr": "Souvenirs et habitudes",
+    "lessons": [
+      {
+        "id": "a2-u5-l1",
+        "order": 1,
+        "canDoEn": "I can talk about how things used to be, using the imperfect.",
+        "canDoFr": "Je peux dire comment c'était avant.",
+        "grammarTarget": "The imperfect (imparfait): nous-stem + -ais/-ais/-ait/-ions/-iez/-aient; être → ét- stem; meaning = habitual or ongoing past",
+        "teachEn": "French has a second past tense, the imperfect (imparfait), for habits and ongoing scenes in the past — English 'used to' or 'was doing'. Building it is regular: take the nous form of the present, drop -ons, and add -ais, -ais, -ait, -ions, -iez, -aient. From nous parlons you get parl- : je parlais, tu parlais, il/elle parlait, nous parlions, vous parliez, ils/elles parlaient. From nous avons → av- : j'avais; from nous faisons → fais- : il faisait. Only être is irregular, with the stem ét- : j'étais, tu étais, il/elle était, nous étions, vous étiez, ils/elles étaient — and now you know that A2 Unit 1's chunk C'était is simply the imperfect of être. Signal a habit with autrefois (in the old days) or quand j'étais petit / petite: 'Autrefois, j'habitais à Québec.'",
+        "teachFr": "Quand j'étais petite, j'habitais à Québec. J'avais un chien et je parlais anglais à la maison. Autrefois, ma grand-mère chantait souvent et nous étions très contents. Mes parents étaient contents aussi. C'était génial !",
+        "vocab": [
+          {
+            "fr": "j'étais",
+            "en": "I was (imperfect of être)"
+          },
+          {
+            "fr": "il était / elle était",
+            "en": "he/she/it was (imperfect of être)"
+          },
+          {
+            "fr": "nous étions",
+            "en": "we were (imperfect of être)"
+          },
+          {
+            "fr": "j'avais",
+            "en": "I had (imperfect of avoir)"
+          },
+          {
+            "fr": "je parlais",
+            "en": "I used to speak, I was speaking (imperfect of -er verbs)"
+          },
+          {
+            "fr": "ils étaient / elles étaient",
+            "en": "they were (imperfect of être)"
+          },
+          {
+            "fr": "autrefois",
+            "en": "in the past, in the old days"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Quand j'étais petit",
+          "goalEn": "Talk about how things used to be, using the imperfect",
+          "promptSeed": "Role-play two friends sharing childhood memories. Model the imperfect for habits and scenes — 'Quand j'étais petite, j'habitais à Québec', 'J'avais un chien', 'Le samedi, nous jouions au parc' — then elicit it from the learner: 'Où est-ce que tu habitais ?', 'Tu avais un chien ?', 'Tu parlais français à la maison ?'. Push the pattern across être (j'étais, il était) and -er verbs (je parlais, il jouait), plus autrefois and quand j'étais petit. Recast a passé composé used for a long-lasting habit ('j'ai habité à Québec') into the imperfect 'j'habitais'. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u5-l2",
+        "order": 2,
+        "canDoEn": "I can tell the difference between a past habit and a single event.",
+        "canDoFr": "Je peux dire ce que je faisais et ce que j'ai fait.",
+        "grammarTarget": "Imperfect vs passé composé: habitual/background (imparfait) vs completed/foreground event (passé composé)",
+        "teachEn": "French has two past tenses because they do different jobs. The imperfect (Lesson 1) paints the BACKGROUND: habits, repeated actions, and how things WERE. The passé composé (A2 Unit 1) reports a single completed EVENT that moved the story forward. Compare: 'Quand j'étais petit, je jouais au parc' (a childhood habit — imperfect) versus 'Hier, j'ai joué au parc' (one finished event — passé composé). They often meet in one sentence, background + event: 'Il faisait beau quand je suis arrivé' — the weather was ongoing (imperfect), the arrival happened once (passé composé). Signal habits with toujours (always), pendant (during) and pendant les vacances; signal a sudden event with tout à coup (suddenly) or un jour (one day): 'Un jour, tout à coup, il a neigé !'",
+        "teachFr": "Quand j'étais jeune, nous allions à la plage pendant les vacances : je jouais dans l'eau tous les jours. Mais un jour, tout à coup, il a plu ! Nous sommes rentrés à la maison et nous avons mangé ensemble.",
+        "vocab": [
+          {
+            "fr": "les vacances",
+            "en": "the holidays, vacation"
+          },
+          {
+            "fr": "pendant",
+            "en": "during, for (a length of time)"
+          },
+          {
+            "fr": "toujours",
+            "en": "always"
+          },
+          {
+            "fr": "tout à coup",
+            "en": "suddenly"
+          },
+          {
+            "fr": "un jour",
+            "en": "one day (in a story)"
+          },
+          {
+            "fr": "l'enfance",
+            "en": "childhood"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Pendant les vacances",
+          "goalEn": "Contrast past habits and single events",
+          "promptSeed": "Role-play sharing a story from childhood (l'enfance). Contrast the two past tenses: model a habit with the imperfect ('Quand j'étais jeune, j'allais à la plage en été') and a single event with the passé composé ('Un jour, j'ai trouvé un chien !'). Then elicit both: 'Où est-ce que tu allais pendant les vacances ?' (a habit) and 'Et un jour, qu'est-ce que tu as fait ?' (an event). Use background + event together: 'Il faisait beau quand tu es arrivé ?'. Bring in toujours, pendant and tout à coup. Recast an event told in the imperfect back into the passé composé."
+        }
+      },
+      {
+        "id": "a2-u5-l3",
+        "order": 3,
+        "canDoEn": "I can describe a person or a place in the past.",
+        "canDoFr": "Je peux décrire une personne ou un endroit au passé.",
+        "grammarTarget": "Describing the past with the imperfect: c'était, il y avait, il faisait + physical-description adjectives",
+        "teachEn": "The imperfect is the tense for DESCRIBING the past — how a person, a place, or a day WAS. Three ready-made openers do most of the work: c'était (it was — the imperfect of être), il y avait (there was / there were — the imperfect of A1's il y a), and il faisait (for weather). Recap your A1 adjectives to describe people: 'Ma grand-mère était petite et âgée. Elle était belle et gentille.' Describe hair and eyes with avoir in the imperfect: 'J'avais les cheveux longs', 'Il avait les yeux bruns.' The new pairs court / courte (short) and long / longue (long) agree like A1 adjectives. Set a whole scene: 'C'était l'hiver. Il faisait froid et il y avait beaucoup de neige.'",
+        "teachFr": "Autrefois, nous avions un petit appartement à Montréal. C'était joli ! Il y avait un parc à côté. Ma mère avait les cheveux longs et les yeux verts. En hiver, il faisait très froid, mais nous étions contents.",
+        "vocab": [
+          {
+            "fr": "il y avait",
+            "en": "there was, there were (imperfect of il y a)"
+          },
+          {
+            "fr": "les cheveux",
+            "en": "the hair (j'avais les cheveux longs)"
+          },
+          {
+            "fr": "les yeux",
+            "en": "the eyes (elle avait les yeux bleus)"
+          },
+          {
+            "fr": "court / courte",
+            "en": "short (for things and hair)"
+          },
+          {
+            "fr": "long / longue",
+            "en": "long"
+          },
+          {
+            "fr": "un appartement",
+            "en": "an apartment"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "C'était comment ?",
+          "goalEn": "Describe a person or place in the past",
+          "promptSeed": "Role-play describing an old home and an old friend. Set the scene with the imperfect openers — 'C'était un petit appartement', 'Il y avait un parc à côté', 'Il faisait chaud' — then describe a person: 'Ma grand-mère était petite et gentille', 'Elle avait les cheveux longs et les yeux bruns.' Elicit the same from the learner: 'Ta maison était grande ou petite ?', 'Ton ami avait les cheveux courts ?'. Recycle A1 adjectives and A2 colours. Bring in court / courte, long / longue and un appartement. Recast a passé composé description into the imperfect. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u5-l4",
+        "order": 4,
+        "canDoEn": "I can say how often I used to do things.",
+        "canDoFr": "Je peux dire ce que je faisais souvent et ce que je ne faisais jamais.",
+        "grammarTarget": "Habitual markers with the imperfect (d'habitude, de temps en temps, rarement, chaque) + ne … jamais",
+        "teachEn": "The imperfect loves habit words. Place how-often words to paint a routine you USED to keep: d'habitude (usually), de temps en temps (from time to time), rarement (rarely), plus souvent and tous les jours from earlier. Chaque means each / every before a singular noun: chaque matin, chaque jour. 'D'habitude, je me levais tôt', 'De temps en temps, nous allions au cinéma.' For 'never', wrap the verb with ne … jamais, exactly like ne … pas: 'Je ne jouais jamais au hockey.' And just as pas becomes pas de, jamais takes de before a noun: 'Je ne mangeais jamais de légumes.' Sum up a routine with une habitude (a habit): 'C'était mon habitude.'",
+        "teachFr": "Quand j'étais jeune, j'avais une bonne habitude : chaque matin, je me levais tôt. D'habitude, je mangeais mon déjeuner à la maison. De temps en temps, nous allions au restaurant, mais je ne mangeais jamais de dessert !",
+        "vocab": [
+          {
+            "fr": "d'habitude",
+            "en": "usually"
+          },
+          {
+            "fr": "de temps en temps",
+            "en": "from time to time, occasionally"
+          },
+          {
+            "fr": "rarement",
+            "en": "rarely"
+          },
+          {
+            "fr": "ne … jamais",
+            "en": "never (wraps the verb: je ne jouais jamais)"
+          },
+          {
+            "fr": "chaque",
+            "en": "each, every (before a singular noun: chaque matin)"
+          },
+          {
+            "fr": "une habitude",
+            "en": "a habit"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Mes habitudes",
+          "goalEn": "Describe your past routine and how often you did things",
+          "promptSeed": "Role-play comparing the routines you used to keep. Model past habits with frequency words and the imperfect — 'D'habitude, je me levais tôt', 'Chaque matin, je mangeais à la maison', 'De temps en temps, nous allions au cinéma' — then elicit the learner's old routine: 'Tu te levais tôt ou tard ?', 'Tu allais souvent au parc ?'. Practise ne … jamais for what they never did: 'Je ne jouais jamais au hockey.' Bring in d'habitude, rarement, chaque and une habitude. Recast a bare 'jamais' without ne ('je jouais jamais') into the full 'je ne jouais jamais'. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u5-l5",
+        "order": 5,
+        "canDoEn": "I can tell a childhood memory, mixing the scene and the events.",
+        "canDoFr": "Je peux raconter un souvenir d'enfance.",
+        "grammarTarget": "Unit synthesis: narrating a childhood memory — imperfect for the scene and habits, passé composé for the events",
+        "teachEn": "Now tell a full childhood memory (un souvenir), weaving the two past tenses together. Set the SCENE with the imperfect — where you were, what things were like, what you usually did: 'Quand j'étais enfant, nous habitions à la campagne. Il y avait un parc à côté et je jouais tous les jours.' Then drop in the EVENTS with the passé composé — the things that happened once: 'Un jour, mon père a acheté un chien.' Use pendant que (while) to run a background action under an event: 'Pendant que je mangeais, tout à coup, il a neigé.' Chain the story with d'abord, ensuite, enfin (A1) and react with C'était : 'C'était incroyable !', 'J'étais très heureux.' The verb raconter means to tell: 'Je vais raconter un souvenir.'",
+        "teachFr": "Je vais raconter un beau souvenir. Quand j'étais enfant, nous habitions à Québec. Il faisait froid en hiver et il y avait beaucoup de neige. Chaque samedi, je jouais avec mon frère. Un jour, pendant que nous jouions, mon père est arrivé avec un chien ! J'étais très heureuse. C'était incroyable !",
+        "vocab": [
+          {
+            "fr": "un souvenir",
+            "en": "a memory"
+          },
+          {
+            "fr": "un enfant",
+            "en": "a child (quand j'étais enfant)"
+          },
+          {
+            "fr": "pendant que",
+            "en": "while (introduces a background action)"
+          },
+          {
+            "fr": "heureux / heureuse",
+            "en": "happy"
+          },
+          {
+            "fr": "incroyable",
+            "en": "incredible, amazing (one form for masculine and feminine)"
+          },
+          {
+            "fr": "raconter",
+            "en": "to tell (a story)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Un beau souvenir",
+          "goalEn": "Tell a childhood memory, mixing the scene and the events",
+          "promptSeed": "Role-play sharing a childhood memory to close the unit. Model a full story that mixes the tenses: set the scene in the imperfect ('Quand j'étais enfant, nous habitions à la campagne. Il faisait beau et je jouais au parc') and report events in the passé composé ('Un jour, mon père a acheté un chien'). Then draw out the learner's memory: 'Où est-ce que tu habitais ?', 'C'était comment ?', 'Qu'est-ce que tu as fait un jour ?'. Use pendant que to layer a background under an event. Bring in un souvenir, heureux and incroyable. Recast tense slips gently, and close with 'C'était un beau souvenir !'."
+        }
+      }
+    ]
+  }
+}
