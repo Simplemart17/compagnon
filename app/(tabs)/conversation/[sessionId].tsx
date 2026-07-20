@@ -2,7 +2,7 @@
  * Active Voice Conversation Screen
  *
  * Full-screen voice conversation with:
- * - Animated waveform visualization
+ * - Expressive companion avatar (state-driven, audio-amplitude mouth — Story 18-4)
  * - Real-time transcript
  * - Correction bubbles
  * - Push-to-talk + hands-free (VAD) modes
@@ -40,8 +40,8 @@ import { retrieveMemories } from "@/src/lib/memory";
 import { getTopErrors } from "@/src/lib/error-tracker";
 import { MAX_PROMPT_ERROR_PATTERNS, MAX_PROMPT_MEMORIES } from "@/src/lib/prompts/conversation";
 import { captureError } from "@/src/lib/sentry";
-import { AIOrb, type AIOrbState } from "@/src/components/conversation/AIOrb";
-import { AIOrbStatusLabel } from "@/src/components/conversation/AIOrbStatusLabel";
+import { AvatarStatusLabel, CompanionAvatar } from "@/src/components/conversation/CompanionAvatar";
+import { deriveAvatarState } from "@/src/lib/avatar-state";
 import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
 import { Icon } from "@/src/components/common/Icon";
@@ -222,6 +222,13 @@ export default function ConversationSessionScreen() {
     }
   }, [profile?.current_cefr_level]);
 
+  // Story 18-4: AI output-audio level for the avatar mouth. Written by the
+  // orchestrator at audio-delta cadence — a Reanimated SharedValue, NEVER
+  // React state (Story 13-1 render-storm contract). The closure below is
+  // captured once at orchestrator construction; the shared value's identity
+  // is stable, so the first-render capture is safe.
+  const aiAmplitude = useSharedValue(0);
+
   const conversation = useRealtimeVoice({
     cefrLevel,
     mode,
@@ -231,6 +238,9 @@ export default function ConversationSessionScreen() {
     voice: "coral",
     onConversationEnd: () => {
       setFeedbackVisible(true);
+    },
+    onAudioAmplitude: (level) => {
+      aiAmplitude.value = level;
     },
   });
 
@@ -534,28 +544,17 @@ export default function ConversationSessionScreen() {
             />
 
             <View className="flex-1 items-center justify-center">
-              {/* AIOrb: state-driven centerpiece. Compute the unified `orbState`
-                  from the orchestrator's flags (connection → connecting,
-                  AI-audio → ai-speaking, mic-VAD → listening, in-flight
-                  AI request → processing, otherwise idle). Order matters —
-                  connecting wins over everything, then ai-speaking (the
-                  most user-visible AI moment), then listening, then
-                  processing. */}
+              {/* CompanionAvatar (Story 18-4): the companion's face — the
+                  state derivation lives in the pure `deriveAvatarState`
+                  mapper (priority: connecting → speaking → listening →
+                  thinking → idle) and the mouth is driven by real output
+                  audio amplitude via the `aiAmplitude` shared value. */}
               {(() => {
-                const orbState: AIOrbState =
-                  conversation.status === "connecting" || conversation.status === "reconnecting"
-                    ? "connecting"
-                    : conversation.isAiSpeaking
-                      ? "ai-speaking"
-                      : conversation.isSpeaking
-                        ? "listening"
-                        : conversation.isProcessing
-                          ? "processing"
-                          : "idle";
+                const avatarState = deriveAvatarState(conversation);
                 return (
                   <>
-                    <AIOrb state={orbState} size={180} />
-                    <AIOrbStatusLabel state={orbState} />
+                    <CompanionAvatar state={avatarState} amplitude={aiAmplitude} size={180} />
+                    <AvatarStatusLabel state={avatarState} />
                   </>
                 );
               })()}
@@ -881,9 +880,14 @@ export default function ConversationSessionScreen() {
               )}
 
               <ScrollView showsVerticalScrollIndicator={false} style={{ flexShrink: 1 }}>
-                {/* MilestoneBanner (if earned) */}
+                {/* MilestoneBanner (if earned) — Story 18-4: the companion
+                    celebrates WITH the user (mini celebrating avatar above
+                    the banner; bounce + happy-squint + blush). */}
                 {milestone && (
                   <View className="mb-3">
+                    <View className="items-center" style={{ marginBottom: -18 }}>
+                      <CompanionAvatar state="celebrating" size={64} />
+                    </View>
                     <MilestoneBanner {...milestone} />
                   </View>
                 )}

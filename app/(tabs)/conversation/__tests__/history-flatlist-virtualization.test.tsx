@@ -36,7 +36,8 @@ jest.mock("@/src/lib/sentry", () => ({
 }));
 
 import React from "react";
-import { act, create } from "react-test-renderer";
+
+import { mountWithAct, registerMountCleanup } from "@/src/test-utils/react-test-renderer";
 
 import {
   Bubble,
@@ -45,27 +46,7 @@ import {
   handleScrollIndexFailure,
 } from "../history";
 
-const activeRenderers: ReturnType<typeof create>[] = [];
-
-afterEach(() => {
-  for (const renderer of activeRenderers) {
-    try {
-      act(() => renderer.unmount());
-    } catch {
-      /* already unmounted */
-    }
-  }
-  activeRenderers.length = 0;
-});
-
-function mount(element: React.ReactElement) {
-  let renderer!: ReturnType<typeof create>;
-  act(() => {
-    renderer = create(element);
-  });
-  activeRenderers.push(renderer);
-  return renderer;
-}
+registerMountCleanup();
 
 const USER_MSG = {
   id: "u-1",
@@ -96,7 +77,9 @@ const ASSISTANT_WITH_CORRECTIONS = {
 
 describe("Bubble + EmptyTranscriptText — Story 13-5 FlatList runtime (audit P2-7)", () => {
   it("Case 1: Bubble renders the user-message shape (alignSelf=flex-end, primary background)", () => {
-    const renderer = mount(<Bubble msg={USER_MSG} msgMatches={undefined} activeMatchIdx={0} />);
+    const renderer = mountWithAct(
+      <Bubble msg={USER_MSG} msgMatches={undefined} activeMatchIdx={0} />
+    );
     const tree = renderer.toJSON();
     // Top-level wrapper has alignSelf=flex-end for user messages.
     expect(tree).not.toBeNull();
@@ -107,7 +90,7 @@ describe("Bubble + EmptyTranscriptText — Story 13-5 FlatList runtime (audit P2
   });
 
   it("Case 2: Bubble renders the assistant-message shape (alignSelf=flex-start)", () => {
-    const renderer = mount(
+    const renderer = mountWithAct(
       <Bubble msg={ASSISTANT_MSG} msgMatches={undefined} activeMatchIdx={0} />
     );
     const json = JSON.stringify(renderer.toJSON());
@@ -116,7 +99,7 @@ describe("Bubble + EmptyTranscriptText — Story 13-5 FlatList runtime (audit P2
   });
 
   it("Case 3: Bubble renders the corrections block (Story 11-1 inner .map preserved)", () => {
-    const renderer = mount(
+    const renderer = mountWithAct(
       <Bubble msg={ASSISTANT_WITH_CORRECTIONS} msgMatches={undefined} activeMatchIdx={0} />
     );
     const json = JSON.stringify(renderer.toJSON());
@@ -126,7 +109,7 @@ describe("Bubble + EmptyTranscriptText — Story 13-5 FlatList runtime (audit P2
   });
 
   it("Case 4: Bubble renders `HighlightedText` when msgMatches is provided", () => {
-    const renderer = mount(
+    const renderer = mountWithAct(
       <Bubble
         msg={USER_MSG}
         msgMatches={{
@@ -159,7 +142,7 @@ describe("Bubble + EmptyTranscriptText — Story 13-5 FlatList runtime (audit P2
   });
 
   it("Case 6: EmptyTranscriptText renders the empty-state copy", () => {
-    const renderer = mount(<EmptyTranscriptText />);
+    const renderer = mountWithAct(<EmptyTranscriptText />);
     const json = JSON.stringify(renderer.toJSON());
     expect(json).toContain("This conversation");
     expect(json).toContain("transcript is not available yet");

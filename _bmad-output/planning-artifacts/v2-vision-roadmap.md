@@ -81,7 +81,7 @@ Every identified gap, mapped to where it gets worked. Nothing is left unassigned
   - Streak-save nudge (evening, only if streak ≥ 3 and no activity today).
   - AC: nudges reference real user context (not generic); tapping deep-links into a conversation pre-seeded with that topic.
 
-- **18.4 Avatar v1 — on-device animated companion** (~1–2 weeks)
+- **18.4 Avatar v1 — on-device animated companion** ✅ (2026-07-19 — see D-V1 amendment below; device FPS verification = operator action on next dev build)
   - An expressive animated character (Rive recommended; Lottie/Reanimated fallback) center-stage on the conversation screen with state-driven animation: idle / listening (user speaking) / thinking / speaking (mouth movement driven by output-audio amplitude from the existing PCM stream) / celebrating (on milestones).
   - **Deliberately NOT streaming video in v1** — see decision D-V1. Zero marginal cost per minute, works offline-degraded, keeps the Realtime audio pipeline untouched, and preserves the 5¢/session economics.
   - AC: avatar states track orchestrator states with < 200ms lag; conversation screen holds the Epic 13 ≥ 55 FPS budget with the avatar animating (device-verified this time, not estimated).
@@ -149,7 +149,7 @@ Total to public launch: roughly **3–4 months** at solo pace with agent paralle
 
 | ID | Decision | Options | Recommendation |
 | --- | --- | --- | --- |
-| D-V1 | Avatar technology v1 | streaming video API / **on-device animated character (Rive) with audio-driven states** / static illustration | **On-device.** Streaming video costs 10–200× current per-session AI spend and adds a latency + WebRTC dependency; economics only work behind a paid tier. Rive character preserves 5¢ sessions and ships weeks sooner. |
+| D-V1 | Avatar technology v1 | streaming video API / **on-device animated character (Rive) with audio-driven states** / static illustration | **On-device.** Streaming video costs 10–200× current per-session AI spend and adds a latency + WebRTC dependency; economics only work behind a paid tier. Rive character preserves 5¢ sessions and ships weeks sooner. **AMENDED 2026-07-19 (Story 18-4):** shipped as a CODE-DRAWN Reanimated character rather than Rive — a .riv character requires operator-authored art in the Rive editor (not producible in-repo), and `rive-react-native` is a native module (breaks OTA). The `AvatarState` union + amplitude SharedValue form the renderer contract; a Rive character can swap in behind the same props later (`18-4-followup-rive-renderer`, needs operator-authored .riv + EAS build). All other D-V1 rationale (on-device, zero marginal cost, no WebRTC) fully honored. |
 | D-V2 | Avatar video (v2) | never / free tier / **paid tier only, pending 18.5 spike** | **Paid-tier gate.** Sell the "video buddy" as the upgrade. |
 | D-C1 | Curriculum scope | full A1→C2 now / **A1→B2 deep first, C1–C2 as later advanced tracks** | **A1→B2 first.** Matches the TCF/CLB market; honest about the ~1,000-hour C2 reality. |
 | D-B1 | Correction explanation language | FR-only / EN-only / **CEFR-adaptive FR+EN** | **CEFR-adaptive** (A1–A2 EN-primary → B2+ FR-primary, always both available). |

@@ -43,6 +43,8 @@ export interface UseRealtimeVoiceOptions {
   voice?: VoiceName;
   onTranscriptUpdate?: (transcript: TranscriptEntry[]) => void;
   onConversationEnd?: (transcript: TranscriptEntry[], corrections: Correction[]) => void;
+  /** Story 18-4: avatar mouth drive — see RealtimeOrchestratorOptions. */
+  onAudioAmplitude?: (level: number) => void;
 }
 
 export interface UseRealtimeVoiceReturn extends ConversationState {
@@ -77,6 +79,7 @@ export function useRealtimeVoice(options: UseRealtimeVoiceOptions): UseRealtimeV
       errorPatterns: options.errorPatterns,
       onTranscriptUpdate: options.onTranscriptUpdate,
       onConversationEnd: options.onConversationEnd,
+      onAudioAmplitude: options.onAudioAmplitude,
     };
     orchestratorRef.current = new RealtimeOrchestrator(orchestratorOptions);
   }

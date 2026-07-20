@@ -81,7 +81,6 @@ jest.mock("@/src/lib/sentry", () => ({
 }));
 
 import React from "react";
-import { act, create } from "react-test-renderer";
 
 import { ConversationCard, conversationCardStaticStyle } from "@/app/(tabs)/home/index";
 import { Colors, Radii } from "@/src/lib/design";
@@ -89,9 +88,12 @@ import { SkillCard, skillCardPressableStaticStyle } from "@/src/components/commo
 import { StatTile, statTileStaticStyle } from "@/src/components/common/StatTile";
 // Shared `findAllNodes` + `flattenStyle` from `@/src/test-utils/react-test-renderer`
 // (Epic 13 retro AI #7). Pre-AI-#7 this file duplicated the type + helpers inline.
-import { findAllNodes, flattenStyle } from "@/src/test-utils/react-test-renderer";
-
-const activeRenderers: ReturnType<typeof create>[] = [];
+import {
+  findAllNodes,
+  flattenStyle,
+  mountWithAct,
+  registerMountCleanup,
+} from "@/src/test-utils/react-test-renderer";
 
 // Review-round-1 P6: clear AsyncStorage / NetInfo / SecureStore / Sentry mock
 // call history between cases so a future regression in `home/index.tsx`'s
@@ -101,29 +103,11 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-afterEach(() => {
-  for (const renderer of activeRenderers) {
-    try {
-      act(() => renderer.unmount());
-    } catch {
-      /* already unmounted */
-    }
-  }
-  activeRenderers.length = 0;
-});
-
-function mount(element: React.ReactElement) {
-  let renderer!: ReturnType<typeof create>;
-  act(() => {
-    renderer = create(element);
-  });
-  activeRenderers.push(renderer);
-  return renderer;
-}
+registerMountCleanup();
 
 describe("Story 13-7 — animated-wrappers runtime smoke tests", () => {
   it("Case 1: ConversationCard mounts; outer AnimatedPressable flattened style includes Colors.primary background", () => {
-    const renderer = mount(<ConversationCard onPress={() => {}} />);
+    const renderer = mountWithAct(<ConversationCard onPress={() => {}} />);
     // Outer animated wrapper: under the file-level reanimated mock,
     // `Animated.createAnimatedComponent(Pressable)` returns Pressable
     // as-is. Review-round-1 P3: anchor on (Colors.primary background) AND
@@ -152,7 +136,7 @@ describe("Story 13-7 — animated-wrappers runtime smoke tests", () => {
   });
 
   it("Case 2: StatTile mounts; outer Animated.View flattened style includes flex 1 + Radii.card border-radius", () => {
-    const renderer = mount(<StatTile value="42" unit="min" label="Today" delay={0} />);
+    const renderer = mountWithAct(<StatTile value="42" unit="min" label="Today" delay={0} />);
     // Find the StatTile outer wrapper by its unique style signature:
     // it's the ONLY rendered node carrying both `flex: 1` and the
     // accessibilityLabel for the tile. Anchoring on accessibilityLabel
@@ -181,7 +165,7 @@ describe("Story 13-7 — animated-wrappers runtime smoke tests", () => {
   });
 
   it("Case 3: SkillCard mounts; inner Pressable flattened style includes Colors.surfaceWhite background", () => {
-    const renderer = mount(
+    const renderer = mountWithAct(
       <SkillCard
         emoji="🎯"
         titleFr="Écoute"

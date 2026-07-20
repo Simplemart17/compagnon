@@ -23,6 +23,7 @@
  * matches the actual react-test-renderer runtime shape.
  */
 
+import type React from "react";
 import type { create } from "react-test-renderer";
 
 /**
@@ -80,4 +81,43 @@ export function flattenStyle(style: unknown): Record<string, unknown> {
     return style as Record<string, unknown>;
   }
   return {};
+}
+
+/**
+ * Story 18-4 completion pass (review R1 chore): the shared act-wrapped
+ * mount. Three near-identical copies had already diverged (two tracked
+ * renderers for afterEach cleanup, one didn't). Register the cleanup once
+ * per test file via `registerMountCleanup()` (call at module scope), then
+ * `mountWithAct(...)` per case — every mounted renderer is unmounted in
+ * afterEach even when a test throws mid-case.
+ */
+const activeRenderers: { unmount: () => void }[] = [];
+
+export function mountWithAct(element: React.ReactElement): ReturnType<typeof create> {
+  // Lazy require keeps react-test-renderer + act out of non-component
+  // suites that import other helpers from this module.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy, see above
+  const rtr = require("react-test-renderer") as typeof import("react-test-renderer");
+  let renderer!: ReturnType<typeof create>;
+  rtr.act(() => {
+    renderer = rtr.create(element) as ReturnType<typeof create>;
+  });
+  activeRenderers.push(renderer);
+  return renderer;
+}
+
+/** Install the afterEach that unmounts everything mountWithAct created. */
+export function registerMountCleanup(): void {
+  afterEach(() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy, see above
+    const rtr = require("react-test-renderer") as typeof import("react-test-renderer");
+    for (const renderer of activeRenderers) {
+      try {
+        rtr.act(() => renderer.unmount());
+      } catch {
+        /* already unmounted */
+      }
+    }
+    activeRenderers.length = 0;
+  });
 }
