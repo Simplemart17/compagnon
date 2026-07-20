@@ -1,0 +1,300 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a1-u1",
+    "level": "A1",
+    "order": 1,
+    "titleEn": "Introducing Yourself",
+    "titleFr": "Se présenter",
+    "lessons": [
+      {
+        "id": "a1-u1-l1",
+        "order": 1,
+        "canDoEn": "I can greet someone and introduce myself.",
+        "canDoFr": "Je peux dire bonjour et me présenter.",
+        "grammarTarget": "The verb être (je/tu/il-elle) + subject pronouns",
+        "teachEn": "In French, the words for 'I', 'you', 'he', and 'she' are je, tu, il, and elle. The verb être means 'to be' and changes with each person: je suis (I am), tu es (you are), il est / elle est (he is / she is). To introduce yourself, say 'Je suis Marie' or use the set phrase 'Je m'appelle Marie' (my name is Marie). Use tu with one person you know informally. A first meeting sounds like this: 'Bonjour ! Je m'appelle Paul.'",
+        "teachFr": "En français, je dis « je suis » ou « je m'appelle » pour dire mon nom. Exemple : Bonjour ! Je m'appelle Marie. Pour une personne, je dis « tu es » : Tu es Paul ?",
+        "vocab": [
+          {
+            "fr": "bonjour",
+            "en": "hello, good morning"
+          },
+          {
+            "fr": "salut",
+            "en": "hi (informal)"
+          },
+          {
+            "fr": "bonsoir",
+            "en": "good evening"
+          },
+          {
+            "fr": "au revoir",
+            "en": "goodbye"
+          },
+          {
+            "fr": "merci",
+            "en": "thank you"
+          },
+          {
+            "fr": "oui",
+            "en": "yes"
+          },
+          {
+            "fr": "non",
+            "en": "no"
+          },
+          {
+            "fr": "je m'appelle",
+            "en": "my name is"
+          },
+          {
+            "fr": "enchanté / enchantée",
+            "en": "nice to meet you"
+          },
+          {
+            "fr": "ça va ?",
+            "en": "how are you? (informal)"
+          },
+          {
+            "fr": "être",
+            "en": "to be"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Premières salutations",
+          "goalEn": "Greet someone and introduce yourself",
+          "promptSeed": "Role-play meeting the learner for the very first time in a café. Greet them warmly with 'Bonjour !', give your name with 'Je m'appelle...', and elicit from the learner a greeting, their name using 'je suis' or 'je m'appelle', and a goodbye at the end. Keep every utterance to 3-6 slow, simple words, recycle only bonjour / salut / ça va / merci / au revoir, and praise any attempt."
+        }
+      },
+      {
+        "id": "a1-u1-l2",
+        "order": 2,
+        "canDoEn": "I can say my nationality, where I live, and which languages I speak.",
+        "canDoFr": "Je peux dire mon pays, ma ville et ma langue.",
+        "grammarTarget": "Être + nationality adjectives with masculine/feminine agreement; habiter à + city",
+        "teachEn": "To say where you live, use habiter with à before a city: 'J'habite à Montréal.' Notice the elision: je + habite becomes j'habite, because habiter starts with a vowel sound. Nationality adjectives agree with the speaker: a man says 'Je suis canadien', a woman says 'Je suis canadienne'. For languages, use parler with no small word in between: 'Je parle français.'",
+        "teachFr": "Je dis : J'habite à Montréal. Un homme dit « je suis canadien » et une femme dit « je suis canadienne ». Je parle français et je parle anglais.",
+        "vocab": [
+          {
+            "fr": "habiter",
+            "en": "to live (somewhere)"
+          },
+          {
+            "fr": "parler",
+            "en": "to speak"
+          },
+          {
+            "fr": "venir de",
+            "en": "to come from"
+          },
+          {
+            "fr": "français / française",
+            "en": "French"
+          },
+          {
+            "fr": "anglais / anglaise",
+            "en": "English"
+          },
+          {
+            "fr": "canadien / canadienne",
+            "en": "Canadian"
+          },
+          {
+            "fr": "le pays",
+            "en": "the country"
+          },
+          {
+            "fr": "la ville",
+            "en": "the city"
+          },
+          {
+            "fr": "la langue",
+            "en": "the language"
+          },
+          {
+            "fr": "le Canada",
+            "en": "Canada"
+          },
+          {
+            "fr": "la France",
+            "en": "France"
+          },
+          {
+            "fr": "à",
+            "en": "in, at (a place)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "D'où viens-tu ?",
+          "goalEn": "Say your nationality, city, and languages",
+          "promptSeed": "Role-play two new classmates chatting before a French class starts. Ask the learner where they live and which languages they speak, and elicit 'Je suis canadien/canadienne', 'J'habite à + city', and 'Je parle + language'; if they pick the wrong masculine/feminine form, recast it gently with the correct one. Recycle the Lesson 1 greetings at the start and end, keep every utterance under 8 words, and speak slowly."
+        }
+      },
+      {
+        "id": "a1-u1-l3",
+        "order": 3,
+        "canDoEn": "I can count from 0 to 20 and say my age.",
+        "canDoFr": "Je peux compter de zéro à vingt et dire mon âge.",
+        "grammarTarget": "The verb avoir (je/tu/il-elle) + expressing age with avoir (not être)",
+        "teachEn": "The verb avoir means 'to have': j'ai (I have), tu as (you have), il a / elle a (he has / she has). French uses avoir for age, not être: you say 'J'ai vingt ans', literally 'I have twenty years'. To ask someone's age, say 'Quel âge as-tu ?' — note the hyphen between as and tu, and the elision in l'âge. Never say 'je suis vingt ans'.",
+        "teachFr": "Pour l'âge, je dis « j'ai » : J'ai vingt ans. La question est : Quel âge as-tu ? Elle a quinze ans, il a dix-huit ans.",
+        "vocab": [
+          {
+            "fr": "zéro, un, deux, trois, quatre, cinq",
+            "en": "zero, one, two, three, four, five"
+          },
+          {
+            "fr": "six, sept, huit, neuf, dix",
+            "en": "six, seven, eight, nine, ten"
+          },
+          {
+            "fr": "onze, douze, treize, quatorze, quinze",
+            "en": "eleven, twelve, thirteen, fourteen, fifteen"
+          },
+          {
+            "fr": "seize, dix-sept, dix-huit, dix-neuf, vingt",
+            "en": "sixteen, seventeen, eighteen, nineteen, twenty"
+          },
+          {
+            "fr": "avoir",
+            "en": "to have"
+          },
+          {
+            "fr": "l'âge",
+            "en": "age"
+          },
+          {
+            "fr": "un an",
+            "en": "a year (for age)"
+          },
+          {
+            "fr": "Quel âge as-tu ?",
+            "en": "How old are you?"
+          },
+          {
+            "fr": "combien",
+            "en": "how many, how much"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Quel âge as-tu ?",
+          "goalEn": "Count to 20 and say your age",
+          "promptSeed": "Role-play a friendly neighbor playing a quick counting game: count things around you together from zero to twenty, ask 'combien ?' about small groups of objects, then ask 'Quel âge as-tu ?'. Elicit several numbers out loud and the full pattern 'J'ai ... ans', gently recasting 'je suis ... ans' as 'j'ai ... ans' if it appears. Keep utterances very short, recycle greetings and names from Lessons 1-2, and repeat any number the learner misses."
+        }
+      },
+      {
+        "id": "a1-u1-l4",
+        "order": 4,
+        "canDoEn": "I can say what my job is.",
+        "canDoFr": "Je peux dire mon métier.",
+        "grammarTarget": "Être + profession with no article (Je suis médecin, not Je suis un médecin)",
+        "teachEn": "To say your job in French, use être with no article before the profession: 'Je suis médecin', never 'Je suis un médecin'. This is different from English, where we say 'I am a doctor'. Many profession words have a feminine form: un étudiant / une étudiante, un serveur / une serveuse. It works the same way with il and elle: 'Elle est serveuse.'",
+        "teachFr": "Pour le métier, je dis : Je suis médecin. Je ne dis pas « un médecin ». Il est professeur, elle est étudiante.",
+        "vocab": [
+          {
+            "fr": "un étudiant / une étudiante",
+            "en": "a student"
+          },
+          {
+            "fr": "un professeur",
+            "en": "a teacher"
+          },
+          {
+            "fr": "un médecin",
+            "en": "a doctor"
+          },
+          {
+            "fr": "un infirmier / une infirmière",
+            "en": "a nurse"
+          },
+          {
+            "fr": "un ingénieur",
+            "en": "an engineer"
+          },
+          {
+            "fr": "un serveur / une serveuse",
+            "en": "a waiter / a waitress"
+          },
+          {
+            "fr": "un vendeur / une vendeuse",
+            "en": "a salesperson"
+          },
+          {
+            "fr": "travailler",
+            "en": "to work"
+          },
+          {
+            "fr": "un métier",
+            "en": "a job, an occupation"
+          },
+          {
+            "fr": "faire",
+            "en": "to do"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ton métier",
+          "goalEn": "Say what you do for a living",
+          "promptSeed": "Role-play small talk at a friend's party: introduce yourself with your name and your job ('Je suis serveur'), then ask about the learner's job with very simple intonation questions ('Tu travailles ? Tu es étudiant ?'). Elicit 'Je suis + profession' with NO article, and if the learner adds 'un' or 'une' before the job, recast the sentence correctly without making it a big deal. Recycle greetings, names, and age from earlier lessons; keep every utterance under 8 words."
+        }
+      },
+      {
+        "id": "a1-u1-l5",
+        "order": 5,
+        "canDoEn": "I can meet someone new and ask simple questions about them.",
+        "canDoFr": "Je peux rencontrer une personne et poser des questions simples.",
+        "grammarTarget": "Question formation with rising intonation + est-ce que (recognition)",
+        "teachEn": "The easiest French question is just a sentence with rising intonation: 'Tu parles français ?' means 'Do you speak French?'. You can also put est-ce que in front of any sentence to turn it into a question: 'Est-ce que tu es canadien ?' — for now you only need to recognize it when you hear it. Question words like comment (how), où (where), and qui (who) can start the question or come at the end: 'Tu habites où ?'. In this lesson you put the whole unit together: greet someone, introduce yourself, say your age and job, and ask your own questions back.",
+        "teachFr": "Pour une question, je parle et ma voix monte : Tu parles français ? Je peux dire « est-ce que » : Est-ce que tu es canadien ? Avec « où », je dis : Tu habites où ?",
+        "vocab": [
+          {
+            "fr": "comment",
+            "en": "how"
+          },
+          {
+            "fr": "où",
+            "en": "where"
+          },
+          {
+            "fr": "qui",
+            "en": "who"
+          },
+          {
+            "fr": "est-ce que",
+            "en": "(turns a statement into a question)"
+          },
+          {
+            "fr": "vous",
+            "en": "you (formal or plural)"
+          },
+          {
+            "fr": "pardon",
+            "en": "excuse me, sorry"
+          },
+          {
+            "fr": "s'il vous plaît",
+            "en": "please (formal)"
+          },
+          {
+            "fr": "s'il te plaît",
+            "en": "please (informal)"
+          },
+          {
+            "fr": "À bientôt !",
+            "en": "See you soon!"
+          },
+          {
+            "fr": "bienvenue",
+            "en": "welcome"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Une nouvelle rencontre",
+          "goalEn": "Meet someone new and ask simple questions",
+          "promptSeed": "Role-play meeting the learner for the first time in a park and run the full Unit 1 arc: greetings, names, nationality and city, age, and jobs. This time push the learner to ask YOU questions too — invite them with short 'Et toi ?' turns and accept both rising-intonation questions and est-ce que questions. Recycle only Unit 1 vocabulary and structures, keep every utterance very short and slow, and close the conversation with 'Au revoir ! À bientôt !'."
+        }
+      }
+    ]
+  }
+}
