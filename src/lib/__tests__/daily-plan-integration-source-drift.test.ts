@@ -18,10 +18,27 @@ function readSrc(rel: string): string {
 describe("Story 19-3 — daily briefing pulls the next lesson", () => {
   const briefing = readSrc("src/hooks/use-daily-briefing.ts");
 
-  it("fetches completed lessons as a third settled slot and derives the placement-aware pointer", () => {
-    expect(briefing).toContain("getCompletedLessonIds(userId)");
+  it("fetches completed lessons as a BARE (uncached) settled slot and derives the placement-aware pointer", () => {
+    // Anchored as a bare array element inside Promise.allSettled — a future
+    // "perf" pass wrapping it in cacheWithFallback would re-introduce the
+    // stale-pointer bug the design note names (review R1).
+    expect(briefing).toMatch(
+      /Promise\.allSettled\(\[[\s\S]*?,\s*getCompletedLessonIds\(userId\),?\s*\]\)/
+    );
+    expect(briefing).not.toMatch(/\(\)\s*=>\s*getCompletedLessonIds/);
     expect(briefing).toMatch(/nextLessonForUser\(completedLessons,\s*entryLessonId\)/);
-    expect(briefing).toMatch(/entryLessonIdForLevel\(profile\?\.current_cefr_level\)/);
+    // The ASSIGNMENT is pinned (not just call existence) so a hardcoded
+    // entry + dead reference elsewhere can't satisfy the pins (review R1).
+    expect(briefing).toMatch(
+      /const entryLessonId = entryLessonIdForLevel\(profile\?\.current_cefr_level\)/
+    );
+  });
+
+  it("maps the pointer's ENGLISH can-do into the plan (a canDoFr slip type-checks — review R1)", () => {
+    expect(briefing).toMatch(
+      /nextLesson:\s*pointer\s*\?\s*\{\s*id:\s*pointer\.id,\s*canDoEn:\s*pointer\.canDoEn\s*\}\s*:\s*null/
+    );
+    expect(briefing).not.toContain("pointer.canDoFr");
   });
 
   it("refresh re-derives when the profile level hydrates (deps include current_cefr_level)", () => {
@@ -60,13 +77,33 @@ describe("Story 19-3 — conversation picker 'Continue my lesson' default", () =
   it("renders the default as the list header and routes to the lesson PLAYER (teach → drill → apply intact)", () => {
     expect(picker).toContain("ListHeaderComponent=");
     expect(picker).toContain("Continue my lesson");
+    // Fail-LOUD window extraction (12-8 R2-P3 / 13-1 P7 walker convention —
+    // a -1 from indexOf must throw, not silently unscope the window).
     const headerStart = picker.indexOf("ListHeaderComponent=");
     const headerEnd = picker.indexOf("contentContainerStyle", headerStart);
+    if (headerStart === -1 || headerEnd === -1) {
+      throw new Error(
+        "Stale drift anchors: ListHeaderComponent/contentContainerStyle not found in the picker — re-anchor this window"
+      );
+    }
     const header = picker.slice(headerStart, headerEnd);
     expect(header).toMatch(/\/\(tabs\)\/practice\/lesson\/\$\{continueLesson\.id\}/);
-    // NEGATIVE: the header card must not shortcut straight into a
-    // conversation route — the player owns the lesson flow.
-    expect(header).not.toContain("/(tabs)/conversation/");
+    // Guard-shape anchoring (19-2 R1-P4): EVERY navigation call inside the
+    // header must target the lesson player — a group-less "/conversation/…"
+    // push would evade a literal ban alone. Routes are extracted from the
+    // template-literal argument (a bare `\)` matcher stops at the paren
+    // inside "/(tabs)" — the exact trap this regex avoids); object-form
+    // pushes are covered by the substring NEGATIVE below.
+    const navRoutes = [...header.matchAll(/router\.(?:push|navigate|replace)\(\s*`([^`]*)`/g)].map(
+      (m) => m[1]
+    );
+    expect(navRoutes.length).toBeGreaterThan(0);
+    for (const route of navRoutes) {
+      expect(route).toContain("/practice/lesson/");
+    }
+    // NEGATIVE: no conversation route in any form (the group-qualified
+    // literal contains this substring too).
+    expect(header).not.toContain("/conversation/");
   });
 
   it("holds until the first completion fetch settles (19-2 R1-P7 no-flash rule)", () => {

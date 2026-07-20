@@ -80,7 +80,8 @@ describe("Story 19-3 — buildTodayPlan", () => {
             error_type: "grammar",
             error_description: "Confuses avoir and être",
             occurrences: 4,
-          } as BriefingData["errorPatterns"][number],
+            resolved: false,
+          },
         ],
         weakestSkill: { skill: "listening", average_score: 40 },
       })

@@ -49,8 +49,16 @@ export async function getCompletedLessonIds(userId: string): Promise<Set<string>
 }
 
 /**
- * Map a placement/profile CEFR level to the learner's curriculum ENTRY
- * lesson id (Story 19-3: "placement maps to a curriculum position").
+ * Map the learner's CURRENT CEFR level to their curriculum ENTRY lesson id
+ * (Story 19-3: "placement maps to a curriculum position").
+ *
+ * Review R1 ratification: the input is `profiles.current_cefr_level`, which
+ * placement SETS but Story 9-2 auto-promotion and the settings editor later
+ * MOVE — so the entry deliberately follows the learner's current level, not
+ * a frozen placement record. Once A2+ ships, a promoted learner's pointer
+ * advances to their new level's content (earlier lessons stay tappable in
+ * the list); this is intended pedagogy, re-evaluate at A2 authoring.
+ *
  * Undefined level (profile still hydrating — 18-2 R1-P3 lesson: pass the
  * UNCOERCED value, never `?? "A1"`) → undefined → the pointer scans from
  * the spine start, which is also today's only real entry point while A1
@@ -67,10 +75,12 @@ export function entryLessonIdForLevel(level: CEFRLevel | undefined): string | un
  *
  * Story 19-3: with an `entryLessonId` (from `entryLessonIdForLevel`), the
  * scan starts AT the entry lesson — the pointer never regresses below the
- * learner's placement. A B1-placed learner who finishes everything at or
- * above their entry point sees "ahead of the curriculum", not a demotion
- * to A1 basics; the earlier lessons stay tappable in the list for anyone
- * who wants them. An unknown entry id falls back to the spine start.
+ * learner's CURRENT-LEVEL entry (see the ratification note above: the
+ * entry follows `current_cefr_level`, not a frozen placement). A B1-level
+ * learner who finishes everything at or above their entry point sees
+ * "ahead of the curriculum", not a demotion to A1 basics; earlier lessons
+ * stay tappable in the list for anyone who wants them. An unknown entry id
+ * falls back to the spine start.
  *
  * Pure — callers pass the completion set so list screens can compute
  * positions without re-fetching.

@@ -861,6 +861,7 @@ export default function PlacementTestScreen() {
             const entryLesson = entryLessonForLevel(determinedLevel);
             const entryUnit = entryLesson ? getUnitForLesson(entryLesson.id) : undefined;
             if (!entryLesson || !entryUnit) return null;
+            const fellDown = entryUnit.level !== determinedLevel;
             return (
               <View
                 className="rounded-2xl p-4 mb-4 flex-row items-center gap-3"
@@ -869,6 +870,13 @@ export default function PlacementTestScreen() {
                   borderColor: Colors.accent,
                   borderWidth: 1,
                 }}
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={`Your starting point: ${entryUnit.titleEn}, lesson ${entryLesson.order}. ${entryLesson.canDoEn}.${
+                  fellDown
+                    ? ` Guided lessons currently start at ${entryUnit.level}; higher levels are on the way.`
+                    : ""
+                }`}
               >
                 <View className="flex-1">
                   <Text className="text-[12px] font-extrabold tracking-[1px] text-primary mb-1">
@@ -880,6 +888,12 @@ export default function PlacementTestScreen() {
                   <Text className="text-[13px]" style={{ color: Colors.gray700 }}>
                     {entryLesson.canDoEn}
                   </Text>
+                  {fellDown && (
+                    <Text className="text-[12px] mt-1" style={{ color: Colors.gray500 }}>
+                      Guided lessons currently start at {entryUnit.level} — higher levels are on the
+                      way. Your practice stays calibrated to {determinedLevel}.
+                    </Text>
+                  )}
                 </View>
               </View>
             );

@@ -359,7 +359,15 @@ export default function ConversationTopicsScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderTopic}
         ListHeaderComponent={
-          continueLesson ? (
+          user && completedIds === null ? (
+            <View
+              className="mx-5 mb-3 rounded-2xl"
+              style={{ height: 100, backgroundColor: Colors.gray200, opacity: 0.5 }}
+              accessible={false}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            />
+          ) : continueLesson ? (
             <View className="mx-5 mb-3">
               {/* Story 19-3: "continue my lesson" default — routes to the
                   lesson PLAYER (not straight into a conversation) so the
@@ -372,7 +380,13 @@ export default function ConversationTopicsScreen() {
                 titleSecondary={continueLesson.canDoFr}
                 description={continueLesson.canDoEn}
                 rightContent={
-                  <Text className="text-lg font-bold" style={{ color: Colors.accent }}>
+                  <Text
+                    className="text-lg font-bold"
+                    style={{ color: Colors.accent }}
+                    accessible={false}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                  >
                     {"\u2192"}
                   </Text>
                 }

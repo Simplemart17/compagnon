@@ -128,6 +128,17 @@ describe("Story 19-2 — nextLessonForUser (pure resume pointer)", () => {
       expect(nextLessonForUser(new Set(), "z9-u1-l1")?.id).toBe(CURRICULUM_LESSONS[0].id);
     });
 
+    it("production path today: entry at spine INDEX 0 composes through the pointer (entryIdx === 0 branch)", () => {
+      // With only A1 shipped, EVERY real call is entry-at-index-0 — the
+      // mid-spine cases above cannot catch a refactor wrong only in this
+      // branch (review R1).
+      const first = CURRICULUM_LESSONS[0];
+      expect(nextLessonForUser(new Set(), entryLessonIdForLevel("A1"))?.id).toBe(first.id);
+      expect(nextLessonForUser(new Set([first.id]), entryLessonIdForLevel("B1"))?.id).toBe(
+        CURRICULUM_LESSONS[1].id
+      );
+    });
+
     it("entryLessonIdForLevel: undefined level (profile hydrating) → undefined; any level falls DOWN to the highest shipped level's start", () => {
       expect(entryLessonIdForLevel(undefined)).toBeUndefined();
       // With A1 as the only shipped level, every placement maps to the
