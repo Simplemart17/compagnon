@@ -90,7 +90,7 @@ Every identified gap, mapped to where it gets worked. Nothing is left unassigned
   - Evaluate real-time conversational-video providers (Tavus CVI, HeyGen Interactive Avatar, Simli, D-ID) for: RN/WebRTC integration with the existing OpenAI Realtime audio, latency, and **measured cost/minute** (verify current pricing at spike time — likely $0.05–$1.00/min, i.e., 10–200× the current total AI cost/session).
   - Decision gate: ship only behind the paid tier (Epic 21.1) if the spike shows acceptable latency + unit economics. The free tier keeps Avatar v1.
 
-- **18.6 Conversation screen redesign** (~1 week, with `ui-ux-designer`)
+- **18.6 Conversation screen redesign** ✅ (2026-07-19 — largely delivered incrementally: avatar center-stage by 18.4, condensed caption strip by 3-2, FR/EN side-note corrections by 18.2; Story 18-6 closed the remainder with the SessionGoalChip — target icon + goal text + CEFR badge under the header, with a `goalOverride` prop as the Epic 19 lesson-scenario hook)
   - Avatar center-stage; live caption strip (existing transcript, condensed); corrections as unobtrusive side-notes with the FR/EN toggle; session goal chip (curriculum tie-in, Epic 19); end-of-session summary flows unchanged.
 
 **Epic AC:** the operator, hand on heart, would open this screen to chat even on a day they don't feel like studying. Estimated total: 3–4 weeks.
