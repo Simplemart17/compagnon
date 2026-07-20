@@ -1,0 +1,328 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a1-u3",
+    "level": "A1",
+    "order": 3,
+    "titleEn": "Everyday Life",
+    "titleFr": "Au quotidien",
+    "lessons": [
+      {
+        "id": "a1-u3-l1",
+        "order": 1,
+        "canDoEn": "I can say the days of the week and talk about my week.",
+        "canDoFr": "Je peux dire les jours de la semaine.",
+        "grammarTarget": "Days of the week + quel/quelle + habitual 'le lundi' vs one-time 'lundi'",
+        "teachEn": "The days of the week are lundi, mardi, mercredi, jeudi, vendredi, samedi, dimanche — and they are never capitalized in French. To ask the day, use quel (which/what): 'C'est quel jour aujourd'hui ? — C'est jeudi. Demain, c'est vendredi.' Quel matches the noun: quel before a masculine word like jour, quelle before a feminine word like semaine — both forms sound the same. Le before a day means 'every': 'Le lundi, je travaille' is a weekly habit, while 'Lundi, je danse' means just this coming Monday. In Canada the weekend is la fin de semaine (in France you will hear le week-end), and une semaine is a week.",
+        "teachFr": "C'est quel jour aujourd'hui ? C'est mardi. Le samedi et le dimanche, c'est la fin de semaine.",
+        "vocab": [
+          {
+            "fr": "lundi",
+            "en": "Monday"
+          },
+          {
+            "fr": "mardi",
+            "en": "Tuesday"
+          },
+          {
+            "fr": "mercredi",
+            "en": "Wednesday"
+          },
+          {
+            "fr": "jeudi",
+            "en": "Thursday"
+          },
+          {
+            "fr": "vendredi",
+            "en": "Friday"
+          },
+          {
+            "fr": "samedi",
+            "en": "Saturday"
+          },
+          {
+            "fr": "dimanche",
+            "en": "Sunday"
+          },
+          {
+            "fr": "le jour",
+            "en": "the day"
+          },
+          {
+            "fr": "la semaine",
+            "en": "the week"
+          },
+          {
+            "fr": "aujourd'hui",
+            "en": "today"
+          },
+          {
+            "fr": "demain",
+            "en": "tomorrow"
+          },
+          {
+            "fr": "quel / quelle",
+            "en": "which, what (matches the noun)"
+          },
+          {
+            "fr": "la fin de semaine",
+            "en": "the weekend (Canadian usage; France says le week-end)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "C'est quel jour ?",
+          "goalEn": "Say the days and talk about your week",
+          "promptSeed": "Role-play planning the learner's week, day by day. Ask 'C'est quel jour aujourd'hui ?' and walk through the seven days in order, eliciting each one out loud from lundi to dimanche. Then build habits with the flagship 'le + day' pattern: model 'Le lundi, je travaille' and elicit 'Le mardi, je...' sentences using -er verbs the learner knows (danser, chanter, parler). Finish by asking about demain and la fin de semaine. Stay within this lesson's day words plus verbs from Unit 2, keep utterances short and slow, and repeat any day the learner mixes up."
+        }
+      },
+      {
+        "id": "a1-u3-l2",
+        "order": 2,
+        "canDoEn": "I can ask for and tell the time.",
+        "canDoFr": "Je peux demander et dire l'heure.",
+        "grammarTarget": "Telling time with Il est + heure(s) agreement; numbers 21-60 (tens + et un pattern)",
+        "teachEn": "To give the time, always start with Il est: 'Il est une heure' (heure singular) but 'Il est deux heures' with an -s from two o'clock on; the everyday question is 'Il est quelle heure ?' — you will also hear the formal fixed version 'Quelle heure est-il ?', which you only need to recognize for now. Half past is et demie ('Il est six heures et demie' — demie takes an -e to match feminine heure), quarter past is et quart, and quarter to is moins le quart ('Il est quatre heures moins le quart'). Noon and midnight drop the word heures — 'Il est midi', 'Il est minuit' — and after them demi loses its -e: 'midi et demi'. For the new numbers, 21 is vingt et un, and the et un pattern repeats after trente (30), quarante (40), cinquante (50), and soixante (60), while the in-between numbers take a hyphen: vingt-deux, trente-cinq. To separate morning from evening, add du matin, de l'après-midi, or du soir: 'Il est huit heures du matin' versus 'Il est huit heures du soir.'",
+        "teachFr": "Il est quelle heure ? Il est six heures et demie. Il est midi ? Non, il est une heure de l'après-midi !",
+        "vocab": [
+          {
+            "fr": "une heure",
+            "en": "an hour; one o'clock"
+          },
+          {
+            "fr": "Il est quelle heure ?",
+            "en": "What time is it? (everyday spoken form)"
+          },
+          {
+            "fr": "et demie",
+            "en": "half past (et demi after midi and minuit)"
+          },
+          {
+            "fr": "et quart",
+            "en": "quarter past"
+          },
+          {
+            "fr": "moins le quart",
+            "en": "quarter to (the hour)"
+          },
+          {
+            "fr": "midi",
+            "en": "noon"
+          },
+          {
+            "fr": "minuit",
+            "en": "midnight"
+          },
+          {
+            "fr": "vingt et un",
+            "en": "twenty-one"
+          },
+          {
+            "fr": "trente",
+            "en": "thirty"
+          },
+          {
+            "fr": "quarante",
+            "en": "forty"
+          },
+          {
+            "fr": "cinquante",
+            "en": "fifty"
+          },
+          {
+            "fr": "soixante",
+            "en": "sixty"
+          },
+          {
+            "fr": "le matin",
+            "en": "the morning"
+          },
+          {
+            "fr": "l'après-midi",
+            "en": "the afternoon"
+          },
+          {
+            "fr": "le soir",
+            "en": "the evening"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Il est quelle heure ?",
+          "goalEn": "Ask for and give the time",
+          "promptSeed": "Role-play a clock game: announce times for the learner to repeat, then swap roles. Elicit the flagship 'Il est ... heure(s)' — une heure singular versus deux heures plural — plus et demie, et quart, moins le quart, midi and minuit, adding du matin or du soir. Practise the new tens out loud (trente, quarante, cinquante, soixante) and vingt et un. Ask 'Il est quelle heure ?' often and have the learner ask back. Stay within this lesson's time vocabulary, speak slowly, and recast slips like 'midi et demie'."
+        }
+      },
+      {
+        "id": "a1-u3-l3",
+        "order": 3,
+        "canDoEn": "I can describe my daily routine, including getting up and going to bed.",
+        "canDoFr": "Je peux parler de ma routine de tous les jours.",
+        "grammarTarget": "Daily-routine -er verbs + reflexive intro: je me lève / tu te lèves / il-elle se lève (accent e → è)",
+        "teachEn": "Daily-routine verbs like manger (to eat), arriver (to arrive), and rentrer (to go home) follow the regular -er pattern from Unit 2: je mange, tu manges, elle mange — and arriver starts with a vowel, so je elides: j'arrive. Two special verbs add a small word before them: se lever (to get up) and se coucher (to go to bed) — say je me lève, tu te lèves, il/elle se lève, and je me couche, tu te couches, elle se couche. Notice the accent: in je me lève, the plain e of lever becomes è, but the infinitive se lever keeps its plain e; se coucher changes nothing (je me couche), and before a vowel me becomes m', as you already know from je m'appelle. Use à with a time and tous les jours for habits: 'Tous les jours, je me lève à sept heures.' The meals are le déjeuner (breakfast in Canada — in France that word means lunch), le dîner (lunch in Canada), and le souper (the Canadian evening meal), and you can add tôt (early), tard (late), or après (after): 'Après le souper, je me couche tard.'",
+        "teachFr": "Tous les jours, je me lève tôt, à sept heures. Le soir, je rentre tard et, après le souper, je me couche à dix heures.",
+        "vocab": [
+          {
+            "fr": "se lever",
+            "en": "to get up (je me lève, with è)"
+          },
+          {
+            "fr": "se coucher",
+            "en": "to go to bed"
+          },
+          {
+            "fr": "manger",
+            "en": "to eat"
+          },
+          {
+            "fr": "arriver",
+            "en": "to arrive"
+          },
+          {
+            "fr": "rentrer",
+            "en": "to go home, to come back"
+          },
+          {
+            "fr": "le déjeuner",
+            "en": "breakfast (in Canada; in France this word means lunch)"
+          },
+          {
+            "fr": "le dîner",
+            "en": "lunch (in Canada; in France this word means dinner)"
+          },
+          {
+            "fr": "le souper",
+            "en": "supper, the evening meal (standard in Canada)"
+          },
+          {
+            "fr": "tôt",
+            "en": "early"
+          },
+          {
+            "fr": "tard",
+            "en": "late"
+          },
+          {
+            "fr": "après",
+            "en": "after, afterwards"
+          },
+          {
+            "fr": "tous les jours",
+            "en": "every day"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je me lève tôt",
+          "goalEn": "Describe your daily routine",
+          "promptSeed": "Role-play comparing daily routines with a friend. Model your day first ('Tous les jours, je me lève à sept heures. Je mange le déjeuner. Le soir, je me couche tard.'), then ask the learner short questions: 'Tu te lèves tôt ?', 'Tu rentres à quelle heure ?', 'Tu manges le souper à six heures ?'. Elicit the flagship 'je me lève' and 'je me couche' with real times, plus manger, arriver, rentrer, and the Canadian meal words le déjeuner, le dîner, le souper. If the learner says 'je se lève', recast the correct pronoun; keep every utterance short and slow."
+        }
+      },
+      {
+        "id": "a1-u3-l4",
+        "order": 4,
+        "canDoEn": "I can say where I go and what activities I do.",
+        "canDoFr": "Je peux dire où je vais et ce que je fais.",
+        "grammarTarget": "Irregular present of aller and faire (je/tu/il-elle) + aller au / à la and faire du / de la",
+        "teachEn": "Two of the most useful French verbs are irregular: aller (to go) — je vais, tu vas, il/elle va — and faire, which you met in Unit 1 — je fais, tu fais, il/elle fait. Careful: aller ends in -er but does NOT follow the parler pattern. After aller, à combines with le to make au: 'Je vais au parc', 'Tu vas au cinéma ?' — never 'à le parc' — while feminine words keep à la ('Elle va à la piscine', 'Je vais à la maison') and vowel-starting words use à l' ('Je vais à l'école'). For activities, use faire du with masculine words: 'Je fais du sport', 'Il fait du vélo' — with a feminine activity word you will hear de la instead. A quick everyday exchange: 'Tu vas au magasin ? — Non, je vais au parc !'",
+        "teachFr": "Le samedi, je vais au cinéma. Tu fais du sport ? Oui, je fais du vélo au parc !",
+        "vocab": [
+          {
+            "fr": "aller",
+            "en": "to go (irregular: je vais, tu vas, il va)"
+          },
+          {
+            "fr": "au / à la",
+            "en": "to the, at the (au before masculine nouns)"
+          },
+          {
+            "fr": "du / de la",
+            "en": "some, of the (before an activity: du sport, du vélo)"
+          },
+          {
+            "fr": "le sport",
+            "en": "sports"
+          },
+          {
+            "fr": "le vélo",
+            "en": "the bike"
+          },
+          {
+            "fr": "le parc",
+            "en": "the park"
+          },
+          {
+            "fr": "le cinéma",
+            "en": "the movie theatre"
+          },
+          {
+            "fr": "la piscine",
+            "en": "the swimming pool"
+          },
+          {
+            "fr": "le magasin",
+            "en": "the store"
+          },
+          {
+            "fr": "l'école",
+            "en": "the school"
+          },
+          {
+            "fr": "la maison",
+            "en": "the house, home"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu vas au parc ?",
+          "goalEn": "Say where you go and what you do",
+          "promptSeed": "Role-play planning la fin de semaine together. Say where you are going ('Je vais au cinéma', 'Je vais à la piscine') and what you are doing ('Je fais du vélo'), then elicit the learner's plans with intonation questions: 'Tu vas au parc ?', 'Tu fais du sport ?'. Elicit the flagship contractions au and à la — recast 'à le parc' as 'au parc' immediately — and faire du + activity. Bring in the other places from this lesson (le magasin, l'école, la maison) and days from Lesson 1 ('Le samedi, je vais...'). Keep utterances under 8 words and speak slowly."
+        }
+      },
+      {
+        "id": "a1-u3-l5",
+        "order": 5,
+        "canDoEn": "I can describe a typical day from morning to night.",
+        "canDoFr": "Je peux décrire ma journée typique.",
+        "grammarTarget": "Unit synthesis: sequencing a day with d'abord / ensuite / enfin + times, routine and aller/faire",
+        "teachEn": "Now describe a full typical day (une journée typique) from morning to night. Link the steps with d'abord (first), ensuite (next), and enfin (finally): 'D'abord, je me lève à sept heures. Ensuite, je vais à l'école. Enfin, je me couche.' — and note d'abord, where de shrinks to d' before the vowel of abord. Use avec for company ('Je mange avec ma famille') and chez moi / chez toi for 'at my place / at your place': 'Le dimanche, je rentre chez moi tard.' Typique keeps the same form for masculine and feminine, while occupé takes a feminine -e that changes the spelling but not the sound: 'Je suis occupé' (a man) / 'Je suis occupée' (a woman).",
+        "teachFr": "Ma journée typique : d'abord, je me lève tôt. Ensuite, je vais à l'école avec mon frère. Enfin, le soir, je me couche chez moi à dix heures.",
+        "vocab": [
+          {
+            "fr": "d'abord",
+            "en": "first, first of all"
+          },
+          {
+            "fr": "ensuite",
+            "en": "next, then"
+          },
+          {
+            "fr": "enfin",
+            "en": "finally, at last"
+          },
+          {
+            "fr": "une journée",
+            "en": "a day (the whole day through)"
+          },
+          {
+            "fr": "typique",
+            "en": "typical (same form for masculine and feminine)"
+          },
+          {
+            "fr": "occupé / occupée",
+            "en": "busy"
+          },
+          {
+            "fr": "avec",
+            "en": "with"
+          },
+          {
+            "fr": "chez moi / chez toi",
+            "en": "at my place / at your place"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ma journée typique",
+          "goalEn": "Describe your typical day from start to finish",
+          "promptSeed": "Role-play a full 'my typical day' exchange to close the unit. Model a short chain ('D'abord, je me lève à sept heures. Ensuite, je fais du sport au parc. Enfin, je me couche à onze heures.'), then elicit the learner's whole day the same way, weaving in days, times, meals, se lever / se coucher, aller and faire. Ask 'Tu es occupé(e) ?' to match the learner, and invite one sentence with avec and one with chez moi. Stay within Units 1-3 vocabulary, keep utterances short, and celebrate the finished story."
+        }
+      }
+    ]
+  }
+}

@@ -49,6 +49,28 @@ describe("Story 19-1 — content integrity (CI gate)", () => {
     expect(registeredIds).toEqual(fileIds);
   });
 
+  it("no vocab item is introduced in two different UNITS (cross-unit dedup — the schema only sees one file)", () => {
+    // Recycling happens in scenarios and teach text; re-LISTING a word in a
+    // later unit's vocab wastes a flashcard slot and double-drills the SRS.
+    // The schema's superRefine dedups WITHIN a unit; only this registry
+    // test can see across files. NFKC-normalized like the schema key.
+    const seen = new Map<string, string>();
+    for (const unit of CURRICULUM_UNITS) {
+      for (const lesson of unit.lessons) {
+        for (const item of lesson.vocab) {
+          const key = item.fr.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+          const firstIn = seen.get(key);
+          if (firstIn !== undefined && !firstIn.startsWith(unit.id)) {
+            throw new Error(
+              `vocab "${item.fr}" in ${lesson.id} was already introduced in ${firstIn}`
+            );
+          }
+          if (firstIn === undefined) seen.set(key, lesson.id);
+        }
+      }
+    }
+  });
+
   it("chrome/content split holds: canDo phrasing is EN chrome + FR content", () => {
     for (const lesson of CURRICULUM_LESSONS) {
       expect(lesson.canDoEn).toMatch(/^I can /);
