@@ -7,6 +7,13 @@
  * malformed file throws at import time in dev/test, and the CI content
  * test fails before that can ever ship.
  *
+ * Review R1 note: the throw ships in PRODUCTION bundles too once 19.2
+ * wires a screen to this registry — the guard is the CI test, not the
+ * environment. curriculum.test.ts is therefore a REQUIRED gate for ANY
+ * pipeline that can publish JS (including manual OTA); the 19.2 wire-up
+ * review must re-evaluate throw-at-import vs safeParse-with-empty-registry
+ * before the first screen consumer lands.
+ *
  * Position model (consumed by 19.2's lesson engine + 19.3's daily plan):
  * a learner's curriculum position is simply a lesson id; `nextLesson`
  * walks lesson order within a unit, then unit order within the spine.
@@ -19,7 +26,7 @@ import {
   type CurriculumUnit,
   curriculumUnitFileSchema,
 } from "@/src/lib/schemas/curriculum";
-import type { CEFRLevel } from "@/src/types/cefr";
+import { CEFR_ORDER, type CEFRLevel } from "@/src/types/cefr";
 
 function parseUnitFile(raw: unknown, sourceName: string): CurriculumUnit {
   const result = curriculumUnitFileSchema.safeParse(raw);
@@ -83,10 +90,9 @@ export function firstLessonAtLevel(level: CEFRLevel): CurriculumLesson | undefin
  * then to the very first lesson.
  */
 export function entryLessonForLevel(level: CEFRLevel): CurriculumLesson | undefined {
-  const ORDERED: readonly CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-  const levelIdx = ORDERED.indexOf(level);
+  const levelIdx = CEFR_ORDER.indexOf(level);
   for (let i = levelIdx; i >= 0; i -= 1) {
-    const lesson = firstLessonAtLevel(ORDERED[i]);
+    const lesson = firstLessonAtLevel(CEFR_ORDER[i]);
     if (lesson) return lesson;
   }
   return CURRICULUM_LESSONS[0];

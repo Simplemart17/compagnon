@@ -88,6 +88,44 @@ describe("Story 19-1 — curriculumUnitFileSchema", () => {
     expect(curriculumUnitFileSchema.safeParse(file).success).toBe(false);
   });
 
+  it("R1: rejects a unit id whose level prefix contradicts the level field", () => {
+    const file = validFile();
+    file.unit.level = "B2";
+    expect(curriculumUnitFileSchema.safeParse(file).success).toBe(false);
+  });
+
+  it("R1: rejects an NFD-accented duplicate vocab item (Unicode-normalized dedup)", () => {
+    const file = validFile();
+    file.unit.lessons[0].vocab[0] = { fr: "enchant\u00e9", en: "nice to meet you" };
+    // NFD form: e + combining acute accent.
+    file.unit.lessons[1].vocab[0] = { fr: "enchante\u0301", en: "dup" };
+    expect(curriculumUnitFileSchema.safeParse(file).success).toBe(false);
+  });
+
+  it("R1: chrome-split enforced at the SCHEMA (authoring fails at parse, not just CI)", () => {
+    const bad = validFile();
+    bad.unit.lessons[0].canDoFr = "Je sais compter de un \u00e0 dix maintenant.";
+    expect(curriculumUnitFileSchema.safeParse(bad).success).toBe(false);
+    const bad2 = validFile();
+    bad2.unit.lessons[0].canDoEn = "You can greet someone and introduce yourself.";
+    expect(curriculumUnitFileSchema.safeParse(bad2).success).toBe(false);
+  });
+
+  it("R1: accepts an enumeration-dense 26-item vocab lesson; rejects 31", () => {
+    const ok = validFile();
+    ok.unit.lessons[0].vocab = Array.from({ length: 26 }, (_, i) => ({
+      fr: `nombre-${i}`,
+      en: `number-${i}`,
+    }));
+    expect(curriculumUnitFileSchema.safeParse(ok).success).toBe(true);
+    const over = validFile();
+    over.unit.lessons[0].vocab = Array.from({ length: 31 }, (_, i) => ({
+      fr: `nombre-${i}`,
+      en: `number-${i}`,
+    }));
+    expect(curriculumUnitFileSchema.safeParse(over).success).toBe(false);
+  });
+
   it("rejects malformed ids at both levels", () => {
     expect(
       curriculumUnitFileSchema.safeParse({

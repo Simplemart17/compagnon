@@ -56,17 +56,26 @@ describe("Story 19-1 — content integrity (CI gate)", () => {
     }
   });
 
-  it("spine ordering: units strictly ordered per level; lessons strictly ordered per unit", () => {
+  it("spine ordering: registry sequence strictly increasing in (CEFR level, unit order) — R1", () => {
+    // Review R1: the pre-R1 case grouped orders BY LEVEL, so cross-level
+    // interleaving ([a1-u1, a2-u1, a1-u2]) passed while nextLesson walked
+    // learners A1 → A2 → back into A1. Registry order IS the traversal.
+    const CEFR_INDEX: Record<string, number> = { A1: 0, A2: 1, B1: 2, B2: 3, C1: 4, C2: 5 };
+    for (let i = 1; i < CURRICULUM_UNITS.length; i += 1) {
+      const prev = CURRICULUM_UNITS[i - 1];
+      const curr = CURRICULUM_UNITS[i];
+      const prevKey = CEFR_INDEX[prev.level] * 100 + prev.order;
+      const currKey = CEFR_INDEX[curr.level] * 100 + curr.order;
+      expect(currKey).toBeGreaterThan(prevKey);
+    }
+    // Per-level unit orders must be contiguous from 1 (no gaps a learner
+    // would fall into).
     const byLevel = new Map<string, number[]>();
     for (const unit of CURRICULUM_UNITS) {
-      const orders = byLevel.get(unit.level) ?? [];
-      orders.push(unit.order);
-      byLevel.set(unit.level, orders);
+      byLevel.set(unit.level, [...(byLevel.get(unit.level) ?? []), unit.order]);
     }
     for (const [, orders] of byLevel) {
-      const sorted = [...orders].sort((a, b) => a - b);
-      expect(orders).toEqual(sorted);
-      expect(new Set(orders).size).toBe(orders.length);
+      expect(orders).toEqual(Array.from({ length: orders.length }, (_, i) => i + 1));
     }
   });
 });

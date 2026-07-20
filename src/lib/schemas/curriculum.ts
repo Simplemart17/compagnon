@@ -47,18 +47,31 @@ export const curriculumLessonSchema = z.object({
   id: z.string().regex(/^[abc][12]-u\d{1,2}-l\d{1,2}$/),
   /** 1-based position within the unit. */
   order: z.number().int().min(1).max(20),
-  /** CEFR can-do outcome — EN chrome, learner-facing. */
-  canDoEn: z.string().min(10).max(160),
-  /** The same outcome in A-level-comprehensible French. */
-  canDoFr: z.string().min(10).max(160),
+  /** CEFR can-do outcome — EN chrome, learner-facing ("I can …"). */
+  canDoEn: z
+    .string()
+    .min(10)
+    .max(160)
+    .regex(/^I can /),
+  /** The same outcome in level-comprehensible French ("Je peux …"). */
+  canDoFr: z
+    .string()
+    .min(10)
+    .max(160)
+    .regex(/^Je peux /),
   /** One precise grammar point — EN chrome. */
   grammarTarget: z.string().min(5).max(160),
   /** Teach-step explanation, EN with inline FR examples (3-5 sentences). */
   teachEn: z.string().min(80).max(1200),
   /** Simple-French version of the teach step (level-readable). */
   teachFr: z.string().min(40).max(800),
-  /** 8-12 new items per lesson; recycling happens in scenarios. */
-  vocab: z.array(curriculumVocabItemSchema).min(6).max(14),
+  /**
+   * 6-14 items typical; up to 30 for enumeration-dense lessons (numbers,
+   * dates — review R1: each item is ONE flashcard in 19.2's SRS drill, so
+   * banks must ship as individual gradeable items, never comma-joined
+   * strings). Recycling happens in scenarios, not vocab lists.
+   */
+  vocab: z.array(curriculumVocabItemSchema).min(6).max(30),
   conversationScenario: curriculumScenarioSchema,
 });
 
@@ -74,6 +87,16 @@ export const curriculumUnitSchema = z
     lessons: z.array(curriculumLessonSchema).min(3).max(8),
   })
   .superRefine((unit, ctx) => {
+    // Review R1: the unit id's level prefix must match the level field —
+    // a copy-pasted "a1-u1" with level "A2" would otherwise mislabel every
+    // lesson id it prefixes (and 19.2 persists positions by lesson id).
+    if (!unit.id.startsWith(`${unit.level.toLowerCase()}-u`)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `unit id "${unit.id}" does not match level "${unit.level}" (expected prefix "${unit.level.toLowerCase()}-u")`,
+        path: ["id"],
+      });
+    }
     // Lesson orders must be exactly 1..N (the engine's position math and
     // the daily-plan "next lesson" pointer both index by order).
     const orders = unit.lessons.map((l) => l.order);
@@ -109,7 +132,9 @@ export const curriculumUnitSchema = z
     const vocabSeen = new Map<string, string>();
     unit.lessons.forEach((lesson, i) => {
       lesson.vocab.forEach((item, j) => {
-        const key = item.fr.trim().toLowerCase();
+        // Review R1: NFKC + whitespace-collapse (memory.ts precedent) so
+        // NFD-accented or curly-apostrophe duplicates can't slip past.
+        const key = item.fr.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
         const firstIn = vocabSeen.get(key);
         if (firstIn !== undefined) {
           ctx.addIssue({

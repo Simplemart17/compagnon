@@ -64,7 +64,7 @@
         "conversationScenario": {
           "titleFr": "Premières salutations",
           "goalEn": "Greet someone and introduce yourself",
-          "promptSeed": "Role-play meeting the learner for the very first time in a café. Greet them warmly with 'Bonjour !', give your name with 'Je m'appelle...', and elicit from the learner a greeting, their name using 'je suis' or 'je m'appelle', and a goodbye at the end. Keep every utterance to 3-6 slow, simple words, recycle only bonjour / salut / ça va / merci / au revoir, and praise any attempt."
+          "promptSeed": "Role-play meeting the learner for the very first time in a café. Greet them warmly with 'Bonjour !', give your name with 'Je m'appelle...', and elicit from the learner a greeting, their name using 'je suis' or 'je m'appelle', an 'Enchanté' or 'Enchantée' at the meeting moment, and a goodbye at the end. Keep every utterance to 3-6 slow, simple words, stay within this lesson's vocabulary (bonjour, salut, bonsoir, ça va, oui, non, merci, enchanté(e), au revoir), and praise any attempt."
         }
       },
       {
@@ -73,7 +73,7 @@
         "canDoEn": "I can say my nationality, where I live, and which languages I speak.",
         "canDoFr": "Je peux dire mon pays, ma ville et ma langue.",
         "grammarTarget": "Être + nationality adjectives with masculine/feminine agreement; habiter à + city",
-        "teachEn": "To say where you live, use habiter with à before a city: 'J'habite à Montréal.' Notice the elision: je + habite becomes j'habite, because habiter starts with a vowel sound. Nationality adjectives agree with the speaker: a man says 'Je suis canadien', a woman says 'Je suis canadienne'. For languages, use parler with no small word in between: 'Je parle français.'",
+        "teachEn": "To say where you live, use habiter with à before a city: 'J'habite à Montréal.' Notice the elision: je + habite becomes j'habite, because habiter starts with a vowel sound. Nationality adjectives agree with the speaker: a man says 'Je suis canadien', a woman says 'Je suis canadienne'. For languages, use parler with no small word in between: 'Je parle français.' Careful: the LANGUAGE name never changes — everyone says 'je parle français', never 'je parle française' (the -aise form is only for people: 'elle est française').",
         "teachFr": "Je dis : J'habite à Montréal. Un homme dit « je suis canadien » et une femme dit « je suis canadienne ». Je parle français et je parle anglais.",
         "vocab": [
           {
@@ -85,16 +85,12 @@
             "en": "to speak"
           },
           {
-            "fr": "venir de",
-            "en": "to come from"
-          },
-          {
             "fr": "français / française",
-            "en": "French"
+            "en": "French (person); the language is always 'français'"
           },
           {
             "fr": "anglais / anglaise",
-            "en": "English"
+            "en": "English (person); the language is always 'anglais'"
           },
           {
             "fr": "canadien / canadienne",
@@ -126,9 +122,9 @@
           }
         ],
         "conversationScenario": {
-          "titleFr": "D'où viens-tu ?",
+          "titleFr": "Ma ville et ma langue",
           "goalEn": "Say your nationality, city, and languages",
-          "promptSeed": "Role-play two new classmates chatting before a French class starts. Ask the learner where they live and which languages they speak, and elicit 'Je suis canadien/canadienne', 'J'habite à + city', and 'Je parle + language'; if they pick the wrong masculine/feminine form, recast it gently with the correct one. Recycle the Lesson 1 greetings at the start and end, keep every utterance under 8 words, and speak slowly."
+          "promptSeed": "Role-play two new classmates chatting before a French class starts. Ask the learner where they live and which languages they speak, and elicit 'Je suis canadien/canadienne', 'J'habite à + city', and 'Je parle + language'; if they pick the wrong masculine/feminine form — or say 'je parle française' — recast it gently with the correct one. Recycle the Lesson 1 greetings at the start and end, keep every utterance under 8 words, and speak slowly."
         }
       },
       {
@@ -137,24 +133,92 @@
         "canDoEn": "I can count from 0 to 20 and say my age.",
         "canDoFr": "Je peux compter de zéro à vingt et dire mon âge.",
         "grammarTarget": "The verb avoir (je/tu/il-elle) + expressing age with avoir (not être)",
-        "teachEn": "The verb avoir means 'to have': j'ai (I have), tu as (you have), il a / elle a (he has / she has). French uses avoir for age, not être: you say 'J'ai vingt ans', literally 'I have twenty years'. To ask someone's age, say 'Quel âge as-tu ?' — note the hyphen between as and tu, and the elision in l'âge. Never say 'je suis vingt ans'.",
+        "teachEn": "The verb avoir means 'to have': j'ai (I have), tu as (you have), il a / elle a (he has / she has). French uses avoir for age, not être: you say 'J'ai vingt ans', literally 'I have twenty years'. To ask someone's age, say 'Quel âge as-tu ?' — note the hyphen between as and tu. And when you say 'the age' on its own, le + âge elides to l'âge, because âge starts with a vowel. Never say 'je suis vingt ans'.",
         "teachFr": "Pour l'âge, je dis « j'ai » : J'ai vingt ans. La question est : Quel âge as-tu ? Elle a quinze ans, il a dix-huit ans.",
         "vocab": [
           {
-            "fr": "zéro, un, deux, trois, quatre, cinq",
-            "en": "zero, one, two, three, four, five"
+            "fr": "zéro",
+            "en": "zero"
           },
           {
-            "fr": "six, sept, huit, neuf, dix",
-            "en": "six, seven, eight, nine, ten"
+            "fr": "un",
+            "en": "one"
           },
           {
-            "fr": "onze, douze, treize, quatorze, quinze",
-            "en": "eleven, twelve, thirteen, fourteen, fifteen"
+            "fr": "deux",
+            "en": "two"
           },
           {
-            "fr": "seize, dix-sept, dix-huit, dix-neuf, vingt",
-            "en": "sixteen, seventeen, eighteen, nineteen, twenty"
+            "fr": "trois",
+            "en": "three"
+          },
+          {
+            "fr": "quatre",
+            "en": "four"
+          },
+          {
+            "fr": "cinq",
+            "en": "five"
+          },
+          {
+            "fr": "six",
+            "en": "six"
+          },
+          {
+            "fr": "sept",
+            "en": "seven"
+          },
+          {
+            "fr": "huit",
+            "en": "eight"
+          },
+          {
+            "fr": "neuf",
+            "en": "nine"
+          },
+          {
+            "fr": "dix",
+            "en": "ten"
+          },
+          {
+            "fr": "onze",
+            "en": "eleven"
+          },
+          {
+            "fr": "douze",
+            "en": "twelve"
+          },
+          {
+            "fr": "treize",
+            "en": "thirteen"
+          },
+          {
+            "fr": "quatorze",
+            "en": "fourteen"
+          },
+          {
+            "fr": "quinze",
+            "en": "fifteen"
+          },
+          {
+            "fr": "seize",
+            "en": "sixteen"
+          },
+          {
+            "fr": "dix-sept",
+            "en": "seventeen"
+          },
+          {
+            "fr": "dix-huit",
+            "en": "eighteen"
+          },
+          {
+            "fr": "dix-neuf",
+            "en": "nineteen"
+          },
+          {
+            "fr": "vingt",
+            "en": "twenty"
           },
           {
             "fr": "avoir",
@@ -189,7 +253,7 @@
         "canDoEn": "I can say what my job is.",
         "canDoFr": "Je peux dire mon métier.",
         "grammarTarget": "Être + profession with no article (Je suis médecin, not Je suis un médecin)",
-        "teachEn": "To say your job in French, use être with no article before the profession: 'Je suis médecin', never 'Je suis un médecin'. This is different from English, where we say 'I am a doctor'. Many profession words have a feminine form: un étudiant / une étudiante, un serveur / une serveuse. It works the same way with il and elle: 'Elle est serveuse.'",
+        "teachEn": "To say your job in French, use être with no article before the profession: 'Je suis médecin', never 'Je suis un médecin'. This is different from English, where we say 'I am a doctor'. Many profession words have a feminine form: un étudiant / une étudiante, un serveur / une serveuse. In Canada, feminine forms like une professeure and une ingénieure are standard too. It works the same way with il and elle: 'Elle est serveuse.'",
         "teachFr": "Pour le métier, je dis : Je suis médecin. Je ne dis pas « un médecin ». Il est professeur, elle est étudiante.",
         "vocab": [
           {
@@ -197,20 +261,20 @@
             "en": "a student"
           },
           {
-            "fr": "un professeur",
-            "en": "a teacher"
+            "fr": "un professeur / une professeure",
+            "en": "a teacher (feminine form standard in Canada)"
           },
           {
-            "fr": "un médecin",
-            "en": "a doctor"
+            "fr": "un médecin / une médecin",
+            "en": "a doctor (same word for all genders)"
           },
           {
             "fr": "un infirmier / une infirmière",
             "en": "a nurse"
           },
           {
-            "fr": "un ingénieur",
-            "en": "an engineer"
+            "fr": "un ingénieur / une ingénieure",
+            "en": "an engineer (feminine form standard in Canada)"
           },
           {
             "fr": "un serveur / une serveuse",
