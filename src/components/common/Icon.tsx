@@ -51,6 +51,7 @@ export type IconName =
   | "lock"
   | "user"
   | "mic"
+  | "target"
   | "headphones"
   | "book-open"
   | "edit-3"

@@ -42,6 +42,7 @@ import { MAX_PROMPT_ERROR_PATTERNS, MAX_PROMPT_MEMORIES } from "@/src/lib/prompt
 import { captureError } from "@/src/lib/sentry";
 import { AvatarStatusLabel, CompanionAvatar } from "@/src/components/conversation/CompanionAvatar";
 import { deriveAvatarState } from "@/src/lib/avatar-state";
+import { SessionGoalChip } from "@/src/components/conversation/SessionGoalChip";
 import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
 import { Icon } from "@/src/components/common/Icon";
@@ -534,7 +535,11 @@ export default function ConversationSessionScreen() {
         {/* Main Content Area — layout depends on conversation state */}
         {isConversationActive ? (
           <>
-            {/* Waveform-centered layout: condensed transcript + large waveform */}
+            {/* Session goal chip (Story 18-6): what am I practicing right
+                now? Epic 19's lesson engine will feed goalOverride. */}
+            <SessionGoalChip mode={mode} topic={topic} cefrLevel={cefrLevel} />
+
+            {/* Avatar-centered layout: condensed transcript caption strip */}
             <TranscriptView
               transcript={conversation.transcript}
               pendingAiText={conversation.pendingAiText}
