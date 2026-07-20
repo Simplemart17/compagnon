@@ -135,18 +135,19 @@ describe("Story 19-2 — nextLessonForUser (pure resume pointer)", () => {
       expect(nextLessonForUser(new Set([first.id]), entryLessonIdForLevel("A1"))?.id).toBe(
         CURRICULUM_LESSONS[1].id
       );
-      // B1-placed learner: entry falls DOWN to the A2 start — the pointer
-      // starts there and NEVER regresses into A1 despite zero completions.
-      expect(nextLessonForUser(new Set(), entryLessonIdForLevel("B1"))?.id).toBe("a2-u1-l1");
+      // B1-placed learner (slice 6: B1 now ships): entry is the B1 start —
+      // the pointer starts there and NEVER regresses into A1/A2 despite
+      // zero completions.
+      expect(nextLessonForUser(new Set(), entryLessonIdForLevel("B1"))?.id).toBe("b1-u1-l1");
     });
 
     it("entryLessonIdForLevel: undefined level (profile hydrating) → undefined; levels map to the highest shipped level at or below", () => {
       expect(entryLessonIdForLevel(undefined)).toBeUndefined();
-      // Slice 4: A1 + A2 shipped. The 19-3 fall-down is now REAL for B1+.
+      // Slice 6: A1 + A2 + B1 shipped. B2+ falls DOWN to the B1 start.
       expect(entryLessonIdForLevel("A1")).toBe(CURRICULUM_LESSONS[0].id);
       expect(entryLessonIdForLevel("A2")).toBe("a2-u1-l1");
-      expect(entryLessonIdForLevel("B1")).toBe("a2-u1-l1");
-      expect(entryLessonIdForLevel("C2")).toBe("a2-u1-l1");
+      expect(entryLessonIdForLevel("B1")).toBe("b1-u1-l1");
+      expect(entryLessonIdForLevel("C2")).toBe("b1-u1-l1");
     });
   });
 });
