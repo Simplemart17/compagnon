@@ -1,0 +1,264 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a2-u4",
+    "level": "A2",
+    "order": 4,
+    "titleEn": "Plans and Appointments",
+    "titleFr": "Projets et rendez-vous",
+    "lessons": [
+      {
+        "id": "a2-u4-l1",
+        "order": 1,
+        "canDoEn": "I can say what I am going to do soon, using the near future with anyone.",
+        "canDoFr": "Je peux dire ce que je vais faire bientôt.",
+        "grammarTarget": "Near future (aller + infinitive) across all persons; complete present of aller (nous allons, vous allez, ils vont) + future time markers",
+        "teachEn": "You met the near future in A1 with je vais, tu vas, elle va + a dictionary-form verb. Now complete aller so you can plan with anyone: je vais, tu vas, il/elle va, nous allons, vous allez, ils/elles vont. Add an infinitive for a plan: 'Demain, nous allons organiser une fête', 'Vous allez préparer le souper ?', 'Ils vont visiter le musée.' New time words set the schedule: bientôt (soon), plus tard (later), le mois prochain (next month) and l'année prochaine (next year) — prochain comes AFTER the noun and agrees, like la semaine prochaine in A1: le mois prochain (masculine), l'année prochaine (feminine).",
+        "teachFr": "La semaine prochaine, nous allons organiser une fête. Le mois prochain, je vais visiter ma famille. Et toi, qu'est-ce que tu vas faire bientôt ?",
+        "vocab": [
+          {
+            "fr": "un projet",
+            "en": "a plan, a project"
+          },
+          {
+            "fr": "bientôt",
+            "en": "soon"
+          },
+          {
+            "fr": "plus tard",
+            "en": "later"
+          },
+          {
+            "fr": "le mois prochain",
+            "en": "next month"
+          },
+          {
+            "fr": "l'année prochaine",
+            "en": "next year"
+          },
+          {
+            "fr": "prochain / prochaine",
+            "en": "next (comes after the noun: le mois prochain, la semaine prochaine)"
+          },
+          {
+            "fr": "organiser",
+            "en": "to organize"
+          },
+          {
+            "fr": "préparer",
+            "en": "to prepare, to get ready"
+          },
+          {
+            "fr": "une idée",
+            "en": "an idea (J'ai une idée !)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Mes projets",
+          "goalEn": "Say your upcoming plans with the near future",
+          "promptSeed": "Role-play two friends planning the days and weeks ahead. Model the full near future — 'Demain, je vais préparer un souper', 'La semaine prochaine, nous allons organiser une fête', 'Le mois prochain, mes amis vont visiter Montréal' — then elicit the learner's plans: 'Qu'est-ce que tu vas faire demain ?', 'Vous allez magasiner bientôt ?'. Push one nous form and one ils form, and bring in plus tard and l'année prochaine. Recast the participle slip 'je vais préparé' to the infinitive 'je vais préparer'. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u4-l2",
+        "order": 2,
+        "canDoEn": "I can replace people with the pronouns lui and leur.",
+        "canDoFr": "Je peux parler des personnes avec lui et leur.",
+        "grammarTarget": "Indirect object pronouns lui / leur before the verb + verbs taking à (parler à, téléphoner à, écrire à)",
+        "teachEn": "In A2 Unit 2 you replaced a THING with le, la or les — the direct object. Some verbs instead point TO a person with à, and that person becomes an INDIRECT object pronoun: lui (to him OR to her) and leur (to them). Like the direct pronouns, they go BEFORE the verb: 'Je parle à ma mère' → 'Je lui parle'; 'Je téléphone à mes parents' → 'Je leur téléphone.' Notice lui covers both — 'Je lui écris' can mean I write to him or to her. Verbs that take à before a person include parler à, téléphoner à and écrire à (j'écris, tu écris, il/elle écrit). With two verbs, the pronoun sits before the infinitive: 'Je vais lui téléphoner demain.' A negation wraps the pronoun and verb: 'Je ne leur parle pas.'",
+        "teachFr": "Ma sœur habite à Québec : je lui téléphone souvent et je lui écris un courriel. Mes parents ? Je leur parle le dimanche. Demain, je vais leur envoyer un message.",
+        "vocab": [
+          {
+            "fr": "lui",
+            "en": "(to) him, (to) her (before the verb: je lui parle)"
+          },
+          {
+            "fr": "leur",
+            "en": "(to) them (before the verb: je leur téléphone)"
+          },
+          {
+            "fr": "téléphoner à",
+            "en": "to phone, to call (someone)"
+          },
+          {
+            "fr": "écrire",
+            "en": "to write (j'écris, tu écris, il écrit)"
+          },
+          {
+            "fr": "envoyer",
+            "en": "to send (j'envoie, like essayer)"
+          },
+          {
+            "fr": "un message",
+            "en": "a message"
+          },
+          {
+            "fr": "un courriel",
+            "en": "an email (the standard Canadian word; in France often un mail)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je lui téléphone",
+          "goalEn": "Replace people with the pronouns lui and leur",
+          "promptSeed": "Role-play two friends talking about staying in touch with family. Model the indirect pronouns — 'Je téléphone à ma mère le dimanche : je lui parle une heure !', 'Mes cousins habitent loin de chez moi : je leur écris un courriel' — then elicit the learner's habits: 'Tu téléphones à tes parents ?', 'Tu leur parles souvent ?'. Push lui and leur before the verb, and one near-future form: 'Je vais lui téléphoner ce soir.' Bring in un message and envoyer. The key recast: if the learner puts the pronoun after the verb ('je parle lui'), fix it to 'je lui parle'. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u4-l3",
+        "order": 3,
+        "canDoEn": "I can schedule plans with months, times, and the word quand.",
+        "canDoFr": "Je peux organiser un rendez-vous avec les mois et l'heure.",
+        "grammarTarget": "Scheduling with quand + present tense; time prepositions (en/au for months and seasons, dans + duration) + the twelve months",
+        "teachEn": "To schedule the future, French keeps the PRESENT tense after quand (when): 'Quand je suis libre, je vais au cinéma', 'Quand tu arrives, nous allons au restaurant' — even though the meaning is future. Set dates with the right little word. Months and seasons take en — en janvier, en été — except le printemps, which keeps au: au printemps. Here are the twelve months (never capitalized): janvier, février, mars, avril, mai, juin, juillet, août, septembre, octobre, novembre, décembre. For a countdown, use dans + a length of time: 'Le rendez-vous est dans deux jours', 'Je vais partir en voyage dans une semaine.' Watch the two 'in' words: dans une heure means one hour FROM NOW, while en names a month or season.",
+        "teachFr": "Quand je suis libre, nous pouvons magasiner ensemble ! Mon anniversaire est en mai : je vais organiser une fête. Le rendez-vous chez le médecin est dans trois jours, à deux heures.",
+        "vocab": [
+          {
+            "fr": "janvier",
+            "en": "January"
+          },
+          {
+            "fr": "février",
+            "en": "February"
+          },
+          {
+            "fr": "mars",
+            "en": "March"
+          },
+          {
+            "fr": "avril",
+            "en": "April"
+          },
+          {
+            "fr": "mai",
+            "en": "May"
+          },
+          {
+            "fr": "juin",
+            "en": "June"
+          },
+          {
+            "fr": "juillet",
+            "en": "July"
+          },
+          {
+            "fr": "août",
+            "en": "August"
+          },
+          {
+            "fr": "septembre",
+            "en": "September"
+          },
+          {
+            "fr": "octobre",
+            "en": "October"
+          },
+          {
+            "fr": "novembre",
+            "en": "November"
+          },
+          {
+            "fr": "décembre",
+            "en": "December"
+          },
+          {
+            "fr": "un anniversaire",
+            "en": "a birthday"
+          },
+          {
+            "fr": "en retard",
+            "en": "late (être en retard = to be late)"
+          },
+          {
+            "fr": "à l'heure",
+            "en": "on time"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu es libre quand ?",
+          "goalEn": "Make plans and appointments with quand, months, and dans",
+          "promptSeed": "Role-play arranging a get-together and an appointment. Warm up by naming the months in order, from janvier to décembre. Then schedule with the present after quand: 'Quand tu es libre, nous allons au restaurant.' Set dates with the right word — 'Mon anniversaire est en mai', 'au printemps', 'à deux heures', 'dans trois jours' — and elicit them: 'Ton anniversaire est en quel mois ?', 'Tu es libre quand ?'. Bring in en retard and à l'heure. Recast a future tense after quand ('quand tu vas arriver') back to the present ('quand tu arrives'). Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u4-l4",
+        "order": 4,
+        "canDoEn": "I can use the pronoun y to say I go there without repeating the place.",
+        "canDoFr": "Je peux dire j'y vais pour parler d'un endroit.",
+        "grammarTarget": "The pronoun y (there) replacing à / dans / chez + a place, placed before the verb",
+        "teachEn": "When you have already named a place, replace it with y (there) so you do not repeat it. Y stands for a phrase with à, dans, or chez + a place, and like the object pronouns it goes BEFORE the verb: 'Tu vas à la plage ? — Oui, j'y vais !', 'Je mange souvent au restaurant : j'y mange le vendredi.' In the passé composé, y sits before the auxiliary: 'Tu es allé au marché ? — Oui, j'y suis allé.' With two verbs, y goes before the infinitive: 'Je veux y aller demain.' A negation wraps the pronoun and verb: 'Je n'y vais pas.' Careful — y replaces a PLACE, not a person: for a person you keep lui or leur from Lesson 2.",
+        "teachFr": "Il y a un beau marché dans mon quartier : j'y vais le samedi. J'adore la campagne aussi : j'y suis allée le mois dernier. Demain, je veux aller à la plage — tu veux y aller avec moi ?",
+        "vocab": [
+          {
+            "fr": "y",
+            "en": "there (replaces a place: j'y vais)"
+          },
+          {
+            "fr": "un endroit",
+            "en": "a place, a spot"
+          },
+          {
+            "fr": "la campagne",
+            "en": "the countryside"
+          },
+          {
+            "fr": "la plage",
+            "en": "the beach"
+          },
+          {
+            "fr": "le marché",
+            "en": "the market, the farmers' market"
+          },
+          {
+            "fr": "une sortie",
+            "en": "an outing"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu veux y aller ?",
+          "goalEn": "Replace a place with y to plan an outing",
+          "promptSeed": "Role-play planning where to go this weekend. Name places and replace them with y — 'Tu vas au parc ? — Oui, j'y vais !', 'La campagne ? J'y vais souvent en été' — then elicit y from the learner: 'Tu vas à la plage en été ?', 'Tu es allé au marché la fin de semaine dernière ?'. Push y before the verb in the present and before the auxiliary in the passé composé, plus 'Je veux y aller' with an infinitive. Bring in un endroit, la campagne, la plage, le marché and une sortie. The key recast: keep y for places but lui or leur for people. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u4-l5",
+        "order": 5,
+        "canDoEn": "I can invite a friend on an outing, propose a time, and agree.",
+        "canDoFr": "Je peux inviter un ami et organiser une sortie.",
+        "grammarTarget": "Unit synthesis: planning an outing — inviting, proposing times, agreeing, using the near future, lui / leur and y together",
+        "teachEn": "Now put the unit together to plan an outing (une sortie, from Lesson 4). Invite with the A1 chunk Tu veux … ? or the friendly fixed question Ça te dit ? : 'Tu veux faire un pique-nique samedi ?', 'Nous allons au marché, ça te dit ?' Propose a time with the near future and the scheduling words from Lesson 3: 'Nous allons y aller à midi', 'dans deux jours.' Your friend can accepter — 'D'accord, avec plaisir !' (A1) — or refuser politely with désolé + a reason: 'Désolée, je vais travailler.' Use the pronouns you built this unit: y for the place ('J'y vais !') and lui or leur for people ('Je vais leur téléphoner'). Say how you feel with content / contente: 'Je suis contente !'",
+        "teachFr": "— Salut ! Samedi, nous allons faire un pique-nique au parc. Ça te dit ? — Oui, avec plaisir ! Je suis contente. À quelle heure ? — À midi. Je vais téléphoner à Marie et je vais lui envoyer un message aussi. — D'accord ! Je vais accepter l'invitation.",
+        "vocab": [
+          {
+            "fr": "une invitation",
+            "en": "an invitation"
+          },
+          {
+            "fr": "accepter",
+            "en": "to accept (an invitation)"
+          },
+          {
+            "fr": "refuser",
+            "en": "to refuse, to decline"
+          },
+          {
+            "fr": "un pique-nique",
+            "en": "a picnic"
+          },
+          {
+            "fr": "Ça te dit ?",
+            "en": "How about it? Does that appeal to you? (fixed invitation chunk)"
+          },
+          {
+            "fr": "content / contente",
+            "en": "happy, glad"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu veux faire un pique-nique ?",
+          "goalEn": "Invite a friend on an outing, propose a time, and agree",
+          "promptSeed": "Role-play planning a weekend outing to close the unit. Invite the learner with 'Tu veux … ?' or 'Ça te dit ?' — 'Tu veux faire un pique-nique samedi ?' — and propose a time with the near future: 'Nous allons y aller à midi', 'dans deux jours.' Elicit an answer: accepting ('D'accord, avec plaisir !'), hesitating with peut-être, or a polite refusal with désolé and a reason. Weave in the unit's pronouns — y for the place ('J'y vais !') and lui or leur for a friend ('Je vais lui téléphoner'). Bring in une invitation, accepter, refuser and content / contente, and close warmly with 'À bientôt !'."
+        }
+      }
+    ]
+  }
+}

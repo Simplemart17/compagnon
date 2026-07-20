@@ -1,0 +1,232 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a2-u6",
+    "level": "A2",
+    "order": 6,
+    "titleEn": "The City and the World",
+    "titleFr": "La ville et le monde",
+    "lessons": [
+      {
+        "id": "a2-u6-l1",
+        "order": 1,
+        "canDoEn": "I can compare two things.",
+        "canDoFr": "Je peux dire plus grand, moins grand et aussi grand.",
+        "grammarTarget": "Comparatives: plus / moins / aussi + adjective + que; meilleur as the irregular comparative of bon; adjective agreement",
+        "teachEn": "To compare two things, put plus (more), moins (less), or aussi (as) before an adjective and que (than / as) after it: 'Ma ville est plus grande que Québec', 'Le métro est moins cher que l'autobus', 'Ma voiture est aussi rapide que ton vélo.' The adjective still agrees with the first thing, exactly like A1. One adjective has an irregular comparative: bon (good) becomes meilleur, never 'plus bon' — 'Le restaurant est meilleur que l'autre', 'La salade est meilleure ici.' Do not confuse it with mieux (A2 Unit 3), which is 'better' for the adverb bien: 'Je vais mieux.' New words to compare: une voiture (a car) and the adjective nouveau / nouvelle (new): 'J'ai une nouvelle voiture.'",
+        "teachFr": "Pour moi, l'autobus est moins rapide que le métro, mais il est moins cher. Le métro est meilleur ! Ma nouvelle voiture est aussi rapide que la voiture de mon frère. Montréal est plus grande que ma petite ville.",
+        "vocab": [
+          {
+            "fr": "plus … que",
+            "en": "more … than (plus grand que)"
+          },
+          {
+            "fr": "moins … que",
+            "en": "less … than (moins cher que)"
+          },
+          {
+            "fr": "aussi … que",
+            "en": "as … as (aussi grand que)"
+          },
+          {
+            "fr": "meilleur / meilleure",
+            "en": "better (the irregular comparative of bon; never 'plus bon')"
+          },
+          {
+            "fr": "une voiture",
+            "en": "a car"
+          },
+          {
+            "fr": "nouveau / nouvelle",
+            "en": "new (un nouveau manteau, une nouvelle voiture)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Plus grand ou plus petit ?",
+          "goalEn": "Compare two things with plus, moins, and aussi",
+          "promptSeed": "Role-play comparing places, transport, and things you own. Model comparatives with agreement — 'Montréal est plus grande que Québec', 'Le métro est moins cher que l'autobus', 'Ma voiture est aussi rapide que ton vélo' — then elicit them from the learner: 'Ta ville est plus grande ou plus petite que Montréal ?', 'Le train est plus rapide que l'autobus ?'. Practise the irregular meilleur for bon ('Le restaurant est meilleur') and keep mieux (A2 Unit 3) for bien. Bring in une voiture and nouveau / nouvelle. Recast 'plus bon' to 'meilleur'. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u6-l2",
+        "order": 2,
+        "canDoEn": "I can say what is the biggest, the best, or the most famous.",
+        "canDoFr": "Je peux dire le plus grand et le meilleur.",
+        "grammarTarget": "Superlatives: le/la/les plus … / le/la/les moins … + de for 'in/of' (la plus grande ville du Canada); le meilleur",
+        "teachEn": "To say the MOST or the LEAST, add a definite article to the comparative: le / la / les plus + adjective (the most), le / la / les moins + adjective (the least). The article and adjective both agree: 'Montréal est la plus grande ville du Québec', 'C'est le restaurant le moins cher.' To name the group you compare within, French uses de (of / in), which contracts as always: de + le → du — 'la plus grande ville du Canada', 'le plus beau parc de la ville.' The best is le meilleur / la meilleure (from bon): 'C'est la meilleure salade du quartier !' New words for big comparisons: le monde (the world — 'la plus grande ville du monde'), une capitale (a capital), and célèbre (famous): 'l'endroit le plus célèbre de la ville.'",
+        "teachFr": "Ottawa est la capitale du Canada, mais Montréal est la plus grande ville du Québec. Pour moi, c'est la plus belle ville du monde ! Le Vieux-Montréal est l'endroit le plus célèbre. Et le meilleur restaurant est dans mon quartier.",
+        "vocab": [
+          {
+            "fr": "le plus grand / la plus grande",
+            "en": "the biggest (superlative; agrees like an adjective)"
+          },
+          {
+            "fr": "le moins grand / la moins grande",
+            "en": "the least big (moins = the opposite of plus)"
+          },
+          {
+            "fr": "le meilleur / la meilleure",
+            "en": "the best (superlative of bon)"
+          },
+          {
+            "fr": "le monde",
+            "en": "the world (la plus grande ville du monde)"
+          },
+          {
+            "fr": "une capitale",
+            "en": "a capital city"
+          },
+          {
+            "fr": "célèbre",
+            "en": "famous (one form for masculine and feminine)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "La plus belle ville",
+          "goalEn": "Say what is the biggest, best, or most famous",
+          "promptSeed": "Role-play a friendly debate about the best places. Model superlatives with agreement and de — 'Montréal est la plus grande ville du Québec', 'C'est le restaurant le moins cher du quartier', 'C'est la plus belle ville du monde' — then ask the learner: 'Ta ville est la plus grande de ton pays ?', 'Le musée est l'endroit le plus célèbre ?'. Practise le meilleur / la meilleure for bon. Bring in la capitale, le monde and célèbre. Recast 'le plus bon' to 'le meilleur' and 'de le' to 'du'. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u6-l3",
+        "order": 3,
+        "canDoEn": "I can give directions to a friend, saying which street to take.",
+        "canDoFr": "Je peux guider un ami et dire quelle rue prendre.",
+        "grammarTarget": "Directions expanded: ordinal numbers (première, deuxième, troisième…) + tourner / continuer / traverser; tu-imperative for a friend (tourne, continue)",
+        "teachEn": "In A1 you learned directions as fixed vous-commands (tournez, continuez, traversez). Now meet their full -er verbs — tourner, continuer, traverser — and give directions to a FRIEND with the tu-imperative, which simply drops the -s from the tu form: tu tournes → 'Tourne à gauche !', tu continues → 'Continue tout droit', tu traverses → 'Traverse la rue.' To say WHICH street, use ordinal numbers, built by adding -ième to the number: deux → deuxième, trois → troisième, quatre → quatrième. Two are special: premier / première (first) agrees, and cinq adds a u — cinquième. 'Tourne à droite à la première rue, puis continue tout droit. C'est la deuxième rue à gauche.' A corner is un coin: 'La banque est au coin de la rue.'",
+        "teachFr": "Excuse-moi, où est la banque ? — C'est facile ! Tourne à droite à la première rue, puis continue tout droit. Traverse la rue : la banque est au coin, à côté de la pharmacie.",
+        "vocab": [
+          {
+            "fr": "premier / première",
+            "en": "first"
+          },
+          {
+            "fr": "deuxième",
+            "en": "second"
+          },
+          {
+            "fr": "troisième",
+            "en": "third"
+          },
+          {
+            "fr": "quatrième",
+            "en": "fourth"
+          },
+          {
+            "fr": "cinquième",
+            "en": "fifth (cinq adds a u)"
+          },
+          {
+            "fr": "tourner",
+            "en": "to turn (tourne à gauche)"
+          },
+          {
+            "fr": "continuer",
+            "en": "to continue (continue tout droit)"
+          },
+          {
+            "fr": "traverser",
+            "en": "to cross (traverse la rue)"
+          },
+          {
+            "fr": "un coin",
+            "en": "a corner (au coin de la rue)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tourne à droite !",
+          "goalEn": "Give directions to a friend with ordinals and the tu-imperative",
+          "promptSeed": "Role-play helping a friend find a place, then swap roles. Give directions with the tu-imperative — 'Tourne à gauche', 'Continue tout droit', 'Traverse la rue' — and say which street with ordinals: 'C'est la deuxième rue à droite.' Elicit the same from the learner and have them ask 'Où est … ?' (A1 Unit 5). Practise premier / première, deuxième, troisième and un coin ('au coin de la rue'). Recast a vous-command to a friend ('tournez') into the tu form ('tourne'), and a wrong ordinal ('le troisième' for a feminine rue) into 'la troisième'. Keep each direction to one short step."
+        }
+      },
+      {
+        "id": "a2-u6-l4",
+        "order": 4,
+        "canDoEn": "I can book a ticket and talk about a trip.",
+        "canDoFr": "Je peux réserver un billet et parler d'un voyage.",
+        "grammarTarget": "Travel logistics (réserver, un aller-retour, le quai, l'horaire) + prepositions with places (à + city, en + feminine country, au + masculine country)",
+        "teachEn": "Planning a trip means logistics. Réserver is to book: 'Je vais réserver un billet.' Choose un aller simple (one-way) or un aller-retour (round-trip). At la gare (the train station), check l'horaire (the schedule) and find le quai (the platform): 'Le train est au quai deux.' Pack une valise (a suitcase) and you are ready to voyager (to travel). Places take different little words: cities take à — à Montréal, à Québec; feminine countries take en — en France; and masculine countries take au — au Canada, au Québec (the province). So: 'Je voyage en France', 'Je vais au Canada', 'J'arrive à Montréal.' Watch the pair: à Québec is the CITY, au Québec is the PROVINCE.",
+        "teachFr": "La semaine prochaine, je vais voyager en France ! J'ai réservé un aller-retour à la gare. L'horaire est facile : le train est à midi. Je vais préparer ma valise et arriver au quai à onze heures. Je suis très content !",
+        "vocab": [
+          {
+            "fr": "réserver",
+            "en": "to book, to reserve"
+          },
+          {
+            "fr": "un aller-retour",
+            "en": "a round-trip ticket"
+          },
+          {
+            "fr": "un aller simple",
+            "en": "a one-way ticket"
+          },
+          {
+            "fr": "le quai",
+            "en": "the platform (train or metro)"
+          },
+          {
+            "fr": "l'horaire",
+            "en": "the schedule, the timetable"
+          },
+          {
+            "fr": "la gare",
+            "en": "the train station"
+          },
+          {
+            "fr": "une valise",
+            "en": "a suitcase"
+          },
+          {
+            "fr": "voyager",
+            "en": "to travel"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "À la gare",
+          "goalEn": "Book a ticket and talk about a trip",
+          "promptSeed": "Role-play booking a train ticket, playing the clerk at la gare. Ask where the learner is going: 'Vous allez où ?'. Elicit destinations with the right preposition — 'Je vais à Montréal', 'Je voyage en France', 'Je vais au Québec' — and recast 'à Canada' to 'au Canada'. Offer un aller simple or un aller-retour, check l'horaire, and give le quai: 'Le train est au quai deux.' Bring in réserver, une valise and voyager. Have the learner ask about times: 'Le train est à quelle heure ?'. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u6-l5",
+        "order": 5,
+        "canDoEn": "I can plan a trip to a city: compare options, book, and ask directions.",
+        "canDoFr": "Je peux organiser un voyage dans une ville.",
+        "grammarTarget": "A2 synthesis: planning a trip — comparing options, using the near future, booking, and asking directions",
+        "teachEn": "Time to plan a real trip and use everything from A2. Choose a destination by comparing: 'Montréal est plus grande que Québec, mais Québec est la plus belle ville !' (Lessons 1-2). Plan with the near future (Unit 4): 'Je vais réserver un hôtel et un aller-retour.' Make une réservation, and as a touriste, decide what to visit: 'Nous allons visiter le Vieux-Québec — c'est magnifique !' On arrival, ask directions like a local: 'Excusez-moi, où est le musée ? — Tournez à droite, c'est la deuxième rue.' Say which region with de: 'la région de Montréal.' And share your excitement with the chunk avoir hâte: 'J'ai hâte de voyager !'",
+        "teachFr": "J'ai hâte ! La semaine prochaine, nous allons visiter Québec. C'est la plus belle ville de la région ! Je vais réserver un hôtel et un aller-retour à la gare. À Québec, nous allons trouver le musée : « Excusez-moi, où est le musée ? » C'est magnifique. Je suis une touriste dans mon pays !",
+        "vocab": [
+          {
+            "fr": "une réservation",
+            "en": "a reservation"
+          },
+          {
+            "fr": "un hôtel",
+            "en": "a hotel"
+          },
+          {
+            "fr": "un touriste / une touriste",
+            "en": "a tourist"
+          },
+          {
+            "fr": "une région",
+            "en": "a region, an area"
+          },
+          {
+            "fr": "magnifique",
+            "en": "magnificent, gorgeous (one form for masculine and feminine)"
+          },
+          {
+            "fr": "avoir hâte",
+            "en": "to look forward to (J'ai hâte !)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Un voyage à Québec",
+          "goalEn": "Plan a trip: compare cities, book, and ask directions",
+          "promptSeed": "Role-play planning a trip to a Canadian city — the A2 capstone. Compare destinations: 'Montréal est plus grande que Québec, mais Québec est la plus belle !'. Plan with the near future: 'Nous allons réserver un hôtel', 'Je vais préparer ma valise.' Then role-play arriving and asking directions: 'Excusez-moi, où est le musée ? — Tourne à droite, c'est la deuxième rue.' Weave in un aller-retour, une réservation and magnifique, and share excitement with 'J'ai hâte !'. Recycle country prepositions (à Montréal, au Québec). Keep utterances short and slow."
+        }
+      }
+    ]
+  }
+}
