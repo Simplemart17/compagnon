@@ -1,0 +1,284 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a2-u2",
+    "level": "A2",
+    "order": 2,
+    "titleEn": "Shopping",
+    "titleFr": "Les courses et les achats",
+    "lessons": [
+      {
+        "id": "a2-u2-l1",
+        "order": 1,
+        "canDoEn": "I can say what I want, can, and must do.",
+        "canDoFr": "Je peux dire ce que je veux, ce que je peux et ce que je dois faire.",
+        "grammarTarget": "Full present of vouloir, pouvoir, devoir + infinitive",
+        "teachEn": "Three power verbs unlock shopping — and much more. Vouloir (to want): je veux, tu veux, il/elle veut, nous voulons, vous voulez, ils/elles veulent. You already know two of its faces from A1: je voudrais is its extra-polite form, and Tu veux … ? is simply its tu form. Pouvoir (can, to be able): je peux, tu peux, il/elle peut, nous pouvons, vous pouvez, ils/elles peuvent. Devoir (must, to have to): je dois, tu dois, il/elle doit, nous devons, vous devez, ils/elles doivent. All three take a verb in the dictionary form: 'Je veux magasiner' (to shop — the Canadian verb; in France you will hear faire du shopping), 'Tu peux payer ?', 'Je dois travailler.' Vouloir also takes a thing: 'Je veux quelque chose (something) — un cadeau (a gift) pour ma mère !'",
+        "teachFr": "Samedi, je veux magasiner avec mon amie. Nous voulons acheter un cadeau pour ma mère. Je peux payer avec mon argent, mais je dois trouver le magasin !",
+        "vocab": [
+          {
+            "fr": "vouloir",
+            "en": "to want (je veux, tu veux, il veut, nous voulons, vous voulez, ils veulent)"
+          },
+          {
+            "fr": "pouvoir",
+            "en": "can (je peux, tu peux, il peut, nous pouvons, vous pouvez, ils peuvent)"
+          },
+          {
+            "fr": "devoir",
+            "en": "must (je dois, tu dois, il doit, nous devons, vous devez, ils doivent)"
+          },
+          {
+            "fr": "magasiner",
+            "en": "to shop (Canadian; in France: faire du shopping)"
+          },
+          {
+            "fr": "quelque chose",
+            "en": "something"
+          },
+          {
+            "fr": "un cadeau",
+            "en": "a gift, a present"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je veux magasiner !",
+          "goalEn": "Plan a shopping trip with what you want, can, and must do",
+          "promptSeed": "Role-play planning a Saturday shopping trip. Model the new paradigms in real plans — 'Je veux magasiner', 'Nous voulons acheter un cadeau', 'Je peux payer', 'Je dois travailler le matin' — then elicit each verb: 'Tu veux magasiner samedi ?', 'Tu peux arriver à deux heures ?', 'Qu'est-ce que tu dois acheter ?' (A2 Unit 1). Connect je voudrais and Tu veux … ? (A1) to their full verb vouloir, bring in quelque chose and un cadeau, and push one nous form: 'Nous voulons…'. Recast infinitive slips like 'je dois à travailler'. Short, slow utterances."
+        }
+      },
+      {
+        "id": "a2-u2-l2",
+        "order": 2,
+        "canDoEn": "I can describe clothes and their colours.",
+        "canDoFr": "Je peux décrire les vêtements et les couleurs.",
+        "grammarTarget": "Clothing nouns + colour adjectives after the noun with agreement; invariable orange and marron",
+        "teachEn": "Les vêtements (clothes) come with very Canadian pieces: une tuque (a winter hat — in France, un bonnet), un chandail (a sweater — in France, un pull), plus un manteau (a coat), un pantalon, une chemise, une robe and des chaussures (shoes). Porter means to wear: 'Je porte un manteau.' Colour words are adjectives, and in French they come AFTER the noun: une robe rouge, un manteau noir — never 'une rouge robe'. They agree like A1 adjectives, and plurals add -s or -es like the participles in Unit 1: des chaussures blanches. Bleu / bleue and noir / noire sound the same in both forms; vert / verte, blanc / blanche and brun / brune change their sound (brun is the everyday Canadian word for brown; France often says marron). Two colours never change at all: orange and marron — 'des chaussures orange'. Rouge already ends in -e, so it has one form.",
+        "teachFr": "En hiver, je porte ma tuque rouge et mon manteau noir. Ma sœur porte une robe bleue et des chaussures blanches. Mon chandail vert est grand, mais j'aime la couleur !",
+        "vocab": [
+          {
+            "fr": "les vêtements",
+            "en": "the clothes"
+          },
+          {
+            "fr": "porter",
+            "en": "to wear"
+          },
+          {
+            "fr": "un pantalon",
+            "en": "pants, a pair of pants"
+          },
+          {
+            "fr": "une chemise",
+            "en": "a shirt"
+          },
+          {
+            "fr": "une robe",
+            "en": "a dress"
+          },
+          {
+            "fr": "un manteau",
+            "en": "a coat"
+          },
+          {
+            "fr": "une tuque",
+            "en": "a winter hat, a toque (Canadian; in France: un bonnet)"
+          },
+          {
+            "fr": "un chandail",
+            "en": "a sweater (Canadian; in France: un pull)"
+          },
+          {
+            "fr": "des chaussures",
+            "en": "shoes"
+          },
+          {
+            "fr": "la couleur",
+            "en": "the colour"
+          },
+          {
+            "fr": "rouge",
+            "en": "red (one form for masculine and feminine)"
+          },
+          {
+            "fr": "bleu / bleue",
+            "en": "blue (both forms sound the same)"
+          },
+          {
+            "fr": "blanc / blanche",
+            "en": "white (you hear the change)"
+          },
+          {
+            "fr": "noir / noire",
+            "en": "black (both forms sound the same)"
+          },
+          {
+            "fr": "vert / verte",
+            "en": "green (you hear the t in verte)"
+          },
+          {
+            "fr": "brun / brune",
+            "en": "brown (the everyday word in Canada)"
+          },
+          {
+            "fr": "orange",
+            "en": "orange (never changes: des chaussures orange)"
+          },
+          {
+            "fr": "marron",
+            "en": "brown (common in France; never changes)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu portes une tuque ?",
+          "goalEn": "Describe what you and others are wearing, with colours",
+          "promptSeed": "Role-play describing outfits for a cold Saturday. Model colour position and agreement — 'Je porte un manteau noir et une tuque rouge', 'Elle porte une robe bleue et des chaussures blanches' — then elicit the learner's clothes with choice questions: 'Tu portes un chandail vert ou brun ?', 'Ta tuque est rouge ou noire ?' (ou from A1 Unit 5). Keep the colour AFTER the noun and recast order slips ('une rouge robe') and agreement slips ('une robe bleu'). Show one invariable: 'des chaussures orange'. React with 'J'aime la couleur !' and keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u2-l3",
+        "order": 3,
+        "canDoEn": "I can say which item I am taking, trying, or leaving.",
+        "canDoFr": "Je peux dire ce que j'essaie et ce que je prends.",
+        "grammarTarget": "Direct object pronouns le / la / l' / les placed before the verb",
+        "teachEn": "Once a thing is named, stop repeating it — replace it with a direct object pronoun: le (it, masculine), la (it, feminine), l' before a vowel, les (them). The trap for English speakers: the pronoun goes BEFORE the verb, not after: 'La robe ? Je la prends !', 'Le chandail ? Je le porte souvent' (souvent = often), 'Les chaussures ? Je les aime !' In a negation, ne … pas wraps the pronoun and the verb together: 'Je ne le prends pas.' Before a vowel, le and la shrink: 'Le manteau ? Je l'essaie' — essayer means to try on: j'essaie, tu essaies (the y becomes i). With two verbs, the pronoun sits before the dictionary-form verb: 'Je vais la porter demain', 'Tu peux les essayer.' Handy fitting-room words: trop (too — 'Il est trop grand'), la taille (the size — 'La taille est parfaite !'), joli / jolie (pretty).",
+        "teachFr": "J'aime la robe bleue : je la prends ! Le manteau noir est joli, mais il est trop grand. Je l'essaie ? Non — je ne le prends pas. Les chaussures sont parfaites : je vais les porter demain !",
+        "vocab": [
+          {
+            "fr": "le / la / l' / les",
+            "en": "it, them (object pronouns, placed before the verb: je la prends)"
+          },
+          {
+            "fr": "essayer",
+            "en": "to try, to try on (j'essaie — the y becomes i)"
+          },
+          {
+            "fr": "la taille",
+            "en": "the size"
+          },
+          {
+            "fr": "trop",
+            "en": "too (trop grand, trop petit)"
+          },
+          {
+            "fr": "joli / jolie",
+            "en": "pretty"
+          },
+          {
+            "fr": "parfait / parfaite",
+            "en": "perfect"
+          },
+          {
+            "fr": "souvent",
+            "en": "often"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je le prends !",
+          "goalEn": "Decide what to buy, replacing nouns with le, la, or les",
+          "promptSeed": "Role-play a fitting-room chat. Offer Lesson 2 items — 'La robe bleue ?', 'Le chandail vert ?' — and elicit decisions with object pronouns before the verb: 'Je la prends !', 'Je ne le prends pas', 'Je vais les essayer.' Ask 'Tu la veux ?' (vouloir from Lesson 1) and 'Tu le portes souvent ?', use la taille and trop ('Il est trop grand'), and react with joli / jolie or parfait / parfaite. The key recast: 'je prends le' or 'je veux la' with the pronoun after the verb becomes 'je le prends', 'je la veux'. Short, slow utterances."
+        }
+      },
+      {
+        "id": "a2-u2-l4",
+        "order": 4,
+        "canDoEn": "I can handle prices over one hundred dollars and pay the Canadian way.",
+        "canDoFr": "Je peux payer avec ma carte ou en argent comptant.",
+        "grammarTarget": "Numbers 100-1000 + prices and paying (Canadian: carte de débit, en argent comptant)",
+        "teachEn": "You know cent (100) from A1 Unit 4. The hundreds multiply it and take an -s: deux cents (200), trois cents — but the -s drops when another number follows: deux cent cinquante (250). Before a noun the -s stays: 'deux cents dollars.' Mille (1000) never changes: mille, deux mille. In between, stack what you know: cent dix (110), trois cent quatre-vingts (380). For prices, recycle 'Ça coûte combien ?' (A1 Unit 4) and answer with le prix (the price): 'Le prix ? Le manteau coûte deux cents dollars !' At the register the clerk asks 'Vous payez comment ?' — payer works like essayer from Lesson 3: je paie (the y becomes i). Answer with the Canadian essentials: 'Je paie avec ma carte de débit' (debit card — in France: la carte bancaire), 'avec ma carte de crédit', or 'en argent comptant' (in cash — in France: en espèces). Hunt for deals: en solde (on sale), un rabais (a discount — in France: une réduction), gratuit / gratuite (free): 'C'est gratuit !'",
+        "teachFr": "La tuque coûte vingt dollars et le manteau coûte deux cents dollars : c'est cher ! Mais aujourd'hui, le chandail est en solde : il y a un rabais de dix dollars. Je paie avec ma carte de débit. Et la tuque ? Elle est gratuite !",
+        "vocab": [
+          {
+            "fr": "deux cents",
+            "en": "two hundred (the -s drops before another number: deux cent dix)"
+          },
+          {
+            "fr": "deux cent cinquante",
+            "en": "two hundred and fifty"
+          },
+          {
+            "fr": "mille",
+            "en": "one thousand (never changes: deux mille)"
+          },
+          {
+            "fr": "le prix",
+            "en": "the price"
+          },
+          {
+            "fr": "la carte de débit",
+            "en": "the debit card (the everyday Canadian way to pay; in France: la carte bancaire)"
+          },
+          {
+            "fr": "la carte de crédit",
+            "en": "the credit card"
+          },
+          {
+            "fr": "en argent comptant",
+            "en": "in cash (Canadian; in France: en espèces)"
+          },
+          {
+            "fr": "en solde",
+            "en": "on sale"
+          },
+          {
+            "fr": "un rabais",
+            "en": "a discount (Canadian; in France: une réduction)"
+          },
+          {
+            "fr": "gratuit / gratuite",
+            "en": "free (costs nothing)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "C'est en solde !",
+          "goalEn": "Ask prices, spot deals, and pay the Canadian way",
+          "promptSeed": "Role-play the clothing-store checkout, playing the clerk. Announce prices with the new hundreds — 'Le manteau coûte deux cents dollars', 'La robe coûte cent cinquante dollars' — and have the learner repeat them; watch the -s: deux cents, but deux cent cinquante. Elicit 'Ça coûte combien ?' (A1 Unit 4) and reactions: 'C'est cher !', 'C'est en solde ?', 'Il y a un rabais ?'. Then ask 'Vous payez comment ?' and elicit 'Je paie avec ma carte de débit' or 'en argent comptant'. Offer something gratuit at the end, and repeat any number the learner misses slowly."
+        }
+      },
+      {
+        "id": "a2-u2-l5",
+        "order": 5,
+        "canDoEn": "I can shop for clothes from start to finish.",
+        "canDoFr": "Je peux magasiner et acheter mes vêtements.",
+        "grammarTarget": "Unit synthesis: a full shopping trip — chercher, avoir besoin de, trying on, deciding, paying",
+        "teachEn": "Time for the full shopping trip. Walk in with a mission: chercher means to look for — no extra word, unlike English: 'Je cherche un manteau', never 'je cherche pour'. Say what you need with the chunk avoir besoin de: 'J'ai besoin d'une tuque' — de becomes d' before a vowel, as always. The clerk greets you with the fixed question 'Je peux vous aider ?' (Can I help you?). Try things on with essayer and the Lesson 3 pronouns: 'Je peux l'essayer ?' If it fits, use the fixed chunk 'Ça me va !' (It fits me / it suits me); if not, ask for another size — autre means other: 'Une autre taille, s'il vous plaît.' Seulement means only: 'J'ai seulement cent dollars.' Then head to la caisse (the checkout) and pay like Lesson 4.",
+        "teachFr": "Bonjour ! Je cherche une robe : j'ai besoin d'une robe pour une fête. Je peux l'essayer ? … Elle est trop petite. Une autre taille, s'il vous plaît. … Parfait, ça me va ! J'ai seulement soixante dollars — elle coûte combien ? … Super, je la prends ! La caisse est là-bas ?",
+        "vocab": [
+          {
+            "fr": "chercher",
+            "en": "to look for (no extra word: je cherche un manteau)"
+          },
+          {
+            "fr": "avoir besoin de",
+            "en": "to need (j'ai besoin d'une tuque)"
+          },
+          {
+            "fr": "Je peux vous aider ?",
+            "en": "Can I help you? (what the clerk asks — fixed)"
+          },
+          {
+            "fr": "la caisse",
+            "en": "the checkout, the cash register"
+          },
+          {
+            "fr": "seulement",
+            "en": "only"
+          },
+          {
+            "fr": "autre",
+            "en": "other (une autre taille)"
+          },
+          {
+            "fr": "Ça me va !",
+            "en": "It fits me! It suits me! (fixed chunk)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Au magasin",
+          "goalEn": "Run a full shopping trip: search, try on, decide, and pay",
+          "promptSeed": "Role-play a complete store visit, playing the clerk. Open with 'Je peux vous aider ?' and elicit 'Je cherche + item' and 'J'ai besoin de …' — recast the calque 'je cherche pour' to plain 'je cherche'. Move to trying on: 'Je peux l'essayer ?' (Lesson 3 pronouns), then 'Ça me va !' or 'Une autre taille, s'il vous plaît.' Talk le prix, en solde and un rabais (Lesson 4), have the learner decide — 'Je le prends' or 'Je ne le prends pas' — then send them to la caisse: 'Vous payez comment ?'. Close with A1 goodbyes; short, slow exchanges."
+        }
+      }
+    ]
+  }
+}

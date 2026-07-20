@@ -98,10 +98,10 @@ describe("Story 19-2 — nextLessonForUser (pure resume pointer)", () => {
     expect(nextLessonForUser(new Set(CURRICULUM_LESSONS.map((l) => l.id)))).toBeUndefined();
   });
 
-  // Story 19-3: placement-aware entry point. Exercised with a MID-SPINE
-  // entry id against the REAL registry (with only A1 shipped, every
-  // level's entryLessonForLevel falls down to the spine start, so the
-  // level→id mapping alone cannot exercise the scan semantics).
+  // Story 19-3: placement-aware entry point, exercised with a MID-SPINE
+  // entry id against the REAL registry. (Written when only A1 shipped;
+  // since slice 4 the A2 start is a genuine mid-spine production entry —
+  // both the synthetic and production paths are covered below.)
   describe("Story 19-3 — placement-aware entry", () => {
     const midEntry = "a1-u3-l1";
     const midIdx = CURRICULUM_LESSONS.findIndex((l) => l.id === midEntry);
@@ -128,24 +128,25 @@ describe("Story 19-2 — nextLessonForUser (pure resume pointer)", () => {
       expect(nextLessonForUser(new Set(), "z9-u1-l1")?.id).toBe(CURRICULUM_LESSONS[0].id);
     });
 
-    it("production path today: entry at spine INDEX 0 composes through the pointer (entryIdx === 0 branch)", () => {
-      // With only A1 shipped, EVERY real call is entry-at-index-0 — the
-      // mid-spine cases above cannot catch a refactor wrong only in this
-      // branch (review R1).
+    it("production paths compose through the pointer: A1 entry at INDEX 0; A2+ entry mid-spine (the 19-3 semantics, real since slice 4)", () => {
       const first = CURRICULUM_LESSONS[0];
+      // A1 learner: entry at spine index 0 (entryIdx === 0 branch).
       expect(nextLessonForUser(new Set(), entryLessonIdForLevel("A1"))?.id).toBe(first.id);
-      expect(nextLessonForUser(new Set([first.id]), entryLessonIdForLevel("B1"))?.id).toBe(
+      expect(nextLessonForUser(new Set([first.id]), entryLessonIdForLevel("A1"))?.id).toBe(
         CURRICULUM_LESSONS[1].id
       );
+      // B1-placed learner: entry falls DOWN to the A2 start — the pointer
+      // starts there and NEVER regresses into A1 despite zero completions.
+      expect(nextLessonForUser(new Set(), entryLessonIdForLevel("B1"))?.id).toBe("a2-u1-l1");
     });
 
-    it("entryLessonIdForLevel: undefined level (profile hydrating) → undefined; any level falls DOWN to the highest shipped level's start", () => {
+    it("entryLessonIdForLevel: undefined level (profile hydrating) → undefined; levels map to the highest shipped level at or below", () => {
       expect(entryLessonIdForLevel(undefined)).toBeUndefined();
-      // With A1 as the only shipped level, every placement maps to the
-      // spine start — the honest current behavior this pin documents.
+      // Slice 4: A1 + A2 shipped. The 19-3 fall-down is now REAL for B1+.
       expect(entryLessonIdForLevel("A1")).toBe(CURRICULUM_LESSONS[0].id);
-      expect(entryLessonIdForLevel("B1")).toBe(CURRICULUM_LESSONS[0].id);
-      expect(entryLessonIdForLevel("C2")).toBe(CURRICULUM_LESSONS[0].id);
+      expect(entryLessonIdForLevel("A2")).toBe("a2-u1-l1");
+      expect(entryLessonIdForLevel("B1")).toBe("a2-u1-l1");
+      expect(entryLessonIdForLevel("C2")).toBe("a2-u1-l1");
     });
   });
 });

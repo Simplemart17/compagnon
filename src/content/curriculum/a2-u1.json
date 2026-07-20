@@ -1,0 +1,228 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a2-u1",
+    "level": "A2",
+    "order": 1,
+    "titleEn": "Talking About the Past",
+    "titleFr": "Hier et avant",
+    "lessons": [
+      {
+        "id": "a2-u1-l1",
+        "order": 1,
+        "canDoEn": "I can say what I did yesterday.",
+        "canDoFr": "Je peux dire ce que j'ai fait hier.",
+        "grammarTarget": "Passé composé with avoir + regular -er participles (parlé, mangé) + past time markers (hier, la semaine dernière)",
+        "teachEn": "To talk about the past, French uses the passé composé: the present of avoir + a past participle. Every regular -er verb swaps -er for -é, and the participle sounds exactly like the infinitive: parler → parlé, manger → mangé, travailler → travaillé, acheter → acheté (to buy). So 'Hier, j'ai travaillé' means 'Yesterday, I worked.' You know j'ai, tu as and il/elle a from A1 — here are avoir's missing persons: nous avons, vous avez, ils/elles ont: 'Nous avons dansé', 'Ils ont mangé au restaurant.' Set the scene with time markers: hier (yesterday), avant (before), and dernier / dernière, which comes AFTER the noun and agrees with it: le mois dernier, but la semaine dernière and l'année dernière. Déjà (already) sits between avoir and the participle: 'J'ai déjà mangé.'",
+        "teachFr": "Hier, j'ai travaillé et, le soir, j'ai regardé un film. La semaine dernière, nous avons dansé chez moi. Le mois dernier, mon frère a acheté un vélo ! Avant le souper, j'ai écouté de la musique.",
+        "vocab": [
+          {
+            "fr": "hier",
+            "en": "yesterday"
+          },
+          {
+            "fr": "avant",
+            "en": "before (avant le souper — the opposite of après)"
+          },
+          {
+            "fr": "dernier / dernière",
+            "en": "last (after the noun: le mois dernier, la semaine dernière)"
+          },
+          {
+            "fr": "le mois",
+            "en": "the month"
+          },
+          {
+            "fr": "l'année",
+            "en": "the year (l'année dernière = last year)"
+          },
+          {
+            "fr": "déjà",
+            "en": "already (between avoir and the participle: j'ai déjà mangé)"
+          },
+          {
+            "fr": "acheter",
+            "en": "to buy (participle: acheté)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Hier, j'ai travaillé",
+          "goalEn": "Tell your buddy what you did yesterday in the past tense",
+          "promptSeed": "Role-play catching up after a busy day. Model the flagship passé composé with -er participles — 'Hier, j'ai travaillé', 'J'ai regardé un film', 'Nous avons dansé' — then elicit the learner's yesterday: 'Tu as travaillé hier ?', 'Tu as écouté de la musique ?' (A1 Unit 6), 'Tu as acheté un livre ?'. Elicit j'ai + participle across parler, manger, regarder, danser and acheter, plus one time marker: hier, la semaine dernière, le mois dernier. If the learner uses the present for the past ('hier, je travaille'), recast it into the passé composé. Short, slow utterances."
+        }
+      },
+      {
+        "id": "a2-u1-l2",
+        "order": 2,
+        "canDoEn": "I can talk about my day in the past with the most common verbs.",
+        "canDoFr": "Je peux parler de ma journée au passé.",
+        "grammarTarget": "Irregular past participles: eu, été, fait, pris, bu, voulu",
+        "teachEn": "The most common verbs have irregular participles you learn one by one: avoir → eu ('J'ai eu un rendez-vous'), être → été ('Ma journée a été super !'), faire → fait ('Tu as fait du sport ?'), prendre → pris ('Elle a pris l'autobus'), boire → bu ('Nous avons bu un thé'). Voulu is the participle of vouloir — the verb hiding inside je voudrais and Tu veux … ? from A1; its full present tense comes in the next unit: 'J'ai voulu danser !' Note that été (been) looks like l'été (summer) — the sentence always tells you which one it is. Une fois means 'one time, once': 'J'ai visité la France une fois.'",
+        "teachFr": "Hier, j'ai fait du vélo et j'ai bu un jus au café. Ma sœur a pris le métro et sa journée a été très occupée. Moi, j'ai voulu danser, mais j'ai travaillé !",
+        "vocab": [
+          {
+            "fr": "eu",
+            "en": "had (past participle of avoir: j'ai eu)"
+          },
+          {
+            "fr": "été",
+            "en": "been (past participle of être — not the season l'été)"
+          },
+          {
+            "fr": "fait",
+            "en": "done, made (past participle of faire: j'ai fait du sport)"
+          },
+          {
+            "fr": "pris",
+            "en": "taken (past participle of prendre: j'ai pris l'autobus)"
+          },
+          {
+            "fr": "bu",
+            "en": "drunk (past participle of boire: j'ai bu un café)"
+          },
+          {
+            "fr": "voulu",
+            "en": "wanted (participle of vouloir, the verb behind je voudrais)"
+          },
+          {
+            "fr": "une fois",
+            "en": "one time, once (j'ai visité la France une fois)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu as pris un café ?",
+          "goalEn": "Tell your buddy about your day using irregular past participles",
+          "promptSeed": "Role-play reviewing yesterday over coffee. Model the irregular participles — 'J'ai fait du sport', 'J'ai pris l'autobus', 'J'ai bu un café', 'Ma journée a été super' — then elicit each with short questions: 'Tu as pris le métro ou l'autobus ?' (A1 Unit 5), 'Tu as bu un thé ?', 'Tu as eu une journée occupée ?'. Bring in une fois for a memory ('J'ai visité la France une fois') and j'ai voulu + verb. Recast invented regular forms like 'j'ai prendu' or 'j'ai boiré' with the real participle. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a2-u1-l3",
+        "order": 3,
+        "canDoEn": "I can say where I went and who came along.",
+        "canDoFr": "Je peux dire où je suis allé ou allée.",
+        "grammarTarget": "Passé composé with être (aller, arriver, partir, rester, venir, rentrer, tomber) + participle agreement with the subject",
+        "teachEn": "A small family of movement verbs builds the passé composé with être instead of avoir: aller → allé, arriver → arrivé, rester → resté, rentrer → rentré, plus three new ones: partir → parti (to leave), venir → venu (to come — use the participle for now; the present tense comes later), and tomber → tombé (to fall). Everything else keeps avoir: 'J'ai mangé', 'J'ai pris le train.' With être, the participle agrees with the subject like an A1 adjective: il est allé, elle est allée, ils sont allés, elles sont allées — all four sound identical. A man says 'je suis allé', a woman 'je suis allée' — same sound too. And here are être's missing persons: nous sommes, vous êtes, ils/elles sont: 'Nous sommes restés à la maison.'",
+        "teachFr": "Samedi, je suis allée à une fête chez mon amie. Mon frère est venu avec sa femme. Nous sommes restés tard : je suis rentrée à minuit et je suis tombée dans la neige !",
+        "vocab": [
+          {
+            "fr": "partir",
+            "en": "to leave (passé composé with être: je suis parti / partie)"
+          },
+          {
+            "fr": "allé / allée",
+            "en": "went, gone (participle of aller; agrees with the subject)"
+          },
+          {
+            "fr": "venu / venue",
+            "en": "came (participle of venir; the full verb comes later)"
+          },
+          {
+            "fr": "tomber",
+            "en": "to fall (passé composé with être: je suis tombé / tombée)"
+          },
+          {
+            "fr": "un voyage",
+            "en": "a trip (partir en voyage = to leave on a trip)"
+          },
+          {
+            "fr": "une fête",
+            "en": "a party, a celebration"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu es allé où ?",
+          "goalEn": "Say where you went and who came along, using être verbs",
+          "promptSeed": "Role-play swapping stories about last Saturday. Model the être verbs, matching participles to your persona — 'Je suis allée au cinéma', 'Je suis arrivée tard', 'Mes amis sont venus chez moi' — then ask: 'Tu es allé où ?', 'Tu es resté chez toi ?', 'Tu es parti en voyage ?', using allé or allée to match the learner. Elicit je suis + participle across aller, arriver, partir, rester and tomber, plus une fête or un voyage. The key recast: 'j'ai allé' becomes 'je suis allé(e)' — these verbs take être. Short, slow utterances."
+        }
+      },
+      {
+        "id": "a2-u1-l4",
+        "order": 4,
+        "canDoEn": "I can ask about the past and say what I did not do.",
+        "canDoFr": "Je peux poser des questions au passé et dire ce que je n'ai pas fait.",
+        "grammarTarget": "Negation of the passé composé (ne … pas around the auxiliary) + past questions with est-ce que / qu'est-ce que / quand",
+        "teachEn": "To say what did NOT happen, wrap ne … pas around ONLY the auxiliary — the participle stays outside: 'Je n'ai pas mangé', 'Elle n'est pas venue.' Compare A1's one-verb negation, 'Je ne mange pas': same ne … pas, new position. The pas de rule from A1 Unit 4 still applies: 'Je n'ai pas mangé de viande.' Pas encore means 'not yet': 'Je n'ai pas encore mangé.' For past questions, put est-ce que (A1) in front: 'Est-ce que tu as travaillé hier ?' Ask WHAT with the chunk Qu'est-ce que … ? — 'Qu'est-ce que tu as fait hier soir ?' — and WHEN with quand: 'Tu es arrivé quand ?' Dormir (to sleep) gives the friendly check-in 'Tu as bien dormi ?' — its participle is dormi (the present tense comes later), and bien (well) sits between avoir and the participle.",
+        "teachFr": "Hier soir, je n'ai pas regardé de film : j'ai dormi ! Et toi, qu'est-ce que tu as fait ? Est-ce que tu as bien dormi ? Tu n'as pas encore mangé ?",
+        "vocab": [
+          {
+            "fr": "quand",
+            "en": "when (Tu es arrivé quand ?)"
+          },
+          {
+            "fr": "Qu'est-ce que … ?",
+            "en": "What …? (question chunk: Qu'est-ce que tu as fait ?)"
+          },
+          {
+            "fr": "pas encore",
+            "en": "not yet (je n'ai pas encore mangé)"
+          },
+          {
+            "fr": "dormir",
+            "en": "to sleep (participle: dormi — j'ai dormi; the present tense comes later)"
+          },
+          {
+            "fr": "bien",
+            "en": "well (Tu as bien dormi ?)"
+          },
+          {
+            "fr": "hier soir",
+            "en": "last night, yesterday evening"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Est-ce que tu as bien dormi ?",
+          "goalEn": "Ask and answer questions about the past, including what you did not do",
+          "promptSeed": "Role-play a morning check-in between roommates. Open with 'Est-ce que tu as bien dormi ?' and 'Qu'est-ce que tu as fait hier soir ?', then swap roles so the learner asks past questions with est-ce que, qu'est-ce que and quand ('Tu es rentré quand ?'). Elicit at least two negations — 'Je n'ai pas mangé', 'Je n'ai pas encore bu mon café', 'Je ne suis pas allée au parc' — with ne … pas around the auxiliary only. Recast 'je n'ai mangé pas' and present-tense slips ('je ne mange pas hier') gently. Short, slow utterances."
+        }
+      },
+      {
+        "id": "a2-u1-l5",
+        "order": 5,
+        "canDoEn": "I can tell the story of my weekend.",
+        "canDoFr": "Je peux parler de ma fin de semaine.",
+        "grammarTarget": "Unit synthesis: narrating your weekend in the passé composé + C'était as a fixed reaction",
+        "teachEn": "Now tell your fin de semaine from start to finish. Chain events with d'abord, ensuite, enfin (A1 Unit 3): 'D'abord, j'ai fait une promenade (a walk). Ensuite, nous avons mangé ensemble. Enfin, je suis rentrée tard.' Weather goes into the past with fait from Lesson 2 — 'Il a fait beau', 'Il a fait froid' — plus two chunks to learn whole: 'il a neigé' (it snowed) and 'il a plu' (it rained). Passer means to spend time: 'J'ai passé une bonne fin de semaine' — bon / bonne (good) is a small adjective that goes BEFORE the noun and agrees: un bon film, une bonne journée. React with the fixed chunk C'était … (it was …): 'C'était génial !', 'C'était difficile !' — learn it whole; the tense behind it comes at B1. Aussi (also) sits before the participle, like déjà: 'J'ai aussi acheté un livre.'",
+        "teachFr": "Ma fin de semaine ? C'était génial ! Samedi, il a fait beau : j'ai fait une promenade au parc avec mon chien. Dimanche, il a plu. Je suis restée à la maison et j'ai aussi regardé un film. J'ai passé une bonne fin de semaine !",
+        "vocab": [
+          {
+            "fr": "C'était …",
+            "en": "it was … (fixed chunk: C'était génial ! — its tense comes at B1)"
+          },
+          {
+            "fr": "génial / géniale",
+            "en": "great, awesome"
+          },
+          {
+            "fr": "aussi",
+            "en": "also, too (before the participle: j'ai aussi mangé)"
+          },
+          {
+            "fr": "une promenade",
+            "en": "a walk (faire une promenade = to go for a walk)"
+          },
+          {
+            "fr": "passer",
+            "en": "to spend (time): j'ai passé une bonne fin de semaine"
+          },
+          {
+            "fr": "bon / bonne",
+            "en": "good (goes before the noun: un bon film, une bonne journée)"
+          },
+          {
+            "fr": "il a plu",
+            "en": "it rained (chunk — the past of il pleut)"
+          },
+          {
+            "fr": "il a neigé",
+            "en": "it snowed (chunk — the past of il neige)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ma fin de semaine",
+          "goalEn": "Tell your buddy the full story of your last weekend in the past tense",
+          "promptSeed": "Role-play Monday catch-up between close friends. Ask 'Qu'est-ce que tu as fait la fin de semaine dernière ?' (Lessons 1 and 4) and elicit a full story: one past weather line ('Il a fait beau', 'il a plu', 'il a neigé'), one meal ('J'ai mangé mon souper au restaurant' — A1 Unit 3 meals), and events with avoir and être verbs from Lessons 1-3, chained with d'abord, ensuite, enfin (A1 Unit 3). Prompt reactions with C'était — 'C'était génial ?' — and close with 'J'ai passé une bonne fin de semaine !'. Tell your own short story too, and recast auxiliary slips ('j'ai allé') gently."
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a2-u3",
+    "level": "A2",
+    "order": 3,
+    "titleEn": "Health",
+    "titleFr": "La santé",
+    "lessons": [
+      {
+        "id": "a2-u3-l1",
+        "order": 1,
+        "canDoEn": "I can say what hurts.",
+        "canDoFr": "Je peux dire où j'ai mal.",
+        "grammarTarget": "Avoir mal à + body parts with au / à la / à l' / aux (à + les → aux)",
+        "teachEn": "To say something hurts, use the chunk avoir mal à + the body part. The à follows the contraction rules from A1: à + le → au — 'J'ai mal au dos' (le dos, the back), 'au ventre' (the belly), 'au bras' (the arm), 'au pied' (the foot) — à la stays: 'à la tête' (the head), 'à la gorge' (the throat), 'à la jambe' (the leg), 'à la main' (the hand) — and à l' before a vowel: 'à l'oreille' (the ear). One new piece: à + les → aux for plurals — 'J'ai mal aux jambes', 'J'ai mal aux dents' (la dent, the tooth) — and aux sounds exactly like au. Ask with intonation or est-ce que: 'Tu as mal à la tête ?' And when it hurts, say Aïe ! (Ouch!).",
+        "teachFr": "Aïe ! J'ai mal à la tête et j'ai mal au dos. Hier, j'ai dansé : aujourd'hui, j'ai mal aux jambes et aux pieds ! Et toi, tu as mal à la gorge ?",
+        "vocab": [
+          {
+            "fr": "avoir mal à",
+            "en": "to hurt, to have pain (j'ai mal à la tête = my head hurts)"
+          },
+          {
+            "fr": "aux",
+            "en": "to the, at the (à + les: j'ai mal aux jambes; sounds like au)"
+          },
+          {
+            "fr": "la tête",
+            "en": "the head"
+          },
+          {
+            "fr": "la gorge",
+            "en": "the throat"
+          },
+          {
+            "fr": "le ventre",
+            "en": "the belly, the stomach"
+          },
+          {
+            "fr": "le dos",
+            "en": "the back"
+          },
+          {
+            "fr": "le bras",
+            "en": "the arm"
+          },
+          {
+            "fr": "la jambe",
+            "en": "the leg"
+          },
+          {
+            "fr": "le pied",
+            "en": "the foot"
+          },
+          {
+            "fr": "la main",
+            "en": "the hand"
+          },
+          {
+            "fr": "l'oreille",
+            "en": "the ear (feminine: à l'oreille)"
+          },
+          {
+            "fr": "la dent",
+            "en": "the tooth (mal aux dents = a toothache)"
+          },
+          {
+            "fr": "Aïe !",
+            "en": "Ouch!"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "J'ai mal à la tête",
+          "goalEn": "Say what hurts using au, à la, and aux",
+          "promptSeed": "Role-play two friends comparing aches after a big weekend. Complain first — 'Aïe ! J'ai mal au dos !', 'J'ai mal aux jambes : j'ai dansé !' (passé composé, A2 Unit 1) — then ask: 'Tu as mal à la tête ?', 'Tu as mal où ?'. Elicit avoir mal à across the body parts with the flagship contractions — au dos, au ventre, à la gorge, à l'oreille, aux dents, aux pieds — and recast 'à le dos' as 'au dos' and 'à les jambes' as 'aux jambes' immediately. Sympathize warmly and keep every utterance short and slow."
+        }
+      },
+      {
+        "id": "a2-u3-l2",
+        "order": 2,
+        "canDoEn": "I can say how I feel.",
+        "canDoFr": "Je peux dire comment je me sens.",
+        "grammarTarget": "Reflexive verbs, full paradigm (nous nous, vous vous) + se sentir",
+        "teachEn": "A1 gave you je me lève, tu te lèves, il se lève. Here is the whole pattern, with se reposer (to rest): je me repose, tu te reposes, il/elle se repose, nous nous reposons, vous vous reposez, ils/elles se reposent. Yes — nous nous and vous vous, twice in a row: the first word means 'we / you', the second is the reflexive piece. The pattern fits se lever and se coucher (A1), se réveiller (to wake up), and se sentir (to feel), which does not follow the -er endings: je me sens, tu te sens, il/elle se sent, nous nous sentons, vous vous sentez, ils/elles se sentent. Say how you feel with bien, mal (badly), fatigué / fatiguée (tired) or malade (sick — one form): 'Je me sens mal', 'Nous nous sentons fatigués.' In a negation, ne … pas wraps the pronoun and the verb: 'Je ne me sens pas bien.' Before a vowel, me becomes m' — you already do it in je m'appelle.",
+        "teachFr": "Aujourd'hui, je me réveille tôt, mais je ne me sens pas bien : je suis malade et très fatiguée. Nous nous reposons à la maison. Et vous, vous vous sentez bien ?",
+        "vocab": [
+          {
+            "fr": "se sentir",
+            "en": "to feel (je me sens bien, nous nous sentons fatigués)"
+          },
+          {
+            "fr": "se reposer",
+            "en": "to rest"
+          },
+          {
+            "fr": "se réveiller",
+            "en": "to wake up"
+          },
+          {
+            "fr": "mal",
+            "en": "badly (je me sens mal = I feel bad)"
+          },
+          {
+            "fr": "fatigué / fatiguée",
+            "en": "tired"
+          },
+          {
+            "fr": "malade",
+            "en": "sick (one form for masculine and feminine)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu te sens bien ?",
+          "goalEn": "Say how you feel and talk about resting, with the full reflexive pattern",
+          "promptSeed": "Role-play checking in on a tired friend. Ask 'Tu te sens bien ?' and share your own state — 'Je me sens fatigué', 'Je me repose aujourd'hui' — then walk the learner's morning with se réveiller, se lever and se coucher (A1 Unit 3): 'Tu te réveilles tôt ?', 'Tu te couches tard ?'. Elicit fatigué / fatiguée and malade, push one nous nous sentence ('Nous nous reposons la fin de semaine'), and recast dropped pronouns ('je sens bien' → 'je me sens bien') and wrong pairs ('nous se reposons' → 'nous nous reposons'). Short, slow utterances."
+        }
+      },
+      {
+        "id": "a2-u3-l3",
+        "order": 3,
+        "canDoEn": "I can give simple health advice.",
+        "canDoFr": "Je peux donner des conseils simples pour la santé.",
+        "grammarTarget": "Advice: il faut + infinitive, devoir + infinitive (with reflexive pronoun agreement) + tu devrais as a fixed chunk",
+        "teachEn": "Three ways to give advice. Il faut + a dictionary-form verb means 'you have to / one must' — it never changes, like il y a and il pleut: 'Il faut dormir !', 'Il faut boire de l'eau.' Devoir (A2 Unit 2) makes it personal: 'Tu dois rester au lit' (le lit, the bed). Careful with reflexive verbs after devoir: the little pronoun matches the SUBJECT, even before a dictionary-form verb: 'Je dois me reposer', 'Tu dois te reposer' — never 'je dois se reposer'. Softest of all is the fixed chunk tu devrais (you should) — a polite form of devoir; the full pattern behind it comes later: 'Tu devrais prendre un médicament' (a medicine). Mieux means better: 'Ça va mieux ?' — and la santé is health itself: 'C'est bon pour la santé !'",
+        "teachFr": "Tu es malade ? Il faut boire de l'eau et il faut dormir ! Tu dois te reposer : tu devrais rester au lit aujourd'hui. Tu devrais prendre un médicament. Demain, ça va mieux !",
+        "vocab": [
+          {
+            "fr": "il faut",
+            "en": "you have to, one must (never changes: il faut dormir)"
+          },
+          {
+            "fr": "tu devrais",
+            "en": "you should (fixed polite chunk; the full pattern comes later)"
+          },
+          {
+            "fr": "le médicament",
+            "en": "the medicine (prendre un médicament)"
+          },
+          {
+            "fr": "le lit",
+            "en": "the bed (rester au lit = to stay in bed)"
+          },
+          {
+            "fr": "la santé",
+            "en": "the health (C'est bon pour la santé !)"
+          },
+          {
+            "fr": "mieux",
+            "en": "better (Ça va mieux ?)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu dois te reposer",
+          "goalEn": "Give and receive simple health advice",
+          "promptSeed": "Role-play a phone call to a sick friend. Elicit the learner's state first ('Je me sens mal', 'J'ai mal à la gorge' — Lessons 1-2), then advise with all three patterns — 'Il faut boire de l'eau', 'Tu dois te reposer', 'Tu devrais rester au lit' — and swap roles so the learner advises YOU with il faut, tu dois and tu devrais, including one reflexive. The key recast: 'je dois se reposer' becomes 'je dois me reposer' — the pronoun matches the person. Mention le médicament and close with 'Ça va mieux ?'. Short, slow utterances."
+        }
+      },
+      {
+        "id": "a2-u3-l4",
+        "order": 4,
+        "canDoEn": "I can describe my symptoms and make an appointment.",
+        "canDoFr": "Je peux décrire mes symptômes et prendre rendez-vous.",
+        "grammarTarget": "Clinic vocabulary chunks: avoir de la fièvre / la grippe / un rhume + prendre rendez-vous",
+        "teachEn": "Feeling worse? Time for la clinique sans rendez-vous — the walk-in clinic, a very Canadian institution: no appointment needed, you just go. Otherwise, the chunk prendre rendez-vous (no article) means to make an appointment: 'Je voudrais prendre rendez-vous, s'il vous plaît.' Name your symptoms (un symptôme) — each comes with its own article, so learn each chunk as it is: 'J'ai de la fièvre' (fever — with avoir, like avoir faim from A1), 'J'ai la grippe' (the flu), 'J'ai un rhume' (a cold). Tousser (to cough) is a regular -er verb: 'Je tousse beaucoup.' For medicine questions, ask le pharmacien or la pharmacienne at the pharmacy (A1 Unit 5). One more useful piece: chez (A1: chez moi) also works with a person — chez le médecin means at the doctor's office.",
+        "teachFr": "Je tousse et j'ai de la fièvre : j'ai la grippe ! Aujourd'hui, je vais à la clinique sans rendez-vous. Ma fille a un rhume : demain, elle a un rendez-vous chez le médecin.",
+        "vocab": [
+          {
+            "fr": "la fièvre",
+            "en": "the fever (j'ai de la fièvre)"
+          },
+          {
+            "fr": "la grippe",
+            "en": "the flu (j'ai la grippe)"
+          },
+          {
+            "fr": "un rhume",
+            "en": "a cold (j'ai un rhume)"
+          },
+          {
+            "fr": "tousser",
+            "en": "to cough"
+          },
+          {
+            "fr": "un symptôme",
+            "en": "a symptom"
+          },
+          {
+            "fr": "la clinique sans rendez-vous",
+            "en": "the walk-in clinic (Canadian)"
+          },
+          {
+            "fr": "prendre rendez-vous",
+            "en": "to make an appointment (no article: je voudrais prendre rendez-vous)"
+          },
+          {
+            "fr": "le pharmacien / la pharmacienne",
+            "en": "the pharmacist"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "À la clinique",
+          "goalEn": "Describe your symptoms and make an appointment",
+          "promptSeed": "Role-play the front desk at a clinique sans rendez-vous. Greet the learner (A1) and ask 'Vous êtes malade ?', 'Vous toussez ?'. Elicit symptoms with their exact chunks — 'J'ai de la fièvre', 'J'ai la grippe', 'J'ai un rhume', 'Je tousse beaucoup' — plus avoir mal à (Lesson 1). Then switch to the phone: elicit 'Je voudrais prendre rendez-vous, s'il vous plaît' (je voudrais from A1 Unit 4) and offer a day and a time to accept (A1 Unit 3). Recast article slips like 'j'ai fièvre' with the right chunk, and keep the tone warm, short and slow."
+        }
+      },
+      {
+        "id": "a2-u3-l5",
+        "order": 5,
+        "canDoEn": "I can handle a visit to the doctor.",
+        "canDoFr": "Je peux parler de ma santé chez le médecin.",
+        "grammarTarget": "Unit synthesis: chez le médecin — passé composé events + depuis with the present tense",
+        "teachEn": "At the doctor's office — chez le médecin, from Lesson 4 — you tell your story. The doctor opens with the fixed question 'Qu'est-ce qui ne va pas ?' (What's wrong?). Answer in two tenses. For what HAPPENED, use the passé composé from A2 Unit 1: 'Je suis tombé dans la rue', 'J'ai eu de la fièvre hier soir.' For what is STILL true, English says 'I have had a headache since yesterday' — but French uses the PRESENT with depuis: 'J'ai mal à la tête depuis hier', 'Je tousse depuis trois jours.' Encore means still: 'J'ai encore mal.' To negate c'est, say ce n'est pas — the hidden ce shows itself: 'Ce n'est pas grave' (It's not serious — grave means serious). The doctor may write une ordonnance (a prescription), and le problème is the problem: 'Pas de problème !' You address the doctor as docteur: 'Bonjour, docteur !'",
+        "teachFr": "— Bonjour ! Qu'est-ce qui ne va pas ? — Bonjour, docteur. Je suis malade depuis trois jours : je tousse et j'ai encore mal à la gorge. Hier, j'ai eu de la fièvre. — Ce n'est pas grave. Voici une ordonnance : il faut prendre un médicament et il faut dormir !",
+        "vocab": [
+          {
+            "fr": "depuis",
+            "en": "since, for (with the PRESENT tense: j'ai mal depuis hier)"
+          },
+          {
+            "fr": "une ordonnance",
+            "en": "a prescription"
+          },
+          {
+            "fr": "grave",
+            "en": "serious (Ce n'est pas grave ! = It's not serious!)"
+          },
+          {
+            "fr": "le problème",
+            "en": "the problem (Pas de problème !)"
+          },
+          {
+            "fr": "Qu'est-ce qui ne va pas ?",
+            "en": "What's wrong? (what the doctor asks — fixed)"
+          },
+          {
+            "fr": "encore",
+            "en": "still, again (j'ai encore mal)"
+          },
+          {
+            "fr": "docteur",
+            "en": "doctor (as a form of address: Bonjour, docteur !)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Chez le médecin",
+          "goalEn": "Role-play a doctor's visit: tell your story and get advice",
+          "promptSeed": "Role-play the doctor for the unit finale. Open with 'Qu'est-ce qui ne va pas ?' and elicit the full story: symptom chunks (Lesson 4), avoir mal à (Lesson 1), one passé composé event ('Je suis tombé', 'J'ai eu de la fièvre hier soir' — A2 Unit 1), and the flagship depuis + present: 'Je tousse depuis trois jours.' Recast 'j'ai eu mal depuis hier' into 'j'ai mal depuis hier'. Reassure with 'Ce n'est pas grave', advise with il faut, tu dois and tu devrais (Lesson 3), hand over une ordonnance, and close with 'Au revoir et à bientôt !'."
+        }
+      }
+    ]
+  }
+}
