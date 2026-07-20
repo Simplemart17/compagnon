@@ -177,7 +177,18 @@ export default function ConversationSessionScreen() {
   const insets = useSafeAreaInsets();
   const rawSessionId = Array.isArray(sessionId) ? sessionId[0] : sessionId;
   const rawMode = Array.isArray(modeParam) ? modeParam[0] : modeParam;
-  const topic = decodeURIComponent(rawSessionId ?? "Free conversation");
+  // Review R1 (pre-existing hardening, fixed while touching the file): a
+  // malformed deep link with a dangling '%' makes decodeURIComponent throw
+  // at render, crashing the screen to the error boundary. Fall back to the
+  // raw segment — a percent-garbled topic beats a dead screen.
+  const topic = (() => {
+    const raw = rawSessionId ?? "Free conversation";
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  })();
   const cefrLevel = (profile?.current_cefr_level ?? "A1") as CEFRLevel;
   // Story 18-2 review R1: the correction-explanation default must NOT see
   // the "A1" coercion above (it would invert the language policy for B1+
@@ -537,7 +548,7 @@ export default function ConversationSessionScreen() {
           <>
             {/* Session goal chip (Story 18-6): what am I practicing right
                 now? Epic 19's lesson engine will feed goalOverride. */}
-            <SessionGoalChip mode={mode} topic={topic} cefrLevel={cefrLevel} />
+            <SessionGoalChip mode={mode} topic={topic} cefrLevel={correctionCefrLevel} />
 
             {/* Avatar-centered layout: condensed transcript caption strip */}
             <TranscriptView

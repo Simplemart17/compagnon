@@ -37,11 +37,26 @@ describe("Story 18-6 — deriveSessionGoal", () => {
 });
 
 describe("Story 18-6 — goal-chip wiring drift pins", () => {
-  it("the active layout mounts SessionGoalChip with mode + topic + cefrLevel", () => {
+  it("the active layout mounts SessionGoalChip with mode + topic + UNCOERCED cefrLevel", () => {
     const screen = readSrc("app/(tabs)/conversation/[sessionId].tsx");
-    expect(screen).toMatch(
-      /<SessionGoalChip mode=\{mode\} topic=\{topic\} cefrLevel=\{cefrLevel\}/
-    );
+    // R1: per-prop tolerant matching scoped to the element's opening tag
+    // (12-12 M1 / 13-7 lesson) — Epic 19 WILL add goalOverride here and
+    // prettier will re-wrap the JSX; the pin must survive both.
+    const tagStart = screen.indexOf("<SessionGoalChip");
+    expect(tagStart).toBeGreaterThan(-1);
+    const openingTag = screen.slice(tagStart, screen.indexOf("/>", tagStart));
+    expect(openingTag).toMatch(/mode=\{mode\}/);
+    expect(openingTag).toMatch(/topic=\{topic\}/);
+    // R1: the chip takes the UNCOERCED level (18-2 R1-P3 pattern) so the
+    // badge hides during hydration instead of showing "A1" to a B2 user.
+    expect(openingTag).toMatch(/cefrLevel=\{correctionCefrLevel\}/);
+    expect(openingTag).not.toMatch(/cefrLevel=\{cefrLevel\}/);
+    // The chip renders ONLY in the active layout: exactly one mount site,
+    // inside the isConversationActive branch.
+    expect(screen.match(/<SessionGoalChip/g)).toHaveLength(1);
+    const activeBranch = screen.indexOf("isConversationActive ? (");
+    expect(activeBranch).toBeGreaterThan(-1);
+    expect(tagStart).toBeGreaterThan(activeBranch);
   });
 
   it("the chip exposes the Epic 19 lesson hook (goalOverride takes precedence)", () => {

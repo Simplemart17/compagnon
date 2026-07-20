@@ -24,9 +24,16 @@ export function deriveSessionGoal(mode: ConversationMode, topic: string): string
       // The exam simulation's goal is format practice, not the topic.
       return "Exam practice — Expression Orale";
     case "companion":
-    default:
       return trimmedTopic.length > 0
         ? `Keep the conversation going — ${trimmedTopic}`
         : "Keep the conversation going";
+    default: {
+      // Review R1: compile-time exhaustiveness (auth-events.ts precedent) —
+      // a future 4th ConversationMode (e.g. Epic 19's lesson mode) must
+      // deliberately choose its goal text instead of silently inheriting
+      // the companion framing.
+      const _exhaustive: never = mode;
+      return _exhaustive;
+    }
   }
 }
