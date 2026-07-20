@@ -1,0 +1,260 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a1-u6",
+    "level": "A1",
+    "order": 6,
+    "titleEn": "Free Time",
+    "titleFr": "Le temps libre",
+    "lessons": [
+      {
+        "id": "a1-u6-l1",
+        "order": 1,
+        "canDoEn": "I can talk about my hobbies and sports.",
+        "canDoFr": "Je peux parler de mes passe-temps et de mes sports.",
+        "grammarTarget": "Jouer à vs jouer de + faire du / de la expanded to sports and hobbies",
+        "teachEn": "For games and sports, French uses jouer à — and à + le squeezes to au, as in Unit 3: 'Je joue au hockey', 'Tu joues au soccer ?' (Canada says le soccer; in France the sport is le football). For instruments, it is jouer de: 'Je joue de la guitare', and de + le squeezes to du exactly as in Unit 5: 'Il joue du piano.' Other activities take faire du / de la from Unit 3: 'Je fais du ski', 'Elle fait du patinage' (skating), 'Je fais de la natation' (swimming). Music itself is la musique — 'J'adore la musique !' — and each of these is un passe-temps, a hobby.",
+        "teachFr": "Le samedi, je joue au hockey avec mon frère. Ma sœur joue de la guitare et elle fait de la natation. J'adore la musique : c'est mon passe-temps !",
+        "vocab": [
+          {
+            "fr": "jouer à / jouer de",
+            "en": "to play: jouer à + a sport or game, jouer de + an instrument"
+          },
+          {
+            "fr": "le hockey",
+            "en": "hockey"
+          },
+          {
+            "fr": "le soccer",
+            "en": "soccer (Canadian usage; in France the sport is le football)"
+          },
+          {
+            "fr": "le ski",
+            "en": "skiing"
+          },
+          {
+            "fr": "le patinage",
+            "en": "skating"
+          },
+          {
+            "fr": "la natation",
+            "en": "swimming"
+          },
+          {
+            "fr": "la guitare",
+            "en": "the guitar"
+          },
+          {
+            "fr": "le piano",
+            "en": "the piano"
+          },
+          {
+            "fr": "la musique",
+            "en": "the music"
+          },
+          {
+            "fr": "un passe-temps",
+            "en": "a hobby, a pastime"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu joues au hockey ?",
+          "goalEn": "Say which sports you play, instruments you play, and activities you do",
+          "promptSeed": "Role-play swapping hobbies. Model the split first: 'Je joue au hockey' but 'Je joue de la guitare' — jouer (Unit 2) with à + le → au (Unit 3) and de + le → du (Unit 5): 'Il joue du piano.' Elicit both patterns plus faire du / de la (Unit 3) across le soccer, le ski, le patinage and la natation: 'Je fais de la natation.' Ask 'Tu joues au soccer ?' and about la musique and un passe-temps. Recast 'je joue le hockey' or 'je joue à la guitare' gently; keep utterances short and slow."
+        }
+      },
+      {
+        "id": "a1-u6-l2",
+        "order": 2,
+        "canDoEn": "I can say what I love, prefer, and hate.",
+        "canDoFr": "Je peux dire ce que j'adore, je préfère et je déteste.",
+        "grammarTarget": "Ranking likes and dislikes: détester and préférer (je préfère, é → è)",
+        "teachEn": "Now rank what you love and hate. You know aimer and adorer from Unit 2; add détester (to hate): 'Je déteste le ski !' — and after all three, the thing you talk about keeps its article le, la or les. Préférer (to prefer) follows the parler pattern with one twist: its second é becomes è when the ending is silent — je préfère, tu préfères, il/elle préfère — while the infinitive préférer keeps é. Contrast with mais (but): 'J'aime le soccer, mais je préfère le hockey', 'J'adore le chocolat, mais je déteste le café !' The adjective préféré / préférée means 'favourite' and agrees: 'Mon livre préféré', 'Ma musique préférée', or in a full sentence, 'Mon film préféré, c'est …'.",
+        "teachFr": "J'aime les films, mais je préfère les livres. Mon livre préféré, c'est « Le Petit Prince ». Je déteste le ski, mais j'adore le chocolat !",
+        "vocab": [
+          {
+            "fr": "détester",
+            "en": "to hate"
+          },
+          {
+            "fr": "préférer",
+            "en": "to prefer (je préfère: the second é becomes è)"
+          },
+          {
+            "fr": "préféré / préférée",
+            "en": "favourite"
+          },
+          {
+            "fr": "mais",
+            "en": "but"
+          },
+          {
+            "fr": "le film",
+            "en": "the movie, the film"
+          },
+          {
+            "fr": "le livre",
+            "en": "the book"
+          },
+          {
+            "fr": "le chocolat",
+            "en": "the chocolate"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu préfères les films ou les livres ?",
+          "goalEn": "Rank your likes and dislikes and name your favourites",
+          "promptSeed": "Role-play a friendly debate about favourites. Rank things with aimer and adorer (Unit 2) plus the new détester and préférer: 'J'aime le soccer, mais je préfère le hockey' (sports from Lesson 1), 'Je déteste le ski !'. Watch the accent — je préfère, tu préfères — and recast a closed 'préfére' sound if you hear it. Ask about le film, le livre and le chocolat: 'Tu préfères les films ou les livres ?' (ou from Unit 5), and elicit 'Mon film préféré, c'est …'. Keep utterances short and celebrate strong opinions."
+        }
+      },
+      {
+        "id": "a1-u6-l3",
+        "order": 3,
+        "canDoEn": "I can talk about the weather and the seasons.",
+        "canDoFr": "Je peux parler de la météo et des saisons.",
+        "grammarTarget": "Impersonal weather: il fait + adjective, il pleut, il neige + seasons",
+        "teachEn": "Weather uses il without a person — an 'empty' il — with faire from Unit 3: Il fait beau (the weather is nice), Il fait froid (it's cold), Il fait chaud (it's hot), plus two weather-only verbs, il pleut (it's raining) and il neige (it's snowing), which brings la neige, the snow. Add très (very) for force: 'Il fait très froid !' The seasons are l'hiver (winter), le printemps (spring), l'été (summer) and l'automne (fall) — say en hiver, en été, en automne, but au printemps. Canadian winter talk writes itself: 'En hiver, il neige beaucoup à Montréal et il fait très froid.' Check la météo (the forecast) before you go out: 'Au printemps, il pleut !'",
+        "teachFr": "En hiver, il fait très froid et il neige beaucoup. Au printemps, il pleut. En été, il fait chaud : j'adore l'été !",
+        "vocab": [
+          {
+            "fr": "Il fait beau",
+            "en": "the weather is nice (fixed weather phrase)"
+          },
+          {
+            "fr": "Il fait froid",
+            "en": "it's cold (fixed weather phrase)"
+          },
+          {
+            "fr": "Il fait chaud",
+            "en": "it's hot (fixed weather phrase)"
+          },
+          {
+            "fr": "il pleut",
+            "en": "it's raining"
+          },
+          {
+            "fr": "il neige",
+            "en": "it's snowing"
+          },
+          {
+            "fr": "la neige",
+            "en": "the snow"
+          },
+          {
+            "fr": "très",
+            "en": "very"
+          },
+          {
+            "fr": "l'hiver",
+            "en": "the winter (en hiver)"
+          },
+          {
+            "fr": "le printemps",
+            "en": "the spring (au printemps)"
+          },
+          {
+            "fr": "l'été",
+            "en": "the summer (en été)"
+          },
+          {
+            "fr": "l'automne",
+            "en": "the fall, autumn (en automne)"
+          },
+          {
+            "fr": "la météo",
+            "en": "the weather forecast"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Il fait beau aujourd'hui ?",
+          "goalEn": "Describe today's weather and the seasons",
+          "promptSeed": "Role-play checking la météo together for the week (days from Unit 3). Model the fixed phrases — 'Il fait beau', 'Il fait froid', 'Il fait très chaud', 'il pleut', 'il neige' — and elicit one per day: 'Lundi, il pleut. Mardi, il fait beau ?'. Walk through the seasons with en hiver, au printemps, en été, en automne — watch that au — and add Canadian colour: 'En hiver, il neige beaucoup et il fait très froid !' (beaucoup from Unit 4). Mention la neige, keep utterances short, and recast 'au hiver' as 'en hiver'."
+        }
+      },
+      {
+        "id": "a1-u6-l4",
+        "order": 4,
+        "canDoEn": "I can say what I am going to do.",
+        "canDoFr": "Je peux dire ce que je vais faire.",
+        "grammarTarget": "Near future: aller (je/tu/il-elle, recycled) + infinitive",
+        "teachEn": "To talk about what is coming, use aller from Unit 3 plus a verb in its dictionary form — the near future: 'Demain, je vais danser', 'Tu vas travailler ?', 'Elle va regarder un film.' Stick to je vais, tu vas and il/elle va for now — exactly the forms you already know. Time words set the scene: demain from Unit 3, ce soir (tonight), and la semaine prochaine (next week — prochaine wears an -e to match la semaine): 'Ce soir, je vais rester chez moi' (rester, to stay), 'La semaine prochaine, je vais visiter le musée' — visiter is for places like le musée (the museum), not for people. And inviter (to invite) sets up plans: 'Elle va inviter son amie.'",
+        "teachFr": "Demain, je vais visiter le musée avec mon amie. Ce soir, elle va regarder un film chez moi. La semaine prochaine, tu vas travailler ?",
+        "vocab": [
+          {
+            "fr": "ce soir",
+            "en": "tonight, this evening"
+          },
+          {
+            "fr": "la semaine prochaine",
+            "en": "next week (prochaine matches feminine la semaine)"
+          },
+          {
+            "fr": "visiter",
+            "en": "to visit (a place, not a person)"
+          },
+          {
+            "fr": "le musée",
+            "en": "the museum (masculine)"
+          },
+          {
+            "fr": "inviter",
+            "en": "to invite"
+          },
+          {
+            "fr": "rester",
+            "en": "to stay"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Demain, je vais danser",
+          "goalEn": "Say your plans with je vais + verb",
+          "promptSeed": "Role-play planning the days ahead. Model the near future with aller (Unit 3) + a dictionary-form verb: 'Demain, je vais danser' (danser from Unit 2), 'Ce soir, je vais rester chez moi' (chez moi from Unit 3), 'La semaine prochaine, je vais visiter le musée.' Elicit je vais / tu vas / elle va + verb with intonation questions — 'Tu vas travailler demain ?' (travailler from Unit 1) — and bring in inviter: 'Elle va inviter son amie.' Recast 'je vais danse' as 'je vais danser'; keep every utterance under 8 words."
+        }
+      },
+      {
+        "id": "a1-u6-l5",
+        "order": 5,
+        "canDoEn": "I can invite a friend, accept or decline, and plan the weekend.",
+        "canDoFr": "Je peux inviter un ami et planifier la fin de semaine.",
+        "grammarTarget": "A1 synthesis: invitations with Tu veux … ? (fixed), accepting and declining politely, plans and weather",
+        "teachEn": "Time to plan la fin de semaine like a francophone friend. Invite with the fixed phrase Tu veux … ? plus a dictionary-form verb: 'Tu veux jouer au hockey samedi ?' — like je voudrais in Unit 4, it hides the verb vouloir, which you will learn later. First check if your friend is free: libre keeps one form for masculine and feminine — 'Tu es libre dimanche ?' Accept with 'D'accord !', 'Avec plaisir !' or 'Super !'; hesitate with peut-être (maybe); decline politely with désolé (a man) / désolée (a woman) plus a near-future excuse: 'Désolée, je vais travailler.' Then fix the details with everything you have — weather, time, place: 'Il fait beau ! Rendez-vous au parc à deux heures ?'",
+        "teachFr": "Tu es libre samedi ? Tu veux jouer au soccer au parc ? — Désolé, samedi je vais travailler. Peut-être dimanche ? — D'accord, avec plaisir !",
+        "vocab": [
+          {
+            "fr": "Tu veux … ?",
+            "en": "Do you want …? (fixed invitation phrase; the full verb comes later)"
+          },
+          {
+            "fr": "libre",
+            "en": "free, available (same form for masculine and feminine)"
+          },
+          {
+            "fr": "D'accord !",
+            "en": "OK! Agreed!"
+          },
+          {
+            "fr": "avec plaisir",
+            "en": "with pleasure, gladly"
+          },
+          {
+            "fr": "Super !",
+            "en": "Great!"
+          },
+          {
+            "fr": "peut-être",
+            "en": "maybe, perhaps"
+          },
+          {
+            "fr": "désolé / désolée",
+            "en": "sorry"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu es libre samedi ?",
+          "goalEn": "Invite a friend, respond to invitations, and plan the weekend together",
+          "promptSeed": "Role-play planning la fin de semaine (Unit 3) to close A1. Invite with the fixed 'Tu veux … ?': 'Tu es libre samedi ? Tu veux jouer au hockey ?' (hockey from Lesson 1). Elicit accepting — 'D'accord !', 'Avec plaisir !', 'Super !' — hesitating with peut-être, and one polite refusal: 'Désolé / Désolée, je vais travailler' (near future from Lesson 4). Weave in weather (Lesson 3): 'Il fait beau ! Rendez-vous au parc ?' (rendez-vous from Unit 5, le parc from Unit 3), fix a time (Unit 3), and end with 'À bientôt !' (Unit 1)."
+        }
+      }
+    ]
+  }
+}
