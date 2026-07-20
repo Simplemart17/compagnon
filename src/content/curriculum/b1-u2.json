@@ -1,0 +1,216 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b1-u2",
+    "level": "B1",
+    "order": 2,
+    "titleEn": "If I Could…",
+    "titleFr": "Si j'avais…",
+    "lessons": [
+      {
+        "id": "b1-u2-l1",
+        "order": 1,
+        "canDoEn": "I can say what I would do, using the present conditional.",
+        "canDoFr": "Je peux dire ce que je ferais et ce que je voudrais.",
+        "grammarTarget": "Conditionnel présent = futur simple stem (Unit 1) + imparfait endings (-ais/-ais/-ait/-ions/-iez/-aient)",
+        "teachEn": "The conditional (le conditionnel) means WOULD, and it is the most elegant tense in French because it reuses two things you already have. Take the SAME stem as the futur simple (Unit 1) and add the SAME endings as the imparfait (A2 Unit 5): -ais, -ais, -ait, -ions, -iez, -aient. So parler → je parlerais, tu parlerais, il/elle parlerait, nous parlerions, vous parleriez, ils/elles parleraient. The seven irregular stems from Unit 1 keep their stems: être → je serais, avoir → j'aurais, faire → je ferais, aller → j'irais, pouvoir → je pourrais, devoir → je devrais. Two conditionals you have used since A1 without knowing: je voudrais (I would like) is the conditional of vouloir, and tu devrais (you should) is the conditional of devoir. Careful pair: je parlerai (futur, -ai) vs je parlerais (conditional, -ais) — the extra -s and a slightly different sound.",
+        "teachFr": "Avec de l'argent, je serais très content ! J'aurais une grande maison et je ferais un grand voyage. J'irais à l'étranger et je parlerais français partout. Je pourrais voyager souvent et je ne devrais pas travailler. Ah, je voudrais bien voyager !",
+        "vocab": [
+          {
+            "fr": "je parlerais",
+            "en": "I would speak (conditional: futur stem + imparfait endings)"
+          },
+          {
+            "fr": "je serais",
+            "en": "I would be (être, stem ser-)"
+          },
+          {
+            "fr": "j'aurais",
+            "en": "I would have (avoir, stem aur-)"
+          },
+          {
+            "fr": "je ferais",
+            "en": "I would do, I would make (faire, stem fer-)"
+          },
+          {
+            "fr": "j'irais",
+            "en": "I would go (aller, stem ir-)"
+          },
+          {
+            "fr": "je pourrais",
+            "en": "I would be able to, I could (pouvoir, stem pourr-)"
+          },
+          {
+            "fr": "je devrais",
+            "en": "I would have to, I should (devoir, stem devr-)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Avec de l'argent…",
+          "goalEn": "Say what you would do, using the present conditional",
+          "promptSeed": "Role-play daydreaming together. Model the conditional — 'Avec de l'argent, je serais content', 'J'aurais une grande maison', 'Je ferais un grand voyage', 'J'irais à l'étranger' — then elicit it from the learner: 'Qu'est-ce que tu ferais ?', 'Où est-ce que tu irais ?', 'Qu'est-ce que tu aurais ?'. Draw out je serais, je pourrais and je devrais, and connect je voudrais (A1) and tu devrais (A2) to the family. Watch the pair je parlerai (future) vs je parlerais (conditional): if the learner drops the -s sound, offer both beside each other. Keep utterances short and warm."
+        }
+      },
+      {
+        "id": "b1-u2-l2",
+        "order": 2,
+        "canDoEn": "I can make polite requests and give advice.",
+        "canDoFr": "Je peux proposer une idée et donner un conseil.",
+        "grammarTarget": "Politeness with the conditional: Pourriez-vous… ?, Nous pourrions…, tu devrais + infinitive, proposer + un conseil",
+        "teachEn": "The conditional is the language of politeness. You already soften with je voudrais (A1, 'I would like') and tu devrais (A2, 'you should') — now use the whole family. Ask very politely with Pourriez-vous… ? (Could you…?), the vous conditional of pouvoir: 'Pourriez-vous répéter, s'il vous plaît ?', 'Pourriez-vous m'aider ?' — aider means to help. Suggest gently with Nous pourrions + a dictionary-form verb: 'Nous pourrions aller au cinéma.' Give soft advice with tu devrais + infinitive — 'Tu devrais te reposer' — or offer un conseil (a piece of advice) by using proposer (to suggest): 'Je propose de partir à midi.' Every one of these sounds kinder than a plain order or a flat question.",
+        "teachFr": "Excusez-moi, pourriez-vous m'aider ? Je cherche la gare. — Bien sûr ! Vous devriez prendre l'autobus. Nous pourrions y aller ensemble. — Merci, c'est gentil ! Pourriez-vous répéter, s'il vous plaît ? — Oui : je propose de partir à midi. C'est un bon conseil !",
+        "vocab": [
+          {
+            "fr": "Pourriez-vous… ?",
+            "en": "Could you…? (polite request; the vous conditional of pouvoir)"
+          },
+          {
+            "fr": "Nous pourrions",
+            "en": "we could (a gentle suggestion: Nous pourrions aller…)"
+          },
+          {
+            "fr": "répéter",
+            "en": "to repeat (Pourriez-vous répéter ?)"
+          },
+          {
+            "fr": "aider",
+            "en": "to help (Pourriez-vous m'aider ?)"
+          },
+          {
+            "fr": "un conseil",
+            "en": "a piece of advice (donner un conseil)"
+          },
+          {
+            "fr": "proposer",
+            "en": "to propose, to suggest (je propose de partir)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Pourriez-vous m'aider ?",
+          "goalEn": "Make polite requests and give gentle advice",
+          "promptSeed": "Role-play asking a stranger for help, then swap roles. Model very polite requests — 'Pourriez-vous m'aider ?', 'Pourriez-vous répéter, s'il vous plaît ?' — and gentle suggestions with 'Nous pourrions…'. Elicit the same from the learner, plus soft advice with 'tu devrais + verb' ('Tu devrais te reposer') and a suggestion with proposer ('Je propose de…'). Bring in un conseil and aider. If the learner gives a blunt command, offer the polite conditional beside it. Keep the tone warm and the utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u2-l3",
+        "order": 3,
+        "canDoEn": "I can talk about hypothetical situations with 'if' clauses.",
+        "canDoFr": "Je peux dire ce que je ferais si je gagnais à la loterie.",
+        "grammarTarget": "Hypothetical si-clauses: si + imparfait, conditionnel présent (never the conditional after si)",
+        "teachEn": "Here is the great B1 structure: hypotheses. To say 'If I HAD…, I WOULD…', French pairs si (if) + the imparfait (A2 Unit 5) with the conditional (Lesson 1): 'Si j'avais de l'argent, je voyagerais.' The si-clause takes the imparfait (avais, était, gagnais); the result takes the conditional (voyagerais, serais, irais). Either half can come first: 'Je voyagerais si j'avais de l'argent.' The firm rule: NEVER put the conditional after si — say 'si j'avais', never 'si j'aurais'. Note si + il → s'il ('s'il faisait beau'), but si + elle stays si elle. Use it to imagine: 'Si je gagnais à la loterie, ma vie changerait !', 'Si tu étais libre, nous pourrions sortir.'",
+        "teachFr": "Imagine une situation : si je gagnais à la loterie, ma vie changerait ! J'aurais une grande maison et je voyagerais partout. Et toi ? Si tu étais libre ce soir, nous pourrions sortir. C'est possible ? J'adore imaginer !",
+        "vocab": [
+          {
+            "fr": "si",
+            "en": "if (Si j'avais de l'argent, je voyagerais)"
+          },
+          {
+            "fr": "imaginer",
+            "en": "to imagine (Imagine une situation…)"
+          },
+          {
+            "fr": "une situation",
+            "en": "a situation"
+          },
+          {
+            "fr": "sortir",
+            "en": "to go out (nous pourrions sortir ce soir)"
+          },
+          {
+            "fr": "possible",
+            "en": "possible (C'est possible ?)"
+          },
+          {
+            "fr": "la loterie",
+            "en": "the lottery (si je gagnais à la loterie…)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Si je gagnais à la loterie",
+          "goalEn": "Talk about hypothetical situations with si + imparfait + conditional",
+          "promptSeed": "Role-play a fun 'what if' game. Model the pattern — 'Si je gagnais à la loterie, je voyagerais partout', 'Si j'avais une grande maison, j'inviterais ma famille' — then elicit it from the learner: 'Qu'est-ce que tu ferais si tu gagnais à la loterie ?', 'Si tu étais libre ce soir, tu sortirais ?'. Keep the imparfait in the si-clause and the conditional in the result. The key recast: 'si j'aurais' becomes 'si j'avais' — never the conditional after si. Weave in imaginer, une situation and possible. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u2-l4",
+        "order": 4,
+        "canDoEn": "I can talk about my wishes and dreams.",
+        "canDoFr": "Je peux parler de mes rêves et de mes souhaits.",
+        "grammarTarget": "Expressing wishes: j'aimerais + infinitive, rêver de, un rêve, si seulement + imparfait",
+        "teachEn": "Now express wishes and dreams. J'aimerais (I would like, I would love) is the conditional of aimer (A1) — softer and dreamier than je voudrais: 'J'aimerais visiter le Japon.' Talk about dreams with un rêve (a dream) and rêver de (to dream of/about): 'Je rêve de voyager', 'C'est mon rêve.' After rêver you always need de, which becomes d' before a vowel: 'Je rêve d'une grande maison', 'Je rêve de partir.' For a strong wish about an unreal present, use si seulement (if only) + the imparfait, like a si-clause turned into an exclamation: 'Si seulement j'avais de l'argent !', 'Si seulement j'étais libre !' Un souhait is a wish, and idéal / idéale means ideal: 'Ma vie idéale ? Ce serait de voyager.'",
+        "teachFr": "J'aimerais visiter le Japon : c'est mon rêve ! Je rêve de voyager et de parler beaucoup de langues. Ma vie idéale ? J'habiterais à l'étranger et je serais libre. Si seulement j'avais de l'argent pour partir ! C'est mon plus grand souhait.",
+        "vocab": [
+          {
+            "fr": "j'aimerais",
+            "en": "I would like, I would love (conditional of aimer: j'aimerais voyager)"
+          },
+          {
+            "fr": "un rêve",
+            "en": "a dream (C'est mon rêve)"
+          },
+          {
+            "fr": "rêver de",
+            "en": "to dream of/about (Je rêve de voyager; de → d' before a vowel)"
+          },
+          {
+            "fr": "si seulement",
+            "en": "if only (Si seulement j'avais de l'argent ! — with the imparfait)"
+          },
+          {
+            "fr": "un souhait",
+            "en": "a wish"
+          },
+          {
+            "fr": "idéal / idéale",
+            "en": "ideal (une vie idéale)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Mon rêve",
+          "goalEn": "Talk about your wishes and dreams",
+          "promptSeed": "Role-play sharing your dreams. Model wishes with j'aimerais and rêver de — 'J'aimerais visiter le Japon', 'Je rêve de voyager', 'C'est mon rêve' — then elicit the learner's: 'Quel est ton rêve ?', 'Qu'est-ce que tu aimerais faire ?'. Draw out un rêve, un souhait and idéal / idéale ('Ta vie idéale ?'). Practise si seulement + imparfait for a strong wish: 'Si seulement j'étais libre !'. Keep the de after rêver ('je rêve de…'), and recast a missing de gently. Keep utterances short and celebrate every dream."
+        }
+      },
+      {
+        "id": "b1-u2-l5",
+        "order": 5,
+        "canDoEn": "I can imagine and discuss 'what would you do if…' situations.",
+        "canDoFr": "Je peux dire ce que je ferais si j'étais riche.",
+        "grammarTarget": "Unit synthesis: discussing imaginary situations — si-clauses, wishes, and polite conditionals together",
+        "teachEn": "Now put the conditional to work in a real conversation: 'What would you do if…?' Ask 'Qu'est-ce que tu ferais si…?' and answer with si + imparfait + conditional: 'Si j'étais riche, je ne travaillerais pas.' New words to imagine with: riche (rich), pauvre (poor), choisir (to choose — an -ir verb like finir: je choisirais), une chose (a thing), and un million (a million): 'Si j'avais un million de dollars…'. React to a dream with the fixed Ce serait… (That would be…): 'Ce serait génial !' (génial from A2). Weave in wishes (j'aimerais, je rêve de) and polite forms (je voudrais, tu devrais), and chain with d'abord, ensuite, enfin: 'Si j'avais un mois de vacances, d'abord je dormirais, ensuite je voyagerais, enfin je rentrerais heureux !'",
+        "teachFr": "Qu'est-ce que tu ferais si tu avais un million de dollars ? Moi, si j'étais riche, je ne travaillerais pas ! D'abord, je choisirais une belle maison. Ensuite, j'aiderais ma famille. Enfin, je voyagerais partout. Riche ou pauvre, une chose est sûre : je serais heureux ! Ce serait génial.",
+        "vocab": [
+          {
+            "fr": "riche",
+            "en": "rich (same form for masculine and feminine)"
+          },
+          {
+            "fr": "pauvre",
+            "en": "poor (same form for masculine and feminine)"
+          },
+          {
+            "fr": "choisir",
+            "en": "to choose (an -ir verb: je choisirais)"
+          },
+          {
+            "fr": "une chose",
+            "en": "a thing (faire une chose)"
+          },
+          {
+            "fr": "Ce serait…",
+            "en": "That would be… (fixed reaction: Ce serait génial !)"
+          },
+          {
+            "fr": "un million",
+            "en": "a million (un million de dollars)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Si tu avais un million…",
+          "goalEn": "Imagine and discuss 'what would you do if…' situations",
+          "promptSeed": "Role-play a lively 'what if' conversation to close the unit. Ask big questions — 'Qu'est-ce que tu ferais si tu avais un million de dollars ?', 'Si tu étais riche, tu travaillerais ?' — and answer with si + imparfait + conditional. Model a chained answer with d'abord, ensuite, enfin, and draw out choisir ('je choisirais'), une chose and the reaction 'Ce serait génial !'. Weave in wishes (j'aimerais, je rêve de) and polite forms (je voudrais, tu devrais). Recast a conditional after si ('si j'aurais') back to 'si j'avais'. Keep utterances short and celebrate bold ideas."
+        }
+      }
+    ]
+  }
+}

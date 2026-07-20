@@ -1,0 +1,232 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b1-u3",
+    "level": "B1",
+    "order": 3,
+    "titleEn": "What I Think",
+    "titleFr": "Ce que je pense",
+    "lessons": [
+      {
+        "id": "b1-u3-l1",
+        "order": 1,
+        "canDoEn": "I can describe a person or thing using the relative pronoun qui.",
+        "canDoFr": "Je peux décrire une personne ou une chose avec qui.",
+        "grammarTarget": "Relative pronoun qui (subject of the relative clause), joining two sentences into one",
+        "teachEn": "A relative pronoun joins two sentences into one so you do not repeat a noun. Qui replaces the SUBJECT of the second sentence — the one doing the action — and works for people OR things. Take 'J'ai un ami. Mon ami habite à Montréal.' and join them: 'J'ai un ami qui habite à Montréal.' Qui sits right after the noun it describes and is followed by a verb: 'C'est une ville qui est belle', 'Je connais quelqu'un qui parle cinq langues.' Qui never changes and never elides before a vowel — it stays qui, never qu'. Three new verbs to describe your world: connaître (to know a person or place — je connais, tu connais, il/elle connaît), comprendre (to understand — je comprends, like prendre), and expliquer (to explain). And intéressant / intéressante means interesting: 'un livre qui est intéressant.'",
+        "teachFr": "J'ai un ami qui habite à Montréal : c'est quelqu'un qui parle cinq langues ! Je connais aussi une personne qui adore les livres. J'aime les films qui sont intéressants et les professeurs qui expliquent bien. Comprendre le français, c'est un objectif qui est difficile, mais génial !",
+        "vocab": [
+          {
+            "fr": "qui (relatif)",
+            "en": "who, which, that (relative pronoun; subject: l'ami qui habite ici)"
+          },
+          {
+            "fr": "connaître",
+            "en": "to know a person or place (je connais, tu connais, il connaît)"
+          },
+          {
+            "fr": "comprendre",
+            "en": "to understand (je comprends, like prendre)"
+          },
+          {
+            "fr": "expliquer",
+            "en": "to explain (un professeur qui explique bien)"
+          },
+          {
+            "fr": "quelqu'un",
+            "en": "someone (quelqu'un qui parle français)"
+          },
+          {
+            "fr": "intéressant / intéressante",
+            "en": "interesting"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Quelqu'un qui parle français",
+          "goalEn": "Describe people and things using the relative pronoun qui",
+          "promptSeed": "Role-play describing the interesting people and things in your lives. Model qui joining two ideas — 'J'ai un ami qui habite à Montréal', 'C'est quelqu'un qui parle cinq langues', 'J'aime les livres qui sont intéressants' — then elicit the same from the learner: 'Tu connais quelqu'un qui parle français ?', 'Tu aimes les films qui sont drôles ou les livres qui sont intéressants ?'. Draw out connaître, comprendre and expliquer, and keep qui right after the noun, followed by a verb. Bring in intéressant / intéressante. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u3-l2",
+        "order": 2,
+        "canDoEn": "I can describe things using the relative pronoun que.",
+        "canDoFr": "Je peux parler d'un livre que j'aime.",
+        "grammarTarget": "Relative pronoun que (direct object) + the qui-vs-que distinction; elision qu' before a vowel",
+        "teachEn": "Que (that, which, whom) replaces the DIRECT OBJECT of the second sentence — the thing being acted ON. Take 'J'aime un livre. Je lis ce livre.' and join them: 'J'aime le livre que je lis.' Here is the whole difference from Lesson 1: after qui comes a verb directly (l'ami qui parle), while after que comes a SUBJECT + verb (le livre que je lis). So qui = subject, que = object. Before a vowel, que elides to qu': 'le film qu'il regarde', 'la personne qu'elle aime.' New verb lire (to read — je lis, tu lis, il/elle lit): 'C'est un article que je lis souvent.' Compare carefully: 'l'ami qui parle' (he does the speaking) versus 'l'ami que je connais' (I do the knowing).",
+        "teachFr": "Le livre que je lis est génial : c'est une histoire que j'adore ! J'aime surtout les articles que mon frère écrit. Le film qu'elle regarde ce soir est très connu. J'aime les livres qui sont faciles et les histoires que je comprends bien !",
+        "vocab": [
+          {
+            "fr": "que (relatif) / qu'",
+            "en": "that, which, whom (direct object: le livre que je lis; qu' before a vowel)"
+          },
+          {
+            "fr": "lire",
+            "en": "to read (je lis, tu lis, il lit)"
+          },
+          {
+            "fr": "une histoire",
+            "en": "a story (une histoire que j'aime)"
+          },
+          {
+            "fr": "un article",
+            "en": "an article (un article que je lis)"
+          },
+          {
+            "fr": "surtout",
+            "en": "especially, above all"
+          },
+          {
+            "fr": "connu / connue",
+            "en": "well-known (un film très connu)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Le livre que je lis",
+          "goalEn": "Describe things using the relative pronoun que, and tell it apart from qui",
+          "promptSeed": "Role-play swapping favourites — books, films, and articles. Model que for the object — 'Le livre que je lis est génial', 'C'est une histoire que j'adore', 'Le film qu'elle regarde est connu' — then elicit it: 'Quel est le livre que tu préfères ?', 'C'est un film que tu aimes ?'. Contrast qui and que together: 'un ami qui parle' (subject) versus 'un ami que je connais' (object). Draw out lire, une histoire, un article, surtout and connu / connue. Recast 'le livre qui je lis' to 'le livre que je lis'. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u3-l3",
+        "order": 3,
+        "canDoEn": "I can talk about places and times using the relative pronoun où.",
+        "canDoFr": "Je peux parler de l'endroit où j'ai grandi.",
+        "grammarTarget": "Relative pronoun où for place and time (la ville où j'habite, le jour où…)",
+        "teachEn": "Où joins a clause about a PLACE or a TIME. You know où as 'where' in questions (A1); as a relative pronoun it means 'where' or 'when': 'la ville où j'habite' (the city where I live), 'le village où je suis né', 'le jour où nous sommes arrivés' (the day when we arrived), 'le moment où…'. Où always follows a noun of place or time and is followed by a subject + verb. Unlike English, French uses où — not que or quand — for the day or moment WHEN something happens: say 'le jour où je suis arrivé', never 'le jour que'. New words: naître, whose participle is né / née (born — 'je suis né à Québec', with être), grandir (to grow up — 'j'ai grandi à…'), une époque (a time, an era), and un village.",
+        "teachFr": "Je suis née dans un petit village où il y avait un beau parc : c'est l'endroit où j'ai grandi. À l'époque où j'étais enfant, la vie était belle. Le jour où nous sommes partis à Montréal, c'était un moment difficile, mais aussi un beau souvenir !",
+        "vocab": [
+          {
+            "fr": "où (relatif)",
+            "en": "where / when (relative pronoun: la ville où j'habite, le jour où…)"
+          },
+          {
+            "fr": "né / née",
+            "en": "born (je suis né / née à Québec — with être)"
+          },
+          {
+            "fr": "grandir",
+            "en": "to grow up (j'ai grandi à Québec)"
+          },
+          {
+            "fr": "une époque",
+            "en": "a time, an era (à l'époque où j'étais enfant)"
+          },
+          {
+            "fr": "le moment",
+            "en": "the moment (le moment où je suis arrivé)"
+          },
+          {
+            "fr": "un village",
+            "en": "a village"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "L'endroit où j'ai grandi",
+          "goalEn": "Talk about places and times using the relative pronoun où",
+          "promptSeed": "Role-play sharing where you come from. Model où for place and time — 'Je suis née dans un village où il y avait un parc', 'C'est l'endroit où j'ai grandi', 'Le jour où nous sommes partis, c'était difficile' — then elicit it from the learner: 'Quelle est la ville où tu es né(e) ?', 'C'est l'endroit où tu as grandi ?'. Draw out né / née, grandir, une époque and le moment. Remember: use où (not que) for the day or moment when something happens. Recycle the imparfait for the scene (il y avait, c'était). Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u3-l4",
+        "order": 4,
+        "canDoEn": "I can give my opinion and agree or disagree, using connectors.",
+        "canDoFr": "Je peux donner mon opinion et dire si je suis d'accord.",
+        "grammarTarget": "Opinion verbs (penser que / croire que / trouver que) + être d'accord + connectors donc, alors, cependant, pourtant",
+        "teachEn": "To give an opinion, use penser que, croire que, or trouver que (to think / believe / find that) + a subject and verb: 'Je pense que le français est beau', 'Je crois que tu as raison', 'Je trouve que c'est difficile.' Croire is irregular: je crois, tu crois, il/elle croit. To agree or disagree, use être d'accord: 'Je suis d'accord', 'Je ne suis pas d'accord.' Now link your ideas with real connectors: donc and alors (so, therefore) for a consequence — 'Il pleut, donc je reste à la maison' — and cependant and pourtant (however, yet) for a contrast — 'C'est difficile ; cependant, j'aime ça.' Say avoir raison (to be right) and avoir tort (to be wrong): 'Je pense que tu as raison.' Give your view with une opinion: 'Voici mon opinion.'",
+        "teachFr": "Voici mon opinion : je trouve que le français est une belle langue. Je pense que c'est difficile, cependant j'adore ça ! Tu crois que le français est beau ? Oui, donc je travaille beaucoup. Tu as raison : je ne suis pas d'accord avec les personnes qui trouvent ça facile. Pourtant, je continue !",
+        "vocab": [
+          {
+            "fr": "une opinion",
+            "en": "an opinion (donner son opinion)"
+          },
+          {
+            "fr": "penser que",
+            "en": "to think that (Je pense que c'est vrai)"
+          },
+          {
+            "fr": "croire que",
+            "en": "to believe that (je crois, tu crois, il croit)"
+          },
+          {
+            "fr": "trouver que",
+            "en": "to find that, to think that (Je trouve que c'est bien)"
+          },
+          {
+            "fr": "être d'accord",
+            "en": "to agree (Je suis d'accord / Je ne suis pas d'accord)"
+          },
+          {
+            "fr": "cependant",
+            "en": "however (a B1 contrast connector)"
+          },
+          {
+            "fr": "pourtant",
+            "en": "however, yet (a B1 contrast connector)"
+          },
+          {
+            "fr": "donc",
+            "en": "so, therefore (a consequence)"
+          },
+          {
+            "fr": "alors",
+            "en": "so, then (a consequence)"
+          },
+          {
+            "fr": "avoir raison",
+            "en": "to be right (Tu as raison)"
+          },
+          {
+            "fr": "avoir tort",
+            "en": "to be wrong (J'ai tort)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je pense que…",
+          "goalEn": "Give an opinion and agree or disagree, using connectors",
+          "promptSeed": "Role-play a friendly opinion exchange about learning French. Model opinions and connectors — 'Je trouve que le français est beau', 'Je pense que c'est difficile, cependant j'adore ça', 'Il pleut, donc je reste à la maison' — then elicit the learner's: 'Qu'est-ce que tu penses du français ?', 'Tu es d'accord ?'. Draw out penser que, croire que and trouver que, plus alors for a consequence and avoir raison / avoir tort ('Tu as raison', 'Je pense que j'ai tort'). Keep the tone warm even in disagreement. Recast 'je suis d'accord avec que…' to 'je pense que…'. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u3-l5",
+        "order": 5,
+        "canDoEn": "I can discuss and defend an opinion in a real conversation.",
+        "canDoFr": "Je peux dire mon point de vue et expliquer mes raisons.",
+        "grammarTarget": "B1 capstone: discussing an opinion — relative clauses, opinion verbs, and contrast/consequence connectors together",
+        "teachEn": "The B1 capstone: a real discussion. Give your opinion, justify it, and respond to another view. Open with à mon avis (in my opinion) or 'Pour moi…', justify with parce que (because), and connect with donc, alors, cependant and pourtant (Lesson 4). Use relative clauses to be precise: 'C'est une chose que j'adore', 'Je préfère les villes qui sont calmes.' Respond to your partner with 'Je suis d'accord, mais…' or 'Je ne suis pas d'accord parce que…'. New words: une raison (a reason), un point de vue (a point of view), calme (calm, quiet), vrai / vraie (true), and contre (against — the opposite of pour). Stay polite even when you disagree — 'Je comprends ton point de vue, cependant je pense que…' — and chain a real argument with everything you have.",
+        "teachFr": "À mon avis, la ville est meilleure que la campagne : il y a beaucoup de choses ! Voici ma raison : j'aime les endroits qui sont intéressants. Cependant, je comprends ton point de vue. La campagne est plus calme, c'est vrai. Tu penses que j'ai tort ? Moi, je suis pour la ville, mais je ne suis pas contre la campagne !",
+        "vocab": [
+          {
+            "fr": "à mon avis",
+            "en": "in my opinion (À mon avis, c'est vrai)"
+          },
+          {
+            "fr": "une raison",
+            "en": "a reason (Voici ma raison)"
+          },
+          {
+            "fr": "un point de vue",
+            "en": "a point of view (je comprends ton point de vue)"
+          },
+          {
+            "fr": "calme",
+            "en": "calm, quiet (une ville calme)"
+          },
+          {
+            "fr": "contre",
+            "en": "against (je suis contre — the opposite of pour)"
+          },
+          {
+            "fr": "vrai / vraie",
+            "en": "true (C'est vrai !)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "La ville ou la campagne ?",
+          "goalEn": "Discuss and defend an opinion in a real conversation",
+          "promptSeed": "Role-play a friendly debate (the B1 capstone) — for example city versus countryside. Give your view with à mon avis and justify it with parce que and une raison: 'À mon avis, la ville est meilleure, parce qu'il y a beaucoup de choses.' Use relative clauses ('les endroits qui sont intéressants', 'une chose que j'adore') and connectors (donc, cependant, pourtant). Then draw out the learner's point de vue: 'Tu es d'accord ?', 'Quelle est ta raison ?'. Stay polite in disagreement, weave in calme, contre and vrai / vraie, and let the learner defend their side. Keep utterances short and warm."
+        }
+      }
+    ]
+  }
+}

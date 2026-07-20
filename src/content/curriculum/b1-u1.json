@@ -1,0 +1,220 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b1-u1",
+    "level": "B1",
+    "order": 1,
+    "titleEn": "Tomorrow, I Will…",
+    "titleFr": "Demain, je ferai…",
+    "lessons": [
+      {
+        "id": "b1-u1-l1",
+        "order": 1,
+        "canDoEn": "I can talk about my future using the simple future tense.",
+        "canDoFr": "Je peux parler de mon avenir avec le futur simple.",
+        "grammarTarget": "Futur simple of regular verbs: stem = infinitive (-er/-ir) or infinitive minus -e (-re) + endings -ai/-as/-a/-ons/-ez/-ont",
+        "teachEn": "A1 introduced the near future (aller + infinitive), expanded across all persons in A2, for close, planned things. French also has a one-word future, the futur simple, for more distant or more formal plans and for predictions. It is beautifully regular: for -er and -ir verbs, the stem is the WHOLE infinitive; for -re verbs, drop the final -e. Then add one set of endings to EVERY verb — -ai, -as, -a, -ons, -ez, -ont — which are simply the present forms of avoir (j'ai, tu as, il a, … ils ont). So parler gives je parlerai, tu parleras, il/elle parlera, nous parlerons, vous parlerez, ils/elles parleront. The verb finir (to finish) keeps its -ir: je finirai. The -re verb prendre drops the -e: je prendrai, il prendra. And changer (to change) works like any -er verb: 'L'année prochaine, je changerai de ville et je parlerai français tous les jours.'",
+        "teachFr": "L'année prochaine, je changerai de ville. D'abord, je finirai un grand projet ici ; ensuite, nous prendrons le train et nous arriverons le soir à Montréal. Là, je parlerai français tous les jours. L'avenir, c'est demain !",
+        "vocab": [
+          {
+            "fr": "je parlerai",
+            "en": "I will speak (futur: infinitive + avoir-endings -ai/-as/-a/-ons/-ez/-ont)"
+          },
+          {
+            "fr": "nous parlerons",
+            "en": "we will speak (same stem, the -ons ending)"
+          },
+          {
+            "fr": "ils parleront",
+            "en": "they will speak (same stem, the -ont ending)"
+          },
+          {
+            "fr": "changer",
+            "en": "to change (regular -er verb: je changerai)"
+          },
+          {
+            "fr": "finir",
+            "en": "to finish (an -ir verb; its future stem is the whole infinitive: je finirai)"
+          },
+          {
+            "fr": "je prendrai",
+            "en": "I will take (from prendre; the -re drops its final -e)"
+          },
+          {
+            "fr": "l'avenir",
+            "en": "the future (à l'avenir = in the future)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "L'année prochaine",
+          "goalEn": "Talk about your future plans with the regular simple future",
+          "promptSeed": "Role-play two friends imagining next year. Model the regular futur simple — 'L'année prochaine, je changerai de ville', 'Je finirai mon projet', 'Nous prendrons le train' — then elicit it: 'Où est-ce que tu habiteras ?', 'Tu travailleras à Montréal ?'. Draw out the pattern across persons ('nous parlerons', 'ils/elles parleront') and verb types: -er, -ir (finir), -re (prendre). Bring in l'avenir. If the learner uses the near future ('je vais changer'), accept it, then offer the futur simple beside it. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u1-l2",
+        "order": 2,
+        "canDoEn": "I can use the future of common irregular verbs like être, avoir, and aller.",
+        "canDoFr": "Je peux dire je serai, j'aurai et j'irai.",
+        "grammarTarget": "Irregular futur stems for seven high-frequency verbs (ser-, aur-, ir-, fer-, pourr-, voudr-, devr-) + the same endings",
+        "teachEn": "The endings never change — but seven very common verbs have a special future STEM you learn by heart. Add the same endings (-ai, -as, -a, -ons, -ez, -ont) to each: être → ser- (je serai), avoir → aur- (j'aurai), aller → ir- (j'irai), faire → fer- (je ferai), pouvoir → pourr- (je pourrai), vouloir → voudr- (je voudrai), devoir → devr- (je devrai). So 'Un jour, je serai professeure', 'Nous aurons une maison', 'Ils iront à Montréal', 'Elle fera du sport.' One careful pair: je voudrai (I WILL want, this future) is not je voudrais (the polite 'I would like' from A1 — that final -s is the conditional, coming in Unit 2). The sentence and the -s always tell you which one you hear.",
+        "teachFr": "Un jour, je serai professeure. J'aurai une belle maison et je ferai du sport chaque matin. Mon fils ira à l'école ; il pourra jouer au parc. Ma fille voudra voyager avec moi. Je devrai travailler beaucoup, mais l'avenir sera magnifique !",
+        "vocab": [
+          {
+            "fr": "je serai",
+            "en": "I will be (être: stem ser- + the endings)"
+          },
+          {
+            "fr": "j'aurai",
+            "en": "I will have (avoir: stem aur-)"
+          },
+          {
+            "fr": "j'irai",
+            "en": "I will go (aller: stem ir-)"
+          },
+          {
+            "fr": "je ferai",
+            "en": "I will do, I will make (faire: stem fer-)"
+          },
+          {
+            "fr": "je pourrai",
+            "en": "I will be able to (pouvoir: stem pourr-)"
+          },
+          {
+            "fr": "je voudrai",
+            "en": "I will want (vouloir: stem voudr-; not je voudrais, which is the conditional)"
+          },
+          {
+            "fr": "je devrai",
+            "en": "I will have to (devoir: stem devr-)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Un jour, je serai…",
+          "goalEn": "Predict your life using the irregular futures ser-, aur-, ir-, fer-",
+          "promptSeed": "Role-play imagining life in ten years. Model the irregular futures — 'Je serai médecin', 'J'aurai une maison', 'J'irai à Montréal', 'Je ferai du sport' — then elicit each stem from the learner: 'Tu seras où ?', 'Tu auras des enfants ?', 'Tu feras quel métier ?'. Draw out j'irai, je pourrai and je voudrai too, plus one il/elle form ('Elle ira', 'Il pourra'). Bring in je devrai for obligations. If you hear 'je voudrais', check the meaning: the polite chunk, or the future je voudrai? Keep utterances short and celebrate bold predictions."
+        }
+      },
+      {
+        "id": "b1-u1-l3",
+        "order": 3,
+        "canDoEn": "I can choose between the near future and the simple future, and use the future after quand.",
+        "canDoFr": "Je peux dire ce que je vais faire et ce que je ferai.",
+        "grammarTarget": "Futur proche vs futur simple (nuance) + the future after quand and dès que (where English keeps the present)",
+        "teachEn": "You now have two futures. The near future (aller + infinitive, from A1) feels close, planned, and spoken: 'Ce soir, je vais regarder un film.' The futur simple feels more distant, more formal, or like a prediction: 'Un jour, je visiterai la France.' Both are correct — the futur simple just sounds a little more written or further away. One firm rule: after quand (when) and dès que (as soon as), when they point to a FUTURE moment, French puts the futur simple where English keeps the present. In A2 you used the present after quand for habits ('Quand je suis libre, je vais au cinéma'); but for a specific future, use the future in BOTH parts: 'Quand tu arriveras, nous mangerons ensemble', 'Dès que je finirai mon projet, je voyagerai.' Add a prediction word — sûr, probablement, certainement, sans doute — to sound natural: 'Je serai sans doute fatigué demain.'",
+        "teachFr": "Ce soir, je vais rester chez moi : c'est mon plan pour aujourd'hui. Mais un jour, je voyagerai ! Quand j'aurai de l'argent, j'irai à Québec. Dès que tu arriveras, nous mangerons ensemble. Ce sera probablement une belle journée !",
+        "vocab": [
+          {
+            "fr": "sûr / sûre",
+            "en": "sure, certain (Je suis sûr de mon avenir)"
+          },
+          {
+            "fr": "probablement",
+            "en": "probably"
+          },
+          {
+            "fr": "certainement",
+            "en": "certainly, definitely"
+          },
+          {
+            "fr": "sans doute",
+            "en": "probably, no doubt"
+          },
+          {
+            "fr": "je voyagerai",
+            "en": "I will travel (futur simple of voyager, an -er verb)"
+          },
+          {
+            "fr": "dès que",
+            "en": "as soon as (takes the futur, like quand: dès que tu arriveras…)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Quand tu arriveras…",
+          "goalEn": "Switch between the two futures and use the future after quand",
+          "promptSeed": "Role-play planning a visit. For close, sure plans, use the near future — 'Ce soir, je vais préparer le souper' — and for distant plans or predictions, use the futur simple — 'Un jour, je voyagerai à Québec.' Then practise the key rule: after quand and dès que about the future, French uses the future in BOTH parts. Elicit 'Quand tu arriveras, nous mangerons', 'Dès que je finirai mon projet, je voyagerai'. If the learner keeps the present for a future plan, offer the futur simple beside it. Weave in probablement, certainement, sans doute and sûr. Keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u1-l4",
+        "order": 4,
+        "canDoEn": "I can talk about my goals and what I hope to achieve.",
+        "canDoFr": "Je peux parler de mes objectifs et de ce que j'espère faire.",
+        "grammarTarget": "Talking about goals and hopes: réussir and réaliser in the futur + espérer (j'espère, é → è) + infinitive",
+        "teachEn": "Now aim at goals. Un objectif is a goal, and to reach one you réussir (to succeed) — an -ir verb whose future works like finir: je réussirai, tu réussiras. Réaliser means to achieve or make real: 'Je réaliserai mon objectif.' To say what you HOPE for, use espérer (to hope), which follows the préférer accent pattern from A1: the second é becomes è when the ending is silent — j'espère, tu espères, il/elle espère — and you add a dictionary-form verb: 'J'espère réussir', 'J'espère trouver un emploi.' Two goal verbs for real life: gagner (to earn or to win) — 'Je gagnerai de l'argent' — and trouver (A1) for finding un emploi (a job). Put it together: 'Mon objectif ? Je réussirai et je trouverai un bon emploi.'",
+        "teachFr": "J'ai un grand objectif : je réussirai et je réaliserai mes projets. J'espère trouver un bon emploi bientôt. Je travaillerai beaucoup et je gagnerai de l'argent. Un jour, je réaliserai mes objectifs : je suis sûre !",
+        "vocab": [
+          {
+            "fr": "un objectif",
+            "en": "a goal, an objective"
+          },
+          {
+            "fr": "réussir",
+            "en": "to succeed (an -ir verb: je réussirai)"
+          },
+          {
+            "fr": "réaliser",
+            "en": "to achieve, to make real (réaliser un objectif)"
+          },
+          {
+            "fr": "espérer",
+            "en": "to hope (j'espère; the second é becomes è, like préférer)"
+          },
+          {
+            "fr": "gagner",
+            "en": "to earn, to win (gagner de l'argent)"
+          },
+          {
+            "fr": "un emploi",
+            "en": "a job (trouver un emploi)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Mes objectifs",
+          "goalEn": "Talk about your goals and what you hope to achieve",
+          "promptSeed": "Role-play two friends sharing their goals for the year. Model goals with the futur and with espérer — 'Mon objectif ? Je réussirai', 'J'espère trouver un bon emploi', 'Je réaliserai mes projets' — then elicit the learner's: 'Quel est ton objectif ?', 'Qu'est-ce que tu espères faire ?'. Draw out réussir and réaliser in the future, gagner (gagner de l'argent), and un emploi. Watch the accent: j'espère, tu espères. If the learner says 'j'espére' with the wrong sound, recast 'j'espère'. Keep utterances short and encourage every plan warmly."
+        }
+      },
+      {
+        "id": "b1-u1-l5",
+        "order": 5,
+        "canDoEn": "I can describe my plans and dreams for the future from start to finish.",
+        "canDoFr": "Je peux décrire mes projets pour l'avenir.",
+        "grammarTarget": "Unit synthesis: describing future plans and dreams with both futures, quand + futur, and prediction words",
+        "teachEn": "Time to describe your whole future. Chain it with d'abord, ensuite, enfin (A1) and mix your tools: the near future for close plans, the futur simple for distant ones, and the future after quand. New life words help: déménager (to move house) — 'Je déménagerai à Montréal' — l'étranger (abroad) — 'J'irai à l'étranger' — économiser (to save money) — 'J'économiserai de l'argent' — and la vie (life): 'Ma vie changera !' Say where you dream of going with partout (everywhere): 'Je voyagerai partout.' And keep l'espoir (hope) close: 'J'ai de l'espoir pour l'avenir.' Put a full plan together: 'D'abord, je finirai mes projets ici. Ensuite, j'économiserai de l'argent. Enfin, je déménagerai et je voyagerai partout — je suis sûr !'",
+        "teachFr": "Voici mes projets pour l'avenir. D'abord, je finirai mes projets ici et j'économiserai de l'argent. Ensuite, quand j'aurai de l'argent, je déménagerai à Montréal. Enfin, j'irai à l'étranger et je voyagerai partout ! Ma vie changera. J'ai beaucoup d'espoir : ce sera magnifique !",
+        "vocab": [
+          {
+            "fr": "déménager",
+            "en": "to move house (je déménagerai)"
+          },
+          {
+            "fr": "l'étranger",
+            "en": "abroad (aller à l'étranger)"
+          },
+          {
+            "fr": "économiser",
+            "en": "to save money (j'économiserai)"
+          },
+          {
+            "fr": "la vie",
+            "en": "life (dans la vie)"
+          },
+          {
+            "fr": "partout",
+            "en": "everywhere"
+          },
+          {
+            "fr": "l'espoir",
+            "en": "hope (avoir de l'espoir)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Mes projets pour l'avenir",
+          "goalEn": "Describe your future plans and dreams from start to finish",
+          "promptSeed": "Role-play sharing your plans for the future to close the unit. Model a full plan chained with d'abord, ensuite, enfin, mixing both futures: 'D'abord, je finirai mes projets. Ensuite, quand j'aurai de l'argent, je déménagerai. Enfin, j'irai à l'étranger et je voyagerai partout.' Then draw out the learner's whole future: 'Qu'est-ce que tu feras d'abord ?', 'Où est-ce que tu iras ?', 'Comment ta vie changera ?'. Weave in économiser, l'espoir and the quand + futur rule. Recast a bare present after quand into the futur simple, and celebrate every dream. Keep utterances short and warm."
+        }
+      }
+    ]
+  }
+}
