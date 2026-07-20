@@ -1,0 +1,300 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a1-u4",
+    "level": "A1",
+    "order": 4,
+    "titleEn": "Food",
+    "titleFr": "La nourriture",
+    "lessons": [
+      {
+        "id": "a1-u4-l1",
+        "order": 1,
+        "canDoEn": "I can say what I eat and drink.",
+        "canDoFr": "Je peux dire ce que je mange et ce que je bois.",
+        "grammarTarget": "The partitive du / de la / de l' (+ des for plurals) + boire (je/tu/il-elle)",
+        "teachEn": "To say you eat or drink SOME of something, French uses the partitive: du before a masculine noun (du pain, du fromage, du jus), de la before a feminine noun (de la salade, de la viande), de l' before a vowel (de l'eau), and des before any plural (des fruits, des légumes). This du / de la has a different job from Unit 3's faire du vélo — there it marked an activity; here it means 'some' of a food: 'Je mange du pain, de la salade et une pomme.' The verb boire (to drink) is irregular: je bois, tu bois, il/elle boit — 'Je bois du lait', 'Elle boit de l'eau.' Manger works exactly as in Unit 3: 'Le matin, je mange un fruit.'",
+        "teachFr": "Je mange du pain, du fromage et une pomme. Je bois de l'eau et du lait. La pomme est un fruit et la salade est un légume.",
+        "vocab": [
+          {
+            "fr": "du / de la / de l'",
+            "en": "some (partitive, before food or drink: du pain, de l'eau)"
+          },
+          {
+            "fr": "des",
+            "en": "some (before plurals: des fruits)"
+          },
+          {
+            "fr": "boire",
+            "en": "to drink (irregular: je bois, tu bois, il boit)"
+          },
+          {
+            "fr": "le pain",
+            "en": "the bread"
+          },
+          {
+            "fr": "le fromage",
+            "en": "the cheese"
+          },
+          {
+            "fr": "le lait",
+            "en": "the milk"
+          },
+          {
+            "fr": "l'eau",
+            "en": "the water (feminine: de l'eau)"
+          },
+          {
+            "fr": "le jus",
+            "en": "the juice"
+          },
+          {
+            "fr": "la salade",
+            "en": "the salad, the lettuce"
+          },
+          {
+            "fr": "la viande",
+            "en": "the meat"
+          },
+          {
+            "fr": "la pomme",
+            "en": "the apple"
+          },
+          {
+            "fr": "un fruit",
+            "en": "a fruit"
+          },
+          {
+            "fr": "un légume",
+            "en": "a vegetable"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu manges du pain ?",
+          "goalEn": "Say what you eat and drink using du, de la, de l' and des",
+          "promptSeed": "Role-play a relaxed chat about what you eat and drink every day. Model the partitive first — 'Je mange du pain et du fromage', 'Je bois de l'eau' — using manger (Unit 3) and this lesson's boire, then ask short intonation questions: 'Tu bois du lait ?', 'Tu manges de la salade ?'. Elicit du, de la, de l' and des across le jus, la viande, la pomme, un fruit and un légume, and recast slips like 'je mange de pain' or 'je bois du eau' gently. Keep every utterance under 8 words and speak slowly."
+        }
+      },
+      {
+        "id": "a1-u4-l2",
+        "order": 2,
+        "canDoEn": "I can order food and drinks at a café.",
+        "canDoFr": "Je peux commander au café.",
+        "grammarTarget": "Je voudrais as a fixed politeness phrase + prendre (je/tu/il-elle)",
+        "teachEn": "At the café, the polite way to ask for something is the fixed phrase je voudrais (I would like): 'Je voudrais un café, s'il vous plaît.' Learn it as one chunk — the full verb behind it (vouloir) comes later. French also orders with prendre (to take): je prends, tu prends, il/elle prend — 'Je prends un thé et un croissant' — not with 'j'ai' the way English says 'I'll have'. The server may hand you le menu and ask 'Vous désirez ?' ('What would you like?') — désirer follows the parler pattern from Unit 2 — and you can answer with un sandwich or une boisson (a drink). Add monsieur or madame to be extra polite: 'Un café, s'il vous plaît, madame.'",
+        "teachFr": "Bonjour, madame ! Le menu, s'il vous plaît. Je voudrais un café et un croissant, et mon amie prend un thé et un sandwich.",
+        "vocab": [
+          {
+            "fr": "je voudrais",
+            "en": "I would like (fixed polite phrase; the full verb comes later)"
+          },
+          {
+            "fr": "prendre",
+            "en": "to take, to have food (je prends, tu prends, il prend)"
+          },
+          {
+            "fr": "un café",
+            "en": "a coffee (also: the café, the place)"
+          },
+          {
+            "fr": "un thé",
+            "en": "a tea"
+          },
+          {
+            "fr": "un croissant",
+            "en": "a croissant"
+          },
+          {
+            "fr": "un sandwich",
+            "en": "a sandwich"
+          },
+          {
+            "fr": "une boisson",
+            "en": "a drink"
+          },
+          {
+            "fr": "le menu",
+            "en": "the menu"
+          },
+          {
+            "fr": "monsieur",
+            "en": "sir, Mr."
+          },
+          {
+            "fr": "madame",
+            "en": "ma'am, Mrs."
+          },
+          {
+            "fr": "Vous désirez ?",
+            "en": "What would you like? (what the server asks)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Au café",
+          "goalEn": "Order a drink and a snack politely",
+          "promptSeed": "Role-play the server at a small café taking the learner's order. Greet them (Unit 1), offer le menu, and ask 'Vous désirez ?'. Elicit the fixed 'Je voudrais un café, s'il vous plaît' (s'il vous plaît from Unit 1) and prendre — 'Je prends un thé et un croissant' — across un sandwich and une boisson, adding monsieur or madame politely. If the learner orders with 'j'ai' the English way, recast with je voudrais or je prends. Keep every utterance short and slow."
+        }
+      },
+      {
+        "id": "a1-u4-l3",
+        "order": 3,
+        "canDoEn": "I can say what I don't eat and ask for quantities.",
+        "canDoFr": "Je peux dire ce que je ne mange pas.",
+        "grammarTarget": "Negation ne … pas + pas de replacing du / de la / des; quantity words with de",
+        "teachEn": "To say NOT, wrap the verb with ne … pas — 'Je ne mange pas' — and ne becomes n' before a vowel: 'Je n'aime pas.' After pas, the partitives du, de la, de l' and des all shrink to plain de (d' before a vowel): 'Je mange de la viande' → 'Je ne mange pas de viande'; 'Il boit de l'eau' → 'Il ne boit pas d'eau.' But after aimer, the article stays: 'Je n'aime pas le fromage.' Quantity words also take de: beaucoup de (a lot of), un peu de (a little), un verre de (a glass of), une tasse de (a cup of) — 'un verre de jus', 'une tasse de café', 'un peu de lait', 'beaucoup de sucre'. For the drink in front of you, use the possessive: 'un peu de lait dans mon café' (in my coffee). A very useful sentence: 'Je suis végétarien / végétarienne, je ne mange pas de viande.'",
+        "teachFr": "Je suis végétarienne : je ne mange pas de viande. Je voudrais un peu de lait dans mon café, et pas de sucre. Le matin, je bois une tasse de thé et un verre de jus.",
+        "vocab": [
+          {
+            "fr": "ne … pas",
+            "en": "not (wraps the verb: je ne mange pas)"
+          },
+          {
+            "fr": "pas de / pas d'",
+            "en": "no, not any (replaces du / de la / des after pas)"
+          },
+          {
+            "fr": "beaucoup de",
+            "en": "a lot of"
+          },
+          {
+            "fr": "un peu de",
+            "en": "a little, a bit of"
+          },
+          {
+            "fr": "un verre de",
+            "en": "a glass of"
+          },
+          {
+            "fr": "une tasse de",
+            "en": "a cup of"
+          },
+          {
+            "fr": "le sucre",
+            "en": "the sugar"
+          },
+          {
+            "fr": "végétarien / végétarienne",
+            "en": "vegetarian"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Pas de sucre, merci !",
+          "goalEn": "Say what you don't eat or drink and order exact quantities",
+          "promptSeed": "Role-play ordering for a picky eater. Ask what the learner eats and drinks with manger (Unit 3) and boire (Lesson 1), and elicit the flagship 'Je ne mange pas de viande' — pas de replacing du / de la — plus végétarien / végétarienne if it fits their life. Practise quantities: 'un verre de jus', 'une tasse de café', 'beaucoup de sucre', 'un peu de lait'. If the learner says 'pas du sucre', recast 'pas de sucre'; keep 'Je n'aime pas le fromage' with le (aimer from Unit 2). Short, slow utterances."
+        }
+      },
+      {
+        "id": "a1-u4-l4",
+        "order": 4,
+        "canDoEn": "I can understand prices and pay.",
+        "canDoFr": "Je peux comprendre les prix et payer.",
+        "grammarTarget": "Numbers 60-100 (soixante-dix, quatre-vingts, quatre-vingt-dix) + coûter with ça",
+        "teachEn": "The last tens are built on old counting: soixante-dix (70) is 'sixty-ten', and after it comes soixante et onze (71 — et onze, not et un), then soixante-douze (72) with a hyphen. Quatre-vingts (80) is 'four twenties', and its -s disappears the moment another number follows: quatre-vingts, but quatre-vingt-un (81 — no et here) and quatre-vingt-deux (82); quatre-vingt-dix (90) is 'four-twenty-ten', quatre-vingt-onze is 91, and cent is 100 — Canadian French counts exactly this way, and the septante / nonante you may hear about are Belgian and Swiss, not Canadian. For prices, use coûter, a regular -er verb from the Unit 2 pattern, with ça (that/it) working like il or elle: 'Ça coûte combien ? — Le café coûte trois dollars' (combien is from Unit 1, and the money word is le dollar). If it is expensive, say 'C'est cher !' — cher becomes chère with a feminine noun: 'La viande est chère.' To pay, ask for la facture (in France you will hear l'addition) and use payer after je voudrais: 'Je voudrais payer, s'il vous plaît.'",
+        "teachFr": "Le croissant coûte quatre dollars et le café coûte trois dollars : ça coûte sept dollars. C'est cher ! Tu as de l'argent ? La facture, s'il vous plaît.",
+        "vocab": [
+          {
+            "fr": "soixante-dix",
+            "en": "seventy (literally 'sixty-ten'; 71 is soixante et onze, with et)"
+          },
+          {
+            "fr": "quatre-vingts",
+            "en": "eighty ('four twenties'; the -s drops before a number: quatre-vingt-deux)"
+          },
+          {
+            "fr": "quatre-vingt-dix",
+            "en": "ninety ('four-twenty-ten'; 91 is quatre-vingt-onze, no et)"
+          },
+          {
+            "fr": "cent",
+            "en": "one hundred"
+          },
+          {
+            "fr": "coûter",
+            "en": "to cost (ça coûte, like il/elle)"
+          },
+          {
+            "fr": "Ça coûte combien ?",
+            "en": "How much does it cost?"
+          },
+          {
+            "fr": "le dollar",
+            "en": "the dollar"
+          },
+          {
+            "fr": "cher / chère",
+            "en": "expensive"
+          },
+          {
+            "fr": "la facture",
+            "en": "the bill (Canadian usage; in France you will hear l'addition)"
+          },
+          {
+            "fr": "payer",
+            "en": "to pay (je voudrais payer)"
+          },
+          {
+            "fr": "l'argent",
+            "en": "the money (masculine: de l'argent)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ça coûte combien ?",
+          "goalEn": "Ask prices, react to them, and ask for the bill",
+          "promptSeed": "Role-play prices at the café counter. Announce prices and have the learner repeat the new tens: soixante-dix, quatre-vingts, quatre-vingt-dix, cent — watch the -s: quatre-vingts but quatre-vingt-deux. Elicit 'Ça coûte combien ?' (combien from Unit 1) and answers with coûter and le dollar: 'Le café coûte trois dollars.' React with 'C'est cher !' / 'La viande est chère', ask 'Tu as de l'argent ?' (avoir from Unit 1), and close with 'La facture, s'il vous plaît' and payer: 'Je voudrais payer.' Speak slowly and repeat any number the learner misses."
+        }
+      },
+      {
+        "id": "a1-u4-l5",
+        "order": 5,
+        "canDoEn": "I can handle a full café visit from table to bill.",
+        "canDoFr": "Je peux commander et payer au café.",
+        "grammarTarget": "Unit synthesis: avoir faim / avoir soif + ordering, quantities, negation and paying together",
+        "teachEn": "Time to put the whole café visit together. Hunger and thirst use avoir, like age in Unit 1: 'J'ai faim' (I'm hungry), 'J'ai soif' (I'm thirsty) — never with être. Ask for a table with pour: 'Une table pour deux, s'il vous plaît', then order — commander follows the parler pattern from Unit 2: 'Je voudrais commander, s'il vous plaît', 'Nous commandons ensemble' (we order together). Before eating, French wishes 'Bon appétit !', and a happy verdict is délicieux, with délicieuse for a feminine noun: 'Le croissant est délicieux', 'La salade est délicieuse.' Finish with le dessert — 'Je prends un dessert' — and then the bill.",
+        "teachFr": "J'ai faim et j'ai soif ! Une table pour deux, s'il vous plaît. Je voudrais commander : un sandwich et, après, un dessert. Bon appétit !",
+        "vocab": [
+          {
+            "fr": "avoir faim",
+            "en": "to be hungry (with avoir: j'ai faim)"
+          },
+          {
+            "fr": "avoir soif",
+            "en": "to be thirsty (with avoir: j'ai soif)"
+          },
+          {
+            "fr": "commander",
+            "en": "to order (food)"
+          },
+          {
+            "fr": "une table",
+            "en": "a table"
+          },
+          {
+            "fr": "pour",
+            "en": "for"
+          },
+          {
+            "fr": "le dessert",
+            "en": "the dessert"
+          },
+          {
+            "fr": "Bon appétit !",
+            "en": "Enjoy your meal!"
+          },
+          {
+            "fr": "délicieux / délicieuse",
+            "en": "delicious"
+          },
+          {
+            "fr": "ensemble",
+            "en": "together"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Une table pour deux",
+          "goalEn": "Run a full café visit: arrive, order, eat, react, and pay",
+          "promptSeed": "Role-play a full café visit from door to bill. The learner arrives hungry — elicit 'J'ai faim' and 'J'ai soif' (avoir from Unit 1) — asks for 'Une table pour deux, s'il vous plaît', and orders with je voudrais and prendre (Lesson 2) plus commander: 'Nous commandons ensemble.' Wish 'Bon appétit !', react with délicieux / délicieuse, offer le dessert, then bring la facture and ask 'Ça coûte combien ?' (both from Lesson 4). Recycle greetings (Unit 1) at the door and keep every utterance short and slow."
+        }
+      }
+    ]
+  }
+}

@@ -23,6 +23,9 @@
 import a1Unit1Json from "@/src/content/curriculum/a1-u1.json";
 import a1Unit2Json from "@/src/content/curriculum/a1-u2.json";
 import a1Unit3Json from "@/src/content/curriculum/a1-u3.json";
+import a1Unit4Json from "@/src/content/curriculum/a1-u4.json";
+import a1Unit5Json from "@/src/content/curriculum/a1-u5.json";
+import a1Unit6Json from "@/src/content/curriculum/a1-u6.json";
 import {
   type CurriculumLesson,
   type CurriculumUnit,
@@ -51,6 +54,9 @@ export const CURRICULUM_UNITS: readonly CurriculumUnit[] = [
   parseUnitFile(a1Unit1Json, "a1-u1.json"),
   parseUnitFile(a1Unit2Json, "a1-u2.json"),
   parseUnitFile(a1Unit3Json, "a1-u3.json"),
+  parseUnitFile(a1Unit4Json, "a1-u4.json"),
+  parseUnitFile(a1Unit5Json, "a1-u5.json"),
+  parseUnitFile(a1Unit6Json, "a1-u6.json"),
 ];
 
 /** Flat lesson list in spine order — the canonical traversal. */

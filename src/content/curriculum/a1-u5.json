@@ -1,0 +1,260 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a1-u5",
+    "level": "A1",
+    "order": 5,
+    "titleEn": "In Town",
+    "titleFr": "En ville",
+    "lessons": [
+      {
+        "id": "a1-u5-l1",
+        "order": 1,
+        "canDoEn": "I can name the places in my neighbourhood.",
+        "canDoFr": "Je peux décrire mon quartier.",
+        "grammarTarget": "New place nouns with le / la / l' + il y a (recycled) to describe a neighbourhood",
+        "teachEn": "A neighbourhood — un quartier — is full of places, each with its article: la banque (bank), la pharmacie (pharmacy), le restaurant, la rue (street), la bibliothèque (library), l'épicerie (grocery store) and l'hôpital (hospital) — l' before a vowel, as in l'école from Unit 3. A very Canadian one is le dépanneur, the little corner store, named from dépanner, 'to help someone out of a jam'. To describe your area, recycle il y a from Unit 2: 'Dans mon quartier, il y a une banque et beaucoup de restaurants' — beaucoup de from Unit 4 works for places too. The places you already know — le parc, le cinéma, le magasin, l'école — fit the same pattern.",
+        "teachFr": "Dans mon quartier, il y a une banque, une pharmacie et un dépanneur. La bibliothèque est dans ma rue. J'adore mon quartier !",
+        "vocab": [
+          {
+            "fr": "le quartier",
+            "en": "the neighbourhood"
+          },
+          {
+            "fr": "la banque",
+            "en": "the bank"
+          },
+          {
+            "fr": "la pharmacie",
+            "en": "the pharmacy"
+          },
+          {
+            "fr": "le restaurant",
+            "en": "the restaurant"
+          },
+          {
+            "fr": "la rue",
+            "en": "the street"
+          },
+          {
+            "fr": "la bibliothèque",
+            "en": "the library"
+          },
+          {
+            "fr": "l'épicerie",
+            "en": "the grocery store (feminine)"
+          },
+          {
+            "fr": "le dépanneur",
+            "en": "the corner store (Canadian; from dépanner, to help out)"
+          },
+          {
+            "fr": "l'hôpital",
+            "en": "the hospital (masculine)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Dans mon quartier",
+          "goalEn": "Describe what there is in your neighbourhood",
+          "promptSeed": "Role-play describing your neighbourhoods to each other. Model with il y a (Unit 2): 'Dans mon quartier, il y a une banque, une pharmacie et un dépanneur', then elicit the learner's own list across le restaurant, la rue, la bibliothèque, l'épicerie and l'hôpital, plus places from Unit 3 like le parc and l'école. Use beaucoup de (Unit 4) for plenty — 'beaucoup de restaurants' — and ask short intonation questions: 'Il y a un dépanneur dans ta rue ?'. Keep every utterance under 8 words."
+        }
+      },
+      {
+        "id": "a1-u5-l2",
+        "order": 2,
+        "canDoEn": "I can ask and say where places are.",
+        "canDoFr": "Je peux demander où est la banque.",
+        "grammarTarget": "Où est … ? + prepositions of place; de + le → du (à côté du parc)",
+        "teachEn": "To ask where something is, use Où est … ? with être from Unit 1: 'Où est la banque ?' Answer with the place prepositions devant (in front of), derrière (behind), entre (between), à côté de (next to), près de (near) and loin de (far from): 'La banque est entre le café et la pharmacie', 'C'est loin de chez moi.' The ones ending in de squeeze together with le, just as à + le became au in Unit 3: de + le → du — 'à côté du parc', 'près du restaurant' — while feminine nouns keep de la ('près de la banque') and vowels take de l' ('à côté de l'école'). Careful: this du looks like the 'some' du from Unit 4, but here it is simply de + le. Point things out with ici (here) and là-bas (over there): 'Le restaurant ? Il est là-bas !'",
+        "teachFr": "Où est la pharmacie ? Elle est à côté du parc, entre la banque et le dépanneur. Le restaurant est là-bas, derrière l'école, et l'épicerie est ici, devant la bibliothèque.",
+        "vocab": [
+          {
+            "fr": "Où est … ?",
+            "en": "Where is …?"
+          },
+          {
+            "fr": "devant",
+            "en": "in front of"
+          },
+          {
+            "fr": "derrière",
+            "en": "behind"
+          },
+          {
+            "fr": "entre",
+            "en": "between"
+          },
+          {
+            "fr": "à côté de",
+            "en": "next to (de + le → du: à côté du parc)"
+          },
+          {
+            "fr": "près de",
+            "en": "near, close to"
+          },
+          {
+            "fr": "loin de",
+            "en": "far from"
+          },
+          {
+            "fr": "ici",
+            "en": "here"
+          },
+          {
+            "fr": "là-bas",
+            "en": "over there"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "À côté du parc",
+          "goalEn": "Ask where places are and describe their position",
+          "promptSeed": "Role-play locating places in town (places from Lesson 1). Ask 'Où est la banque ?' and answer with the prepositions — devant, derrière, entre, à côté de, près de, loin de — eliciting the flagship de + le → du: 'à côté du parc' (le parc from Unit 3), never 'à côté de le parc'. Point with ici and là-bas: 'Le restaurant est là-bas !'. Then have the learner ask YOU 'Où est … ?' questions, and recast any missing contraction gently. Speak slowly, with short utterances."
+        }
+      },
+      {
+        "id": "a1-u5-l3",
+        "order": 3,
+        "canDoEn": "I can understand and give simple directions.",
+        "canDoFr": "Je peux demander mon chemin et comprendre les indications.",
+        "grammarTarget": "Fixed vous-commands for directions (tournez, allez, continuez, traversez) + à gauche / à droite / tout droit",
+        "teachEn": "To get help in the street, start with the fixed attention-getter Excusez-moi: 'Excusez-moi, où est la banque ?' Directions come as polite fixed commands — learn them whole for now, the full command system comes later: tournez (turn), allez (go), continuez (keep going), traversez (cross), as in 'Tournez à gauche' (left), 'Tournez à droite' (right), 'Allez tout droit' (straight ahead), 'Traversez la rue.' Link the steps with puis (then): 'Continuez tout droit, puis tournez à droite.' To offer a choice, use ou (or): 'À gauche ou à droite ?' These -ez endings match the vous forms you met in Unit 2 (vous parlez) — here they politely tell one stranger what to do.",
+        "teachFr": "Excusez-moi, où est la banque ? Allez tout droit, puis tournez à gauche. Traversez la rue : la banque est à côté de la pharmacie. Merci !",
+        "vocab": [
+          {
+            "fr": "Excusez-moi",
+            "en": "Excuse me (fixed, to get attention)"
+          },
+          {
+            "fr": "tournez",
+            "en": "turn (fixed polite command)"
+          },
+          {
+            "fr": "allez",
+            "en": "go (fixed polite command, from aller)"
+          },
+          {
+            "fr": "continuez",
+            "en": "keep going (fixed polite command)"
+          },
+          {
+            "fr": "traversez",
+            "en": "cross (fixed polite command: traversez la rue)"
+          },
+          {
+            "fr": "à gauche",
+            "en": "to the left, on the left"
+          },
+          {
+            "fr": "à droite",
+            "en": "to the right, on the right"
+          },
+          {
+            "fr": "tout droit",
+            "en": "straight ahead"
+          },
+          {
+            "fr": "puis",
+            "en": "then, next"
+          },
+          {
+            "fr": "ou",
+            "en": "or"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "À gauche ou à droite ?",
+          "goalEn": "Ask for directions and give them with fixed commands",
+          "promptSeed": "Role-play a lost tourist and a helpful local, then swap roles. Open with 'Excusez-moi, où est la banque ?' (places from Lesson 1, Où est from Lesson 2) and give directions with the fixed commands: 'Allez tout droit', 'Tournez à gauche', 'Tournez à droite', 'Continuez', 'Traversez la rue', linking steps with puis. Offer choices with ou: 'À gauche ou à droite ?'. When roles swap, elicit the same commands from the learner and recast gently. Keep each direction to one short step."
+        }
+      },
+      {
+        "id": "a1-u5-l4",
+        "order": 4,
+        "canDoEn": "I can say how I get around town.",
+        "canDoFr": "Je peux parler des transports.",
+        "grammarTarget": "Transport with prendre (recycled) + à pied / en voiture",
+        "teachEn": "For getting around, recycle prendre from Unit 4: 'Je prends l'autobus' (the bus — in France you will often hear le bus), 'Tu prends le métro ?', 'Elle prend le train.' Ways of moving use à or en with no article: à pied (on foot), en voiture (by car) — 'Je vais à la banque en voiture', 'Je vais à l'école à pied.' You wait for the bus at un arrêt d'autobus (a bus stop) and buy un billet (a ticket): 'Je voudrais un billet, s'il vous plaît.' The adjective rapide (fast) keeps one form for masculine and feminine: 'Le métro est rapide.'",
+        "teachFr": "Tous les jours, je prends le métro : il est rapide ! Ma sœur va à l'école à pied. Le dimanche, je vais au parc en voiture.",
+        "vocab": [
+          {
+            "fr": "l'autobus",
+            "en": "the bus (Canadian usage; in France you will often hear le bus)"
+          },
+          {
+            "fr": "le métro",
+            "en": "the subway, the metro"
+          },
+          {
+            "fr": "le train",
+            "en": "the train"
+          },
+          {
+            "fr": "à pied",
+            "en": "on foot"
+          },
+          {
+            "fr": "en voiture",
+            "en": "by car"
+          },
+          {
+            "fr": "un billet",
+            "en": "a ticket"
+          },
+          {
+            "fr": "un arrêt d'autobus",
+            "en": "a bus stop"
+          },
+          {
+            "fr": "rapide",
+            "en": "fast (same form for masculine and feminine)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu prends l'autobus ?",
+          "goalEn": "Say how you get around and buy a ticket",
+          "promptSeed": "Role-play comparing how you get around town. Model prendre (Unit 4): 'Je prends l'autobus', 'Je prends le métro', and elicit the learner's habits with intonation questions: 'Tu prends le train ?', 'Tu vas à l'école à pied ?' (aller and l'école from Unit 3). Bring in en voiture, un arrêt d'autobus, and un billet — 'Je voudrais un billet' (je voudrais from Unit 4) — plus rapide: 'Le métro est rapide !'. Keep every utterance under 8 words and speak slowly."
+        }
+      },
+      {
+        "id": "a1-u5-l5",
+        "order": 5,
+        "canDoEn": "I can arrange to meet a friend and guide them there.",
+        "canDoFr": "Je peux donner un rendez-vous et guider un ami.",
+        "grammarTarget": "Unit synthesis: asking for and giving directions to a meeting point",
+        "teachEn": "Now use the whole unit to meet a friend. Set un rendez-vous (a meet-up) with a place and a time: 'Rendez-vous devant le café à trois heures !' If you get lost, say 'Je suis perdu' (a man) or 'Je suis perdue' (a woman), look at une carte (a map), and ask for help: 'Excusez-moi, je ne trouve pas la rue' — trouver (to find) follows the parler pattern from Unit 2, and after ne … pas the definite article la stays, just as with aimer in Unit 4. Reassure with facile (easy) and difficile (difficult), both one form for masculine and feminine: 'C'est facile ! Allez tout droit, puis tournez à gauche.'",
+        "teachFr": "Rendez-vous devant le café à deux heures ! Je suis perdue et je ne trouve pas la rue. Je regarde une carte : c'est facile, le café est près du parc !",
+        "vocab": [
+          {
+            "fr": "un rendez-vous",
+            "en": "a meet-up, an appointment"
+          },
+          {
+            "fr": "perdu / perdue",
+            "en": "lost"
+          },
+          {
+            "fr": "trouver",
+            "en": "to find"
+          },
+          {
+            "fr": "une carte",
+            "en": "a map"
+          },
+          {
+            "fr": "facile",
+            "en": "easy (same form for masculine and feminine)"
+          },
+          {
+            "fr": "difficile",
+            "en": "difficult (same form for masculine and feminine)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Rendez-vous au café",
+          "goalEn": "Set a meeting point, get lost, and guide each other there",
+          "promptSeed": "Role-play phoning a friend to meet at the café (Unit 4). Set un rendez-vous with a place and a time (hours from Unit 3): 'Rendez-vous devant le café à trois heures !' (devant from Lesson 2). The learner then gets lost — elicit 'Je suis perdu / perdue' and 'Je ne trouve pas la rue' (ne … pas from Unit 4) — and guide them with the Lesson 3 commands: 'Allez tout droit, puis tournez à gauche.' Mention une carte, reassure with 'C'est facile !' or ask 'C'est difficile ?', and celebrate arrival with greetings from Unit 1."
+        }
+      }
+    ]
+  }
+}

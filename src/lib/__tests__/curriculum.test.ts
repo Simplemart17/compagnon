@@ -53,22 +53,33 @@ describe("Story 19-1 — content integrity (CI gate)", () => {
     // Recycling happens in scenarios and teach text; re-LISTING a word in a
     // later unit's vocab wastes a flashcard slot and double-drills the SRS.
     // The schema's superRefine dedups WITHIN a unit; only this registry
-    // test can see across files. NFKC-normalized like the schema key.
+    // test can see across files. Keys via the SHARED production normalizer.
+    //
+    // R2 (slice 3): compound "x / y" alternate entries are SPLIT before
+    // keying — pre-R2 'le parc / le jardin' would have evaded the guard
+    // while re-listing the taught 'le parc'.
+    const ALLOWED_CROSS_UNIT_REINTRODUCTIONS = new Set([
+      // U3-L4 teaches faire du/de la (activity marker); U4-L1 deliberately
+      // re-teaches du/de la as the PARTITIVE and its teachEn explicitly
+      // disambiguates the two — an intentional, documented re-introduction.
+      "du",
+      "de la",
+    ]);
     const seen = new Map<string, string>();
     for (const unit of CURRICULUM_UNITS) {
       for (const lesson of unit.lessons) {
         for (const item of lesson.vocab) {
-          const key = normalizeVocabKey(item.fr);
-          const firstIn = seen.get(key);
-          // R2: anchor with "-l" — "a1-u10-l1".startsWith("a1-u1") is TRUE,
-          // so the bare unit.id prefix would silently skip a future
-          // unit-10-vs-unit-1 collision (the schema's own lesson-id anchor).
-          if (firstIn !== undefined && !firstIn.startsWith(`${unit.id}-l`)) {
-            throw new Error(
-              `vocab "${item.fr}" in ${lesson.id} was already introduced in ${firstIn}`
-            );
+          for (const part of item.fr.split(" / ")) {
+            const key = normalizeVocabKey(part);
+            if (key.length === 0 || ALLOWED_CROSS_UNIT_REINTRODUCTIONS.has(key)) continue;
+            const firstIn = seen.get(key);
+            if (firstIn !== undefined && !firstIn.startsWith(`${unit.id}-l`)) {
+              throw new Error(
+                `vocab "${part}" (in "${item.fr}", ${lesson.id}) was already introduced in ${firstIn}`
+              );
+            }
+            if (firstIn === undefined) seen.set(key, lesson.id);
           }
-          if (firstIn === undefined) seen.set(key, lesson.id);
         }
       }
     }
