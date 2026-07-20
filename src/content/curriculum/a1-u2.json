@@ -1,0 +1,276 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "a1-u2",
+    "level": "A1",
+    "order": 2,
+    "titleEn": "The Family",
+    "titleFr": "La famille",
+    "lessons": [
+      {
+        "id": "a1-u2-l1",
+        "order": 1,
+        "canDoEn": "I can name the people in my family.",
+        "canDoFr": "Je peux parler de ma famille.",
+        "grammarTarget": "Possessive adjectives mon/ma/mes + family nouns with gender",
+        "teachEn": "French has three words for 'my', and the right one depends on the noun that follows, not on you: mon before a masculine noun (mon père, mon frère, mon fils), ma before a feminine noun (ma mère, ma sœur, ma fille), and mes before any plural (mes parents). To say who is in your family (la famille), recycle avoir from Unit 1: 'J'ai un frère et une sœur.' A woman's husband is mon mari, and a man's wife is ma femme — femme also means 'woman'. Pets count too: le chien (dog) and le chat (cat) are masculine words, so it is mon chien and mon chat.",
+        "teachFr": "J'ai une famille : mon père, ma mère, mon frère et ma sœur. Mon fils a cinq ans et ma fille a huit ans. J'ai un chien et un chat.",
+        "vocab": [
+          {
+            "fr": "la famille",
+            "en": "the family"
+          },
+          {
+            "fr": "le père",
+            "en": "the father"
+          },
+          {
+            "fr": "la mère",
+            "en": "the mother"
+          },
+          {
+            "fr": "les parents",
+            "en": "the parents"
+          },
+          {
+            "fr": "le frère",
+            "en": "the brother"
+          },
+          {
+            "fr": "la sœur",
+            "en": "the sister"
+          },
+          {
+            "fr": "le fils",
+            "en": "the son"
+          },
+          {
+            "fr": "la fille",
+            "en": "the daughter (also: the girl)"
+          },
+          {
+            "fr": "le mari",
+            "en": "the husband"
+          },
+          {
+            "fr": "la femme",
+            "en": "the wife (also: the woman)"
+          },
+          {
+            "fr": "mon / ma / mes",
+            "en": "my (matches the noun that follows)"
+          },
+          {
+            "fr": "le chien",
+            "en": "the dog"
+          },
+          {
+            "fr": "le chat",
+            "en": "the cat"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ma famille",
+          "goalEn": "Say who is in your family",
+          "promptSeed": "Role-play a cozy chat about family. Present your own first ('mon père', 'ma mère', 'mes parents'), then ask short intonation questions: 'Tu as un frère ?', 'Tu as un chien ?'. Elicit 'J'ai un/une + person' and the flagship 'mon / ma / mes + person', bringing in le mari, la femme, le fils, la fille, le chat where they fit the learner's life. If a wrong possessive appears ('ma père'), recast it gently. Stay within this lesson's family vocabulary plus Unit 1 greetings and numbers, and keep every utterance under 8 words."
+        }
+      },
+      {
+        "id": "a1-u2-l2",
+        "order": 2,
+        "canDoEn": "I can ask about someone's family and friends.",
+        "canDoFr": "Je peux poser des questions sur ta famille.",
+        "grammarTarget": "Possessive adjectives ton/ta/tes and son/sa/ses + mon/ton/son before a vowel (mon amie)",
+        "teachEn": "To talk about someone else's family, use ton/ta/tes for 'your' (informal) and son/sa/ses for 'his' or 'her': ton frère, ta tante, tes cousins. The possessive matches the noun, not the owner — sa sœur can mean his sister OR her sister. Before a feminine noun that starts with a vowel, ma/ta/sa switch to mon/ton/son: un ami is a male friend and une amie a female friend, and you say mon amie, ton amie, son amie — never 'ma amie'. The elision you know from j'ai and j'habite also appears in l'oncle: le shrinks to l' before the vowel of oncle. One family surprise: in la grand-mère, grand never takes an -e even though mère is feminine, but the plural les grands-parents does add an -s to grand.",
+        "teachFr": "J'ai un oncle et une tante. Ton grand-père est canadien ? Sa cousine est canadienne.",
+        "vocab": [
+          {
+            "fr": "ton / ta / tes",
+            "en": "your (informal; matches the noun that follows)"
+          },
+          {
+            "fr": "son / sa / ses",
+            "en": "his or her (matches the noun, not the owner)"
+          },
+          {
+            "fr": "un ami / une amie",
+            "en": "a friend"
+          },
+          {
+            "fr": "le grand-père",
+            "en": "the grandfather"
+          },
+          {
+            "fr": "la grand-mère",
+            "en": "the grandmother (grand never takes an -e here)"
+          },
+          {
+            "fr": "les grands-parents",
+            "en": "the grandparents"
+          },
+          {
+            "fr": "l'oncle",
+            "en": "the uncle"
+          },
+          {
+            "fr": "la tante",
+            "en": "the aunt"
+          },
+          {
+            "fr": "le cousin / la cousine",
+            "en": "the cousin"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ta famille et tes amis",
+          "goalEn": "Ask about someone's family and friends",
+          "promptSeed": "Role-play two classmates swapping family stories. Ask short intonation questions with ton/ta/tes ('Ta mère est canadienne ?', 'Tu as un oncle ?'), then invite the learner to ask about YOUR family so they produce ton/ta/tes themselves. Talk about un ami or une amie so the learner must say the flagship 'mon amie / ton amie' — recast 'ma amie' immediately. Cover le grand-père, la grand-mère, les grands-parents, l'oncle, la tante and le cousin / la cousine as they come up. Stay within this lesson's family words plus Lessons 1 and Unit 1, keeping utterances short and slow."
+        }
+      },
+      {
+        "id": "a1-u2-l3",
+        "order": 3,
+        "canDoEn": "I can say what my family and I like to do, using -er verbs.",
+        "canDoFr": "Je peux dire ce que ma famille aime faire.",
+        "grammarTarget": "Regular -er verbs, full present-tense paradigm (parler as model)",
+        "teachEn": "Most French verbs end in -er, and every regular -er verb follows one pattern — learn parler once and you can use hundreds of verbs: je parle, tu parles, il/elle parle, nous parlons, vous parlez, ils/elles parlent. The endings -e, -es, and -ent are silent, so parle, parles, and parlent all sound exactly the same. Nous means 'we', and ils/elles means 'they' — ils for any group that includes a man, elles for a group of women only. The pattern fits this lesson's verbs: j'aime, tu regardes, elle écoute, nous chantons, ils dansent, elles jouent — and note j'aime and j'écoute, because aimer and écouter start with a vowel, so je elides to j'. You can also put a second verb after aimer in its -er form: 'J'aime danser.'",
+        "teachFr": "Je parle, tu parles, il parle : c'est le même son. J'aime danser et ma sœur aime chanter. Nous chantons et nous dansons !",
+        "vocab": [
+          {
+            "fr": "aimer",
+            "en": "to like, to love"
+          },
+          {
+            "fr": "écouter",
+            "en": "to listen (to)"
+          },
+          {
+            "fr": "regarder",
+            "en": "to watch, to look at"
+          },
+          {
+            "fr": "chanter",
+            "en": "to sing"
+          },
+          {
+            "fr": "danser",
+            "en": "to dance"
+          },
+          {
+            "fr": "jouer",
+            "en": "to play"
+          },
+          {
+            "fr": "nous",
+            "en": "we"
+          },
+          {
+            "fr": "ils / elles",
+            "en": "they (ils: any men in the group; elles: women only)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Tu aimes danser ?",
+          "goalEn": "Say what you and your family like to do",
+          "promptSeed": "Role-play planning a family party together. Describe what your family likes to do ('Mon frère aime chanter', 'Mes cousins dansent') and ask the learner short intonation questions: 'Tu aimes danser ?', 'Ta sœur chante ?'. Elicit the flagship -er pattern across persons — 'j'aime', 'tu regardes', 'il joue' — and especially one nous sentence ('Nous dansons') and one ils/elles sentence ('Elles jouent'). Stay within this lesson's verbs (aimer, écouter, regarder, chanter, danser, jouer) plus family words from Lessons 1-2, keep utterances under 8 words, and gently recast any wrong ending."
+        }
+      },
+      {
+        "id": "a1-u2-l4",
+        "order": 4,
+        "canDoEn": "I can describe what people look like and what they are like.",
+        "canDoFr": "Je peux décrire les personnes de ma famille.",
+        "grammarTarget": "Adjective agreement (grand/grande, petit/petite) + il est / elle est + adjective",
+        "teachEn": "To describe someone, use il est or elle est plus an adjective: 'Il est grand. Elle est jeune.' Most adjectives add -e in the feminine — grand becomes grande, petit becomes petite — and that -e makes the final consonant audible: you hear the d in grande and the t in petite, but not in grand or petit. Adjectives that already end in -e, like jeune, drôle, and sympathique, keep the same form for men and women. A few change more: beau becomes belle, and gentil becomes gentille. With âgé, the feminine âgée adds an -e that changes the spelling but not the sound.",
+        "teachFr": "Mon père est grand et ma mère est petite. Ma grand-mère est âgée. Elle est drôle et gentille !",
+        "vocab": [
+          {
+            "fr": "grand / grande",
+            "en": "tall, big"
+          },
+          {
+            "fr": "petit / petite",
+            "en": "short, small"
+          },
+          {
+            "fr": "jeune",
+            "en": "young (same form for masculine and feminine)"
+          },
+          {
+            "fr": "âgé / âgée",
+            "en": "old, elderly (for people)"
+          },
+          {
+            "fr": "beau / belle",
+            "en": "handsome / beautiful"
+          },
+          {
+            "fr": "gentil / gentille",
+            "en": "kind, nice"
+          },
+          {
+            "fr": "sympathique",
+            "en": "nice, friendly (same form for masculine and feminine)"
+          },
+          {
+            "fr": "drôle",
+            "en": "funny (same form for masculine and feminine)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Il est grand, elle est petite",
+          "goalEn": "Describe people in your family",
+          "promptSeed": "Role-play chatting about the people in your families. Describe your relatives ('Ma sœur est petite', 'Mon oncle est drôle') and ask the learner to describe theirs with intonation questions: 'Ton père est grand ?', 'Ta mère est sympathique ?'. Elicit the flagship 'il est / elle est + adjective' with correct agreement — if the learner says 'Elle est grand', recast 'Elle est grande'. Stay within this lesson's adjectives plus family words from earlier lessons, and keep every utterance short."
+        }
+      },
+      {
+        "id": "a1-u2-l5",
+        "order": 5,
+        "canDoEn": "I can present my family from start to finish.",
+        "canDoFr": "Je peux présenter toute ma famille.",
+        "grammarTarget": "Unit synthesis: c'est / voici / il y a + possessives, -er verbs and adjectives together",
+        "teachEn": "Now put the whole unit together and present your family. Point to people with c'est (short for ce + est, another elision) and voici: 'C'est mon père. Voici ma sœur.' Use il y a to say what exists — 'Dans ma famille, il y a quatre personnes.' — il y a never changes, and personne is always feminine, even for a man: une personne. To show a picture, say 'Sur la photo, il y a mes parents.' For your favourites, adorer works exactly like aimer and starts with a vowel, so je becomes j': 'J'adore ma grand-mère.'",
+        "teachFr": "Voici ma famille. Sur la photo, il y a quatre personnes : mon père, ma mère, mon frère et ma sœur. J'adore ma famille !",
+        "vocab": [
+          {
+            "fr": "c'est",
+            "en": "it is, this is, that is"
+          },
+          {
+            "fr": "voici",
+            "en": "here is, this is (presenting)"
+          },
+          {
+            "fr": "il y a",
+            "en": "there is, there are (never changes)"
+          },
+          {
+            "fr": "dans",
+            "en": "in, inside"
+          },
+          {
+            "fr": "sur",
+            "en": "on, on top of"
+          },
+          {
+            "fr": "une personne",
+            "en": "a person (always feminine, even for a man)"
+          },
+          {
+            "fr": "la photo",
+            "en": "the photo"
+          },
+          {
+            "fr": "adorer",
+            "en": "to love, to adore"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Voici ma famille",
+          "goalEn": "Present your whole family",
+          "promptSeed": "Role-play a photo-sharing moment: the learner shows you a family photo, real or invented. Model the pattern first ('Voici ma famille. Sur la photo, il y a trois personnes. C'est ma mère.'), then hand over: elicit the flagship 'Voici...', 'C'est mon/ma...', and 'Dans ma famille, il y a ... personnes', plus one description ('Il est grand') and one 'J'adore...'. Ask short follow-up questions with ton/ta/tes ('C'est ta tante ?'). Stay within Units 1-2 vocabulary, keep utterances under 8 words, and close warmly with 'Au revoir !'."
+        }
+      }
+    ]
+  }
+}

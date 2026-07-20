@@ -21,7 +21,7 @@ import {
   getUnitForLesson,
   nextLesson,
 } from "@/src/lib/curriculum";
-import { curriculumUnitFileSchema } from "@/src/lib/schemas/curriculum";
+import { curriculumUnitFileSchema, normalizeVocabKey } from "@/src/lib/schemas/curriculum";
 
 const CONTENT_DIR = join(__dirname, "../../content/curriculum");
 
@@ -47,6 +47,31 @@ describe("Story 19-1 — content integrity (CI gate)", () => {
     const registeredIds = CURRICULUM_UNITS.map((u) => u.id).sort();
     const fileIds = files.map((f) => f.replace(/\.json$/, "")).sort();
     expect(registeredIds).toEqual(fileIds);
+  });
+
+  it("no vocab item is introduced in two different UNITS (cross-unit dedup — the schema only sees one file)", () => {
+    // Recycling happens in scenarios and teach text; re-LISTING a word in a
+    // later unit's vocab wastes a flashcard slot and double-drills the SRS.
+    // The schema's superRefine dedups WITHIN a unit; only this registry
+    // test can see across files. NFKC-normalized like the schema key.
+    const seen = new Map<string, string>();
+    for (const unit of CURRICULUM_UNITS) {
+      for (const lesson of unit.lessons) {
+        for (const item of lesson.vocab) {
+          const key = normalizeVocabKey(item.fr);
+          const firstIn = seen.get(key);
+          // R2: anchor with "-l" — "a1-u10-l1".startsWith("a1-u1") is TRUE,
+          // so the bare unit.id prefix would silently skip a future
+          // unit-10-vs-unit-1 collision (the schema's own lesson-id anchor).
+          if (firstIn !== undefined && !firstIn.startsWith(`${unit.id}-l`)) {
+            throw new Error(
+              `vocab "${item.fr}" in ${lesson.id} was already introduced in ${firstIn}`
+            );
+          }
+          if (firstIn === undefined) seen.set(key, lesson.id);
+        }
+      }
+    }
   });
 
   it("chrome/content split holds: canDo phrasing is EN chrome + FR content", () => {
