@@ -13,7 +13,7 @@
         "canDoEn": "I can talk about my future using the simple future tense.",
         "canDoFr": "Je peux parler de mon avenir avec le futur simple.",
         "grammarTarget": "Futur simple of regular verbs: stem = infinitive (-er/-ir) or infinitive minus -e (-re) + endings -ai/-as/-a/-ons/-ez/-ont",
-        "teachEn": "A2 gave you the near future (aller + infinitive) for close, planned things. French also has a one-word future, the futur simple, for more distant or more formal plans and for predictions. It is beautifully regular: for -er and -ir verbs, the stem is the WHOLE infinitive; for -re verbs, drop the final -e. Then add one set of endings to EVERY verb — -ai, -as, -a, -ons, -ez, -ont — which are simply the present forms of avoir (j'ai, tu as, il a, … ils ont). So parler gives je parlerai, tu parleras, il/elle parlera, nous parlerons, vous parlerez, ils/elles parleront. The verb finir (to finish) keeps its -ir: je finirai. The -re verb prendre drops the -e: je prendrai, il prendra. And changer (to change) works like any -er verb: 'L'année prochaine, je changerai de ville et je parlerai français tous les jours.'",
+        "teachEn": "A1 introduced the near future (aller + infinitive), expanded across all persons in A2, for close, planned things. French also has a one-word future, the futur simple, for more distant or more formal plans and for predictions. It is beautifully regular: for -er and -ir verbs, the stem is the WHOLE infinitive; for -re verbs, drop the final -e. Then add one set of endings to EVERY verb — -ai, -as, -a, -ons, -ez, -ont — which are simply the present forms of avoir (j'ai, tu as, il a, … ils ont). So parler gives je parlerai, tu parleras, il/elle parlera, nous parlerons, vous parlerez, ils/elles parleront. The verb finir (to finish) keeps its -ir: je finirai. The -re verb prendre drops the -e: je prendrai, il prendra. And changer (to change) works like any -er verb: 'L'année prochaine, je changerai de ville et je parlerai français tous les jours.'",
         "teachFr": "L'année prochaine, je changerai de ville. D'abord, je finirai un grand projet ici ; ensuite, nous prendrons le train et nous arriverons le soir à Montréal. Là, je parlerai français tous les jours. L'avenir, c'est demain !",
         "vocab": [
           {
@@ -101,12 +101,12 @@
         "canDoEn": "I can choose between the near future and the simple future, and use the future after quand.",
         "canDoFr": "Je peux dire ce que je vais faire et ce que je ferai.",
         "grammarTarget": "Futur proche vs futur simple (nuance) + the future after quand and dès que (where English keeps the present)",
-        "teachEn": "You now have two futures. The near future (aller + infinitive, A2) feels close, planned, and spoken: 'Ce soir, je vais regarder un film.' The futur simple feels more distant, more formal, or like a prediction: 'Un jour, je visiterai la France.' Both are correct — the futur simple just sounds a little more written or further away. One firm rule: after quand (when) and dès que (as soon as), when they point to a FUTURE moment, French puts the futur simple where English keeps the present. In A2 you used the present after quand for habits ('Quand je suis libre, je vais au cinéma'); but for a specific future, use the future in BOTH parts: 'Quand tu arriveras, nous mangerons ensemble', 'Dès que je finirai mon projet, je voyagerai.' Add a prediction word — sûr, probablement, certainement, sans doute — to sound natural: 'Je serai sans doute fatigué demain.'",
-        "teachFr": "Ce soir, je vais rester chez moi : c'est mon plan pour aujourd'hui. Mais un jour, je voyagerai partout ! Quand j'aurai de l'argent, j'irai à Québec. Dès que tu arriveras, nous mangerons ensemble. Ce sera probablement une belle journée !",
+        "teachEn": "You now have two futures. The near future (aller + infinitive, from A1) feels close, planned, and spoken: 'Ce soir, je vais regarder un film.' The futur simple feels more distant, more formal, or like a prediction: 'Un jour, je visiterai la France.' Both are correct — the futur simple just sounds a little more written or further away. One firm rule: after quand (when) and dès que (as soon as), when they point to a FUTURE moment, French puts the futur simple where English keeps the present. In A2 you used the present after quand for habits ('Quand je suis libre, je vais au cinéma'); but for a specific future, use the future in BOTH parts: 'Quand tu arriveras, nous mangerons ensemble', 'Dès que je finirai mon projet, je voyagerai.' Add a prediction word — sûr, probablement, certainement, sans doute — to sound natural: 'Je serai sans doute fatigué demain.'",
+        "teachFr": "Ce soir, je vais rester chez moi : c'est mon plan pour aujourd'hui. Mais un jour, je voyagerai ! Quand j'aurai de l'argent, j'irai à Québec. Dès que tu arriveras, nous mangerons ensemble. Ce sera probablement une belle journée !",
         "vocab": [
           {
             "fr": "sûr / sûre",
-            "en": "sure, certain (Je suis sûr que je réussirai)"
+            "en": "sure, certain (Je suis sûr de mon avenir)"
           },
           {
             "fr": "probablement",
@@ -132,7 +132,7 @@
         "conversationScenario": {
           "titleFr": "Quand tu arriveras…",
           "goalEn": "Switch between the two futures and use the future after quand",
-          "promptSeed": "Role-play planning a visit. For close, sure plans, use the near future — 'Ce soir, je vais préparer le souper' — and for distant plans or predictions, use the futur simple — 'Un jour, je voyagerai partout.' Then practise the key rule: after quand and dès que about the future, French uses the future in BOTH parts. Elicit 'Quand tu arriveras, nous mangerons', 'Dès que je finirai mon projet, je voyagerai'. If the learner keeps the present for a future plan, offer the futur simple beside it. Weave in probablement, certainement, sans doute and sûr. Keep utterances short and slow."
+          "promptSeed": "Role-play planning a visit. For close, sure plans, use the near future — 'Ce soir, je vais préparer le souper' — and for distant plans or predictions, use the futur simple — 'Un jour, je voyagerai à Québec.' Then practise the key rule: after quand and dès que about the future, French uses the future in BOTH parts. Elicit 'Quand tu arriveras, nous mangerons', 'Dès que je finirai mon projet, je voyagerai'. If the learner keeps the present for a future plan, offer the futur simple beside it. Weave in probablement, certainement, sans doute and sûr. Keep utterances short and slow."
         }
       },
       {
