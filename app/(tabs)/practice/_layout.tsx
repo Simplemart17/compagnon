@@ -13,6 +13,8 @@ export default function PracticeLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="lessons" options={{ title: "Lessons" }} />
+      <Stack.Screen name="lesson/[lessonId]" options={{ title: "Lesson" }} />
       <Stack.Screen name="listening" options={{ title: "Listening" }} />
       <Stack.Screen name="reading" options={{ title: "Reading" }} />
       <Stack.Screen name="writing" options={{ title: "Writing" }} />

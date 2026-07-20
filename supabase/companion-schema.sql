@@ -1521,6 +1521,41 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA companion
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
+-- ═════════════════════════════════════════════════════════════════════════════
+-- Story 19-2 (2026-07-19): lesson_progress — curriculum lesson completion.
+-- SELF-CONTAINED + IDEMPOTENT: table + index + RLS live in THIS one block so
+-- the documented operator step ("re-run the Story 19-2 section in the
+-- Dashboard SQL editor") cannot ship the table without its policies (review
+-- R1: a split table/RLS pair + the schema-wide GRANT TO authenticated would
+-- expose every user's progress until the second fragment ran).
+-- Lesson ids reference IN-REPO content (src/content/curriculum), not a DB
+-- table — the spine is versioned code, so there is no FK target for lesson_id.
+-- ═════════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS companion.lesson_progress (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES companion.profiles(id) ON DELETE CASCADE,
+  lesson_id     TEXT NOT NULL,
+  completed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, lesson_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_user ON companion.lesson_progress(user_id);
+
+ALTER TABLE companion.lesson_progress ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own lesson progress" ON companion.lesson_progress;
+CREATE POLICY "Users can view own lesson progress" ON companion.lesson_progress
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own lesson progress" ON companion.lesson_progress;
+CREATE POLICY "Users can insert own lesson progress" ON companion.lesson_progress
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own lesson progress" ON companion.lesson_progress;
+CREATE POLICY "Users can delete own lesson progress" ON companion.lesson_progress
+  FOR DELETE USING (auth.uid() = user_id);
+
 -- ── Cron job 1: hourly push-notification dispatch ────────────────────────────
 DO $do$
 BEGIN

@@ -42,6 +42,8 @@ import { MAX_PROMPT_ERROR_PATTERNS, MAX_PROMPT_MEMORIES } from "@/src/lib/prompt
 import { captureError } from "@/src/lib/sentry";
 import { AvatarStatusLabel, CompanionAvatar } from "@/src/components/conversation/CompanionAvatar";
 import { deriveAvatarState } from "@/src/lib/avatar-state";
+import { getLesson } from "@/src/lib/curriculum";
+import { markLessonCompleted } from "@/src/lib/lesson-progress";
 import { SessionGoalChip } from "@/src/components/conversation/SessionGoalChip";
 import { TranscriptView } from "@/src/components/conversation/TranscriptView";
 import { CorrectionBubble } from "@/src/components/conversation/CorrectionBubble";
@@ -156,9 +158,14 @@ function RatingBar({
 }
 
 export default function ConversationSessionScreen() {
-  const { sessionId, mode: modeParam } = useLocalSearchParams<{
+  const {
+    sessionId,
+    mode: modeParam,
+    lessonId: lessonIdParam,
+  } = useLocalSearchParams<{
     sessionId: string;
     mode: string;
+    lessonId?: string;
   }>();
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
@@ -199,6 +206,12 @@ export default function ConversationSessionScreen() {
   const correctionCefrLevel = profile?.current_cefr_level as CEFRLevel | undefined;
   const mode: ConversationMode =
     rawMode === "debate" || rawMode === "tcf_simulation" ? rawMode : "companion";
+  // Story 19-2: when launched from the lesson player, the lesson's scenario
+  // steers the session — promptSeed rides the existing topicDescription
+  // channel into buildConversationPrompt's Context line, goalEn overrides
+  // the SessionGoalChip, and finishing the session completes the lesson.
+  const rawLessonId = Array.isArray(lessonIdParam) ? lessonIdParam[0] : lessonIdParam;
+  const lesson = rawLessonId ? getLesson(rawLessonId) : undefined;
   const user = useAuthStore((s) => s.user);
 
   // Fetch companion memories and known error patterns for personalized conversation
@@ -245,6 +258,7 @@ export default function ConversationSessionScreen() {
     cefrLevel,
     mode,
     topic,
+    topicDescription: lesson?.conversationScenario.promptSeed,
     memories,
     errorPatterns,
     voice: "coral",
@@ -284,6 +298,17 @@ export default function ConversationSessionScreen() {
       !hasTrackedCompletionRef.current
     ) {
       hasTrackedCompletionRef.current = true;
+      // Story 19-2 (+R1 engagement gate): a lesson session completes its
+      // lesson only when the learner ENDED it (a dropped connection must
+      // not count) AND actually practiced — at least 2 user utterances in
+      // the transcript. Without the gate, tapping Back → Leave 5 seconds in
+      // marked the lesson complete with zero speaking (and slice-2 unlock
+      // gating would grant unlocks on bogus completions). Fire-and-forget;
+      // markLessonCompleted captures its own errors and is idempotent.
+      const userTurns = conversation.transcript.filter((e) => e.role === "user").length;
+      if (conversation.status === "ended" && lesson && user?.id && userTurns >= 2) {
+        void markLessonCompleted(user.id, lesson.id);
+      }
       trackEvent(ANALYTICS_EVENTS.CONVERSATION_COMPLETED, {
         mode,
         cefr_level: cefrLevel,
@@ -548,7 +573,12 @@ export default function ConversationSessionScreen() {
           <>
             {/* Session goal chip (Story 18-6): what am I practicing right
                 now? Epic 19's lesson engine will feed goalOverride. */}
-            <SessionGoalChip mode={mode} topic={topic} cefrLevel={correctionCefrLevel} />
+            <SessionGoalChip
+              mode={mode}
+              topic={topic}
+              cefrLevel={correctionCefrLevel}
+              goalOverride={lesson?.conversationScenario.goalEn}
+            />
 
             {/* Avatar-centered layout: condensed transcript caption strip */}
             <TranscriptView
@@ -1145,7 +1175,7 @@ export default function ConversationSessionScreen() {
                   }}
                   accessibilityRole="button"
                   accessibilityLabel="Close feedback"
-                  accessibilityHint="Double tap to close feedback and return to topics"
+                  accessibilityHint="Double tap to close feedback and go back"
                   style={{
                     alignItems: "center",
                     justifyContent: "center",

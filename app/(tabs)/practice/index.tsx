@@ -137,6 +137,21 @@ export default function PracticeScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Curriculum featured card (Story 19-2): the guided path — every
+            lesson ends in a conversation practicing what it just taught. */}
+        <SkillCard
+          emoji=""
+          iconNode={<Icon name="book-open" size={24} color={Colors.accent} />}
+          titleFr="Le parcours guidé"
+          titleEn="Lessons"
+          description="Learn, then practice it in conversation"
+          accentColor={Colors.accent}
+          delay={0}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- typed-routes lag for the new screen (regenerates on expo start; results.tsx precedent)
+          onPress={() => router.push({ pathname: "/(tabs)/practice/lessons" as any })}
+          featured
+        />
+
         {/* Vocabulary featured card (Story 14-2: consolidated to SkillCard featured variant) */}
         <SkillCard
           emoji=""
@@ -145,7 +160,7 @@ export default function PracticeScreen() {
           titleEn="Vocabulary"
           description="Review with spaced repetition"
           accentColor={Colors.accent}
-          delay={0}
+          delay={70}
           onPress={() => router.push({ pathname: "/(tabs)/practice/vocabulary" })}
           featured
         />
