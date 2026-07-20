@@ -6,17 +6,20 @@
 
 const mockUpsert = jest.fn();
 const mockSelectEq = jest.fn();
+// R1: capture the table name — pre-R1 the mock discarded it, so a typo'd
+// table string passed every test while production silently 404'd.
+const mockFrom = jest.fn();
 
 jest.mock("@/src/lib/supabase", () => ({
   __esModule: true,
   supabase: {
-    from: jest.fn((table: string) => ({
-      upsert: (...args: unknown[]) => {
-        void table;
-        return mockUpsert(...args);
-      },
-      select: () => ({ eq: (...args: unknown[]) => mockSelectEq(...args) }),
-    })),
+    from: (table: string) => {
+      mockFrom(table);
+      return {
+        upsert: (...args: unknown[]) => mockUpsert(...args),
+        select: () => ({ eq: (...args: unknown[]) => mockSelectEq(...args) }),
+      };
+    },
   },
 }));
 
@@ -47,6 +50,7 @@ describe("Story 19-2 — markLessonCompleted", () => {
       { user_id: "user-1", lesson_id: "a1-u1-l1" },
       { onConflict: "user_id,lesson_id", ignoreDuplicates: true }
     );
+    expect(mockFrom).toHaveBeenCalledWith("lesson_progress");
     expect(captureError).not.toHaveBeenCalled();
   });
 
@@ -67,6 +71,7 @@ describe("Story 19-2 — getCompletedLessonIds", () => {
     });
     const ids = await getCompletedLessonIds("user-1");
     expect(ids).toEqual(new Set(["a1-u1-l1", "a1-u1-l2"]));
+    expect(mockFrom).toHaveBeenCalledWith("lesson_progress");
   });
 
   it("fail-soft: errors yield an EMPTY set (spine renders not-started, surface never blocks)", async () => {

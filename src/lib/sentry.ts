@@ -49,6 +49,8 @@ export const SENTRY_EXTRAS_ALLOWLIST: ReadonlySet<string> = new Set([
   "filteredCount",
   "seenCount",
   "retries",
+  // Story 19-2: curriculum lesson id (short categorical, e.g. "a1-u1-l3").
+  "lessonId",
   // 12-6 transcript-cap telemetry — small bounded integers; safe under length rule.
   "evictedCount",
   "totalEntries",

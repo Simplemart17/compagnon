@@ -298,11 +298,15 @@ export default function ConversationSessionScreen() {
       !hasTrackedCompletionRef.current
     ) {
       hasTrackedCompletionRef.current = true;
-      // Story 19-2: a lesson session completes its lesson — but only when
-      // the learner ENDED it (a dropped connection mid-lesson must not
-      // count). Fire-and-forget; markLessonCompleted captures its own
-      // errors and is idempotent.
-      if (conversation.status === "ended" && lesson && user?.id) {
+      // Story 19-2 (+R1 engagement gate): a lesson session completes its
+      // lesson only when the learner ENDED it (a dropped connection must
+      // not count) AND actually practiced — at least 2 user utterances in
+      // the transcript. Without the gate, tapping Back → Leave 5 seconds in
+      // marked the lesson complete with zero speaking (and slice-2 unlock
+      // gating would grant unlocks on bogus completions). Fire-and-forget;
+      // markLessonCompleted captures its own errors and is idempotent.
+      const userTurns = conversation.transcript.filter((e) => e.role === "user").length;
+      if (conversation.status === "ended" && lesson && user?.id && userTurns >= 2) {
         void markLessonCompleted(user.id, lesson.id);
       }
       trackEvent(ANALYTICS_EVENTS.CONVERSATION_COMPLETED, {
@@ -1171,7 +1175,7 @@ export default function ConversationSessionScreen() {
                   }}
                   accessibilityRole="button"
                   accessibilityLabel="Close feedback"
-                  accessibilityHint="Double tap to close feedback and return to topics"
+                  accessibilityHint="Double tap to close feedback and go back"
                   style={{
                     alignItems: "center",
                     justifyContent: "center",

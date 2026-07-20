@@ -160,7 +160,7 @@ export default function PracticeScreen() {
           titleEn="Vocabulary"
           description="Review with spaced repetition"
           accentColor={Colors.accent}
-          delay={0}
+          delay={70}
           onPress={() => router.push({ pathname: "/(tabs)/practice/vocabulary" })}
           featured
         />

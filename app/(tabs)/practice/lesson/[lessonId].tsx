@@ -10,19 +10,43 @@
  * scoped to the grammar target) is the next 19.2 slice.
  */
 
+import { useCallback, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { Icon } from "@/src/components/common/Icon";
 import { getLesson, getUnitForLesson } from "@/src/lib/curriculum";
+import { getCompletedLessonIds } from "@/src/lib/lesson-progress";
 import { Colors } from "@/src/lib/design";
+import { useAuthStore } from "@/src/store/auth-store";
 
 export default function LessonPlayerScreen() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const { lessonId } = useLocalSearchParams<{ lessonId: string }>();
   const rawLessonId = Array.isArray(lessonId) ? lessonId[0] : lessonId;
   const lesson = rawLessonId ? getLesson(rawLessonId) : undefined;
   const unit = rawLessonId ? getUnitForLesson(rawLessonId) : undefined;
+
+  // Review R1: the feedback sheet's Close lands BACK ON THIS SCREEN — it
+  // must acknowledge completion (pre-R1 the player looked untouched after
+  // the conversation: unchanged CTA + a caption still promising completion,
+  // so learners re-ran lessons or doubted they counted). Refetch on focus.
+  const [completed, setCompleted] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      if (user?.id && rawLessonId) {
+        void getCompletedLessonIds(user.id).then((ids) => {
+          if (active) setCompleted(ids.has(rawLessonId));
+        });
+      }
+      return () => {
+        active = false;
+      };
+    }, [user?.id, rawLessonId])
+  );
 
   if (!lesson || !unit) {
     return (
@@ -118,19 +142,39 @@ export default function LessonPlayerScreen() {
           ))}
         </View>
 
+        {/* Completed banner (Review R1: the post-conversation landing spot
+            must acknowledge the completion) */}
+        {completed && (
+          <View
+            className="flex-row items-center justify-center gap-2 bg-white rounded-2xl p-3 border border-surface-300 mb-3"
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel="Lesson completed"
+          >
+            <Icon name="check-circle" size={18} color={Colors.success} />
+            <Text className="text-[14px] font-bold" style={{ color: Colors.success }}>
+              Lesson completed
+            </Text>
+          </View>
+        )}
+
         {/* Apply in conversation — the step that closes the loop */}
         <TouchableOpacity
           onPress={startConversation}
           accessibilityRole="button"
-          accessibilityLabel={`Practice in conversation: ${lesson.conversationScenario.goalEn}`}
+          accessibilityLabel={`${completed ? "Practice again" : "Practice in conversation"}: ${lesson.conversationScenario.goalEn}`}
           accessibilityHint="Double tap to start a voice conversation practicing this lesson"
           className="bg-primary rounded-2xl p-4 flex-row items-center justify-center gap-2"
         >
           <Icon name="mic" size={18} color={Colors.surfaceWhite} />
-          <Text className="text-white text-[15px] font-bold">Practice in conversation</Text>
+          <Text className="text-white text-[15px] font-bold">
+            {completed ? "Practice again" : "Practice in conversation"}
+          </Text>
         </TouchableOpacity>
         <Text className="text-[12px] text-center mt-2" style={{ color: Colors.gray500 }}>
-          {lesson.conversationScenario.goalEn} — finishing the conversation completes this lesson.
+          {completed
+            ? `${lesson.conversationScenario.goalEn} — already completed; practice as often as you like.`
+            : `${lesson.conversationScenario.goalEn} — finish the conversation (a few exchanges) to complete this lesson.`}
         </Text>
       </ScrollView>
     </>

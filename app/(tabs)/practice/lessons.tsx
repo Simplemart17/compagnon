@@ -23,7 +23,10 @@ import { useAuthStore } from "@/src/store/auth-store";
 export default function LessonsScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  // Review R1: null = completion not yet loaded — the NEXT badge and
+  // strips hold until the first fetch settles so returning learners never
+  // see the badge flash onto lesson 1 before their checkmarks arrive.
+  const [completedIds, setCompletedIds] = useState<Set<string> | null>(null);
 
   // Refetch on focus so a lesson completed via the conversation flow shows
   // its checkmark when the learner returns.
@@ -41,7 +44,7 @@ export default function LessonsScreen() {
     }, [user?.id])
   );
 
-  const resumeLesson = nextLessonForUser(completedIds);
+  const resumeLesson = completedIds !== null ? nextLessonForUser(completedIds) : undefined;
 
   return (
     <ScrollView
@@ -66,7 +69,7 @@ export default function LessonsScreen() {
             {[...unit.lessons]
               .sort((a, b) => a.order - b.order)
               .map((lesson, index) => {
-                const completed = completedIds.has(lesson.id);
+                const completed = completedIds?.has(lesson.id) ?? false;
                 const isNext = resumeLesson?.id === lesson.id;
                 return (
                   <ListItemCard
@@ -77,12 +80,7 @@ export default function LessonsScreen() {
                     leftStripColor={completed ? Colors.success : isNext ? Colors.accent : undefined}
                     rightContent={
                       completed ? (
-                        <Icon
-                          name="check-circle"
-                          size={20}
-                          color={Colors.success}
-                          accessibilityLabel="Completed"
-                        />
+                        <Icon name="check-circle" size={20} color={Colors.success} />
                       ) : isNext ? (
                         <View className="bg-accent/25 rounded-full px-2 py-0.5">
                           <Text className="text-[10px] font-bold" style={{ color: Colors.accent }}>
