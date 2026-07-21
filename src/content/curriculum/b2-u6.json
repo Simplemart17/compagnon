@@ -1,0 +1,212 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b2-u6",
+    "level": "B2",
+    "order": 6,
+    "titleEn": "Before Everything Changes",
+    "titleFr": "Avant que tout change",
+    "lessons": [
+      {
+        "id": "b2-u6-l1",
+        "order": 1,
+        "canDoEn": "I can use the subjunctive after avant que, jusqu'à ce que, and à condition que.",
+        "canDoFr": "Je peux dire avant que tu partes et à condition que tu viennes.",
+        "grammarTarget": "Subjunctive after time/condition triggers: avant que, jusqu'à ce que, à condition que, sans que (verbs stay in the B1 controlled set)",
+        "teachEn": "Some connectors of TIME and CONDITION always trigger the subjunctive. Learn four: avant que (before), jusqu'à ce que (until), à condition que (provided that), and sans que (without). Each takes a verb in the subjunctive — use the B1 controlled set (sois/soit, aie/aies, aille, fasse, puisse, parte/partes, viennes, and -er verbs): 'Partons avant que tu sois fatigué', 'J'attends jusqu'à ce que tu sois prêt', 'Je viens à condition que tu viennes aussi', 'Il part sans que ce soit un problème.' Careful: avant que + subjunctive, but avant de + infinitive (B1) when the subject is the same. New words: le changement (change) and attendre (to wait — j'attends): 'Avant que tout change, profite du moment !'",
+        "teachFr": "Certains connecteurs de temps et de condition demandent le subjonctif : « avant que », « jusqu'à ce que », « à condition que », « sans que ». Chacun prend un verbe au subjonctif — utilise les formes du B1 (sois, soit, aies, aille, fasse, puisse, partes, viennes, et les verbes en -er) : partons avant que tu sois fatigué ; j'attends jusqu'à ce que tu sois prêt ; je viens à condition que tu viennes aussi ; il part sans que ce soit un problème. Attention : « avant que » + subjonctif, mais « avant de » + infinitif (B1). Le changement, c'est difficile, mais avant que tout change, profite du moment !",
+        "vocab": [
+          {
+            "fr": "avant que",
+            "en": "before (+ subjunctive: avant que tu partes)"
+          },
+          {
+            "fr": "jusqu'à ce que",
+            "en": "until (+ subjunctive: jusqu'à ce que tu sois prêt)"
+          },
+          {
+            "fr": "à condition que",
+            "en": "provided that, on condition that (+ subjunctive: à condition que tu viennes)"
+          },
+          {
+            "fr": "sans que",
+            "en": "without (+ subjunctive: sans que ce soit difficile)"
+          },
+          {
+            "fr": "le changement",
+            "en": "the change (le changement, c'est difficile)"
+          },
+          {
+            "fr": "attendre",
+            "en": "to wait (j'attends; jusqu'à ce que = until)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Avant que tu partes",
+          "goalEn": "Use the subjunctive after avant que, jusqu'à ce que, and à condition que",
+          "promptSeed": "Role-play two friends getting ready before a big change or a departure. Model the triggers with the B1 subjunctive: 'Partons avant que tu sois fatigué', 'J'attends jusqu'à ce que tu sois prêt', 'Je viens à condition que tu viennes aussi', 'Il part sans que ce soit un problème.' Then elicit them: 'Qu'est-ce qu'il faut faire avant que tout change ?'. Draw out avant que, jusqu'à ce que, à condition que, sans que, le changement and attendre. Keep the subjunctive in the B1 set, and recast a bare indicative after avant que."
+        }
+      },
+      {
+        "id": "b2-u6-l2",
+        "order": 2,
+        "canDoEn": "I can express doubt and possibility with the subjunctive.",
+        "canDoFr": "Je peux dire qu'il est possible que ce soit vrai.",
+        "grammarTarget": "Subjunctive after doubt/possibility: il est possible que, il se peut que, il semble que; contrast with peut-être que + indicative",
+        "teachEn": "To express DOUBT or POSSIBILITY, three expressions trigger the subjunctive: il est possible que (it is possible that), il se peut que (it may be that), and il semble que (it seems that). 'Il est possible que ce soit vrai', 'Il se peut que tu aies raison', 'Il semble que ce soit difficile', 'Il est possible qu'il vienne demain.' Keep the subjunctive in the B1 set (soit, aies, vienne, fasse, aille). Talk about it with un doute (a doubt) and the adjective incertain (uncertain). Careful contrast: peut-être que expresses possibility too, but with the INDICATIVE — 'Peut-être qu'il vient demain' (indicative) versus 'Il est possible qu'il vienne' (subjunctive).",
+        "teachFr": "Pour exprimer un doute ou une possibilité, trois expressions demandent le subjonctif : « il est possible que », « il se peut que », « il semble que ». Il est possible que ce soit vrai ; il se peut que tu aies raison ; il semble que ce soit difficile ; il est possible qu'il vienne demain. Garde le subjonctif du B1 (soit, aies, vienne, fasse, aille). Parle du doute avec « un doute » et « incertain ». Attention : « peut-être que » montre aussi la possibilité, mais avec l'indicatif : peut-être qu'il vient demain (indicatif), mais il est possible qu'il vienne (subjonctif) !",
+        "vocab": [
+          {
+            "fr": "il est possible que",
+            "en": "it is possible that (+ subjunctive: il est possible que ce soit vrai)"
+          },
+          {
+            "fr": "il se peut que",
+            "en": "it may be that, it might (+ subjunctive: il se peut que tu aies raison)"
+          },
+          {
+            "fr": "il semble que",
+            "en": "it seems that (+ subjunctive: il semble que ce soit difficile)"
+          },
+          {
+            "fr": "un doute",
+            "en": "a doubt (avoir un doute)"
+          },
+          {
+            "fr": "peut-être que",
+            "en": "maybe that (+ indicative: peut-être qu'il vient)"
+          },
+          {
+            "fr": "incertain / incertaine",
+            "en": "uncertain (un résultat incertain)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Il est possible que…",
+          "goalEn": "Express doubt and possibility with the subjunctive",
+          "promptSeed": "Role-play two friends guessing about an uncertain plan. Model doubt and possibility with the subjunctive: 'Il est possible que ce soit vrai', 'Il se peut que tu aies raison', 'Il semble que ce soit difficile', 'Il est possible qu'il vienne demain.' Then elicit them: 'Il est possible que ce soit vrai ?', 'Tu penses qu'il vienne ?'. Draw out il est possible que, il se peut que, il semble que, un doute, peut-être que and incertain. Contrast 'peut-être qu'il vient' (indicative) with 'il est possible qu'il vienne'."
+        }
+      },
+      {
+        "id": "b2-u6-l3",
+        "order": 3,
+        "canDoEn": "I can disagree with an opinion using the subjunctive.",
+        "canDoFr": "Je peux dire que je ne pense pas que ce soit vrai.",
+        "grammarTarget": "Negated opinion + subjunctive: je ne pense pas que / je ne crois pas que + subjunctive (vs je pense que + indicative)",
+        "teachEn": "In B1 you gave opinions with the INDICATIVE: 'Je pense que c'est vrai', 'Je crois que tu as raison.' But when you NEGATE the opinion, French switches to the SUBJUNCTIVE, because now there is doubt: 'Je ne pense pas que ce soit vrai', 'Je ne crois pas que tu aies raison', 'Je ne pense pas qu'il vienne.' So 'je pense que' + indicative, but 'je ne pense pas que' + subjunctive. Stay confident with the indicative using certain: 'Je suis certain que c'est vrai.' Soften a claim with avoir l'impression (+ indicative): 'J'ai l'impression que c'est difficile.' React with au contraire (on the contrary) and en fait (in fact): 'Au contraire ! En fait, je ne pense pas que ce soit une bonne idée.'",
+        "teachFr": "En B1, tu donnes une opinion avec l'indicatif : je pense que c'est vrai ; je crois que tu as raison. Mais quand tu dis NON à l'opinion, le français passe au subjonctif, car il y a un doute : je ne pense pas que ce soit vrai ; je ne crois pas que tu aies raison ; je ne pense pas qu'il vienne. Donc « je pense que » + indicatif, mais « je ne pense pas que » + subjonctif ! Reste sûr avec l'indicatif : je suis certain que c'est vrai. Nuance avec « avoir l'impression » (+ indicatif). Au contraire ! En fait, je ne pense pas que ce soit une bonne idée.",
+        "vocab": [
+          {
+            "fr": "je ne pense pas que",
+            "en": "I don't think that (+ subjunctive: je ne pense pas que ce soit vrai)"
+          },
+          {
+            "fr": "je ne crois pas que",
+            "en": "I don't believe that (+ subjunctive: je ne crois pas que tu aies raison)"
+          },
+          {
+            "fr": "certain / certaine",
+            "en": "certain, sure (je suis certain que c'est vrai — with the indicative)"
+          },
+          {
+            "fr": "avoir l'impression",
+            "en": "to have the feeling/impression (j'ai l'impression que… + indicative)"
+          },
+          {
+            "fr": "au contraire",
+            "en": "on the contrary (au contraire, je ne suis pas d'accord)"
+          },
+          {
+            "fr": "en fait",
+            "en": "in fact, actually (en fait, ce n'est pas vrai)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je ne pense pas que…",
+          "goalEn": "Disagree with an opinion using the subjunctive",
+          "promptSeed": "Role-play a friendly disagreement about an idea. Model the contrast: 'Je pense que c'est vrai' (indicative), but 'Je ne pense pas que ce soit vrai', 'Je ne crois pas que tu aies raison', 'Je ne pense pas qu'il vienne.' Then elicit them: 'Tu penses que c'est une bonne idée ?', 'Tu es d'accord ?'. Draw out je ne pense pas que, je ne crois pas que, certain, avoir l'impression, au contraire and en fait. Keep 'je pense que' + indicative but 'je ne pense pas que' + subjunctive. Stay warm in disagreement."
+        }
+      },
+      {
+        "id": "b2-u6-l4",
+        "order": 4,
+        "canDoEn": "I can choose between the subjunctive and the indicative.",
+        "canDoFr": "Je peux choisir entre un fait et un doute après « que ».",
+        "grammarTarget": "Subjunctive vs indicative: fact/certainty → indicative; will/emotion/doubt/necessity → subjunctive; the decision rule",
+        "teachEn": "When do you use the subjunctive? Here is the rule. Use the INDICATIVE for FACTS and CERTAINTY: after je pense que, je crois que, je suis certain que, il est vrai que, il est évident que, and parce que — 'Il est vrai que c'est difficile.' Use the SUBJUNCTIVE for everything UNCERTAIN or DESIRED: necessity (il faut que), will (vouloir que), emotion (être content que), purpose/concession (pour que, bien que), time/condition (avant que, à condition que), doubt (il est possible que), and negated opinions (je ne pense pas que). One test: is it a real FACT, or a wish, a doubt, a feeling? New words: exprimer (to express), une certitude (a certainty), un fait (a fact), la réalité (reality), évident (obvious).",
+        "teachFr": "Quand utiliser le subjonctif ? Voici la règle. L'INDICATIF pour les FAITS et la CERTITUDE : après « je pense que », « je crois que », « je suis certain que », « il est vrai que », « il est évident que », « parce que ». L'exemple : il est vrai que c'est difficile. Le SUBJONCTIF pour tout ce qui n'est pas certain : il faut que, vouloir que, être content que, pour que, bien que, avant que, à condition que, il est possible que, je ne pense pas que. Un test : est-ce un vrai fait, ou un souhait, un doute, un sentiment ? Il faut exprimer chaque idée avec certitude ou avec doute — voilà la réalité !",
+        "vocab": [
+          {
+            "fr": "exprimer",
+            "en": "to express (exprimer un doute ou une certitude)"
+          },
+          {
+            "fr": "une certitude",
+            "en": "a certainty (parler avec certitude)"
+          },
+          {
+            "fr": "un fait",
+            "en": "a fact (c'est un fait, pas une opinion)"
+          },
+          {
+            "fr": "la réalité",
+            "en": "reality (dans la réalité)"
+          },
+          {
+            "fr": "évident / évidente",
+            "en": "obvious (il est évident que c'est vrai — with the indicative)"
+          },
+          {
+            "fr": "il est vrai que",
+            "en": "it is true that (+ indicative: il est vrai que c'est difficile)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Certain ou incertain ?",
+          "goalEn": "Choose between the subjunctive and the indicative",
+          "promptSeed": "Role-play a game sorting facts from doubts. Model the rule: for a fact, the indicative — 'Il est vrai que c'est difficile', 'Il est évident que c'est vrai', 'Je suis certain que tu as raison'; for a wish, doubt, or need, the subjunctive — 'Il faut que ce soit fini', 'Je ne pense pas que ce soit vrai.' Then elicit both: 'C'est un fait ou un doute ?'. Draw out exprimer, une certitude, un fait, la réalité, évident and il est vrai que. Recast a subjunctive after a fact, or an indicative after a doubt."
+        }
+      },
+      {
+        "id": "b2-u6-l5",
+        "order": 5,
+        "canDoEn": "I can hold a nuanced discussion about how sure I am.",
+        "canDoFr": "Je peux exprimer ma certitude et mon doute avec nuance.",
+        "grammarTarget": "B2 capstone: a nuanced discussion of certainty and doubt, weaving every subjunctive trigger family together",
+        "teachEn": "The B2 capstone — and the threshold into C1: hold a nuanced discussion where you express DEGREES of certainty. Rarely is anything totally true. Weigh each idea: 'Je ne suis pas convaincu que ce soit une bonne idée', 'Il est possible que tu aies raison, mais j'ai un doute', 'À mon sens, c'est plus ou moins vrai — tout est relatif.' Bring a nuance to every claim, concede with bien que (+ subjunctive), and stay warm. Close with en résumé: 'En résumé, je pense que c'est vrai, bien que ce soit difficile.' New words: une nuance, à mon sens, plus ou moins, relatif, convaincu, en résumé. You have reached the edge of C1 — bravo !",
+        "teachFr": "Voici le sommet du B2, et la porte du C1 : une discussion nuancée où tu montres ta certitude ou ton doute. Une idée est rarement tout à fait vraie ! Regarde chaque idée : je ne suis pas convaincu que ce soit une bonne idée ; il est possible que tu aies raison, mais j'ai un doute ; à mon sens, c'est plus ou moins vrai — tout est relatif. Apporte une nuance, fais une concession avec « bien que » (+ subjonctif), et reste gentil. En résumé : je pense que c'est vrai, bien que ce soit difficile. Tu es à la porte du C1 : bravo !",
+        "vocab": [
+          {
+            "fr": "une nuance",
+            "en": "a nuance (apporter une nuance à une idée)"
+          },
+          {
+            "fr": "à mon sens",
+            "en": "in my view (à mon sens, c'est vrai)"
+          },
+          {
+            "fr": "plus ou moins",
+            "en": "more or less (c'est plus ou moins vrai)"
+          },
+          {
+            "fr": "relatif / relative",
+            "en": "relative, it depends (tout est relatif)"
+          },
+          {
+            "fr": "convaincu / convaincue",
+            "en": "convinced (je ne suis pas convaincu)"
+          },
+          {
+            "fr": "en résumé",
+            "en": "in summary, to sum up (en résumé, je pense que…)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Une discussion nuancée",
+          "goalEn": "Hold a nuanced discussion about how sure you are",
+          "promptSeed": "Role-play a warm, nuanced discussion — the B2 capstone. Model degrees of certainty: 'Je ne suis pas convaincu que ce soit une bonne idée', 'Il est possible que tu aies raison, mais j'ai un doute', 'À mon sens, c'est plus ou moins vrai — tout est relatif', 'En résumé, je pense que c'est vrai, bien que ce soit difficile.' Then draw out the learner: 'Tu es convaincu ?', 'À ton sens, c'est vrai ?'. Weave in une nuance, à mon sens, plus ou moins, relatif, convaincu and en résumé. Let the learner discuss freely, and celebrate reaching C1."
+        }
+      }
+    ]
+  }
+}
