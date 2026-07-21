@@ -21,6 +21,7 @@ import {
   Alert,
   BackHandler,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -533,7 +534,7 @@ export default function ConversationSessionScreen() {
             accessibilityHint="Double tap to leave this conversation"
             className="w-11 h-11 rounded-full bg-white/10 border border-white/15 justify-center items-center"
           >
-            <Text className="text-lg text-white">{"\u276E"}</Text>
+            <Icon name="chevron-left" size={22} color={Colors.textOnDark} />
           </TouchableOpacity>
 
           {/* Center: topic + status */}
@@ -600,7 +601,12 @@ export default function ConversationSessionScreen() {
                 return (
                   <>
                     <CompanionAvatar state={avatarState} amplitude={aiAmplitude} size={180} />
-                    <AvatarStatusLabel state={avatarState} />
+                    {/* Only surface the turn-state label once connected — during
+                        connect/reconnect the header status line + the bottom
+                        control already say so (was a triple "Connecting…"). */}
+                    {conversation.status === "connected" && (
+                      <AvatarStatusLabel state={avatarState} />
+                    )}
                   </>
                 );
               })()}
@@ -644,7 +650,7 @@ export default function ConversationSessionScreen() {
               accessibilityHint="Double tap to send your typed message"
               className="bg-accent w-11 h-11 rounded-full justify-center items-center"
             >
-              <Text className="text-white text-lg font-bold">{"\u2191"}</Text>
+              <Icon name="send" size={20} color={Colors.textOnDark} />
             </TouchableOpacity>
           </View>
         )}
@@ -684,14 +690,18 @@ export default function ConversationSessionScreen() {
                   elevation: 10,
                 }}
               >
-                <Text className="text-white text-[32px]">{"\u25B6"}</Text>
+                <Icon name="mic" size={32} color={Colors.textOnDark} />
               </TouchableOpacity>
             </View>
           )}
 
           {conversation.status === "connecting" && (
-            <View className="w-20 h-20 rounded-full bg-accent/30 justify-center items-center">
-              <Text className="text-accent text-sm font-semibold">Connecting</Text>
+            <View
+              className="w-20 h-20 rounded-full bg-white/10 justify-center items-center"
+              accessibilityRole="progressbar"
+              accessibilityLabel="Connecting"
+            >
+              <ActivityIndicator color={Colors.accent} />
             </View>
           )}
 
@@ -701,7 +711,8 @@ export default function ConversationSessionScreen() {
               Now surface the reconnect state + let the user bail out. */}
           {conversation.status === "reconnecting" && (
             <View className="items-center gap-3">
-              <View className="rounded-full bg-accent/30 px-5 py-3 justify-center items-center">
+              <View className="flex-row items-center gap-2 rounded-full bg-white/10 px-5 py-3 justify-center">
+                <ActivityIndicator color={Colors.accent} size="small" />
                 <Text className="text-accent text-sm font-semibold">Reconnecting…</Text>
               </View>
               <TouchableOpacity
@@ -732,12 +743,11 @@ export default function ConversationSessionScreen() {
                   borderColor: showTextInput ? Colors.accent : Colors.whiteAlpha20,
                 }}
               >
-                <Text
-                  className="text-[22px]"
-                  style={{ color: showTextInput ? Colors.accent : Colors.textOnDark }}
-                >
-                  {"\u2328"}
-                </Text>
+                <Icon
+                  name="type"
+                  size={22}
+                  color={showTextInput ? Colors.accent : Colors.textOnDark}
+                />
               </TouchableOpacity>
 
               {/* End conversation pill button */}
@@ -774,9 +784,9 @@ export default function ConversationSessionScreen() {
 
           {conversation.status === "disconnected" && (
             <View className="items-center">
-              <Text style={{ ...Typography.bigNumber, color: Colors.accent, marginBottom: 12 }}>
-                !
-              </Text>
+              <View style={{ marginBottom: 12 }}>
+                <Icon name="wifi-off" size={40} color={Colors.accent} />
+              </View>
               <Text
                 style={{
                   ...Typography.body,

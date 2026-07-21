@@ -69,7 +69,11 @@ export type IconName =
   | "award"
   | "smile"
   | "settings"
-  | "play-circle"; // resume CTA chrome (Story 14-7 — mock-test landing "Resume in-progress")
+  | "play-circle" // resume CTA chrome (Story 14-7 — mock-test landing "Resume in-progress")
+  | "chevron-left" // back-nav chrome (conversation screen)
+  | "send" // send-typed-message chrome (conversation text input)
+  | "type" // voice↔text toggle chrome (conversation screen)
+  | "wifi-off"; // connection-lost chrome (conversation disconnected state)
 
 export interface IconProps {
   name: IconName;
