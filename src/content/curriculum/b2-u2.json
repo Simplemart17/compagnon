@@ -1,0 +1,212 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b2-u2",
+    "level": "B2",
+    "order": 2,
+    "titleEn": "He Said That…",
+    "titleFr": "Il a dit que…",
+    "lessons": [
+      {
+        "id": "b2-u2-l1",
+        "order": 1,
+        "canDoEn": "I can report what someone says using the present tense.",
+        "canDoFr": "Je peux dire : « Il dit qu'il est fatigué ».",
+        "grammarTarget": "Reported speech in the present: dire que + clause (no tense change when the reporting verb is present); the verb dire (je dis, il dit)",
+        "teachEn": "Reported speech tells what someone said without quoting their exact words. It starts with the verb dire (to say): je dis, tu dis, il/elle dit, nous disons, vous dites, ils/elles disent. When the reporting verb is in the PRESENT (il dit), the reported clause keeps its ORIGINAL tense — nothing shifts. Direct: 'Je suis fatigué.' Reported: 'Il dit qu'il est fatigué.' Direct: 'J'ai fini.' Reported: 'Elle dit qu'elle a fini.' Two things DO change: the pronoun (je → il/elle) and the possessive (mon → son). Dire is followed by que, which becomes qu' before a vowel: 'Il dit que c'est vrai', 'Elle dit qu'elle aime le café.' Say where the information comes from with selon (according to): 'Selon lui, c'est la vérité.'",
+        "teachFr": "« Dire », c'est parler : je dis, tu dis, il dit, ils disent. Quand le verbe « dire » est au présent, la phrase ne change pas de temps. Par exemple : « Je suis fatigué. » → Il dit qu'il est fatigué. « J'ai fini. » → Elle dit qu'elle a fini. Deux choses changent : le pronom (je → il) et le possessif (mon → son). Selon lui, c'est la vérité, pas un mensonge !",
+        "vocab": [
+          {
+            "fr": "dire",
+            "en": "to say, to tell (je dis, tu dis, il dit, ils disent)"
+          },
+          {
+            "fr": "il dit que",
+            "en": "he/she says that (+ clause, no tense change: il dit qu'il est là)"
+          },
+          {
+            "fr": "ils disent que",
+            "en": "they say that (dire, 3rd-person plural: ils disent)"
+          },
+          {
+            "fr": "selon",
+            "en": "according to (selon lui = according to him)"
+          },
+          {
+            "fr": "la vérité",
+            "en": "the truth (dire la vérité)"
+          },
+          {
+            "fr": "un mensonge",
+            "en": "a lie (ce n'est pas un mensonge)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Il dit que…",
+          "goalEn": "Report what someone says using the present tense",
+          "promptSeed": "Role-play sharing news about friends: you report what someone SAYS right now. Model reported statements in the present — 'Marie dit qu'elle est fatiguée', 'Paul dit qu'il aime son travail', 'Ils disent que c'est vrai' — with no tense change, only the pronoun shift (je → il/elle). Then elicit them: 'Qu'est-ce que Marie dit ?'. Draw out dire, il dit que and ils disent que, plus selon lui, la vérité and un mensonge. Keep the que (qu' before a vowel), and recast a direct quote ('Je suis fatiguée') into a reported one ('Elle dit qu'elle est fatiguée'). Keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u2-l2",
+        "order": 2,
+        "canDoEn": "I can report what someone said in the past, shifting the tense.",
+        "canDoFr": "Je peux dire : « Il a dit qu'il était fatigué ».",
+        "grammarTarget": "Reported speech after a past verb: présent → imparfait, passé composé → plus-que-parfait, futur simple → conditionnel présent",
+        "teachEn": "When the reporting verb is in the PAST (il a dit — the passé composé of dire, with the participle dit), the reported clause shifts back one step in time. Three shifts, all using tenses you already have: (1) présent → imparfait: 'Je suis fatigué' → 'Il a dit qu'il était fatigué'; 'Je travaille à Montréal' → 'Elle a dit qu'elle travaillait à Montréal.' (2) passé composé → plus-que-parfait: 'J'ai fini' → 'Il a dit qu'il avait fini'; 'Je suis partie' → 'Elle a dit qu'elle était partie.' (3) futur simple → conditionnel présent: 'Je serai à l'heure' → 'Il a dit qu'il serait à l'heure'; 'Je finirai le projet' → 'Elle a dit qu'elle finirait le projet.' Keep the pronoun and possessive shifts too (je → il, mon → son). Other reporting verbs work the same way: répondre (to answer — il a répondu que), annoncer (to announce) and ajouter (to add).",
+        "teachFr": "Quand « dire » est au passé (il a dit), la phrase change de temps. Le présent → l'imparfait : « Je suis fatigué » → il a dit qu'il était fatigué. Le passé composé → le plus-que-parfait : « J'ai fini » → il a dit qu'il avait fini. Le futur → le conditionnel : « Je serai à l'heure » → il a dit qu'il serait à l'heure. Il a répondu qu'il travaillait à Montréal et il a annoncé qu'il arriverait tôt. Il a ajouté qu'il était content. Quelle conversation !",
+        "vocab": [
+          {
+            "fr": "il a dit que",
+            "en": "he/she said that (past; the clause shifts back one tense)"
+          },
+          {
+            "fr": "répondre",
+            "en": "to answer (je réponds, il répond; past: il a répondu)"
+          },
+          {
+            "fr": "il a répondu que",
+            "en": "he/she answered that (reporting verb in the past)"
+          },
+          {
+            "fr": "annoncer",
+            "en": "to announce (il a annoncé qu'il arriverait)"
+          },
+          {
+            "fr": "ajouter",
+            "en": "to add (say something more: il a ajouté que…)"
+          },
+          {
+            "fr": "une conversation",
+            "en": "a conversation"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Il a dit qu'il était…",
+          "goalEn": "Report what someone said in the past, shifting the tense",
+          "promptSeed": "Role-play retelling what people told you YESTERDAY, so every verb shifts back. Model the three shifts after 'il a dit' — présent → imparfait ('Il a dit qu'il était fatigué'), passé composé → plus-que-parfait ('Elle a dit qu'elle avait fini'), futur → conditionnel ('Il a dit qu'il serait à l'heure') — then elicit them: 'Qu'est-ce qu'il a dit ?'. Draw out il a dit que, il a répondu que, annoncer and ajouter, plus une conversation. Recast a présent kept after a past verb ('il a dit qu'il est fatigué') into the imparfait, and keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u2-l3",
+        "order": 3,
+        "canDoEn": "I can report a yes/no question and a question with a question word.",
+        "canDoFr": "Je peux dire : « Il demande si tu es là ».",
+        "grammarTarget": "Reported questions: demander si (yes/no) + demander + question words (où, quand, pourquoi, comment); the verb demander",
+        "teachEn": "To report a QUESTION, use demander (to ask): je demande, il/elle demande (a regular -er verb). For a yes/no question, join the clause with si (if/whether) — the same si you know from B1's hypotheses, here meaning 'whether': Direct 'Tu es là ?' → Reported 'Il demande si tu es là.' Note si + il → s'il, but si + elle stays si elle. For a question with a question word, keep the word and use normal word order (subject + verb — no est-ce que, no inversion): 'Où est-ce que tu habites ?' → 'Il demande où tu habites'; 'Pourquoi tu travailles ?' → 'Elle demande pourquoi tu travailles.' Add pourquoi (why) to your question words. When the reporting verb is past (il a demandé), the same tense shifts from Lesson 2 apply: 'Elle a demandé si j'étais fatigué.'",
+        "teachFr": "Pour répéter une question, utilise le verbe « demander » : je demande, il demande. Pour une question oui/non, utilise « si » : « Tu es là ? » → il demande si tu es là. Avec « où », « quand » ou « pourquoi » : « Où est-ce que tu habites ? » → il demande où tu habites ; « Pourquoi tu travailles ? » → elle demande pourquoi tu travailles. Au passé, le temps change : elle a demandé si j'étais fatigué. Tu peux poser beaucoup de questions !",
+        "vocab": [
+          {
+            "fr": "demander",
+            "en": "to ask (a regular -er verb: je demande, il demande)"
+          },
+          {
+            "fr": "il demande si",
+            "en": "he/she asks whether (reported yes/no question: il demande si tu viens)"
+          },
+          {
+            "fr": "il a demandé si",
+            "en": "he/she asked whether (past; the reported tense shifts back)"
+          },
+          {
+            "fr": "pourquoi",
+            "en": "why (answer with parce que)"
+          },
+          {
+            "fr": "une question",
+            "en": "a question"
+          },
+          {
+            "fr": "poser une question",
+            "en": "to ask a question (poser = to ask/put a question)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Il demande si…",
+          "goalEn": "Report a yes/no question and a question with a question word",
+          "promptSeed": "Role-play reporting the questions people asked you. Model reported questions — yes/no with si ('Il demande si tu es là'), and with a question word ('Elle demande où tu habites', 'Il demande pourquoi tu travailles') — using normal word order, no est-ce que. Then elicit them: 'Qu'est-ce qu'il demande ?'. Draw out demander, il demande si, pourquoi and poser une question. When the reporting verb is past, shift the tense: 'Elle a demandé si j'étais libre.' Recast an est-ce que left inside the reported question, and keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u2-l4",
+        "order": 4,
+        "canDoEn": "I can report a command or a request using 'de' + the infinitive.",
+        "canDoFr": "Je peux dire : « Il me dit de partir ».",
+        "grammarTarget": "Reported commands and requests: dire de + infinitive, demander de + infinitive (Pars ! → il me dit de partir)",
+        "teachEn": "To report a command or a request, French does NOT use the subjunctive — it uses de + a dictionary-form verb. Direct order: 'Pars !' Reported: 'Il me dit de partir.' Direct request: 'Aide-moi !' Reported: 'Elle me demande de l'aider.' The pattern is dire à quelqu'un de + infinitive and demander à quelqu'un de + infinitive; with a pronoun it becomes me dit de, te dit de, lui dit de (using lui / leur from A2): 'Le médecin me dit de me reposer', 'Je lui demande de rester.' In the past, put the reporting verb in the passé composé and leave the infinitive unchanged: 'Il m'a dit de partir', 'Il m'a demandé de rester.' A firm order is un ordre; a polite request is une demande.",
+        "teachFr": "Pour répéter un ordre ou une demande, n'utilise pas le subjonctif : utilise « de » + un verbe à l'infinitif. « Pars ! » → il me dit de partir. « Aide-moi ! » → elle me demande de l'aider. Avec « lui » : je lui demande de rester. Au passé : il m'a dit de me reposer et il m'a demandé de partir tôt. C'est un ordre gentil, pas une demande difficile !",
+        "vocab": [
+          {
+            "fr": "dire de",
+            "en": "to tell someone to (+ infinitive: il me dit de partir)"
+          },
+          {
+            "fr": "demander de",
+            "en": "to ask someone to (+ infinitive: il me demande de rester)"
+          },
+          {
+            "fr": "il me dit de",
+            "en": "he/she tells me to (+ infinitive; me/te/lui before the verb)"
+          },
+          {
+            "fr": "il m'a demandé de",
+            "en": "he/she asked me to (past; the infinitive does not change)"
+          },
+          {
+            "fr": "un ordre",
+            "en": "an order, a command (donner un ordre)"
+          },
+          {
+            "fr": "une demande",
+            "en": "a request (une demande polie)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Il me dit de partir",
+          "goalEn": "Report a command or a request with 'de' + the infinitive",
+          "promptSeed": "Role-play relaying the orders and requests people give you. Model reported commands with de + infinitive (not the subjunctive) — 'Le médecin me dit de me reposer', 'Il me demande de l'aider', 'Je lui demande de rester' — then elicit them: 'Qu'est-ce qu'il te dit de faire ?'. Draw out dire de, demander de, il me dit de and il m'a demandé de, plus un ordre and une demande. In the past use 'il m'a dit de…', and recast a subjunctive ('il me dit que je parte') into the infinitive ('il me dit de partir'). Keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u2-l5",
+        "order": 5,
+        "canDoEn": "I can relay a whole conversation that someone had.",
+        "canDoFr": "Je peux raconter une conversation entre deux personnes.",
+        "grammarTarget": "Unit synthesis: relaying a conversation — reported statements (with tense shifts), reported questions, and reported commands together",
+        "teachEn": "Now relay a whole conversation, mixing all three tools. Use reported statements with the tense shifts (présent → imparfait, passé composé → plus-que-parfait, futur → conditionnel), reported questions (demander si / où / pourquoi), and reported commands (dire de / demander de + infinitive). Keep the pronouns and possessives shifted (je → il, mon → son). Chain the report with d'abord, ensuite, puis and enfin (A1), and report with raconter (A2, to tell) or ajouter (Lesson 2). New words: une discussion (a discussion), une réponse (an answer), un secret (a secret), un détail (a detail), à propos de (about) and franchement (frankly). Example: 'Il m'a dit qu'il était fatigué, il m'a demandé si j'étais libre, puis il m'a dit de venir.'",
+        "teachFr": "Voici comment raconter une conversation. Hier, mon ami m'a téléphoné : quelle discussion ! D'abord, il m'a dit qu'il était fatigué et qu'il avait beaucoup travaillé. Ensuite, il m'a demandé si j'étais libre samedi. Franchement, sa réponse était un secret ! Puis il m'a demandé pourquoi je restais chez moi. Enfin, il m'a dit de venir chez lui à propos d'un projet. Il a expliqué chaque détail. Selon lui, ce serait une bonne fin de semaine !",
+        "vocab": [
+          {
+            "fr": "une discussion",
+            "en": "a discussion, a talk"
+          },
+          {
+            "fr": "une réponse",
+            "en": "an answer, a reply (from répondre)"
+          },
+          {
+            "fr": "un secret",
+            "en": "a secret (garder un secret)"
+          },
+          {
+            "fr": "un détail",
+            "en": "a detail (expliquer chaque détail)"
+          },
+          {
+            "fr": "à propos de",
+            "en": "about, regarding (à propos d'un projet)"
+          },
+          {
+            "fr": "franchement",
+            "en": "frankly, honestly"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Raconter une conversation",
+          "goalEn": "Relay a whole conversation, weaving all three tools together",
+          "promptSeed": "Role-play relaying a whole conversation you had, weaving all three tools. Model a report chained with d'abord, ensuite, puis, enfin: a statement with a shift ('Il m'a dit qu'il était fatigué'), a reported question ('Il m'a demandé si j'étais libre'), and a reported command ('Il m'a dit de venir'). Then draw out the learner's: 'Qu'est-ce que ton ami t'a dit ?'. Weave in une discussion, une réponse, un secret, un détail, à propos de and franchement. Keep pronouns shifted (je → il, mon → son), recast tense slips, and let the learner relay their own conversation."
+        }
+      }
+    ]
+  }
+}
