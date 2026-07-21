@@ -168,7 +168,7 @@
         "conversationScenario": {
           "titleFr": "Bien que ce soit difficile",
           "goalEn": "Express purpose and concession with the subjunctive",
-          "promptSeed": "Role-play encouraging each other and conceding points in a gentle debate. Model pour que and bien que with the B1 subjunctive forms — 'Je t'aide pour que tu puisses réussir', 'J'arrive tôt pour que nous soyons à l'heure', 'Bien que ce soit difficile, j'adore le français', 'Bien que tu aies raison, je ne suis pas d'accord' — then elicit them: 'Pourquoi tu fais ça ?', 'C'est difficile ?'. Keep the subjunctive in the controlled set (sois, soit, aie, aies, puisse, fasse). Contrast malgré + noun with bien que + verb, and recast a bare indicative after bien que into the subjunctive."
+          "promptSeed": "Role-play encouraging each other and conceding points in a gentle debate. Model pour que and bien que with the B1 subjunctive forms — 'Je fais ça pour que tu puisses réussir', 'J'arrive tôt pour que nous soyons à l'heure', 'Bien que ce soit difficile, j'adore le français', 'Bien que tu aies raison, je ne suis pas d'accord' — then elicit them: 'Pourquoi tu fais ça ?', 'C'est difficile ?'. Keep the subjunctive in the controlled set (sois, soit, aie, aies, puisse, fasse). Contrast malgré + noun with bien que + verb, and recast a bare indicative after bien que into the subjunctive."
         }
       },
       {
