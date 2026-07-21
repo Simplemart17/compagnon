@@ -1,0 +1,220 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b2-u1",
+    "level": "B2",
+    "order": 1,
+    "titleEn": "Arguing and Nuancing",
+    "titleFr": "Argumenter et nuancer",
+    "lessons": [
+      {
+        "id": "b2-u1-l1",
+        "order": 1,
+        "canDoEn": "I can link a cause to its consequence with formal connectors.",
+        "canDoFr": "Je peux montrer la cause et la conséquence d'une idée.",
+        "grammarTarget": "Formal cause-consequence connectors: en effet (indeed), par conséquent (consequently), ainsi (thus); building on donc, car, parce que",
+        "teachEn": "In B1 you linked ideas with donc and alors (consequence) and with parce que, car, grâce à and à cause de (cause). B2 adds three more formal connectors for debate and writing. En effet ('indeed, in fact') confirms or explains what you just said: 'Le hockey est très célèbre au Canada ; en effet, beaucoup de personnes aiment ce sport.' Par conséquent ('consequently, therefore') introduces a logical result and sounds more formal than donc: 'Je n'ai pas beaucoup dormi ; par conséquent, je suis fatigué.' Ainsi ('thus, in this way') presents a result or an example: 'Elle travaille beaucoup ; ainsi, elle parle très bien français.' All three usually open a clause after a semicolon or comma. Keep car for a cause that follows ('J'aime le débat, car c'est utile'), and give un exemple for each idea.",
+        "teachFr": "En B1, tu relies les idées avec « donc » et « parce que ». En B2, voici trois connecteurs plus formels. « En effet » confirme une idée : le hockey est très célèbre au Canada ; en effet, beaucoup de personnes aiment ce sport. « Par conséquent » montre la conséquence d'une cause : je n'ai pas beaucoup dormi ; par conséquent, je suis fatigué. « Ainsi » présente un résultat ou un exemple : elle travaille beaucoup ; ainsi, elle parle très bien français. Donne toujours un exemple pour chaque cause !",
+        "vocab": [
+          {
+            "fr": "en effet",
+            "en": "indeed, in fact (confirms what you just said)"
+          },
+          {
+            "fr": "par conséquent",
+            "en": "consequently, therefore (a formal result; more formal than donc)"
+          },
+          {
+            "fr": "ainsi",
+            "en": "thus, in this way (introduces a result or an example)"
+          },
+          {
+            "fr": "une cause",
+            "en": "a cause (la cause d'un problème)"
+          },
+          {
+            "fr": "une conséquence",
+            "en": "a consequence (la conséquence d'une cause)"
+          },
+          {
+            "fr": "un exemple",
+            "en": "an example (par exemple; donne un exemple)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "En effet, par conséquent…",
+          "goalEn": "Link a cause to its consequence with formal connectors",
+          "promptSeed": "Role-play a friendly exchange where you each give a small opinion and back it up. Model the three formal connectors — 'Le hockey est célèbre ; en effet, beaucoup de personnes aiment ce sport', 'Je n'ai pas dormi ; par conséquent, je suis fatigué', 'Elle travaille beaucoup ; ainsi, elle parle bien français' — then elicit them: 'Pourquoi ?', 'Quelle est la conséquence ?'. Draw out une cause, une conséquence and un exemple. Recast a plain donc where par conséquent sounds more formal, and keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b2-u1-l2",
+        "order": 2,
+        "canDoEn": "I can contrast two ideas and concede a point.",
+        "canDoFr": "Je peux montrer deux idées différentes et faire une concession.",
+        "grammarTarget": "Opposition and concession: en revanche, d'un côté … de l'autre, alors que / tandis que (whereas), malgré + noun (despite)",
+        "teachEn": "In B1 you contrasted with cependant and pourtant. B2 gives you more tools. En revanche ('on the other hand') opposes two facts: 'La ville est intéressante ; en revanche, la campagne est calme.' D'un côté … de l'autre sets up two opposing sides: 'D'un côté, c'est cher ; de l'autre, c'est beau.' Alors que and tandis que ('whereas') join two contrasting clauses in ONE sentence: 'J'aime la ville, alors que mon frère préfère la campagne', 'Je travaille, tandis que tu te reposes.' Malgré ('despite') is always followed by a NOUN, never a verb: 'Malgré le froid, je fais du sport.' (The concession word that takes a verb, bien que, comes in Lesson 4.)",
+        "teachFr": "En B1, tu opposes avec « cependant » et « pourtant ». Voici d'autres connecteurs. « En revanche » oppose deux faits : la ville est intéressante ; en revanche, la campagne est calme. « D'un côté… de l'autre » montre deux côtés : d'un côté, c'est cher ; de l'autre, c'est beau. « Alors que » et « tandis que » relient deux idées opposées : j'aime la ville, alors que mon frère préfère la campagne ; je travaille, tandis que tu te reposes. « Malgré » est suivi d'un nom : malgré le froid, je fais du sport.",
+        "vocab": [
+          {
+            "fr": "en revanche",
+            "en": "on the other hand (opposes two facts)"
+          },
+          {
+            "fr": "d'un côté",
+            "en": "on one side (d'un côté… de l'autre = on one side… on the other)"
+          },
+          {
+            "fr": "de l'autre",
+            "en": "on the other side (pairs with d'un côté)"
+          },
+          {
+            "fr": "alors que",
+            "en": "whereas, while (joins two contrasting clauses)"
+          },
+          {
+            "fr": "tandis que",
+            "en": "whereas, while (same idea as alors que)"
+          },
+          {
+            "fr": "malgré",
+            "en": "despite (+ a noun, never a verb: malgré le froid)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "D'un côté, de l'autre",
+          "goalEn": "Contrast two ideas and concede a point",
+          "promptSeed": "Role-play weighing two options — city versus countryside, or two jobs. Model the contrast tools — 'La ville est intéressante ; en revanche, la campagne est calme', 'D'un côté, c'est cher ; de l'autre, c'est beau', 'J'aime la ville, alors que mon frère préfère la campagne' — then elicit them: 'Et de l'autre côté ?', 'Qu'est-ce que tu préfères ?'. Draw out tandis que and malgré + a noun ('Malgré le froid, je sors'). Remember: malgré takes a noun, not a verb. Recast a bare mais where en revanche fits better, and keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u1-l3",
+        "order": 3,
+        "canDoEn": "I can structure an argument with 'first', 'second', and 'in conclusion'.",
+        "canDoFr": "Je peux organiser mes arguments d'une part et d'autre part.",
+        "grammarTarget": "Structuring an argument: d'une part … d'autre part, premièrement / deuxièmement, en conclusion; the noun un argument",
+        "teachEn": "To build a clear argument, announce your points in order. D'une part … d'autre part ('on one hand … on the other') lists two arguments on the same side — note it ADDS points, while d'un côté … de l'autre (Lesson 2) opposes them: 'D'une part, le français est important pour le travail ; d'autre part, c'est une belle langue.' Or number your points: premièrement (firstly) and deuxièmement (secondly), built from premier and deuxième (A2) + -ment. Close with en conclusion (in conclusion). The point you defend is un argument, and your overall position is your point de vue (from B1). New adjective: important / importante.",
+        "teachFr": "Pour construire un bon argument, annonce tes idées avec ordre. « D'une part… d'autre part » ajoute deux arguments : d'une part, le français est important pour le travail ; d'autre part, c'est une belle langue. Tu peux aussi compter : premièrement, beaucoup de personnes parlent français ; deuxièmement, c'est important pour les voyages. « En conclusion », je donne mon point de vue : je pense que le français est très important.",
+        "vocab": [
+          {
+            "fr": "d'une part",
+            "en": "on one hand (d'une part… d'autre part — lists two arguments)"
+          },
+          {
+            "fr": "d'autre part",
+            "en": "on the other hand (pairs with d'une part)"
+          },
+          {
+            "fr": "premièrement",
+            "en": "firstly (from premier + -ment)"
+          },
+          {
+            "fr": "deuxièmement",
+            "en": "secondly (from deuxième + -ment)"
+          },
+          {
+            "fr": "en conclusion",
+            "en": "in conclusion (closes an argument)"
+          },
+          {
+            "fr": "un argument",
+            "en": "an argument, a point (in a debate)"
+          },
+          {
+            "fr": "important / importante",
+            "en": "important"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "D'une part, d'autre part",
+          "goalEn": "Structure an argument with first, second, and in conclusion",
+          "promptSeed": "Role-play sharing why learning French matters, each giving an ordered argument. Model the structure — 'D'une part, c'est important pour le travail ; d'autre part, c'est une belle langue', 'Premièrement… deuxièmement…', 'En conclusion, je pense que…' — then elicit it: 'Quel est ton premier argument ?', 'Et deuxièmement ?'. Draw out un argument, en conclusion and important, and recycle their point de vue (B1). Keep d'une part / d'autre part for listing points. Recast a jumbled answer into an ordered one, and keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u1-l4",
+        "order": 4,
+        "canDoEn": "I can express purpose and concession with 'pour que' and 'bien que'.",
+        "canDoFr": "Je peux dire pour que tu sois content et bien que ce soit difficile.",
+        "grammarTarget": "New subjunctive triggers pour que (so that) + bien que (although); subjunctive verbs stay in the B1 controlled set",
+        "teachEn": "In B1 the subjunctive followed il faut que, vouloir que and emotions. B2 adds two connectors that ALSO take the subjunctive. Pour que ('so that') shows a purpose: 'Je t'aide pour que tu puisses réussir', 'J'arrive tôt pour que nous soyons à l'heure.' Bien que ('although') shows a concession — and unlike malgré (Lesson 2, + noun), bien que takes a VERB in the subjunctive: 'Bien que ce soit difficile, j'adore le français', 'Bien que tu aies raison, je ne suis pas d'accord.' Reuse only the B1 subjunctive forms: sois/soit/soyons, aie/aies/ait, aille, fasse, puisse/puisses, and -er verbs (que tu parles). One useful extra: comprendre is regular from its ils-form — ils comprennent → comprenn- → que tu comprennes: 'Je parle bien pour que tout le monde comprenne.'",
+        "teachFr": "En B1, le subjonctif vient après « il faut que », « vouloir que » et les émotions. En B2, deux connecteurs utilisent aussi le subjonctif. « Pour que » montre un but : je t'aide pour que tu puisses réussir ; j'arrive tôt pour que nous soyons à l'heure. « Bien que » montre une concession : bien que ce soit difficile, j'adore le français ; bien que tu aies raison, je ne suis pas d'accord. « Malgré » prend un nom, mais « bien que » prend un verbe au subjonctif. Je parle bien pour que tout le monde comprenne.",
+        "vocab": [
+          {
+            "fr": "pour que",
+            "en": "so that (+ subjunctive: pour que tu sois content)"
+          },
+          {
+            "fr": "bien que",
+            "en": "although (+ subjunctive, takes a verb: bien que ce soit difficile)"
+          },
+          {
+            "fr": "un but",
+            "en": "a goal, a purpose (pour que shows le but)"
+          },
+          {
+            "fr": "une concession",
+            "en": "a concession (bien que introduces une concession)"
+          },
+          {
+            "fr": "tout le monde",
+            "en": "everyone, everybody"
+          },
+          {
+            "fr": "que tu comprennes",
+            "en": "that you understand (subjunctive of comprendre: ils comprennent → comprenn-)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Bien que ce soit difficile",
+          "goalEn": "Express purpose and concession with the subjunctive",
+          "promptSeed": "Role-play encouraging each other and conceding points in a gentle debate. Model pour que and bien que with the B1 subjunctive forms — 'Je t'aide pour que tu puisses réussir', 'J'arrive tôt pour que nous soyons à l'heure', 'Bien que ce soit difficile, j'adore le français', 'Bien que tu aies raison, je ne suis pas d'accord' — then elicit them: 'Pourquoi tu fais ça ?', 'C'est difficile ?'. Keep the subjunctive in the controlled set (sois, soit, aie, aies, puisse, fasse). Contrast malgré + noun with bien que + verb, and recast a bare indicative after bien que into the subjunctive."
+        }
+      },
+      {
+        "id": "b2-u1-l5",
+        "order": 5,
+        "canDoEn": "I can defend a nuanced position in a structured debate.",
+        "canDoFr": "Je peux défendre mon opinion dans un débat.",
+        "grammarTarget": "Unit synthesis: a structured, nuanced argument — cause/consequence, opposition/concession, ordering connectors, and the new subjunctive triggers together",
+        "teachEn": "Now bring the whole unit together. Open with your point de vue (B1) and support it with a fact ('En effet…'). Give ordered arguments ('D'une part… d'autre part'). Nuance your position: concede with bien que + subjunctive or malgré + noun, and contrast with en revanche or alors que. Draw a consequence with par conséquent or ainsi, then close with en conclusion. New words for a real debate: un débat (a debate), une analyse (an analysis), un enjeu (a stake, an issue), une démarche (an approach), défendre (to defend), and nuancer (to qualify) with its adjective nuancé / nuancée. Stay polite: 'Je comprends ton argument, mais…'",
+        "teachFr": "Voici comment défendre une opinion dans un débat. D'abord, donne ton point de vue : à mon avis, la ville est meilleure que la campagne. En effet, il y a beaucoup de choses à faire. D'une part, il y a des restaurants ; d'autre part, c'est intéressant. Bien que la campagne soit calme, je préfère la ville, mais je nuance mon idée. En revanche, la ville est chère : c'est un enjeu important ! Par conséquent, chaque personne doit choisir. En conclusion, mon opinion est nuancée : la ville est géniale, mais la campagne aussi. Voilà mon analyse et ma démarche.",
+        "vocab": [
+          {
+            "fr": "un débat",
+            "en": "a debate (participer à un débat)"
+          },
+          {
+            "fr": "une analyse",
+            "en": "an analysis (faire une analyse)"
+          },
+          {
+            "fr": "un enjeu",
+            "en": "a stake, an issue (un enjeu important)"
+          },
+          {
+            "fr": "une démarche",
+            "en": "an approach, a process (une démarche claire)"
+          },
+          {
+            "fr": "défendre",
+            "en": "to defend (défendre une opinion)"
+          },
+          {
+            "fr": "nuancer",
+            "en": "to qualify, to nuance (je nuance mon idée)"
+          },
+          {
+            "fr": "nuancé / nuancée",
+            "en": "nuanced, balanced (une opinion nuancée)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "La ville ou la campagne ?",
+          "goalEn": "Defend a nuanced position in a structured debate",
+          "promptSeed": "Role-play a friendly structured debate — city versus countryside, or a topic the learner likes. Model a full nuanced argument: point de vue + 'en effet', ordered points ('d'une part… d'autre part'), a concession ('Bien que la campagne soit calme, je préfère la ville'), a contrast ('en revanche'), a consequence ('par conséquent'), and a close ('en conclusion'). Then draw out the learner's side: 'Quel est ton argument ?', 'Tu peux nuancer ?'. Weave in un débat, un enjeu, une analyse and une démarche, stay polite in disagreement, and let the learner defend their view."
+        }
+      }
+    ]
+  }
+}

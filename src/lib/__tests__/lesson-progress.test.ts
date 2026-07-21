@@ -139,15 +139,18 @@ describe("Story 19-2 — nextLessonForUser (pure resume pointer)", () => {
       // the pointer starts there and NEVER regresses into A1/A2 despite
       // zero completions.
       expect(nextLessonForUser(new Set(), entryLessonIdForLevel("B1"))?.id).toBe("b1-u1-l1");
+      // Slice 8: C2-placed learner falls DOWN to the B2 start (new highest).
+      expect(nextLessonForUser(new Set(), entryLessonIdForLevel("C2"))?.id).toBe("b2-u1-l1");
     });
 
     it("entryLessonIdForLevel: undefined level (profile hydrating) → undefined; levels map to the highest shipped level at or below", () => {
       expect(entryLessonIdForLevel(undefined)).toBeUndefined();
-      // Slice 6: A1 + A2 + B1 shipped. B2+ falls DOWN to the B1 start.
+      // Slice 8: A1 + A2 + B1 + B2 shipped. C1/C2 fall DOWN to the B2 start.
       expect(entryLessonIdForLevel("A1")).toBe(CURRICULUM_LESSONS[0].id);
       expect(entryLessonIdForLevel("A2")).toBe("a2-u1-l1");
       expect(entryLessonIdForLevel("B1")).toBe("b1-u1-l1");
-      expect(entryLessonIdForLevel("C2")).toBe("b1-u1-l1");
+      expect(entryLessonIdForLevel("B2")).toBe("b2-u1-l1");
+      expect(entryLessonIdForLevel("C2")).toBe("b2-u1-l1");
     });
   });
 });

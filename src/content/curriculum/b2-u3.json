@@ -1,0 +1,216 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b2-u3",
+    "level": "B2",
+    "order": 3,
+    "titleEn": "By Doing, I Understand",
+    "titleFr": "En faisant, je comprends",
+    "lessons": [
+      {
+        "id": "b2-u3-l1",
+        "order": 1,
+        "canDoEn": "I can form the gérondif with 'en' + the present participle.",
+        "canDoFr": "Je peux dire en parlant et en faisant.",
+        "grammarTarget": "The gérondif: en + present participle; participle = nous-form of the present minus -ons + -ant (parlons → parlant); irregular étant, ayant",
+        "teachEn": "The gérondif expresses one action happening alongside another, and it is built from a form you almost already have. Take the NOUS form of the present, drop -ons, and add -ant to get the present participle: nous parlons → parlant, nous faisons → faisant, nous allons → allant, nous finissons → finissant. This is the SAME stem as the imparfait (A2 Unit 5) — nous parlons gives both parlant and je parlais — so if you can build the imparfait, you can build the participle. Put en in front for the gérondif: en parlant (while/by speaking), en travaillant, en finissant. Two verbs are irregular, learned by heart: être → étant, avoir → ayant. The gérondif never changes for person: 'Je chante en travaillant', 'Nous chantons en travaillant.'",
+        "teachFr": "Le gérondif, c'est « en » + le participe présent. Pour le participe présent, regarde la forme « nous » du présent : nous parlons → parlant, nous faisons → faisant, nous allons → allant, nous finissons → finissant. C'est la même forme que l'imparfait ! Ajoute « en » au début : en parlant français, je suis content ; en travaillant beaucoup, je parle bien ; en finissant tôt, je suis libre ; en allant à l'école, j'écoute de la musique ; en faisant attention, tout va bien. « Être » → étant et « avoir » → ayant : en étant calme, je parle mieux ; en ayant un plan, je suis prêt.",
+        "vocab": [
+          {
+            "fr": "en parlant",
+            "en": "while/by speaking (gérondif of parler: nous parlons → parlant)"
+          },
+          {
+            "fr": "en faisant",
+            "en": "while/by doing (gérondif of faire: nous faisons → faisant)"
+          },
+          {
+            "fr": "en allant",
+            "en": "while/by going (gérondif of aller: nous allons → allant)"
+          },
+          {
+            "fr": "en finissant",
+            "en": "while/by finishing (gérondif of finir: nous finissons → finissant)"
+          },
+          {
+            "fr": "en travaillant",
+            "en": "while/by working (gérondif of travailler)"
+          },
+          {
+            "fr": "étant",
+            "en": "being (irregular present participle of être)"
+          },
+          {
+            "fr": "ayant",
+            "en": "having (irregular present participle of avoir)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "En travaillant, je chante",
+          "goalEn": "Form the gérondif with 'en' + the present participle",
+          "promptSeed": "Role-play sharing little life-hacks — two things you do together. Model the gérondif — form the participle from the nous-form (nous parlons → parlant, nous faisons → faisant, nous finissons → finissant) and add en: 'Je chante en travaillant', 'En allant à l'école, j'écoute de la musique', 'En faisant attention, tout va bien.' Then elicit it: 'Qu'est-ce que tu fais en travaillant ?'. Draw out en parlant, en travaillant, en finissant, plus the irregulars étant and ayant. Remember the participle uses the same stem as the imparfait. Recast a wrong stem, and keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u3-l2",
+        "order": 2,
+        "canDoEn": "I can use the gérondif to mean 'while', 'by', and 'if'.",
+        "canDoFr": "Je peux dire deux choses en même temps avec le gérondif.",
+        "grammarTarget": "Three meanings of the gérondif: simultaneity (while), manner/means (by), condition (if); the subject stays the same as the main verb",
+        "teachEn": "The gérondif (Lesson 1) has three close meanings, and context tells you which. (1) SIMULTANEITY — two actions at the same time (en même temps), like English 'while': 'Je mange en regardant la télévision', 'Elle chante en jouant.' (2) MANNER or MEANS — how you do something, like English 'by': 'Je parle mieux en écoutant de la musique', 'Je suis en bonne santé en mangeant des légumes.' (3) CONDITION — like English 'if' or 'when': 'En finissant tôt, tu seras libre', 'En travaillant, tu réussiras.' The same gérondif form covers all three. One firm rule: the subject of the gérondif must be the SAME as the main verb's subject — in 'je mange en regardant', it is I who eat AND watch.",
+        "teachFr": "Le gérondif a trois sens. (1) « En même temps » : je mange en regardant la télévision ; elle chante en jouant. (2) La manière (comment) : je parle mieux en écoutant de la musique ; je suis en bonne santé en mangeant des légumes. (3) La condition (si) : en finissant tôt, tu seras libre ; en travaillant, tu réussiras. Attention : la personne du gérondif et du verbe est la même — moi, je mange en regardant !",
+        "vocab": [
+          {
+            "fr": "en même temps",
+            "en": "at the same time (simultaneity)"
+          },
+          {
+            "fr": "en regardant",
+            "en": "while watching/looking (gérondif of regarder)"
+          },
+          {
+            "fr": "en mangeant",
+            "en": "while eating (gérondif of manger: nous mangeons → mangeant)"
+          },
+          {
+            "fr": "en écoutant",
+            "en": "while/by listening (gérondif of écouter)"
+          },
+          {
+            "fr": "en jouant",
+            "en": "while/by playing (gérondif of jouer)"
+          },
+          {
+            "fr": "la télévision",
+            "en": "the television (regarder la télévision)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "En même temps",
+          "goalEn": "Use the gérondif to mean while, by, and if",
+          "promptSeed": "Role-play describing how you juggle daily life. Model the three meanings of the gérondif — simultaneity ('Je mange en regardant la télévision'), manner/means ('Je parle mieux en écoutant de la musique'), and condition ('En finissant tôt, tu seras libre') — then elicit them: 'Qu'est-ce que tu fais en même temps ?', 'Comment tu apprends le français ?'. Draw out en même temps, en regardant, en mangeant, en écoutant, en jouant and la télévision. Remember the gérondif's subject is the same as the main verb's. Recast two different subjects, and keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u3-l3",
+        "order": 3,
+        "canDoEn": "I can say 'what' with ce qui and ce que to point at an idea.",
+        "canDoFr": "Je peux dire ce qui est important et ce que je pense.",
+        "grammarTarget": "Indefinite relatives ce qui (subject) and ce que (object) for a whole idea ('the thing that…', 'what…')",
+        "teachEn": "In B1 you joined a clause to a NOUN with qui (subject) and que (object). When there is no noun — when you mean 'the thing that' or 'what' — use ce qui and ce que. Ce qui is the SUBJECT of its clause (followed directly by a verb): 'Ce qui est important, c'est le français', 'Dis-moi ce qui compte pour toi.' Ce que is the OBJECT (followed by a subject + verb): 'Ce que je pense, c'est que tu as raison', 'Je ne comprends pas ce que tu dis.' It is the same qui-vs-que rule as B1: qui + verb, que + subject + verb; and ce que becomes ce qu' before a vowel: 'ce qu'il fait.' Use them to point at a whole idea: 'Voici ce qui est vrai et ce que je veux.'",
+        "teachFr": "En B1, « qui » et « que » suivent un nom. Sans nom, pour dire « la chose que », utilise « ce qui » et « ce que ». « Ce qui » est le sujet (+ verbe) : ce qui est important, c'est le français ; dis-moi ce qui compte pour toi. « Ce que » est l'objet (+ sujet + verbe) : ce que je pense, c'est que tu as raison ; je ne comprends pas ce que tu dis. Devant une voyelle : ce qu'il fait. « Tout ce que » veut dire toute la chose : je remarque tout ce que tu fais. C'est exactement ça !",
+        "vocab": [
+          {
+            "fr": "ce qui",
+            "en": "what, the thing that (subject: ce qui est important)"
+          },
+          {
+            "fr": "ce que / ce qu'",
+            "en": "what, the thing that (object: ce que je pense; ce qu' before a vowel)"
+          },
+          {
+            "fr": "tout ce que",
+            "en": "everything that (tout ce que tu fais)"
+          },
+          {
+            "fr": "ce qui compte",
+            "en": "what matters (a fixed phrase: ce qui compte, c'est…)"
+          },
+          {
+            "fr": "remarquer",
+            "en": "to notice (a regular -er verb: je remarque)"
+          },
+          {
+            "fr": "exactement",
+            "en": "exactly (c'est exactement ça)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ce qui compte pour moi",
+          "goalEn": "Say 'what' with ce qui and ce que to point at an idea",
+          "promptSeed": "Role-play talking about what matters to each of you. Model ce qui (+ verb) and ce que (+ subject + verb) — 'Ce qui est important, c'est le français', 'Ce qui compte, c'est l'effort', 'Ce que je pense, c'est que tu as raison', 'Je ne comprends pas ce que tu dis' — then elicit them: 'Qu'est-ce qui compte pour toi ?', 'Dis-moi ce que tu penses.'. Draw out ce qui, ce que / ce qu', tout ce que, remarquer and exactement. Keep qui + verb, que + subject + verb. Recast 'ce que est important' into 'ce qui est important', and keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u3-l4",
+        "order": 4,
+        "canDoEn": "I can use ce dont to talk about something built with 'de'.",
+        "canDoFr": "Je peux dire ce dont j'ai besoin.",
+        "grammarTarget": "The indefinite relative ce dont: refers to a whole idea built with de (ce dont j'ai besoin = the thing I need)",
+        "teachEn": "In B1 you learned dont for a noun + a de-expression (le livre dont j'ai besoin). When there is no noun — 'the thing that' with de — use ce dont. It gathers up the de-verbs you know: avoir besoin de, avoir envie de, parler de, être fier de, s'occuper de (B1). 'Ce dont j'ai besoin, c'est du temps' (what I need is time), 'Ce dont je parle, c'est important', 'Voici ce dont je suis fier.' The word order after ce dont is subject + verb, like ce que. Compare the three indefinite relatives: ce qui (subject), ce que (object), ce dont (with de) — 'Dis-moi ce qui compte, ce que tu penses et ce dont tu as envie.' New de-verbs here: être sûr de, discuter de and profiter de.",
+        "teachFr": "En B1, « dont » suit un nom : le livre dont j'ai besoin. Sans nom, pour une chose avec « de », utilise « ce dont ». « Ce dont » utilise les verbes avec « de » : avoir besoin de, avoir envie de, parler de, être sûr de. Ce dont j'ai besoin, c'est du temps ! Ce dont je parle, c'est important. Je ne suis pas sûr de ce dont tu as envie. Nous pouvons discuter de ce projet et profiter de la journée. Compare : ce qui (sujet), ce que (objet), ce dont (avec « de »). Tu as le temps ?",
+        "vocab": [
+          {
+            "fr": "ce dont",
+            "en": "what, the thing that (with de: ce dont j'ai besoin = the thing I need)"
+          },
+          {
+            "fr": "le temps",
+            "en": "time (avoir le temps de faire quelque chose)"
+          },
+          {
+            "fr": "avoir le temps",
+            "en": "to have time (Tu as le temps ?)"
+          },
+          {
+            "fr": "être sûr de",
+            "en": "to be sure of/about (a de-expression: je suis sûr de ce choix)"
+          },
+          {
+            "fr": "discuter de",
+            "en": "to discuss (discuter d'un projet)"
+          },
+          {
+            "fr": "profiter de",
+            "en": "to make the most of (profiter de la journée)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ce dont j'ai besoin",
+          "goalEn": "Use ce dont to talk about something built with 'de'",
+          "promptSeed": "Role-play talking about what you need and want. Model ce dont for de-expressions — 'Ce dont j'ai besoin, c'est du temps', 'Ce dont je parle, c'est important', 'Voici ce dont je suis fier' — then elicit it: 'Ce dont tu as besoin, c'est quoi ?', 'Ce dont tu as envie ?'. Draw out ce dont, le temps, avoir le temps, être sûr de, discuter de and profiter de. Compare the three: ce qui (subject), ce que (object), ce dont (with de). Recast 'ce que j'ai besoin' into 'ce dont j'ai besoin', and keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u3-l5",
+        "order": 5,
+        "canDoEn": "I can reflect on an experience, weaving the gérondif with ce qui, ce que, and ce dont.",
+        "canDoFr": "Je peux parler d'une expérience et de ce que je pense.",
+        "grammarTarget": "B2 capstone: reflecting on an experience — the gérondif (while/by/if) with ce qui, ce que, and ce dont together",
+        "teachEn": "Bring the unit together to reflect on an experience (une expérience). Use the gérondif to say HOW you did or learned something (en essayant, en continuant), WHEN (en arrivant), and under what condition (en finissant). Use the ce-relatives to point at ideas: 'Ce qui compte, c'est l'effort', 'Ce que je comprends, c'est que le français est important', 'Ce dont je suis fier, c'est mon succès.' New words: une expérience (an experience), réfléchir (to reflect — an -ir verb, used here in the dictionary form: il faut réfléchir), apprendre (to learn — j'apprends, like prendre), and une leçon (a lesson). Reflect out loud and keep it warm — you have reached B2!",
+        "teachFr": "Voici comment réfléchir à une expérience. J'apprends le français : c'est une belle expérience ! En essayant chaque jour et en continuant, je parle beaucoup mieux. Ce qui compte, c'est l'effort et le temps. Ce que je comprends, c'est que le français est important. Ce dont je suis fier, c'est mon succès ! En finissant chaque leçon, je suis content. Voilà ma leçon : il faut réfléchir, essayer et continuer !",
+        "vocab": [
+          {
+            "fr": "une expérience",
+            "en": "an experience (une belle expérience)"
+          },
+          {
+            "fr": "réfléchir",
+            "en": "to reflect, to think it over (il faut réfléchir)"
+          },
+          {
+            "fr": "apprendre",
+            "en": "to learn (j'apprends, like prendre)"
+          },
+          {
+            "fr": "en essayant",
+            "en": "while/by trying (gérondif of essayer)"
+          },
+          {
+            "fr": "en continuant",
+            "en": "while/by continuing (gérondif of continuer)"
+          },
+          {
+            "fr": "une leçon",
+            "en": "a lesson"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Réfléchir à une expérience",
+          "goalEn": "Reflect on an experience, weaving the gérondif with ce qui, ce que, ce dont",
+          "promptSeed": "Role-play reflecting together on learning French, or another experience — the B2 capstone. Model reflection that weaves the gérondif and the ce-relatives: 'En essayant chaque jour, je parle mieux', 'Ce qui compte, c'est l'effort', 'Ce que je comprends, c'est que le français est important', 'Ce dont je suis fier, c'est mon succès.' Then draw out the learner: 'Qu'est-ce que tu comprends ?', 'Ce dont tu es fier ?'. Weave in une expérience, réfléchir, apprendre, en essayant, en continuant and une leçon. Let the learner reflect freely, and celebrate reaching B2."
+        }
+      }
+    ]
+  }
+}

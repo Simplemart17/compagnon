@@ -50,13 +50,13 @@ describe("Story 19-1 — content integrity (CI gate)", () => {
   });
 
   it("spine totals are pinned (review R1 — the directory-walk let the prose vocab count drift)", () => {
-    // Slice 7: A1 (309) + A2 (231) + B1 complete (98 + 99 = 197) = 737
-    // across 18 units / 90 lessons. The aggregate is a tripwire so the
+    // Slice 8: A1 (309) + A2 (231) + B1 (197) + B2 Units 1-3 (93) = 830
+    // across 21 units / 105 lessons. The aggregate is a tripwire so the
     // CLAUDE.md/roadmap count can never silently diverge from the content.
-    expect(CURRICULUM_UNITS).toHaveLength(18);
-    expect(CURRICULUM_LESSONS).toHaveLength(90);
+    expect(CURRICULUM_UNITS).toHaveLength(21);
+    expect(CURRICULUM_LESSONS).toHaveLength(105);
     const totalVocab = CURRICULUM_LESSONS.reduce((n, l) => n + l.vocab.length, 0);
-    expect(totalVocab).toBe(737);
+    expect(totalVocab).toBe(830);
   });
 
   it("no vocab item is introduced in two different UNITS (cross-unit dedup — the schema only sees one file)", () => {
@@ -146,22 +146,24 @@ describe("Story 19-1 — position helpers", () => {
     expect(nextLesson("zz-u9-l1")).toBeUndefined();
   });
 
-  it("firstLessonAtLevel: A1/A2/B1 resolve to their level's first lesson by order; unshipped levels are undefined", () => {
+  it("firstLessonAtLevel: A1/A2/B1/B2 resolve to their level's first lesson by order; unshipped levels are undefined", () => {
     expect(firstLessonAtLevel("A1")?.id).toBe(first.id);
     expect(firstLessonAtLevel("A2")?.id).toBe("a2-u1-l1");
-    // Slice 6: B1 is now a shipped level.
     expect(firstLessonAtLevel("B1")?.id).toBe("b1-u1-l1");
+    // Slice 8: B2 is now a shipped level.
+    expect(firstLessonAtLevel("B2")?.id).toBe("b2-u1-l1");
     expect(firstLessonAtLevel("C2")).toBeUndefined();
   });
 
   it("entryLessonForLevel falls DOWN to the highest shipped level (placement above shipped content)", () => {
-    // Slice 6: A1 + A2 + B1 ship. Each shipped level enters at its own
-    // start; B2+ falls DOWN to B1 (the highest shipped level).
+    // Slice 8: A1 + A2 + B1 + B2 ship. Each shipped level enters at its
+    // own start; C1/C2 fall DOWN to B2 (the highest shipped level).
     expect(entryLessonForLevel("A1")?.id).toBe(first.id);
     expect(entryLessonForLevel("A2")?.id).toBe("a2-u1-l1");
     expect(entryLessonForLevel("B1")?.id).toBe("b1-u1-l1");
-    for (const level of ["B2", "C1", "C2"] as const) {
-      expect(entryLessonForLevel(level)?.id).toBe("b1-u1-l1");
+    expect(entryLessonForLevel("B2")?.id).toBe("b2-u1-l1");
+    for (const level of ["C1", "C2"] as const) {
+      expect(entryLessonForLevel(level)?.id).toBe("b2-u1-l1");
     }
   });
 });
