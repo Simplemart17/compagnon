@@ -126,9 +126,7 @@ export function ConversationCard({ onPress }: ConversationCardProps) {
           borderColor: Colors.accent50,
         }}
       >
-        <Text style={{ color: Colors.accentText }} className="text-base font-bold">
-          {"\u2192"}
-        </Text>
+        <Icon name="chevron-right" size={18} color={Colors.accent} />
       </View>
     </AnimatedPressable>
   );
@@ -245,7 +243,7 @@ export default function HomeScreen() {
               borderColor: Colors.accent30,
             }}
           >
-            <Text className="text-[15px]">{"\uD83D\uDD14"}</Text>
+            <Icon name="bell" size={16} color={Colors.accent} />
           </View>
         </View>
 
@@ -277,7 +275,7 @@ export default function HomeScreen() {
               style={{ backgroundColor: Colors.streak20 }}
               accessibilityLabel={`${progress.streakDays} day streak`}
             >
-              <Text className="text-xs">{"\uD83D\uDD25"}</Text>
+              <Icon name="zap" size={13} color={Colors.streak} />
               <Text className="text-xs font-bold" style={{ color: Colors.streak }}>
                 {progress.streakDays}j
               </Text>

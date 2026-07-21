@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { Colors } from "@/src/lib/design";
+import { Icon } from "@/src/components/common/Icon";
 
 const LAST_UPDATED = "March 1, 2026";
 
@@ -67,7 +68,10 @@ export default function AuthPrivacyPolicyScreen() {
           accessibilityLabel="Go back"
           className="min-h-[44px] min-w-[44px] justify-center"
         >
-          <Text className="text-base text-primary font-semibold">{"\u2190"} Back</Text>
+          <View className="flex-row items-center gap-1.5">
+            <Icon name="arrow-left" size={18} color={Colors.primary} />
+            <Text className="text-base text-primary font-semibold">Back</Text>
+          </View>
         </TouchableOpacity>
       </View>
 

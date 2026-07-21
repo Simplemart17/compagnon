@@ -25,6 +25,7 @@ import { CEFR_ORDER } from "@/src/types/cefr";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors, Radii } from "@/src/lib/design";
 import { ThemedDialog } from "@/src/components/common/ThemedDialog";
+import { Icon } from "@/src/components/common/Icon";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -364,7 +365,10 @@ export default function SettingsScreen() {
             accessibilityRole="button"
             accessibilityLabel="Go back to profile"
           >
-            <Text className="text-base font-bold text-primary">← Settings</Text>
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="arrow-left" size={18} color={Colors.primary} />
+              <Text className="text-base font-bold text-primary">Settings</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -698,9 +702,12 @@ export default function SettingsScreen() {
                       Companion needs notification access for streak and vocabulary reminders
                     </Text>
                   </View>
-                  <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
-                    Settings {"\u2192"}
-                  </Text>
+                  <View className="flex-row items-center gap-1">
+                    <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
+                      Settings
+                    </Text>
+                    <Icon name="chevron-right" size={14} color={Colors.accentText} />
+                  </View>
                 </TouchableOpacity>
               </>
             )}
@@ -844,9 +851,12 @@ export default function SettingsScreen() {
               style={{ minHeight: 44, justifyContent: "center" }}
             >
               <Text className="text-[15px] text-primary">Privacy policy</Text>
-              <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
-                View {"\u2192"}
-              </Text>
+              <View className="flex-row items-center gap-1">
+                <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
+                  View
+                </Text>
+                <Icon name="chevron-right" size={14} color={Colors.accentText} />
+              </View>
             </TouchableOpacity>
 
             <RowDivider />
@@ -860,9 +870,12 @@ export default function SettingsScreen() {
               style={{ minHeight: 44, justifyContent: "center" }}
             >
               <Text className="text-[15px] text-primary">Terms of service</Text>
-              <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
-                View {"\u2192"}
-              </Text>
+              <View className="flex-row items-center gap-1">
+                <Text style={{ color: Colors.accentText }} className="text-sm font-semibold">
+                  View
+                </Text>
+                <Icon name="chevron-right" size={14} color={Colors.accentText} />
+              </View>
             </TouchableOpacity>
           </SettingsCard>
         </ScrollView>

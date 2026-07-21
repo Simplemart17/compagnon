@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { Colors, Radii, Shadows, Typography, skillTint } from "@/src/lib/design";
+import { Icon } from "@/src/components/common/Icon";
 
 // Story 13-7: hoisted off the inner `<Pressable>` to remove the per-frame
 // `className`+`style` merge cost. The outer `<Animated.View style={entryStyle}>`
@@ -191,9 +192,7 @@ export const SkillCard = React.memo(function SkillCard({
           className="w-7 h-7 rounded-2xl justify-center items-center"
           style={{ backgroundColor: skillTint(accentColor, 0.09) }}
         >
-          <Text className="text-sm font-bold" style={{ color: accentColor }}>
-            {"\u2192"}
-          </Text>
+          <Icon name="chevron-right" size={16} color={accentColor} />
         </View>
       </Pressable>
     </Animated.View>

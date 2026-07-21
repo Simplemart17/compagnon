@@ -27,6 +27,7 @@ import {
 } from "@/src/lib/activity";
 import { MCQCard } from "@/src/components/practice/MCQCard";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { Icon } from "@/src/components/common/Icon";
 import { hapticLight } from "@/src/lib/haptics";
 import { ANALYTICS_EVENTS, scoreBand, trackEvent } from "@/src/lib/analytics";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
@@ -908,7 +909,11 @@ export default function MockTestSessionScreen() {
                     className="w-12 h-12 rounded-full justify-center items-center"
                     style={{ backgroundColor: Colors.accent }}
                   >
-                    <Text className="text-white text-xl">{audioPlayer.isPlaying ? "⏸" : "▶"}</Text>
+                    {audioPlayer.isPlaying ? (
+                      <Icon name="pause" size={20} color={Colors.surfaceWhite} />
+                    ) : (
+                      <Icon name="play" size={20} color={Colors.surfaceWhite} />
+                    )}
                   </TouchableOpacity>
                   <Text className="text-white text-[13px] flex-1">
                     Tap to {audioPlayer.isPlaying ? "pause" : "listen to the audio"}

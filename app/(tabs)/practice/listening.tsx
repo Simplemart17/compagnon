@@ -19,6 +19,7 @@ import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
 import { OfflineFallback } from "@/src/components/common/OfflineFallback";
+import { Icon } from "@/src/components/common/Icon";
 
 export default function ListeningScreen() {
   const router = useRouter();
@@ -205,9 +206,11 @@ export default function ListeningScreen() {
               backgroundColor: audioPlayer.isPlaying ? Colors.whiteAlpha30 : Colors.accent,
             }}
           >
-            <Text className="text-white text-2xl">
-              {audioPlayer.isPlaying ? "\u23F8" : "\u25B6"}
-            </Text>
+            {audioPlayer.isPlaying ? (
+              <Icon name="pause" size={24} color={Colors.surfaceWhite} />
+            ) : (
+              <Icon name="play" size={24} color={Colors.surfaceWhite} />
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity

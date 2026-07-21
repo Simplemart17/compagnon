@@ -26,6 +26,7 @@ import { useRouter } from "expo-router";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { OfflineFallback } from "@/src/components/common/OfflineFallback";
 import { NetworkBanner } from "@/src/components/common/NetworkBanner";
+import { Icon } from "@/src/components/common/Icon";
 import { useTranslation } from "@/src/hooks/use-translation";
 import type { TranslationSentenceResult } from "@/src/hooks/use-translation";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
@@ -233,7 +234,11 @@ function RecordingMicButton({
       }}
     >
       <Animated.View style={isRecording ? pulseStyle : undefined}>
-        <Text className="text-[28px]">{isRecording ? "\u23F9" : "\uD83C\uDF99\uFE0F"}</Text>
+        {isRecording ? (
+          <Icon name="square" size={28} color={Colors.surfaceWhite} />
+        ) : (
+          <Icon name="mic" size={28} color={Colors.surfaceWhite} />
+        )}
       </Animated.View>
     </TouchableOpacity>
   );
@@ -300,7 +305,9 @@ export default function TranslationPracticeScreen() {
           entering={FadeIn.duration(400)}
           className="flex-1 justify-center items-center p-6"
         >
-          <Text className="text-[64px] mb-4">{"\uD83C\uDF10"}</Text>
+          <View className="mb-4">
+            <Icon name="globe" size={64} color={Colors.skillTranslation} />
+          </View>
           <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
             Translation Practice
           </Text>
@@ -475,7 +482,7 @@ export default function TranslationPracticeScreen() {
                   accessibilityLabel="Playing audio"
                 />
               ) : (
-                <Text className="text-xl">{"\u25B6\uFE0F"}</Text>
+                <Icon name="play" size={18} color={Colors.surfaceWhite} />
               )}
               <Text
                 className="text-[15px] font-bold"
@@ -506,7 +513,11 @@ export default function TranslationPracticeScreen() {
                 minHeight: 44,
               }}
             >
-              <Text className="text-base">{"\uD83D\uDC22"}</Text>
+              <Icon
+                name="play"
+                size={16}
+                color={t.audioPlayer.isPlaying ? Colors.gray500 : Colors.primary}
+              />
               <Text
                 className="text-[15px] font-semibold"
                 style={{

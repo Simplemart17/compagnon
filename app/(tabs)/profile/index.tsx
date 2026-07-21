@@ -167,7 +167,7 @@ export default function ProfileScreen() {
               className="h-11 w-11 items-center justify-center rounded-full"
               style={{ backgroundColor: skillTint(Colors.surfaceWhite, 0.15) }}
             >
-              <Text className="text-lg">{"\u2699\uFE0F"}</Text>
+              <Icon name="settings" size={20} color={Colors.textOnDark} />
             </TouchableOpacity>
           </View>
 

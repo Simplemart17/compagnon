@@ -215,9 +215,12 @@ export default function ForgotPasswordScreen() {
               borderColor: Colors.gray200,
             }}
           >
-            <Text className="text-sm font-medium" style={{ color: Colors.textSecondary }}>
-              ← Back
-            </Text>
+            <View className="flex-row items-center justify-center gap-1.5">
+              <Icon name="arrow-left" size={16} color={Colors.textSecondary} />
+              <Text className="text-sm font-medium" style={{ color: Colors.textSecondary }}>
+                Back
+              </Text>
+            </View>
           </TouchableOpacity>
         </Reanimated.View>
       </KeyboardAvoidingView>

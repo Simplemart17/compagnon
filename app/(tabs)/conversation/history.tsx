@@ -39,6 +39,7 @@ import { Colors, Typography } from "@/src/lib/design";
 import { useDebounce } from "@/src/hooks/use-debounce";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { Icon } from "@/src/components/common/Icon";
 import type { CEFRLevel } from "@/src/types/cefr";
 
 // ---------------------------------------------------------------------------
@@ -865,7 +866,9 @@ export default function ConversationHistoryScreen() {
   if (conversations.length === 0) {
     return (
       <View className="flex-1 bg-surface justify-center items-center p-6">
-        <Text className="text-[64px] mb-4">{"\uD83D\uDCAC"}</Text>
+        <View className="mb-4">
+          <Icon name="message-circle" size={64} color={Colors.textTertiary} />
+        </View>
         <Text className="text-[22px] font-bold text-primary mb-2">Your conversations await!</Text>
         <Text className="text-sm text-center leading-5 mb-6" style={{ color: Colors.gray700 }}>
           Have your first chat with Companion{"\n"}and it will show up here for review.
@@ -951,9 +954,9 @@ export default function ConversationHistoryScreen() {
           className="flex-row items-center bg-white rounded-xl border border-surface-300 px-3"
           style={{ minHeight: 44 }}
         >
-          <Text className="text-base mr-2" style={{ color: Colors.textTertiary }}>
-            {"\uD83D\uDD0D"}
-          </Text>
+          <View className="mr-2">
+            <Icon name="search" size={16} color={Colors.textTertiary} />
+          </View>
           <TextInput
             style={{
               flex: 1,
@@ -988,16 +991,7 @@ export default function ConversationHistoryScreen() {
                 className="w-5 h-5 rounded-full justify-center items-center"
                 style={{ backgroundColor: Colors.gray400 }}
               >
-                <Text
-                  style={{
-                    fontSize: Typography.label.fontSize,
-                    color: Colors.surfaceWhite,
-                    fontWeight: "700",
-                    lineHeight: 13,
-                  }}
-                >
-                  {"\u2715"}
-                </Text>
+                <Icon name="x" size={13} color={Colors.surfaceWhite} />
               </View>
             </TouchableOpacity>
           )}
@@ -1007,9 +1001,9 @@ export default function ConversationHistoryScreen() {
       {/* Conversation list or "No results" */}
       {filteredConversations.length === 0 ? (
         <View className="flex-1 justify-center items-center p-6">
-          <Text className="text-base mb-1" style={{ color: Colors.textTertiary }}>
-            {"\uD83D\uDD0D"}
-          </Text>
+          <View className="mb-1">
+            <Icon name="search" size={20} color={Colors.textTertiary} />
+          </View>
           <Text className="text-base font-semibold mb-1" style={{ color: Colors.textSecondary }}>
             No results
           </Text>
@@ -1064,9 +1058,7 @@ export default function ConversationHistoryScreen() {
               accessibilityHint="Double tap to close the transcript and return to history"
               className="bg-surface-300 w-11 h-11 rounded-full justify-center items-center"
             >
-              <Text className="text-base font-bold" style={{ color: Colors.gray700 }}>
-                {"\u2715"}
-              </Text>
+              <Icon name="x" size={18} color={Colors.gray700} />
             </TouchableOpacity>
           </View>
 
@@ -1079,9 +1071,9 @@ export default function ConversationHistoryScreen() {
               className="flex-row items-center bg-white rounded-lg border border-surface-300 px-2.5"
               style={{ minHeight: 40 }}
             >
-              <Text className="text-sm mr-1.5" style={{ color: Colors.textTertiary }}>
-                {"\uD83D\uDD0D"}
-              </Text>
+              <View className="mr-1.5">
+                <Icon name="search" size={14} color={Colors.textTertiary} />
+              </View>
               <TextInput
                 style={{
                   flex: 1,
@@ -1130,15 +1122,11 @@ export default function ConversationHistoryScreen() {
                         transcriptMatches.length > 0 ? Colors.primary8 : Colors.gray200,
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: Typography.bodySecondary.fontSize,
-                        fontWeight: "700",
-                        color: transcriptMatches.length > 0 ? Colors.primary : Colors.gray400,
-                      }}
-                    >
-                      {"\u2303"}
-                    </Text>
+                    <Icon
+                      name="chevron-up"
+                      size={20}
+                      color={transcriptMatches.length > 0 ? Colors.primary : Colors.gray400}
+                    />
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -1157,16 +1145,11 @@ export default function ConversationHistoryScreen() {
                         transcriptMatches.length > 0 ? Colors.primary8 : Colors.gray200,
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: Typography.bodySecondary.fontSize,
-                        fontWeight: "700",
-                        color: transcriptMatches.length > 0 ? Colors.primary : Colors.gray400,
-                        transform: [{ rotate: "180deg" }],
-                      }}
-                    >
-                      {"\u2303"}
-                    </Text>
+                    <Icon
+                      name="chevron-down"
+                      size={20}
+                      color={transcriptMatches.length > 0 ? Colors.primary : Colors.gray400}
+                    />
                   </TouchableOpacity>
                 </View>
               )}
@@ -1191,16 +1174,7 @@ export default function ConversationHistoryScreen() {
                     className="w-[18px] h-[18px] rounded-full justify-center items-center"
                     style={{ backgroundColor: Colors.gray400 }}
                   >
-                    <Text
-                      style={{
-                        fontSize: Typography.tiny.fontSize,
-                        color: Colors.surfaceWhite,
-                        fontWeight: "700",
-                        lineHeight: 12,
-                      }}
-                    >
-                      {"\u2715"}
-                    </Text>
+                    <Icon name="x" size={12} color={Colors.surfaceWhite} />
                   </View>
                 </TouchableOpacity>
               )}
