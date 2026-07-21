@@ -364,7 +364,7 @@ export default function DictationScreen() {
               {latestResult.isFullyCorrect ? (
                 <Icon name="check-circle" size={28} color={SUCCESS} />
               ) : (
-                <Icon name="search" size={28} color={ACCENT} />
+                <Icon name="smile" size={28} color={ACCENT} />
               )}
             </View>
             <Text

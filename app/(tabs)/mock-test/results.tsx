@@ -154,12 +154,9 @@ export default function MockTestResultsScreen() {
               accessibilityLabel="Get phoneme-level pronunciation feedback in Pronunciation Practice"
               accessibilityHint="Opens the Pronunciation Practice screen"
             >
-              <View className="flex-row items-center gap-1 mt-1">
-                <Text className="text-xs font-semibold" style={{ color: Colors.accentText }}>
-                  Get pronunciation feedback in Pronunciation Practice
-                </Text>
-                <Icon name="chevron-right" size={14} color={Colors.accentText} />
-              </View>
+              <Text className="text-xs mt-1 font-semibold" style={{ color: Colors.accentText }}>
+                Get pronunciation feedback in Pronunciation Practice →
+              </Text>
             </TouchableOpacity>
           </View>
         )}

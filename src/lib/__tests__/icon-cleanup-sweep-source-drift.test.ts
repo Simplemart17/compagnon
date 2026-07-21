@@ -64,6 +64,14 @@ const FORBIDDEN: { label: string; literal: string; escape: RegExp }[] = [
   { label: "memo (📝)", literal: "📝", escape: /\\uD83D\\uDCDD/i },
   { label: "globe (🌐)", literal: "🌐", escape: /\\uD83C\\uDF10/i },
   { label: "white-check (✅)", literal: "✅", escape: /\\u2705/i },
+  // Review R1: chrome glyphs this PR also migrated — none are dual-use
+  // content (unlike → / 💬), so a regression re-adding them must fail too.
+  { label: "up-arrow (send / trend)", literal: "↑", escape: /\\u2191/i },
+  { label: "down-arrow (trend)", literal: "↓", escape: /\\u2193/i },
+  { label: "keyboard (⌨)", literal: "⌨", escape: /\\u2328/i },
+  { label: "warning (⚠)", literal: "⚠", escape: /\\u26A0/i },
+  { label: "left-pointing-angle (❮ back)", literal: "❮", escape: /\\u276E/i },
+  { label: "star-emoji (⭐)", literal: "⭐", escape: /\\u2B50/i },
 ];
 
 describe("icon-cleanup sweep — no raw chrome glyphs survive as source", () => {

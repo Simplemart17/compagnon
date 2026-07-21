@@ -58,6 +58,7 @@ function SessionComparisonInner({ metrics }: SessionComparisonProps) {
       {metrics.map((metric) => (
         <View
           key={metric.label}
+          accessible
           accessibilityLabel={`${metric.label}: changed from ${metric.previous} to ${metric.current}, ${metric.direction}`}
           style={{
             flexDirection: "row",

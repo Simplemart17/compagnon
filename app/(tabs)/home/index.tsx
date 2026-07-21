@@ -126,7 +126,7 @@ export function ConversationCard({ onPress }: ConversationCardProps) {
           borderColor: Colors.accent50,
         }}
       >
-        <Icon name="chevron-right" size={18} color={Colors.accentText} />
+        <Icon name="chevron-right" size={18} color={Colors.accent} />
       </View>
     </AnimatedPressable>
   );

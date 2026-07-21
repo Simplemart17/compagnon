@@ -143,7 +143,7 @@ export default function GrammarScreen() {
               {allCorrect ? (
                 <Icon name="check-circle" size={64} color={Colors.success} />
               ) : (
-                <Icon name="zap" size={64} color={Colors.accent} />
+                <Icon name="smile" size={64} color={Colors.accent} />
               )}
             </View>
             <Text className="text-[22px] font-bold text-primary mb-2">
