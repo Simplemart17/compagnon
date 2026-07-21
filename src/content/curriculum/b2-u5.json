@@ -128,7 +128,7 @@
         "conversationScenario": {
           "titleFr": "Ici, on parle français",
           "goalEn": "Choose between the passive and 'on' for a neutral tone",
-          "promptSeed": "Role-play describing how things are done in your town or country. Model both options: passive 'Le français est parlé au Québec', 'Des produits locaux sont vendus ici', and the active 'on': 'Ici, on parle français', 'Ici, on vend des produits locaux.' Then elicit them: 'Chez toi, on parle quelle langue ?', 'Qu'est-ce qu'on vend dans ton quartier ?'. Draw out on, on parle, transformer, une phrase, formel and objectif. Practise turning an active sentence into a passive one, and note the neutral, formal tone. Keep utterances short."
+          "promptSeed": "Role-play describing how things are done in your town or country. Model both options: passive 'Le français est parlé au Québec', 'Des produits sont vendus ici', and the active 'on': 'Ici, on parle français', 'Ici, on vend des produits.' Then elicit them: 'Chez toi, on parle quelle langue ?', 'Qu'est-ce qu'on vend dans ton quartier ?'. Draw out on, on parle, transformer, une phrase, formel and objectif. Practise turning an active sentence into a passive one, and note the neutral, formal tone. Keep utterances short."
         }
       },
       {
