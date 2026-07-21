@@ -56,12 +56,24 @@ describe("Story 19-4 — itemBankFileSchema", () => {
     expect(itemBankFileSchema.safeParse(bank(tooMany)).success).toBe(false);
   });
 
-  it("rejects a malformed lessonId", () => {
+  it("rejects a malformed lessonId (wrong shape + char-class boundaries — review R1)", () => {
+    // Wrong shape.
     expect(itemBankFileSchema.safeParse(bank(validItems, { lessonId: "lesson-1" })).success).toBe(
       false
     );
     expect(itemBankFileSchema.safeParse(bank(validItems, { lessonId: "a1-u1" })).success).toBe(
       false
+    );
+    // Char-class near-misses: first char outside [a-c], and the [12] boundary.
+    expect(itemBankFileSchema.safeParse(bank(validItems, { lessonId: "d1-u1-l1" })).success).toBe(
+      false
+    );
+    expect(itemBankFileSchema.safeParse(bank(validItems, { lessonId: "a3-u1-l1" })).success).toBe(
+      false
+    );
+    // A well-formed id (b2-…) is accepted so the reject cases aren't vacuous.
+    expect(itemBankFileSchema.safeParse(bank(validItems, { lessonId: "b2-u3-l5" })).success).toBe(
+      true
     );
   });
 

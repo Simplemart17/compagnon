@@ -71,6 +71,13 @@ export function useLessonDrill(lesson: CurriculumLesson | undefined): UseLessonD
   // shows fresh questions before the bank cycles. Session-scoped (a fresh
   // mount restarts at 0).
   const drillRoundRef = useRef(0);
+  // Review R1: reset the rotation when the lesson changes so a hook instance
+  // reused across lessons (a future same-route swap) opens the new lesson at
+  // round 0, not mid-rotation. (The player mounts fresh per lesson today, so
+  // this is defensive.)
+  useEffect(() => {
+    drillRoundRef.current = 0;
+  }, [lesson?.id]);
 
   // Review R1: the lesson's CEFR level comes from its UNIT — hardcoding
   // "A1" would mislabel every post-A1 drill (prompt difficulty AND the

@@ -42,6 +42,7 @@ import { act } from "react-test-renderer";
 
 import { useLessonDrill, type UseLessonDrillReturn } from "@/src/hooks/use-lesson-drill";
 import { getLesson, getUnitForLesson } from "@/src/lib/curriculum";
+import { getItemBank } from "@/src/lib/item-bank";
 import { captureError } from "@/src/lib/sentry";
 import { trackEvent } from "@/src/lib/analytics";
 import { mountWithAct, registerMountCleanup } from "@/src/test-utils/react-test-renderer";
@@ -50,9 +51,19 @@ registerMountCleanup();
 
 // Story 19-4: fixture on an UN-banked lesson so generate() takes the live-AI
 // fallback path (a1-u1-* now ship curated banks).
-const maybeLesson = getLesson("a1-u2-l1");
+const AI_FIXTURE_ID = "a1-u2-l1";
+const maybeLesson = getLesson(AI_FIXTURE_ID);
 if (!maybeLesson) {
-  throw new Error('Stale test fixture: curriculum lesson "a1-u2-l1" no longer exists');
+  throw new Error(`Stale test fixture: curriculum lesson "${AI_FIXTURE_ID}" no longer exists`);
+}
+// Review R1: fail LOUD if a future 19.4 slice banks this fixture — otherwise
+// generate() would silently take the bank path and this whole suite would
+// stop exercising the live-AI branch (with confusing scoring errors, not a
+// clear "you banked the fixture"). Mirrors the banked suite's premise guard.
+if (getItemBank(AI_FIXTURE_ID)) {
+  throw new Error(
+    `Fixture "${AI_FIXTURE_ID}" now ships an item bank — this AI-path suite needs an UN-banked lesson; pick another.`
+  );
 }
 const LESSON = maybeLesson;
 

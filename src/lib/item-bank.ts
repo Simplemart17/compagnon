@@ -20,6 +20,21 @@ import a1u1l4 from "@/src/content/item-banks/a1-u1-l4.json";
 import a1u1l5 from "@/src/content/item-banks/a1-u1-l5.json";
 import { type DrillItem, type ItemBankFile, itemBankFileSchema } from "@/src/lib/schemas/item-bank";
 
+/**
+ * Deep-freeze a parsed bank so `selectDrillItems`, which returns references
+ * to these module-singleton item objects, cannot leak a mutable handle to
+ * shared state — a future in-place mutation (option shuffle, tagging) would
+ * otherwise corrupt the bank for every subsequent round and mount (review R1;
+ * the 13-7 R1-P2 frozen-content discipline).
+ */
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const v of Object.values(value)) deepFreeze(v);
+  }
+  return value;
+}
+
 function parseBankFile(raw: unknown, sourceName: string): ItemBankFile {
   const result = itemBankFileSchema.safeParse(raw);
   if (!result.success) {
@@ -34,7 +49,7 @@ function parseBankFile(raw: unknown, sourceName: string): ItemBankFile {
       `Item-bank file ${sourceName} has mismatched lessonId "${result.data.lessonId}"`
     );
   }
-  return result.data;
+  return deepFreeze(result.data);
 }
 
 /** All shipped item banks, keyed by lessonId. */
