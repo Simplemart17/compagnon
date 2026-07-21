@@ -1,0 +1,216 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b2-u4",
+    "level": "B2",
+    "order": 4,
+    "titleEn": "I Would Have Liked…",
+    "titleFr": "J'aurais aimé…",
+    "lessons": [
+      {
+        "id": "b2-u4-l1",
+        "order": 1,
+        "canDoEn": "I can say what I would have done, using the past conditional.",
+        "canDoFr": "Je peux dire ce que j'aurais fait.",
+        "grammarTarget": "Conditionnel passé: conditionnel présent of avoir/être + past participle; être-verbs agree with the subject (je serais allé / allée)",
+        "teachEn": "The conditionnel passé means WOULD HAVE, and it reuses two things you already know. Take the conditionnel présent of avoir or être (B1 Unit 2: j'aurais, tu aurais, il aurait; je serais, tu serais, il serait) and add a past participle: 'j'aurais fait', 'j'aurais mangé', 'j'aurais voulu partir.' Verbs that build the passé composé with avoir take avoir here too, and the participle does NOT change: 'elle aurait fait.' The small family of movement verbs (aller, partir, venir, rester…) takes être, and — exactly like the passé composé and the plus-que-parfait — the participle AGREES with the subject: 'je serais allé' (a man) or 'je serais allée' (a woman), 'nous serions allés', 'tu serais parti.' So the recipe is simple: conditionnel of avoir or être + a participle.",
+        "teachFr": "Le conditionnel passé, c'est « aurais » ou « serais » + un participe passé. Tu connais déjà « j'aurais » et « je serais » (B1). Avec « avoir » : j'aurais fait, j'aurais mangé, elle aurait voulu partir — le participe ne change pas. Avec « être » (aller, partir, venir, rester…), le participe s'accorde avec le sujet, comme au passé composé : je serais allé ou je serais allée, nous serions allés. C'est le temps de l'imagination au passé !",
+        "vocab": [
+          {
+            "fr": "j'aurais fait",
+            "en": "I would have done/made (conditionnel of avoir + the participle fait)"
+          },
+          {
+            "fr": "il aurait fait / elle aurait fait",
+            "en": "he/she would have done (avoir-verb; the participle does not agree)"
+          },
+          {
+            "fr": "j'aurais mangé",
+            "en": "I would have eaten (avoir + a regular -er participle)"
+          },
+          {
+            "fr": "j'aurais voulu",
+            "en": "I would have wanted (aurais + voulu, the participle of vouloir)"
+          },
+          {
+            "fr": "je serais allé / je serais allée",
+            "en": "I would have gone (with être; the participle agrees with the subject)"
+          },
+          {
+            "fr": "je serais parti / je serais partie",
+            "en": "I would have left (être-verb; agrees with the subject)"
+          },
+          {
+            "fr": "nous serions allés",
+            "en": "we would have gone (être; plural agreement)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Moi, j'aurais fait ça",
+          "goalEn": "Say what you would have done, using the past conditional",
+          "promptSeed": "Role-play daydreaming about a different past. Model the conditionnel passé: 'Avec plus de temps, j'aurais fait un grand voyage', 'J'aurais voulu apprendre le piano', 'Je serais allé à Montréal.' Then elicit it: 'Qu'est-ce que tu aurais fait ?', 'Tu serais allé où ?'. Draw out j'aurais mangé, elle aurait fait, and the être forms with agreement — je serais allé / allée, je serais parti / partie, nous serions allés. Only être-verbs agree with the subject. Recast a plain 'je ferais' into 'j'aurais fait'."
+        }
+      },
+      {
+        "id": "b2-u4-l2",
+        "order": 2,
+        "canDoEn": "I can talk about past hypotheses with 'if I had…' sentences.",
+        "canDoFr": "Je peux dire ce que j'aurais fait si j'avais eu le temps.",
+        "grammarTarget": "Past hypotheticals: si + plus-que-parfait, conditionnel passé (never the conditional after si); either clause may come first",
+        "teachEn": "Now the great past hypothesis: 'If I HAD…, I WOULD HAVE…'. French pairs si + the plus-que-parfait (B1 Unit 4: avais or étais + participle) with the conditionnel passé (Lesson 1): 'Si j'avais travaillé, j'aurais réussi', 'Si tu étais venu, tu aurais aimé la fête.' The si-clause takes the plus-que-parfait (avais eu, étais resté); the result takes the conditionnel passé (aurais gagné, serais parti). Either half can come first: 'J'aurais réussi si j'avais travaillé.' The firm rule you already know from B1 holds: NEVER a conditional after si — say 'si j'avais', never 'si j'aurais'. And si + il becomes s'il ('s'il était venu'). Use it to look back with regret or relief: 'Si nous étions restés, nous aurions mangé ensemble.'",
+        "teachFr": "Voici la grande hypothèse du passé : « Si j'avais…, j'aurais… ». La règle : « si » + le plus-que-parfait (B1 : avais ou étais + participe), puis le conditionnel passé : si j'avais travaillé, j'aurais réussi ; si tu étais venu, tu aurais aimé la fête. La partie « si » prend le plus-que-parfait ; le résultat prend le conditionnel passé. Comme en B1, jamais de conditionnel après « si » : « si j'avais », pas « si j'aurais ». Je regrette un peu : si nous étions restés, nous aurions mangé ensemble ! C'était ma décision, mon résultat.",
+        "vocab": [
+          {
+            "fr": "j'aurais réussi",
+            "en": "I would have succeeded (réussir → réussi, like finir → fini)"
+          },
+          {
+            "fr": "j'aurais gagné",
+            "en": "I would have won, I would have earned (gagner → gagné)"
+          },
+          {
+            "fr": "tu serais venu / tu serais venue",
+            "en": "you would have come (conditionnel passé with être; venir → venu)"
+          },
+          {
+            "fr": "une décision",
+            "en": "a decision (prendre une décision)"
+          },
+          {
+            "fr": "un résultat",
+            "en": "a result, an outcome (le résultat d'un choix)"
+          },
+          {
+            "fr": "regretter",
+            "en": "to regret (je regrette; a regular -er verb)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Si j'avais travaillé…",
+          "goalEn": "Talk about past hypotheses with 'if I had…' sentences",
+          "promptSeed": "Role-play looking back on choices with 'if I had…'. Model past hypotheses: 'Si j'avais travaillé plus, j'aurais réussi', 'Si tu étais venu, tu aurais aimé la fête', 'Si j'avais eu de l'argent, j'aurais voyagé.' Then elicit them: 'Qu'est-ce que tu aurais fait si tu avais eu le temps ?'. Draw out j'aurais réussi, j'aurais gagné, tu serais venu, une décision, un résultat and regretter. Keep the plus-que-parfait after si and the conditionnel passé in the result; recast 'si j'aurais' into 'si j'avais'. Keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u4-l3",
+        "order": 3,
+        "canDoEn": "I can express regret and say what I should have done.",
+        "canDoFr": "Je peux dire un regret : j'aurais dû faire ça.",
+        "grammarTarget": "Regret and reproach: j'aurais dû + infinitive (should have), j'aurais pu + infinitive (could have); the participles dû and pu",
+        "teachEn": "To express regret or a gentle reproach, use the conditionnel passé of devoir and pouvoir + an infinitive. 'j'aurais dû' means 'I should have' — dû is the past participle of devoir (you know je devrais, 'I should'; here j'aurais dû, 'I should have'): 'j'aurais dû partir plus tôt', 'j'aurais dû dormir.' 'j'aurais pu' means 'I could have' — pu is the participle of pouvoir: 'j'aurais pu venir', 'j'aurais pu t'aider.' The infinitive after them never changes. Reproach a friend kindly with tu: 'tu aurais dû faire attention', 'tu aurais pu me téléphoner.' Talk about the past with une erreur (a mistake) and un regret (a regret): 'C'était une erreur ; maintenant, j'ai un regret.'",
+        "teachFr": "Pour exprimer un regret ou un petit reproche, utilise le conditionnel passé de « devoir » et « pouvoir » + un infinitif. « J'aurais dû » (dû = le participe de devoir) : j'aurais dû partir plus tôt, j'aurais dû dormir. « J'aurais pu » (pu = le participe de pouvoir) : j'aurais pu venir, j'aurais pu t'aider. L'infinitif ne change pas. Avec « tu », c'est un reproche gentil : tu aurais dû faire attention, tu aurais pu me téléphoner. C'était une erreur, et maintenant j'ai un regret !",
+        "vocab": [
+          {
+            "fr": "j'aurais dû",
+            "en": "I should have (+ infinitive; dû = the participle of devoir)"
+          },
+          {
+            "fr": "tu aurais dû",
+            "en": "you should have (a gentle reproach: tu aurais dû dormir)"
+          },
+          {
+            "fr": "j'aurais pu",
+            "en": "I could have (+ infinitive; pu = the participle of pouvoir)"
+          },
+          {
+            "fr": "tu aurais pu",
+            "en": "you could have (tu aurais pu me téléphoner)"
+          },
+          {
+            "fr": "une erreur",
+            "en": "a mistake, an error (faire une erreur)"
+          },
+          {
+            "fr": "un regret",
+            "en": "a regret (avoir un regret)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "J'aurais dû écouter",
+          "goalEn": "Express regret and say what you should have done",
+          "promptSeed": "Role-play two friends looking back with a few regrets. Model regret and reproach: 'J'aurais dû partir plus tôt', 'J'aurais pu venir, mais j'ai travaillé', 'Tu aurais dû dormir !'. Then elicit them: 'Qu'est-ce que tu aurais dû faire ?', 'Tu aurais pu faire autre chose ?'. Draw out j'aurais dû, tu aurais dû, j'aurais pu, tu aurais pu, une erreur and un regret. Keep the infinitive after dû and pu unchanged, and recast a bare conditional ('je devrais partir') into the past ('j'aurais dû partir')."
+        }
+      },
+      {
+        "id": "b2-u4-l4",
+        "order": 4,
+        "canDoEn": "I can tell apart the three kinds of 'if' sentence.",
+        "canDoFr": "Je peux choisir le bon « si » pour chaque idée.",
+        "grammarTarget": "The three si-clauses contrasted: si + présent → futur; si + imparfait → conditionnel présent; si + plus-que-parfait → conditionnel passé",
+        "teachEn": "French has three kinds of 'if' sentence, and only the tense changes. (1) REAL condition — si + present → future: 'Si tu es libre, nous mangerons ensemble.' (2) UNREAL present — si + imparfait → conditionnel présent (B1 Unit 2): 'Si tu étais libre, nous mangerions ensemble.' (3) UNREAL past — si + plus-que-parfait → conditionnel passé (Lessons 1-2): 'Si tu avais été libre, nous aurions mangé ensemble.' Watch the same idea move from real, to imagined-now, to imagined-in-the-past. Words to talk about it: réel (real), impossible, une condition, and le passé. Looking back, you might do things différemment (differently) or changer d'avis (change your mind).",
+        "teachFr": "Il y a trois sortes de phrases avec « si », et seul le temps change. (1) Réel : si + présent → futur — si tu es libre, nous mangerons ensemble. (2) Imaginaire au présent : si + imparfait → conditionnel présent — si tu étais libre, nous mangerions ensemble. (3) Imaginaire au passé : si + plus-que-parfait → conditionnel passé — si tu avais été libre, nous aurions mangé ensemble. La même idée devient réelle, puis imaginaire, puis impossible dans le passé. Aujourd'hui, je ferais peut-être les choses différemment. Est-ce une condition réelle ou impossible ? Le passé ne change pas, mais je peux changer d'avis !",
+        "vocab": [
+          {
+            "fr": "impossible",
+            "en": "impossible (c'est impossible)"
+          },
+          {
+            "fr": "réel / réelle",
+            "en": "real (une condition réelle)"
+          },
+          {
+            "fr": "le passé",
+            "en": "the past (parler du passé)"
+          },
+          {
+            "fr": "changer d'avis",
+            "en": "to change one's mind (j'ai changé d'avis)"
+          },
+          {
+            "fr": "une condition",
+            "en": "a condition (à une condition)"
+          },
+          {
+            "fr": "différemment",
+            "en": "differently (from différent + -emment)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Les trois « si »",
+          "goalEn": "Tell apart the three kinds of 'if' sentence",
+          "promptSeed": "Role-play a playful 'what if' game moving through time. Model the same idea in the three si-forms: 'Si tu es libre, nous mangerons ensemble' (real), 'Si tu étais libre, nous mangerions ensemble' (imagined now), 'Si tu avais été libre, nous aurions mangé ensemble' (imagined in the past). Then elicit each: 'Si tu gagnes, tu feras quoi ?', 'Si tu gagnais ?', 'Si tu avais gagné ?'. Draw out réel, impossible, une condition, le passé, changer d'avis and différemment. Recast a conditional after si; keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u4-l5",
+        "order": 5,
+        "canDoEn": "I can reflect on my past choices and what I would change.",
+        "canDoFr": "Je peux parler de mes choix et de mon parcours.",
+        "grammarTarget": "B2 review: reflecting on past choices — conditionnel passé, past si-clauses, and j'aurais dû / j'aurais pu together",
+        "teachEn": "Bring the unit together to reflect on the choices you have made. Look back with the conditionnel passé and the past 'if': 'Si j'avais habité une autre ville, ma vie aurait été différente.' Express regret or acceptance with j'aurais dû and j'aurais pu, then move forward. New words for reflection: évoluer (to grow, to evolve), une étape (a step, a stage), un parcours (a path, a journey), and assumer (to own, to take responsibility for a choice). Stay warm and honest: 'Au fond, j'assume mes choix', 'Malgré tout, je suis content de mon parcours.' Every étape teaches you something — you have reached the end of B2!",
+        "teachFr": "Voici comment réfléchir à ses choix. Regarde en arrière avec le conditionnel passé et le « si » du passé : si j'avais habité une autre ville, ma vie aurait été différente. Dis un regret avec « j'aurais dû » ou « j'aurais pu », puis avance ! De nouveaux mots pour réfléchir : évoluer, une étape, un parcours, assumer. Reste honnête : au fond, j'assume mes choix ; malgré tout, je suis content de mon parcours. J'ai beaucoup évolué, et chaque étape m'apprend quelque chose. Bravo : voici la fin du B2 !",
+        "vocab": [
+          {
+            "fr": "évoluer",
+            "en": "to grow, to evolve (j'ai beaucoup évolué)"
+          },
+          {
+            "fr": "une étape",
+            "en": "a step, a stage (une étape importante de la vie)"
+          },
+          {
+            "fr": "un parcours",
+            "en": "a path, a journey (mon parcours)"
+          },
+          {
+            "fr": "assumer",
+            "en": "to own, to take responsibility for (j'assume mes choix)"
+          },
+          {
+            "fr": "malgré tout",
+            "en": "despite everything (malgré tout, je suis content)"
+          },
+          {
+            "fr": "au fond",
+            "en": "deep down, basically (au fond, c'est une bonne chose)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Mon parcours",
+          "goalEn": "Reflect on your past choices and what you would change",
+          "promptSeed": "Role-play a warm, reflective chat about the paths you have taken — the B2 finale. Model reflection weaving the unit: 'Si j'avais habité une autre ville, ma vie aurait été différente', 'J'aurais dû voyager plus, mais au fond, j'assume mes choix', 'Malgré tout, je suis content de mon parcours.' Then draw out the learner: 'Qu'est-ce que tu aurais fait différemment ?', 'Tu regrettes une décision ?'. Weave in évoluer, une étape, un parcours and assumer. Let the learner reflect freely, and celebrate reaching the end of B2."
+        }
+      }
+    ]
+  }
+}

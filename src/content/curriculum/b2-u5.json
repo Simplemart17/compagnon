@@ -1,0 +1,216 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b2-u5",
+    "level": "B2",
+    "order": 5,
+    "titleEn": "It's Well Known",
+    "titleFr": "C'est bien connu",
+    "lessons": [
+      {
+        "id": "b2-u5-l1",
+        "order": 1,
+        "canDoEn": "I can say that something is done, using the passive voice.",
+        "canDoFr": "Je peux dire qu'une chose est faite par une personne.",
+        "grammarTarget": "Passive voice: être + past participle, agreeing with the subject; the agent (the doer) is introduced by par",
+        "teachEn": "The passive voice describes a thing by what is DONE to it, using être + a past participle. The participle agrees with the SUBJECT, exactly like an adjective: 'Le souper est préparé par mon père' (masculine), 'La salade est préparée par ma mère' (feminine), 'Les desserts sont préparés' (plural). Compare active and passive: active 'Mon frère prend la photo' becomes passive 'La photo est prise par mon frère.' To name the doer, use par (by): 'Ce livre est adoré par les étudiants.' You already know many participles (fait, pris, préparé, aimé), and they all work here. New words: un produit (a product), un auteur / une auteure (an author), and la voix passive itself.",
+        "teachFr": "La voix passive décrit une chose par l'action, avec « être » + un participe passé. Le participe s'accorde avec le SUJET, comme un adjectif : le souper est préparé par mon père ; la salade est préparée par ma mère ; les desserts sont préparés. Compare : « Mon frère prend la photo » (actif) devient « La photo est prise par mon frère » (passif). Pour dire qui fait l'action, utilise « par » : ce livre est adoré par les étudiants. Ce produit est fait ici, et cette auteure est canadienne !",
+        "vocab": [
+          {
+            "fr": "est préparé / est préparée",
+            "en": "is prepared (passive: être + a participle, agreeing with the subject)"
+          },
+          {
+            "fr": "est fait / est faite",
+            "en": "is made, is done (passive of faire)"
+          },
+          {
+            "fr": "est pris / est prise",
+            "en": "is taken (passive of prendre)"
+          },
+          {
+            "fr": "par",
+            "en": "by (marks the doer in the passive: préparé par ma mère)"
+          },
+          {
+            "fr": "la voix passive",
+            "en": "the passive voice"
+          },
+          {
+            "fr": "un produit",
+            "en": "a product (un produit local)"
+          },
+          {
+            "fr": "un auteur / une auteure",
+            "en": "an author (Canadian feminine: une auteure)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Fait par qui ?",
+          "goalEn": "Say that something is done, using the passive voice",
+          "promptSeed": "Role-play chatting about who does what at home and around town. Model the passive with agreement — 'Le souper est préparé par mon père', 'La salade est préparée par ma mère', 'La photo est prise par mon frère' — then elicit it: 'Le souper est préparé par qui chez toi ?', 'Ce livre est adoré par les étudiants ?'. Draw out est préparé / préparée, est fait / faite, est pris / prise, par, un produit and un auteur / une auteure. Keep the participle agreeing with the subject, and recast an active sentence into the passive."
+        }
+      },
+      {
+        "id": "b2-u5-l2",
+        "order": 2,
+        "canDoEn": "I can use the passive in the past, present, and future.",
+        "canDoFr": "Je peux dire ce qui est fait, a été fait et sera fait.",
+        "grammarTarget": "The passive across tenses: present (est fait), passé composé (a été fait), futur (sera fait), imparfait (était fait)",
+        "teachEn": "The passive works in every tense — just change the tense of être and keep the participle. Present: 'Le souper est préparé.' Passé composé: use a été (the passé composé of être) — 'Ce travail a été fait ce matin.' Future: use sera (the future of être) — 'Tout sera fait demain.' Imperfect: use était — 'Le pain était fait à la maison.' The participle still agrees with the subject: 'La maison a été vendue', 'Les livres seront vendus.' New verbs: vendre (to sell — je vends, il vend; participle vendu) and fabriquer (to manufacture): 'Ce produit est fabriqué au Canada.'",
+        "teachFr": "Le passif marche à tous les temps : change seulement le temps de « être ». Présent : le souper est préparé. Passé composé : « a été » — ce travail a été fait ce matin. Futur : « sera » — tout sera fait demain. Imparfait : « était » — le pain était fait à la maison. Le participe s'accorde toujours : la maison a été vendue, les livres seront vendus. « Vendre » donne le participe « vendu », et « fabriquer » : ce produit est fabriqué au Canada !",
+        "vocab": [
+          {
+            "fr": "a été fait / a été faite",
+            "en": "was made, was done (passé composé passive: a été + participle)"
+          },
+          {
+            "fr": "sera fait",
+            "en": "will be made/done (future passive: sera + participle)"
+          },
+          {
+            "fr": "était fait",
+            "en": "was made / used to be made (imperfect passive: était + participle)"
+          },
+          {
+            "fr": "vendre",
+            "en": "to sell (je vends, tu vends, il vend; participle vendu)"
+          },
+          {
+            "fr": "vendu / vendue",
+            "en": "sold (passive: est vendu; participle of vendre)"
+          },
+          {
+            "fr": "fabriquer",
+            "en": "to manufacture, to make (fabriquer un produit)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ça a été fait",
+          "goalEn": "Use the passive in the past, present, and future",
+          "promptSeed": "Role-play talking about a house, a shop, or a project across time. Model the passive in four tenses: 'Le souper est préparé' (present), 'Ce travail a été fait hier' (past), 'Tout sera fait demain' (future), 'Le pain était fait à la maison' (imperfect). Then elicit them: 'Ce projet a été fait quand ?', 'Ce sera fait demain ?'. Draw out a été fait, sera fait, était fait, vendre, vendu / vendue and fabriquer ('Ce produit est fabriqué au Canada'). Keep the participle agreeing with the subject; keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u5-l3",
+        "order": 3,
+        "canDoEn": "I can choose between the passive and 'on' for a neutral tone.",
+        "canDoFr": "Je peux transformer une phrase active en phrase passive.",
+        "grammarTarget": "Active ↔ passive transformation; on + il/elle form as the active alternative to an agentless passive",
+        "teachEn": "The passive is perfect when the doer is unknown or unimportant, or for a neutral, formal tone: 'Le français est parlé au Québec.' But French also loves a shorter alternative: on (one, people, we) + the il/elle verb form. So 'Le français est parlé ici' becomes 'Ici, on parle français', and 'Des produits sont vendus ici' becomes 'Ici, on vend des produits.' To turn an active sentence into a passive one, the object becomes the subject: 'Ma mère prépare le souper' becomes 'Le souper est préparé par ma mère.' Use the passive or on for an objectif, formel tone. New words: transformer (to transform) and une phrase (a sentence).",
+        "teachFr": "Le passif est utile pour un ton neutre et formel : le français est parlé au Québec. Le français aime aussi un petit mot très utile : « on » (les gens, nous), avec le verbe à la forme « il / elle ». « Le français est parlé ici » devient « ici, on parle français » ; « des produits sont vendus ici » devient « ici, on vend des produits ». Pour transformer une phrase active en phrase passive, l'objet devient le sujet : ma mère prépare le souper devient le souper est préparé par ma mère. C'est un ton objectif et formel.",
+        "vocab": [
+          {
+            "fr": "on",
+            "en": "one, people, we (a general subject; takes the il/elle form: on parle)"
+          },
+          {
+            "fr": "on parle",
+            "en": "people speak, one speaks (on + the il/elle form)"
+          },
+          {
+            "fr": "transformer",
+            "en": "to transform, to change (transformer une phrase)"
+          },
+          {
+            "fr": "une phrase",
+            "en": "a sentence (une phrase active ou passive)"
+          },
+          {
+            "fr": "formel / formelle",
+            "en": "formal (un texte formel)"
+          },
+          {
+            "fr": "objectif / objective",
+            "en": "objective, neutral (un ton objectif)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ici, on parle français",
+          "goalEn": "Choose between the passive and 'on' for a neutral tone",
+          "promptSeed": "Role-play describing how things are done in your town or country. Model both options: passive 'Le français est parlé au Québec', 'Des produits locaux sont vendus ici', and the active 'on': 'Ici, on parle français', 'Ici, on vend des produits locaux.' Then elicit them: 'Chez toi, on parle quelle langue ?', 'Qu'est-ce qu'on vend dans ton quartier ?'. Draw out on, on parle, transformer, une phrase, formel and objectif. Practise turning an active sentence into a passive one, and note the neutral, formal tone. Keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u5-l4",
+        "order": 4,
+        "canDoEn": "I can describe when things were built, founded, and used.",
+        "canDoFr": "Je peux dire quand une chose a été construite.",
+        "grammarTarget": "High-frequency passive participles: construit, fondé, utilisé, interdit, permis (+ connu), with subject agreement",
+        "teachEn": "Some past participles appear again and again in the passive — learn these high-frequency ones: construit (built, from construire), fondé (founded, from fonder), utilisé (used, from utiliser), interdit (forbidden), permis (allowed), plus connu (well-known), which you already know. They agree with the subject: 'Ce bâtiment a été construit en 1900', 'La ville de Montréal a été fondée en 1642', 'Le français est utilisé au travail', 'Ce musée est connu partout.' For signs and rules: 'Ici, c'est interdit ; là-bas, c'est permis.' New word: un bâtiment (a building).",
+        "teachFr": "Certains participes reviennent souvent au passif. Apprends-les : construit (de construire), fondé (de fonder), utilisé (de utiliser), interdit, permis, et connu, que tu connais déjà. Ils s'accordent avec le sujet : ce bâtiment a été construit en 1900 ; la ville de Montréal a été fondée en 1642 ; le français est utilisé au travail ; ce musée est connu partout. Pour les règles : ici, c'est interdit ; là-bas, c'est permis. Un « bâtiment », c'est par exemple un musée ou une école !",
+        "vocab": [
+          {
+            "fr": "construit / construite",
+            "en": "built (participle of construire, to build)"
+          },
+          {
+            "fr": "fondé / fondée",
+            "en": "founded (participle of fonder: la ville a été fondée)"
+          },
+          {
+            "fr": "utilisé / utilisée",
+            "en": "used (participle of utiliser, to use)"
+          },
+          {
+            "fr": "interdit / interdite",
+            "en": "forbidden (c'est interdit; participle of interdire)"
+          },
+          {
+            "fr": "permis / permise",
+            "en": "allowed, permitted (c'est permis)"
+          },
+          {
+            "fr": "un bâtiment",
+            "en": "a building (un vieux bâtiment)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "C'est construit quand ?",
+          "goalEn": "Describe when things were built, founded, and used",
+          "promptSeed": "Role-play a guided tour of an old neighbourhood. Model the high-frequency participles: 'Ce bâtiment a été construit en 1900', 'La ville a été fondée en 1642', 'Le français est utilisé partout ici', 'Ce musée est connu.' Then elicit them: 'Ce bâtiment a été construit quand ?', 'Ta ville a été fondée en quelle année ?'. Draw out construit, fondé, utilisé, interdit, permis and un bâtiment ('Ici, c'est interdit ; là-bas, c'est permis'). Keep the participle agreeing with the subject; keep utterances short."
+        }
+      },
+      {
+        "id": "b2-u5-l5",
+        "order": 5,
+        "canDoEn": "I can describe a product or a tradition in an objective way.",
+        "canDoFr": "Je peux décrire un produit ou une tradition d'ici.",
+        "grammarTarget": "B2 synthesis: describing a product, place, or tradition objectively with the passive and on",
+        "teachEn": "Now describe a place, a product, or a tradition objectively, using the passive across tenses and on. Take a Canadian icon: le sirop d'érable (maple syrup). 'Le sirop d'érable est produit au Québec' (produire → produit). Describe the process (un processus) with d'abord, ensuite, enfin: 'D'abord, le sirop est fait au printemps ; ensuite, il est vendu dans les magasins ; on l'utilise pour le déjeuner.' Call it what it is: un produit local, une tradition, quelque chose de traditionnel. 'Ce produit local est connu partout et il est adoré par les Canadiens !' Keep the tone neutral and factual.",
+        "teachFr": "Décris un endroit, un produit ou une tradition avec le passif et « on ». Prends une icône canadienne : le sirop d'érable. Le sirop d'érable est produit au Québec (produire → produit). Décris le processus avec d'abord, ensuite, enfin : d'abord, le sirop est fait au printemps ; ensuite, il est vendu dans les magasins ; on l'utilise pour le déjeuner. C'est un produit local et une tradition : quelque chose de traditionnel et de connu. Ce produit est adoré partout !",
+        "vocab": [
+          {
+            "fr": "un processus",
+            "en": "a process (décrire un processus)"
+          },
+          {
+            "fr": "une tradition",
+            "en": "a tradition (une tradition québécoise)"
+          },
+          {
+            "fr": "produire",
+            "en": "to produce (le sirop est produit ici; participle produit)"
+          },
+          {
+            "fr": "local / locale",
+            "en": "local (un produit local)"
+          },
+          {
+            "fr": "traditionnel / traditionnelle",
+            "en": "traditional (un plat traditionnel)"
+          },
+          {
+            "fr": "le sirop d'érable",
+            "en": "maple syrup (a Canadian icon)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Une tradition d'ici",
+          "goalEn": "Describe a product or a tradition in an objective way",
+          "promptSeed": "Role-play describing a local product or tradition to a visitor. Model an objective description: 'Le sirop d'érable est produit au Québec. D'abord, il est fait au printemps ; ensuite, il est vendu dans les magasins ; on l'utilise pour le déjeuner. C'est une tradition, et ce produit local est connu partout.' Then draw out the learner: 'Quel produit est fabriqué chez toi ?', 'C'est une tradition ?'. Weave in un processus, une tradition, produire, local, traditionnel and le sirop d'érable. Let the learner describe their own."
+        }
+      }
+    ]
+  }
+}
