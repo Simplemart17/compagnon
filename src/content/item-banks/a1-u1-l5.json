@@ -1,0 +1,96 @@
+{
+  "bankVersion": 1,
+  "lessonId": "a1-u1-l5",
+  "items": [
+    {
+      "question": "Est-ce que tu ___ français ? (Do you speak French?)",
+      "options": [
+        { "id": "a", "text": "parle", "isCorrect": false },
+        { "id": "b", "text": "parler", "isCorrect": false },
+        { "id": "c", "text": "parles", "isCorrect": true },
+        { "id": "d", "text": "es", "isCorrect": false }
+      ],
+      "explanation": "After est-ce que the word order stays normal, so use the tu form parles."
+    },
+    {
+      "question": "___ tu es canadien ? (question marker)",
+      "options": [
+        { "id": "a", "text": "Est-ce que", "isCorrect": true },
+        { "id": "b", "text": "Est-ce qui", "isCorrect": false },
+        { "id": "c", "text": "Qui", "isCorrect": false },
+        { "id": "d", "text": "Où", "isCorrect": false }
+      ],
+      "explanation": "Est-ce que goes at the front to turn a statement into a yes/no question."
+    },
+    {
+      "question": "Tu habites ___ ? (where)",
+      "options": [
+        { "id": "a", "text": "qui", "isCorrect": false },
+        { "id": "b", "text": "comment", "isCorrect": false },
+        { "id": "c", "text": "oui", "isCorrect": false },
+        { "id": "d", "text": "où", "isCorrect": true }
+      ],
+      "explanation": "Où is the question word for a place: tu habites où ?"
+    },
+    {
+      "question": "___ ça va ? (how)",
+      "options": [
+        { "id": "a", "text": "Où", "isCorrect": false },
+        { "id": "b", "text": "Comment", "isCorrect": true },
+        { "id": "c", "text": "Qui", "isCorrect": false },
+        { "id": "d", "text": "Combien", "isCorrect": false }
+      ],
+      "explanation": "Comment means how: comment ça va ?"
+    },
+    {
+      "question": "Marie, tu ___ vingt ans ? (Are you twenty?)",
+      "options": [
+        { "id": "a", "text": "as", "isCorrect": true },
+        { "id": "b", "text": "a", "isCorrect": false },
+        { "id": "c", "text": "ai", "isCorrect": false },
+        { "id": "d", "text": "es", "isCorrect": false }
+      ],
+      "explanation": "A statement becomes a question with a rising tone; age uses avoir: tu as vingt ans ?"
+    },
+    {
+      "question": "Est-ce que ___ habites à Montréal ? (you, informal)",
+      "options": [
+        { "id": "a", "text": "il", "isCorrect": false },
+        { "id": "b", "text": "je", "isCorrect": false },
+        { "id": "c", "text": "vous", "isCorrect": false },
+        { "id": "d", "text": "tu", "isCorrect": true }
+      ],
+      "explanation": "The verb form habites goes with tu: est-ce que tu habites."
+    },
+    {
+      "question": "___ est canadien ? (Who is Canadian?)",
+      "options": [
+        { "id": "a", "text": "Où", "isCorrect": false },
+        { "id": "b", "text": "Qui", "isCorrect": true },
+        { "id": "c", "text": "Comment", "isCorrect": false },
+        { "id": "d", "text": "Est-ce que", "isCorrect": false }
+      ],
+      "explanation": "Qui asks about a person and acts as the subject: qui est canadien ?"
+    },
+    {
+      "question": "Est-ce que tu ___ étudiant ? (Are you a student?)",
+      "options": [
+        { "id": "a", "text": "est", "isCorrect": false },
+        { "id": "b", "text": "suis", "isCorrect": false },
+        { "id": "c", "text": "es", "isCorrect": true },
+        { "id": "d", "text": "as", "isCorrect": false }
+      ],
+      "explanation": "Est-ce que keeps normal order, so use the tu form es: est-ce que tu es étudiant ?"
+    },
+    {
+      "question": "Pardon, tu ___ où ? (Where do you live?)",
+      "options": [
+        { "id": "a", "text": "habites", "isCorrect": true },
+        { "id": "b", "text": "habite", "isCorrect": false },
+        { "id": "c", "text": "habiter", "isCorrect": false },
+        { "id": "d", "text": "habitent", "isCorrect": false }
+      ],
+      "explanation": "In a simple question the verb keeps the tu form and où can come at the end: tu habites où ?"
+    }
+  ]
+}

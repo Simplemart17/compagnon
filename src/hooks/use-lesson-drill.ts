@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ANALYTICS_EVENTS, scoreBand, trackEvent } from "@/src/lib/analytics";
 import { getUnitForLesson } from "@/src/lib/curriculum";
+import { getItemBank, selectDrillItems } from "@/src/lib/item-bank";
 import { chatCompletionJSON } from "@/src/lib/openai";
 import { buildLessonDrillPrompt } from "@/src/lib/prompts/lesson-drill";
 import { lessonDrillSchema } from "@/src/lib/schemas/ai-responses";
@@ -25,6 +26,9 @@ import type { MCQContent } from "@/src/types/exercise";
  * discipline: every chatCompletionJSON call site sets an explicit
  * maxTokens; the maxtokens-audit drift test pins this value. */
 export const LESSON_DRILL_MAX_TOKENS = 900;
+
+/** Questions per drill round — matches `lessonDrillSchema.length(3)`. */
+export const DRILL_ITEM_COUNT = 3;
 
 export type LessonDrillState =
   | { kind: "idle" }
@@ -63,6 +67,17 @@ export function useLessonDrill(lesson: CurriculumLesson | undefined): UseLessonD
   );
   // Review R1: one analytics emission per drill ROUND (reset by generate).
   const completionTrackedRef = useRef(false);
+  // Story 19-4: rotates curated-bank items across rounds so each "New round"
+  // shows fresh questions before the bank cycles. Session-scoped (a fresh
+  // mount restarts at 0).
+  const drillRoundRef = useRef(0);
+  // Review R1: reset the rotation when the lesson changes so a hook instance
+  // reused across lessons (a future same-route swap) opens the new lesson at
+  // round 0, not mid-rotation. (The player mounts fresh per lesson today, so
+  // this is defensive.)
+  useEffect(() => {
+    drillRoundRef.current = 0;
+  }, [lesson?.id]);
 
   // Review R1: the lesson's CEFR level comes from its UNIT — hardcoding
   // "A1" would mislabel every post-A1 drill (prompt difficulty AND the
@@ -73,6 +88,27 @@ export function useLessonDrill(lesson: CurriculumLesson | undefined): UseLessonD
     if (!lesson || generatingRef.current) return;
     generatingRef.current = true;
     completionTrackedRef.current = false;
+
+    // Story 19-4: prefer the curated bank — serve pre-authored, reviewed
+    // items INSTANTLY (no AI call, no "generating" flash, zero cost/
+    // repetition). Rotate across rounds so "New round" is fresh. Only
+    // lessons without a bank fall through to live AI generation below.
+    const bank = getItemBank(lesson.id);
+    if (bank) {
+      const items = selectDrillItems(bank.items, DRILL_ITEM_COUNT, drillRoundRef.current);
+      drillRoundRef.current += 1;
+      generatingRef.current = false;
+      setState({
+        kind: "active",
+        questions: items,
+        index: 0,
+        selected: null,
+        showResult: false,
+        correctCount: 0,
+      });
+      return;
+    }
+
     setState({ kind: "generating" });
     try {
       const earlierVocabFr = getUnitForLesson(lesson.id)

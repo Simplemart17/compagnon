@@ -1,0 +1,96 @@
+{
+  "bankVersion": 1,
+  "lessonId": "a1-u1-l3",
+  "items": [
+    {
+      "question": "J'___ quinze ans.",
+      "options": [
+        { "id": "a", "text": "as", "isCorrect": false },
+        { "id": "b", "text": "a", "isCorrect": false },
+        { "id": "c", "text": "ai", "isCorrect": true },
+        { "id": "d", "text": "es", "isCorrect": false }
+      ],
+      "explanation": "With je, avoir becomes ai: j'ai."
+    },
+    {
+      "question": "Tu ___ dix ans ?",
+      "options": [
+        { "id": "a", "text": "as", "isCorrect": true },
+        { "id": "b", "text": "ai", "isCorrect": false },
+        { "id": "c", "text": "a", "isCorrect": false },
+        { "id": "d", "text": "es", "isCorrect": false }
+      ],
+      "explanation": "With tu, avoir becomes as: tu as."
+    },
+    {
+      "question": "Elle ___ douze ans.",
+      "options": [
+        { "id": "a", "text": "as", "isCorrect": false },
+        { "id": "b", "text": "ai", "isCorrect": false },
+        { "id": "c", "text": "est", "isCorrect": false },
+        { "id": "d", "text": "a", "isCorrect": true }
+      ],
+      "explanation": "With elle, avoir becomes a; age uses avoir, not être."
+    },
+    {
+      "question": "___ vingt ans. (I am twenty.)",
+      "options": [
+        { "id": "a", "text": "Je suis", "isCorrect": false },
+        { "id": "b", "text": "J'ai", "isCorrect": true },
+        { "id": "c", "text": "Je as", "isCorrect": false },
+        { "id": "d", "text": "Tu as", "isCorrect": false }
+      ],
+      "explanation": "French says age with avoir, not être: j'ai vingt ans, never je suis."
+    },
+    {
+      "question": "Quel âge ___ ? (asking you informally)",
+      "options": [
+        { "id": "a", "text": "es-tu", "isCorrect": false },
+        { "id": "b", "text": "a-tu", "isCorrect": false },
+        { "id": "c", "text": "as-je", "isCorrect": false },
+        { "id": "d", "text": "as-tu", "isCorrect": true }
+      ],
+      "explanation": "The age question uses avoir with tu: as-tu, with a hyphen."
+    },
+    {
+      "question": "Il ___ dix-huit ans.",
+      "options": [
+        { "id": "a", "text": "a", "isCorrect": true },
+        { "id": "b", "text": "as", "isCorrect": false },
+        { "id": "c", "text": "ai", "isCorrect": false },
+        { "id": "d", "text": "est", "isCorrect": false }
+      ],
+      "explanation": "With il, avoir becomes a; age takes avoir, not être."
+    },
+    {
+      "question": "___ dix ans. (He is ten.)",
+      "options": [
+        { "id": "a", "text": "Il est", "isCorrect": false },
+        { "id": "b", "text": "Il as", "isCorrect": false },
+        { "id": "c", "text": "Il a", "isCorrect": true },
+        { "id": "d", "text": "Elle a", "isCorrect": false }
+      ],
+      "explanation": "Age uses avoir: il a dix ans, never il est."
+    },
+    {
+      "question": "___ dix-sept ans. (I have seventeen years.)",
+      "options": [
+        { "id": "a", "text": "Je ai", "isCorrect": false },
+        { "id": "b", "text": "J'ai", "isCorrect": true },
+        { "id": "c", "text": "J'as", "isCorrect": false },
+        { "id": "d", "text": "Je as", "isCorrect": false }
+      ],
+      "explanation": "Je + ai elides to j'ai: j'ai dix-sept ans."
+    },
+    {
+      "question": "___ quinze ans. (She is fifteen.)",
+      "options": [
+        { "id": "a", "text": "Elle a", "isCorrect": true },
+        { "id": "b", "text": "Elle est", "isCorrect": false },
+        { "id": "c", "text": "Elle as", "isCorrect": false },
+        { "id": "d", "text": "Il a", "isCorrect": false }
+      ],
+      "explanation": "Use avoir for age: elle a quinze ans, not elle est."
+    }
+  ]
+}
