@@ -1,0 +1,96 @@
+{
+  "bankVersion": 1,
+  "lessonId": "a1-u1-l1",
+  "items": [
+    {
+      "question": "Je ___ Marie.",
+      "options": [
+        { "id": "a", "text": "es", "isCorrect": false },
+        { "id": "b", "text": "suis", "isCorrect": true },
+        { "id": "c", "text": "est", "isCorrect": false },
+        { "id": "d", "text": "être", "isCorrect": false }
+      ],
+      "explanation": "With the subject je, être takes the form suis: je suis."
+    },
+    {
+      "question": "Tu ___ Paul ?",
+      "options": [
+        { "id": "a", "text": "suis", "isCorrect": false },
+        { "id": "b", "text": "est", "isCorrect": false },
+        { "id": "c", "text": "être", "isCorrect": false },
+        { "id": "d", "text": "es", "isCorrect": true }
+      ],
+      "explanation": "With tu, être becomes es: tu es."
+    },
+    {
+      "question": "Il ___ Paul.",
+      "options": [
+        { "id": "a", "text": "est", "isCorrect": true },
+        { "id": "b", "text": "suis", "isCorrect": false },
+        { "id": "c", "text": "es", "isCorrect": false },
+        { "id": "d", "text": "être", "isCorrect": false }
+      ],
+      "explanation": "With il, être becomes est: il est."
+    },
+    {
+      "question": "Elle ___ enchantée.",
+      "options": [
+        { "id": "a", "text": "suis", "isCorrect": false },
+        { "id": "b", "text": "es", "isCorrect": false },
+        { "id": "c", "text": "est", "isCorrect": true },
+        { "id": "d", "text": "être", "isCorrect": false }
+      ],
+      "explanation": "With elle, être becomes est: elle est."
+    },
+    {
+      "question": "___ suis Paul.",
+      "options": [
+        { "id": "a", "text": "Tu", "isCorrect": false },
+        { "id": "b", "text": "Je", "isCorrect": true },
+        { "id": "c", "text": "Il", "isCorrect": false },
+        { "id": "d", "text": "Elle", "isCorrect": false }
+      ],
+      "explanation": "The verb form suis is used only with the pronoun je."
+    },
+    {
+      "question": "___ es Marie ?",
+      "options": [
+        { "id": "a", "text": "Je", "isCorrect": false },
+        { "id": "b", "text": "Il", "isCorrect": false },
+        { "id": "c", "text": "Elle", "isCorrect": false },
+        { "id": "d", "text": "Tu", "isCorrect": true }
+      ],
+      "explanation": "The verb form es is used only with the pronoun tu."
+    },
+    {
+      "question": "___ est Marie. (She is Marie.)",
+      "options": [
+        { "id": "a", "text": "Elle", "isCorrect": true },
+        { "id": "b", "text": "Je", "isCorrect": false },
+        { "id": "c", "text": "Tu", "isCorrect": false },
+        { "id": "d", "text": "Il", "isCorrect": false }
+      ],
+      "explanation": "For she, use elle with est; je and tu would take suis and es."
+    },
+    {
+      "question": "___ est Paul. (He is Paul.)",
+      "options": [
+        { "id": "a", "text": "Je", "isCorrect": false },
+        { "id": "b", "text": "Tu", "isCorrect": false },
+        { "id": "c", "text": "Il", "isCorrect": true },
+        { "id": "d", "text": "Elle", "isCorrect": false }
+      ],
+      "explanation": "For he, use il with est; je and tu would take suis and es."
+    },
+    {
+      "question": "Salut ! Je ___ Paul.",
+      "options": [
+        { "id": "a", "text": "es", "isCorrect": false },
+        { "id": "b", "text": "suis", "isCorrect": true },
+        { "id": "c", "text": "est", "isCorrect": false },
+        { "id": "d", "text": "être", "isCorrect": false }
+      ],
+      "explanation": "With je, être becomes suis: je suis Paul."
+    }
+  ]
+}

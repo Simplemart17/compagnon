@@ -1,9 +1,14 @@
 /**
- * Story 19-2 (drill slice) — useLessonDrill state machine.
+ * Story 19-2 (drill slice) — useLessonDrill state machine, LIVE-GENERATION
+ * (fallback) path.
  *
  * Runtime contract via react-test-renderer + a mocked chatCompletionJSON:
  * generation, answer scoring, advancement, completion analytics, the
  * double-tap guard, and the error path.
+ *
+ * Story 19-4: this suite fixtures on an UN-banked lesson (a1-u2-l1) so it
+ * exercises the AI fallback. The curated-bank path (which serves items with
+ * NO AI call) is covered in use-lesson-drill-item-bank.test.tsx.
  */
 
 /* eslint-disable import/first -- jest.mock factories must precede imports */
@@ -43,9 +48,11 @@ import { mountWithAct, registerMountCleanup } from "@/src/test-utils/react-test-
 
 registerMountCleanup();
 
-const maybeLesson = getLesson("a1-u1-l1");
+// Story 19-4: fixture on an UN-banked lesson so generate() takes the live-AI
+// fallback path (a1-u1-* now ship curated banks).
+const maybeLesson = getLesson("a1-u2-l1");
 if (!maybeLesson) {
-  throw new Error('Stale test fixture: curriculum lesson "a1-u1-l1" no longer exists');
+  throw new Error('Stale test fixture: curriculum lesson "a1-u2-l1" no longer exists');
 }
 const LESSON = maybeLesson;
 

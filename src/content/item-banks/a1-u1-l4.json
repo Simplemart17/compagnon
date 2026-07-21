@@ -1,0 +1,96 @@
+{
+  "bankVersion": 1,
+  "lessonId": "a1-u1-l4",
+  "items": [
+    {
+      "question": "Je suis ___. (I am a doctor.)",
+      "options": [
+        { "id": "a", "text": "un médecin", "isCorrect": false },
+        { "id": "b", "text": "médecin", "isCorrect": true },
+        { "id": "c", "text": "une médecin", "isCorrect": false },
+        { "id": "d", "text": "le médecin", "isCorrect": false }
+      ],
+      "explanation": "French uses no article before a job: je suis médecin, not un médecin."
+    },
+    {
+      "question": "Marie est ___. (She is a waitress.)",
+      "options": [
+        { "id": "a", "text": "serveur", "isCorrect": false },
+        { "id": "b", "text": "serveurs", "isCorrect": false },
+        { "id": "c", "text": "serveuses", "isCorrect": false },
+        { "id": "d", "text": "serveuse", "isCorrect": true }
+      ],
+      "explanation": "A woman is serveuse; serveur is the masculine form."
+    },
+    {
+      "question": "Paul est ___. (He is a teacher.)",
+      "options": [
+        { "id": "a", "text": "professeur", "isCorrect": true },
+        { "id": "b", "text": "professeure", "isCorrect": false },
+        { "id": "c", "text": "professeurs", "isCorrect": false },
+        { "id": "d", "text": "un professeur", "isCorrect": false }
+      ],
+      "explanation": "For a man use professeur with no article; professeure is the feminine form."
+    },
+    {
+      "question": "Tu es ___ ? (Are you a student — male?)",
+      "options": [
+        { "id": "a", "text": "étudiante", "isCorrect": false },
+        { "id": "b", "text": "un étudiant", "isCorrect": false },
+        { "id": "c", "text": "étudiant", "isCorrect": true },
+        { "id": "d", "text": "étudiants", "isCorrect": false }
+      ],
+      "explanation": "A male student is étudiant, used with no article after es."
+    },
+    {
+      "question": "Elle est ___. (She is a nurse.)",
+      "options": [
+        { "id": "a", "text": "infirmier", "isCorrect": false },
+        { "id": "b", "text": "infirmière", "isCorrect": true },
+        { "id": "c", "text": "infirmiers", "isCorrect": false },
+        { "id": "d", "text": "infirmières", "isCorrect": false }
+      ],
+      "explanation": "The feminine of infirmier is infirmière."
+    },
+    {
+      "question": "Il travaille. Il est ___. (He is an engineer.)",
+      "options": [
+        { "id": "a", "text": "un ingénieur", "isCorrect": false },
+        { "id": "b", "text": "ingénieure", "isCorrect": false },
+        { "id": "c", "text": "l'ingénieur", "isCorrect": false },
+        { "id": "d", "text": "ingénieur", "isCorrect": true }
+      ],
+      "explanation": "No article before a job: il est ingénieur, not un ingénieur."
+    },
+    {
+      "question": "Je travaille. Je suis ___. (I am a salesperson — female.)",
+      "options": [
+        { "id": "a", "text": "vendeuse", "isCorrect": true },
+        { "id": "b", "text": "vendeur", "isCorrect": false },
+        { "id": "c", "text": "une vendeuse", "isCorrect": false },
+        { "id": "d", "text": "vendeuses", "isCorrect": false }
+      ],
+      "explanation": "A woman is vendeuse, and no article follows suis."
+    },
+    {
+      "question": "Marie travaille. Elle est ___. (She is a teacher — Canadian female.)",
+      "options": [
+        { "id": "a", "text": "professeur", "isCorrect": false },
+        { "id": "b", "text": "une professeure", "isCorrect": false },
+        { "id": "c", "text": "professeure", "isCorrect": true },
+        { "id": "d", "text": "professeures", "isCorrect": false }
+      ],
+      "explanation": "In Canada a female teacher is professeure, and no article is used."
+    },
+    {
+      "question": "Paul travaille. Il est ___. (He is a salesperson — male.)",
+      "options": [
+        { "id": "a", "text": "un vendeur", "isCorrect": false },
+        { "id": "b", "text": "vendeur", "isCorrect": true },
+        { "id": "c", "text": "vendeuse", "isCorrect": false },
+        { "id": "d", "text": "le vendeur", "isCorrect": false }
+      ],
+      "explanation": "No article and the masculine form: il est vendeur, not un vendeur."
+    }
+  ]
+}

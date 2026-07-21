@@ -1,0 +1,96 @@
+{
+  "bankVersion": 1,
+  "lessonId": "a1-u1-l2",
+  "items": [
+    {
+      "question": "Marie est ___. (She is Canadian.)",
+      "options": [
+        { "id": "a", "text": "canadien", "isCorrect": false },
+        { "id": "b", "text": "canadiens", "isCorrect": false },
+        { "id": "c", "text": "canadienne", "isCorrect": true },
+        { "id": "d", "text": "canadiennes", "isCorrect": false }
+      ],
+      "explanation": "A woman is canadienne; the -ne ending marks the feminine singular."
+    },
+    {
+      "question": "Paul est ___. (He is Canadian.)",
+      "options": [
+        { "id": "a", "text": "canadien", "isCorrect": true },
+        { "id": "b", "text": "canadienne", "isCorrect": false },
+        { "id": "c", "text": "canadiens", "isCorrect": false },
+        { "id": "d", "text": "canadiennes", "isCorrect": false }
+      ],
+      "explanation": "A man is canadien, the masculine singular with no -ne."
+    },
+    {
+      "question": "Elle est ___. (She is French.)",
+      "options": [
+        { "id": "a", "text": "français", "isCorrect": false },
+        { "id": "b", "text": "françaises", "isCorrect": false },
+        { "id": "c", "text": "canadienne", "isCorrect": false },
+        { "id": "d", "text": "française", "isCorrect": true }
+      ],
+      "explanation": "A woman's nationality is française; français is masculine and canadienne is the wrong country."
+    },
+    {
+      "question": "J'habite ___ Montréal.",
+      "options": [
+        { "id": "a", "text": "de", "isCorrect": false },
+        { "id": "b", "text": "à", "isCorrect": true },
+        { "id": "c", "text": "le", "isCorrect": false },
+        { "id": "d", "text": "en", "isCorrect": false }
+      ],
+      "explanation": "Habiter takes à before a city name: j'habite à Montréal."
+    },
+    {
+      "question": "___ à Montréal. (I live in Montréal.)",
+      "options": [
+        { "id": "a", "text": "J'habite", "isCorrect": true },
+        { "id": "b", "text": "Je habite", "isCorrect": false },
+        { "id": "c", "text": "J'habites", "isCorrect": false },
+        { "id": "d", "text": "Je habites", "isCorrect": false }
+      ],
+      "explanation": "Je + habite elides to j'habite because habiter starts with a vowel sound."
+    },
+    {
+      "question": "Elle ___ à Montréal.",
+      "options": [
+        { "id": "a", "text": "habites", "isCorrect": false },
+        { "id": "b", "text": "habitent", "isCorrect": false },
+        { "id": "c", "text": "habiter", "isCorrect": false },
+        { "id": "d", "text": "habite", "isCorrect": true }
+      ],
+      "explanation": "With elle, habiter becomes habite, with no -s."
+    },
+    {
+      "question": "Je parle ___. (French — the language.)",
+      "options": [
+        { "id": "a", "text": "française", "isCorrect": false },
+        { "id": "b", "text": "anglaise", "isCorrect": false },
+        { "id": "c", "text": "français", "isCorrect": true },
+        { "id": "d", "text": "françaises", "isCorrect": false }
+      ],
+      "explanation": "The language name never changes: je parle français, never française (the -aise form is only for a person)."
+    },
+    {
+      "question": "Tu parles ___ ? (English — the language.)",
+      "options": [
+        { "id": "a", "text": "anglaise", "isCorrect": false },
+        { "id": "b", "text": "anglais", "isCorrect": true },
+        { "id": "c", "text": "anglaises", "isCorrect": false },
+        { "id": "d", "text": "française", "isCorrect": false }
+      ],
+      "explanation": "A language name stays invariable: je parle anglais, never anglaise."
+    },
+    {
+      "question": "Tu ___ à Montréal ?",
+      "options": [
+        { "id": "a", "text": "habites", "isCorrect": true },
+        { "id": "b", "text": "habite", "isCorrect": false },
+        { "id": "c", "text": "habitent", "isCorrect": false },
+        { "id": "d", "text": "habiter", "isCorrect": false }
+      ],
+      "explanation": "With tu, habiter adds -s: tu habites."
+    }
+  ]
+}
