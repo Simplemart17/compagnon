@@ -1,0 +1,216 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b1-u5",
+    "level": "B1",
+    "order": 5,
+    "titleEn": "The One I Prefer",
+    "titleFr": "Celui que je préfère",
+    "lessons": [
+      {
+        "id": "b1-u5-l1",
+        "order": 1,
+        "canDoEn": "I can use the pronoun 'en' to avoid repeating a quantity or a partitive.",
+        "canDoFr": "Je peux dire j'en veux pour ne pas répéter.",
+        "grammarTarget": "The pronoun en: replaces de + noun, a partitive (du/de la/des), or a quantity + noun; placed before the verb",
+        "teachEn": "The pronoun en replaces a phrase built with de so you do not repeat it. When a thing was named with the partitive du / de la / des (A1) — or with de after a quantity or number — swap it for en (some, of it, of them). Like the object pronouns le/la/les, en goes BEFORE the verb: 'Tu as du pain ? — Oui, j'en ai.' After a number or a quantity, en stands in and the number or quantity stays at the end: 'J'ai deux frères → j'en ai deux', 'Tu veux du café ? — J'en veux beaucoup.' A negation wraps the pronoun and the verb: 'Je n'en ai pas.' With two verbs, en goes before the infinitive: 'Je vais en prendre.' Quantity words that take de work perfectly with it: assez de (enough), trop de (too much), une bouteille de (a bottle of).",
+        "teachFr": "Tu veux du café ? — Oui, j'en veux, s'il te plaît ! J'en bois beaucoup le matin. Tu as des pommes ? — J'en ai plusieurs, mais je n'ai pas assez de lait : il y a trop de café et pas assez de lait ! Je vais acheter une bouteille de lait. Des fruits ? J'en ai deux.",
+        "vocab": [
+          {
+            "fr": "en (pronom)",
+            "en": "some, of it, of them (replaces a de-phrase; before the verb: j'en ai)"
+          },
+          {
+            "fr": "j'en veux",
+            "en": "I want some (en before the verb: j'en veux deux)"
+          },
+          {
+            "fr": "j'en ai",
+            "en": "I have some, I have some of them (j'en ai trois)"
+          },
+          {
+            "fr": "assez de",
+            "en": "enough (assez de pain)"
+          },
+          {
+            "fr": "trop de",
+            "en": "too much, too many (trop de sucre)"
+          },
+          {
+            "fr": "plusieurs",
+            "en": "several"
+          },
+          {
+            "fr": "une bouteille de",
+            "en": "a bottle of (une bouteille de lait)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "J'en veux, merci !",
+          "goalEn": "Use the pronoun 'en' to avoid repeating a quantity or partitive",
+          "promptSeed": "Role-play planning a grocery list and a snack together. Model the pronoun en replacing a de-phrase — 'Du café ? J'en veux', 'Des pommes ? J'en ai plusieurs', 'Du lait ? Je n'en ai pas assez' — then elicit it: 'Tu as du pain ? Tu en veux ?', 'Tu bois du café ? Tu en bois beaucoup ?'. Keep en before the verb and the number at the end ('j'en ai deux'). Bring in assez de, trop de, plusieurs and une bouteille de, and keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u5-l2",
+        "order": 2,
+        "canDoEn": "I can join sentences with 'dont' to replace a phrase with 'de'.",
+        "canDoFr": "Je peux parler d'un livre dont j'ai besoin.",
+        "grammarTarget": "Relative pronoun dont: replaces de + noun in a relative clause (le livre dont je parle = je parle DE ce livre)",
+        "teachEn": "You can join two sentences with qui, que, and où (Unit 3). Here is the relative for a phrase built with de: dont. Many verbs and expressions take de — parler de (to talk about), avoir besoin de (A2, to need), rêver de (Unit 2, to dream of), avoir envie de (to feel like), être fier de (to be proud of). When a relative clause would repeat one of these, use dont: 'Je parle d'un sujet → le sujet dont je parle', 'J'ai besoin d'un livre → le livre dont j'ai besoin', 'Je suis fière de ma sœur → ma sœur dont je suis fière.' dont never changes and never elides, and the word order after it is subject + verb, like que: 'la personne dont je parle', 'les choses dont j'ai envie.'",
+        "teachFr": "J'aime parler de ma famille : voici le sujet dont je veux parler ! J'ai une sœur dont je suis très fière : elle est médecin. Je m'occupe aussi de mes parents, dont j'ai besoin chaque jour. Et toi ? Tu as une personne dont tu es fier ? J'ai envie d'écouter ton histoire.",
+        "vocab": [
+          {
+            "fr": "dont",
+            "en": "whose, of which (relative: le livre dont je parle = je parle DE ce livre)"
+          },
+          {
+            "fr": "parler de",
+            "en": "to talk about (je parle de mon travail → le sujet dont je parle)"
+          },
+          {
+            "fr": "s'occuper de",
+            "en": "to take care of, to deal with (je m'occupe de mes parents)"
+          },
+          {
+            "fr": "avoir envie de",
+            "en": "to feel like, to want (j'ai envie d'un café; de → d' before a vowel)"
+          },
+          {
+            "fr": "être fier de",
+            "en": "to be proud of (je suis fier / fière de ma famille)"
+          },
+          {
+            "fr": "un sujet",
+            "en": "a topic, a subject (le sujet dont je parle)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Le sujet dont je parle",
+          "goalEn": "Join sentences with 'dont' to describe people and things",
+          "promptSeed": "Role-play sharing the people and things you care about. Model dont replacing a de-phrase — 'Voici le sujet dont je veux parler', 'J'ai une sœur dont je suis fière', 'C'est le livre dont j'ai besoin' — then elicit it: 'Quel est le sujet dont tu veux parler ?', 'Tu as une personne dont tu es fier ?'. Draw out the de-expressions that feed dont: parler de, avoir besoin de, avoir envie de and être fier de. Recast 'le livre que j'ai besoin' into 'le livre dont j'ai besoin', and keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u5-l3",
+        "order": 3,
+        "canDoEn": "I can point to and choose between things with celui, celle, ceux, and celles.",
+        "canDoFr": "Je peux dire celui que je préfère.",
+        "grammarTarget": "Demonstrative pronouns celui / celle / ceux / celles (the one / the ones) + -ci/-là and + qui/que",
+        "teachEn": "To say 'the one' or 'the ones' without repeating the noun, use a demonstrative pronoun that matches its gender and number: celui (masculine singular), celle (feminine singular), ceux (masculine plural), celles (feminine plural). They never stand alone — attach -ci (this one) or -là (that one): 'Quel manteau ? Celui-ci ou celui-là ?' Or follow them with the relatives qui or que (Unit 3): 'celui qui est rouge' (the one that is red), 'celle que je préfère' (the one I prefer), 'ceux qui sont là.' They are perfect for choosing between options. To ask 'which one?', use lequel (masculine) or laquelle (feminine): 'Lequel tu préfères ?', 'Laquelle est la meilleure ?'",
+        "teachFr": "Regarde ces deux manteaux : lequel tu préfères, celui-ci ou celui-là ? Moi, je choisis celui qui est bleu. Et ces robes ? Celle que je préfère, c'est la robe rouge. Les chaussures ? Je prends celles qui sont noires, pas celles-là. Ceux qui aiment les couleurs vont adorer !",
+        "vocab": [
+          {
+            "fr": "celui",
+            "en": "the one (masculine singular): celui-ci, celui que je veux"
+          },
+          {
+            "fr": "celle",
+            "en": "the one (feminine singular): celle qui est rouge"
+          },
+          {
+            "fr": "ceux",
+            "en": "the ones (masculine plural): ceux que j'aime"
+          },
+          {
+            "fr": "celles",
+            "en": "the ones (feminine plural): celles qui sont là"
+          },
+          {
+            "fr": "celui-ci / celui-là",
+            "en": "this one / that one (-ci = here, -là = there)"
+          },
+          {
+            "fr": "lequel / laquelle",
+            "en": "which one (Lequel tu préfères ?)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Celui-ci ou celui-là ?",
+          "goalEn": "Point to and choose between things with celui, celle, ceux, and celles",
+          "promptSeed": "Role-play choosing between options in a store — coats, dresses, shoes. Model the demonstratives — 'Lequel tu préfères, celui-ci ou celui-là ?', 'Je choisis celui qui est bleu', 'Celle que je préfère, c'est la rouge' — then elicit them: 'Tu prends celui-ci ou celui-là ?', 'Laquelle tu préfères ?'. Draw out celui, celle, ceux and celles, matched to gender and number, plus lequel / laquelle to ask. Recast a repeated noun into 'celui qui est bleu', and keep utterances short and lively."
+        }
+      },
+      {
+        "id": "b1-u5-l4",
+        "order": 4,
+        "canDoEn": "I can use two object pronouns together, like 'I give it to him'.",
+        "canDoFr": "Je peux dire je le lui donne.",
+        "grammarTarget": "Double object pronouns: direct le/la/les + indirect lui/leur, in that order (Je le lui donne, Je les leur explique)",
+        "teachEn": "You have direct object pronouns le / la / les (A2 Unit 2) and indirect pronouns lui / leur (A2 Unit 4). Now use them TOGETHER, in one fixed order: the direct pronoun (le/la/les) comes FIRST, then lui or leur. 'Je donne le livre à mon frère → Je le lui donne', 'J'explique les règles à mes amis → Je les leur explique.' Both pronouns sit before the verb, and they stay together in a negation: 'Je ne le lui donne pas.' With two verbs, they go before the infinitive: 'Je vais le lui montrer.' English spreads it out — 'I give it to him' — but French packs it tight before the verb: le lui. New verbs for giving and sharing: donner (to give), montrer (to show), prêter (to lend).",
+        "teachFr": "Mon frère a besoin de mon livre : je le lui prête ! Mon adresse ? Je la lui donne tout de suite. Mes photos de voyage, je vais les lui montrer ce soir. Mes amis veulent les billets : je les leur donne demain. Je le lui donne, je les leur explique : c'est facile !",
+        "vocab": [
+          {
+            "fr": "le lui",
+            "en": "it to him/her (direct + indirect, in that order: je le lui donne)"
+          },
+          {
+            "fr": "les leur",
+            "en": "them to them (je les leur explique)"
+          },
+          {
+            "fr": "donner",
+            "en": "to give (je le lui donne)"
+          },
+          {
+            "fr": "montrer",
+            "en": "to show (je vais le lui montrer)"
+          },
+          {
+            "fr": "prêter",
+            "en": "to lend (je le lui prête)"
+          },
+          {
+            "fr": "une adresse",
+            "en": "an address (je la lui donne)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je le lui donne",
+          "goalEn": "Use two object pronouns together, like 'I give it to him'",
+          "promptSeed": "Role-play two roommates sorting out who gives what to whom. Model the double pronouns in fixed order — 'Mon frère veut mon livre : je le lui prête', 'Mon adresse ? Je la lui donne', 'Les billets ? Je les leur donne' — then elicit them: 'Tu donnes le cadeau à ta mère ? Tu le lui donnes quand ?'. Keep the direct pronoun (le/la/les) first and lui or leur second, both before the verb. Draw out donner, montrer, prêter and une adresse, and recast 'je donne le livre à lui' into 'je le lui donne'."
+        }
+      },
+      {
+        "id": "b1-u5-l5",
+        "order": 5,
+        "canDoEn": "I can compare options and choose between them in a real conversation.",
+        "canDoFr": "Je peux comparer des choses et choisir celle que je préfère.",
+        "grammarTarget": "Unit synthesis: comparing and choosing — en, celui/celle/ceux/celles, dont, and double object pronouns together",
+        "teachEn": "Now put the unit together in a real 'help me choose' conversation. Compare with comparer (to compare) and the comparatives from A2, weigh the qualité (quality), and make un choix (a choice). Point and pick with celui / celle (Lesson 3): 'Je préfère celui qui est moins cher.' When you cannot decide, use hésiter (to hesitate): 'J'hésite entre les deux !' Use en for a quantity you have already named ('Des conseils ? J'en ai besoin') and dont for a de-phrase ('C'est le manteau dont j'ai envie'). Once you decide, recommander (to recommend) uses the double pronouns from Lesson 4: 'Je le lui recommande !' New words: différent / différente (different) and un choix (a choice).",
+        "teachFr": "Regarde ces deux manteaux : je vais comparer la qualité. Celui-ci est cher, mais celui-là est différent : j'hésite ! Tu as des conseils ? J'en ai besoin. — Prends celui que tu préfères ! La qualité, c'est un bon choix. — D'accord, je le prends. Ma sœur aime ce manteau aussi : je vais le lui recommander et je vais lui montrer la photo.",
+        "vocab": [
+          {
+            "fr": "comparer",
+            "en": "to compare (comparer deux choses)"
+          },
+          {
+            "fr": "un choix",
+            "en": "a choice (faire un choix)"
+          },
+          {
+            "fr": "la qualité",
+            "en": "the quality"
+          },
+          {
+            "fr": "différent / différente",
+            "en": "different"
+          },
+          {
+            "fr": "hésiter",
+            "en": "to hesitate (j'hésite entre les deux)"
+          },
+          {
+            "fr": "recommander",
+            "en": "to recommend (je le lui recommande)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Aide-moi à choisir",
+          "goalEn": "Compare options and choose between them, using this unit's pronouns together",
+          "promptSeed": "Role-play helping each other choose between two options — coats, restaurants, or trips — to close the unit. Compare with comparer and the A2 comparatives ('Celui-ci est plus cher, mais celui-là est meilleur'), and weigh la qualité and un choix. Use the unit's pronouns together: en for a quantity ('J'en ai besoin'), celui / celle for choosing ('Je préfère celui qui est moins cher'), and the double pronouns to recommend ('Je le lui recommande'). Draw out dont, hésiter and différent, and let the learner make the final choice."
+        }
+      }
+    ]
+  }
+}

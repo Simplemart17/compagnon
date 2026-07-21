@@ -50,13 +50,13 @@ describe("Story 19-1 — content integrity (CI gate)", () => {
   });
 
   it("spine totals are pinned (review R1 — the directory-walk let the prose vocab count drift)", () => {
-    // Slice 6: A1 (309) + A2 (231) + B1 Units 1-3 (98) = 638 across 15
-    // units / 75 lessons. The aggregate is a tripwire so the CLAUDE.md/
-    // roadmap count can never silently diverge from the shipped content.
-    expect(CURRICULUM_UNITS).toHaveLength(15);
-    expect(CURRICULUM_LESSONS).toHaveLength(75);
+    // Slice 7: A1 (309) + A2 (231) + B1 complete (98 + 99 = 197) = 737
+    // across 18 units / 90 lessons. The aggregate is a tripwire so the
+    // CLAUDE.md/roadmap count can never silently diverge from the content.
+    expect(CURRICULUM_UNITS).toHaveLength(18);
+    expect(CURRICULUM_LESSONS).toHaveLength(90);
     const totalVocab = CURRICULUM_LESSONS.reduce((n, l) => n + l.vocab.length, 0);
-    expect(totalVocab).toBe(638);
+    expect(totalVocab).toBe(737);
   });
 
   it("no vocab item is introduced in two different UNITS (cross-unit dedup — the schema only sees one file)", () => {

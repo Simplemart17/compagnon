@@ -1,0 +1,240 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b1-u4",
+    "level": "B1",
+    "order": 4,
+    "titleEn": "Before, It Was Already Done",
+    "titleFr": "Avant, c'était déjà fait",
+    "lessons": [
+      {
+        "id": "b1-u4-l1",
+        "order": 1,
+        "canDoEn": "I can say what had already happened before another past moment.",
+        "canDoFr": "Je peux dire ce que j'avais déjà fait avant.",
+        "grammarTarget": "Plus-que-parfait: imparfait of avoir/être + past participle (the past before the past); être-agreement like the passé composé",
+        "teachEn": "You have the passé composé for finished events (A2 Unit 1) and the imparfait for the scene (A2 Unit 5). Here is the tense for what had ALREADY happened before another past moment: the plus-que-parfait. Build it exactly like the passé composé, but put the auxiliary in the IMPERFECT: avais/avait/avaient + participle, or étais/était/étaient + participle. So 'Quand je suis arrivée, mes amis avaient déjà mangé' — the arrival happened once (passé composé), but the eating had happened EARLIER (plus-que-parfait). With avoir: j'avais fini, il avait fait. With être, use the same movement verbs as the passé composé, and the participle agrees with the subject: j'étais parti / partie, nous étions allés. Déjà (A2) sits between the auxiliary and the participle: 'Ils avaient déjà mangé.'",
+        "teachFr": "Ce jour-là, je suis arrivée en retard à la fête. Mes amis avaient déjà mangé et mon frère avait fait le dessert ! Moi, j'avais fini mon travail plus tôt, mais j'étais partie tard de la maison. Avant, nous étions allés au parc. À ce moment-là, j'étais un peu fatiguée, mais la fête a été magnifique !",
+        "vocab": [
+          {
+            "fr": "j'avais fini",
+            "en": "I had finished (plus-que-parfait: imparfait of avoir + past participle)"
+          },
+          {
+            "fr": "ils avaient mangé",
+            "en": "they had eaten (plus-que-parfait, 3rd-person plural: avaient + participle)"
+          },
+          {
+            "fr": "il avait fait",
+            "en": "he had done/made (plus-que-parfait; the irregular participle fait)"
+          },
+          {
+            "fr": "j'étais allé / j'étais allée",
+            "en": "I had gone (plus-que-parfait with être; agrees with the subject)"
+          },
+          {
+            "fr": "nous étions partis",
+            "en": "we had left (plus-que-parfait with être; plural agreement)"
+          },
+          {
+            "fr": "plus tôt",
+            "en": "earlier (the opposite of plus tard)"
+          },
+          {
+            "fr": "à ce moment-là",
+            "en": "at that moment, right then"
+          },
+          {
+            "fr": "ce jour-là",
+            "en": "that day (in a story)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ils avaient déjà mangé",
+          "goalEn": "Say what had already happened before another past moment, using the plus-que-parfait",
+          "promptSeed": "Role-play two friends piecing together a mixed-up evening. Model the plus-que-parfait for the past-before-the-past — 'Quand je suis arrivée, mes amis avaient déjà mangé', 'J'avais fini plus tôt' — then elicit it: 'Ils avaient déjà mangé quand tu es arrivé ?'. Draw out both auxiliaries: avoir (j'avais fait) and être with agreement (j'étais parti / partie, nous étions allés), and use à ce moment-là and ce jour-là. Recast a passé composé used for the earlier action into 'ils avaient mangé', and keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u4-l2",
+        "order": 2,
+        "canDoEn": "I can tell a richer story using all three past tenses together.",
+        "canDoFr": "Je peux raconter une histoire au passé avec les trois temps.",
+        "grammarTarget": "The three past tenses in one story: imparfait (scene), passé composé (event), plus-que-parfait (earlier event)",
+        "teachEn": "A good story uses all three past tenses, each for its own job. The imparfait paints the SCENE — the weather, the mood, what was going on (A2 Unit 5): 'C'était l'automne et il pleuvait.' The passé composé reports the EVENTS that moved the story forward (A2 Unit 1): 'Un voisin est arrivé.' The plus-que-parfait (Lesson 1) reaches back to what had happened EARLIER: 'Je n'avais pas encore trouvé mon appartement.' Negate the plus-que-parfait just like the passé composé, around the auxiliary: 'je n'avais pas trouvé', 'pas encore' (A2) between the auxiliary and the participle. Mark the shape of the story with au début (at the beginning) and à la fin (at the end): 'Au début, j'étais perdu ; à la fin, tout allait bien.'",
+        "teachFr": "Je pense souvent à ma première journée à Montréal. C'était l'automne et il pleuvait toute la journée. Au début, j'étais un peu perdu : je n'avais pas encore trouvé mon appartement ! Puis, à la fin, un voisin est arrivé : il a trouvé mon appartement avec moi ! Récemment, j'ai pensé à ce jour-là. C'était la première fois que j'étais heureux ici.",
+        "vocab": [
+          {
+            "fr": "le début",
+            "en": "the beginning (au début = at the beginning)"
+          },
+          {
+            "fr": "la fin",
+            "en": "the end (à la fin = at the end)"
+          },
+          {
+            "fr": "récemment",
+            "en": "recently"
+          },
+          {
+            "fr": "la première fois",
+            "en": "the first time"
+          },
+          {
+            "fr": "toute la journée",
+            "en": "all day long"
+          },
+          {
+            "fr": "il pleuvait",
+            "en": "it was raining (imparfait of il pleut)"
+          },
+          {
+            "fr": "un voisin / une voisine",
+            "en": "a neighbour"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Ma première journée",
+          "goalEn": "Tell a richer story using all three past tenses together",
+          "promptSeed": "Role-play two friends sharing a first-day-in-a-new-city memory. Model a story mixing the three past tenses: the imparfait for the scene ('il pleuvait toute la journée'), the passé composé for events ('un voisin est arrivé'), and the plus-que-parfait for what had happened earlier ('je n'avais pas encore trouvé mon appartement'). Then draw out the learner's memory: 'C'était comment, au début ?', 'Qu'est-ce qui est arrivé à la fin ?'. Bring in récemment, la première fois and toute la journée, and keep utterances short and slow."
+        }
+      },
+      {
+        "id": "b1-u4-l3",
+        "order": 3,
+        "canDoEn": "I can say what just happened using 'venir de'.",
+        "canDoFr": "Je peux dire ce que je viens de faire.",
+        "grammarTarget": "Recent past: venir de + infinitive (je viens de / tu viens de / il vient de — a fixed present chunk), contrasted with déjà and ne … pas encore",
+        "teachEn": "French says what JUST happened with the recent past: venir de + a dictionary-form verb. 'Je viens de manger' means 'I just ate.' Learn the pieces as a fixed chunk for now — je viens de, tu viens de, il/elle vient de — because venir's full present tense comes later; de becomes d' before a vowel: 'Je viens d'arriver.' Set the recent past against the two markers you know from A2: déjà (already, for something completed) and ne … pas encore (not yet). Add maintenant (now) and tout de suite (right away) for immediacy: 'Je viens de lire le courriel, tout de suite, maintenant !' The recent past is perfect for fresh news: 'J'ai une nouvelle : je viens de trouver un emploi !'",
+        "teachFr": "J'ai une nouvelle ! Je viens de trouver un emploi : je viens de lire le courriel, maintenant, tout de suite ! C'est un projet récent. Mon amie vient de finir son projet aussi. Nous avons déjà mangé ensemble, mais je n'ai pas encore parlé à ma famille.",
+        "vocab": [
+          {
+            "fr": "venir de",
+            "en": "to have just done (venir de + dictionary verb: je viens de manger)"
+          },
+          {
+            "fr": "je viens de",
+            "en": "I have just (fixed present chunk; venir's full present comes later)"
+          },
+          {
+            "fr": "il vient de",
+            "en": "he/she has just (fixed chunk: elle vient de partir)"
+          },
+          {
+            "fr": "tout de suite",
+            "en": "right away, immediately"
+          },
+          {
+            "fr": "maintenant",
+            "en": "now"
+          },
+          {
+            "fr": "récent / récente",
+            "en": "recent"
+          },
+          {
+            "fr": "une nouvelle",
+            "en": "a piece of news, an update (J'ai une nouvelle !)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je viens de finir !",
+          "goalEn": "Say what just happened using the recent past 'venir de'",
+          "promptSeed": "Role-play two friends catching up on fresh news. Model the recent past — 'Je viens de trouver un emploi !', 'Mon amie vient de finir son projet' — then elicit it: 'Qu'est-ce que tu viens de faire ?', 'Tu viens d'arriver ?'. Draw out je viens de, tu viens de and il/elle vient de as fixed chunks, and contrast the recent past with déjà (already) and pas encore (not yet): 'J'ai déjà mangé, mais je n'ai pas encore bu mon café.' Bring in maintenant, tout de suite, récent and une nouvelle."
+        }
+      },
+      {
+        "id": "b1-u4-l4",
+        "order": 4,
+        "canDoEn": "I can tell an anecdote about something that happened.",
+        "canDoFr": "Je peux raconter ce qui s'est passé.",
+        "grammarTarget": "Narrating an anecdote: se passer (to happen) + suddenness markers soudain / tout à coup + reaction adverbs heureusement / malheureusement",
+        "teachEn": "An anecdote is a little story about something that happened. The verb se passer means 'to happen', and it usually appears with an inanimate subject or the question 'Qu'est-ce qui s'est passé ?' (What happened?): 'Un événement incroyable s'est passé.' Build the drama with suddenness markers — soudain (suddenly), which means the same as tout à coup (A2) — and set the moment with au moment où (at the moment when), using the relative où from Unit 3: 'Au moment où je traversais, un chien est arrivé.' React to the twists with two adverbs: heureusement (luckily) and malheureusement (unfortunately). And when something scares you, use the chunk avoir peur (to be afraid), built with avoir like avoir faim from A1: 'J'ai eu peur !'",
+        "teachFr": "Un événement incroyable s'est passé hier soir ! Écoute mon histoire ! J'étais dans la rue. Soudain, au moment où je traversais, un chien est arrivé ! J'ai eu peur. Heureusement, le chien était gentil et il a joué avec moi. Malheureusement, à ce moment-là, mon café est tombé. Mais ce n'était pas grave : quelle histoire !",
+        "vocab": [
+          {
+            "fr": "se passer",
+            "en": "to happen (Qu'est-ce qui s'est passé ? = What happened?)"
+          },
+          {
+            "fr": "un événement",
+            "en": "an event"
+          },
+          {
+            "fr": "soudain",
+            "en": "suddenly (the same as tout à coup)"
+          },
+          {
+            "fr": "heureusement",
+            "en": "luckily, fortunately"
+          },
+          {
+            "fr": "malheureusement",
+            "en": "unfortunately"
+          },
+          {
+            "fr": "avoir peur",
+            "en": "to be afraid (built with avoir: j'ai peur)"
+          },
+          {
+            "fr": "au moment où",
+            "en": "at the moment when (with the relative où)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Qu'est-ce qui s'est passé ?",
+          "goalEn": "Tell an anecdote about something that happened",
+          "promptSeed": "Role-play two friends swapping surprising anecdotes. Model a little story with se passer and suddenness — 'Un événement incroyable s'est passé hier soir', 'Soudain, au moment où je traversais, un chien est arrivé', 'J'ai eu peur !' — then draw one out of the learner: 'Qu'est-ce qui s'est passé ?'. React to the twists with heureusement and malheureusement, and use the imparfait for the scene and the passé composé for the events. Recast a bare 'a passé' into 's'est passé', and keep utterances short and lively."
+        }
+      },
+      {
+        "id": "b1-u4-l5",
+        "order": 5,
+        "canDoEn": "I can tell a full story that moves between the past and the earlier past.",
+        "canDoFr": "Je peux raconter une histoire au passé, du début à la fin.",
+        "grammarTarget": "Unit synthesis: narrating a full story — imparfait scene, passé composé events, plus-que-parfait for what had happened earlier, with story connectors",
+        "teachEn": "Now tell a full story and let the three past tenses work together. Set the scene with the imparfait, move it with the passé composé, and reach back with the plus-que-parfait for what you had done earlier. New connectors give the story shape: avant de + a dictionary verb (before doing something) — 'Avant de partir, j'avais réservé un hôtel' — finalement (finally, in the end), grâce à (thanks to, for a happy cause) and à cause de (because of, often for a problem). Close with se terminer (to end): 'L'histoire s'est bien terminée.' Colour it with une aventure (an adventure), une solution (a solution) and the strong adjective inoubliable (unforgettable): 'Ce voyage a été une aventure inoubliable !'",
+        "teachFr": "Je vais raconter une aventure inoubliable. L'année dernière, je suis allée à Québec. Avant de partir, j'avais réservé un hôtel et j'avais préparé ma valise. Ce jour-là, il faisait froid et il neigeait. Malheureusement, à la gare, j'ai eu un problème : je n'avais pas pris mon billet ! Mais, grâce à une personne gentille, j'ai trouvé une solution. Finalement, l'aventure s'est bien terminée. À cause de la neige, tout était blanc : c'était magnifique et inoubliable !",
+        "vocab": [
+          {
+            "fr": "avant de",
+            "en": "before (+ dictionary verb: avant de partir)"
+          },
+          {
+            "fr": "finalement",
+            "en": "finally, in the end"
+          },
+          {
+            "fr": "grâce à",
+            "en": "thanks to (for a happy cause: grâce à un ami)"
+          },
+          {
+            "fr": "à cause de",
+            "en": "because of (often for a problem: à cause de la neige)"
+          },
+          {
+            "fr": "une aventure",
+            "en": "an adventure"
+          },
+          {
+            "fr": "se terminer",
+            "en": "to end (l'histoire s'est bien terminée)"
+          },
+          {
+            "fr": "une solution",
+            "en": "a solution"
+          },
+          {
+            "fr": "inoubliable",
+            "en": "unforgettable (one form for masculine and feminine)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Une aventure inoubliable",
+          "goalEn": "Tell a full story that moves between the past and the earlier past",
+          "promptSeed": "Role-play sharing an unforgettable trip or day to close the unit. Model a full story weaving the three past tenses and the new connectors: 'Avant de partir, j'avais réservé un hôtel. Malheureusement, je n'avais pas pris mon billet — mais, grâce à une personne gentille, l'aventure s'est bien terminée.' Then draw out the learner's story: 'Qu'est-ce que tu avais préparé avant de partir ?', 'Comment ça s'est terminé ?'. Weave in finalement, à cause de, une aventure, une solution and inoubliable, and keep utterances short."
+        }
+      }
+    ]
+  }
+}

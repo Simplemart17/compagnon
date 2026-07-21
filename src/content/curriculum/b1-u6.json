@@ -1,0 +1,216 @@
+{
+  "curriculumVersion": 1,
+  "unit": {
+    "id": "b1-u6",
+    "level": "B1",
+    "order": 6,
+    "titleEn": "I Have to Go",
+    "titleFr": "Il faut que je parte",
+    "lessons": [
+      {
+        "id": "b1-u6-l1",
+        "order": 1,
+        "canDoEn": "I can form the present subjunctive of regular and key irregular verbs.",
+        "canDoFr": "Je peux dire que je sois, que j'aie et que je fasse.",
+        "grammarTarget": "Present subjunctive: -er verbs = present indicative (que je parle); others = ils-stem + endings; irregulars être/avoir/aller/faire/pouvoir",
+        "teachEn": "The subjunctive (le subjonctif) is the mood for what you WANT, NEED, or FEEL — not a plain fact. It always follows que. The reassuring news first: for regular -er verbs, the subjunctive je, tu, il, and ils forms are IDENTICAL to the present you already know — que je parle, que tu parles, qu'il parle, qu'ils parlent. For any other verb, take the ils form of the present, drop -ent, and add -e, -es, -e, -ions, -iez, -ent. Five very common verbs have their own subjunctive stem — learn them by heart: être → que je sois, qu'il soit, que nous soyons; avoir → que j'aie, qu'il ait, que nous ayons; aller → que j'aille, que nous allions; faire → que je fasse, que nous fassions; pouvoir → que je puisse, que nous puissions. You will always hear que right before the subjunctive.",
+        "teachFr": "Le subjonctif vient après « que ». Pour les verbes en -er, c'est facile : que je parle, que tu parles — c'est le présent ! Pour être : que je sois, que tu sois, qu'il soit, que nous soyons. Pour avoir : que j'aie, qu'il ait. Pour aller : que j'aille. Pour faire : que je fasse. Pour pouvoir : que je puisse. « Que » vient toujours avant le subjonctif !",
+        "vocab": [
+          {
+            "fr": "que je sois",
+            "en": "that I be (subjunctive of être; qu'il soit, que nous soyons)"
+          },
+          {
+            "fr": "que j'aie",
+            "en": "that I have (subjunctive of avoir; qu'il ait, que nous ayons)"
+          },
+          {
+            "fr": "que j'aille",
+            "en": "that I go (subjunctive of aller; qu'il aille, que nous allions)"
+          },
+          {
+            "fr": "que je fasse",
+            "en": "that I do, that I make (subjunctive of faire; que nous fassions)"
+          },
+          {
+            "fr": "que je puisse",
+            "en": "that I can, that I be able to (subjunctive of pouvoir; que nous puissions)"
+          },
+          {
+            "fr": "que je parle",
+            "en": "that I speak (subjunctive of -er verbs = the same as the present)"
+          },
+          {
+            "fr": "que nous soyons",
+            "en": "that we be (subjunctive of être, nous form: the -ions ending)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Que je sois, que j'aie…",
+          "goalEn": "Form the present subjunctive of regular and key irregular verbs",
+          "promptSeed": "Role-play a friendly subjunctive warm-up game. This lesson is about FORMING the subjunctive: say a verb and a person, and have the learner give the subjunctive after que. Start with easy -er verbs, where it equals the present — 'parler, je → que je parle', 'travailler, tu → que tu travailles' — then the five irregulars: être (que je sois), avoir (que j'aie), aller (que j'aille), faire (que je fasse), pouvoir (que je puisse). Always say que before the form, and gently recast 'que je suis' into 'que je sois'."
+        }
+      },
+      {
+        "id": "b1-u6-l2",
+        "order": 2,
+        "canDoEn": "I can say what someone must do with 'il faut que' and the subjunctive.",
+        "canDoFr": "Je peux dire il faut que je parte.",
+        "grammarTarget": "The trigger il faut que + subjunctive (vs A2's il faut + infinitive); subjunctive of partir (ils partent → part- → que je parte)",
+        "teachEn": "In A2 you gave general advice with il faut + a dictionary verb: 'Il faut dormir.' To make it about a SPECIFIC person, use il faut que + that person + the subjunctive: 'Il faut que je parte' (I have to leave), 'Il faut que tu sois à l'heure' (you have to be on time). il faut que is the most common subjunctive trigger of all. Compare the two: 'Il faut manger' (one must eat, general) versus 'Il faut que tu manges' (YOU must eat, specific). Build the subjunctive of partir the regular way: the ils form is ils partent, drop -ent → part-, add the endings: que je parte, que tu partes, qu'il parte, que nous partions. Use the irregulars from Lesson 1 too: 'Il faut que je sois prêt', 'Il faut que tu ailles chez le médecin', 'Il faut que nous fassions attention.'",
+        "teachFr": "En A2, pour un conseil général, il faut dormir. Mais pour une personne, il faut que + le subjonctif ! Il faut que je parte tout de suite : c'est urgent ! Il faut que tu sois prêt à l'heure. Il faut que nous fassions attention. C'est nécessaire : il faut qu'elle aille chez le médecin.",
+        "vocab": [
+          {
+            "fr": "il faut que",
+            "en": "one must, it is necessary that (+ subjunctive: il faut que je parte)"
+          },
+          {
+            "fr": "que je parte",
+            "en": "that I leave (subjunctive of partir: ils partent → part-)"
+          },
+          {
+            "fr": "prêt / prête",
+            "en": "ready (il faut que tu sois prêt)"
+          },
+          {
+            "fr": "nécessaire",
+            "en": "necessary (c'est nécessaire; one form for masculine and feminine)"
+          },
+          {
+            "fr": "urgent / urgente",
+            "en": "urgent"
+          },
+          {
+            "fr": "faire attention",
+            "en": "to be careful, to pay attention (il faut que tu fasses attention)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Il faut que je parte",
+          "goalEn": "Say what a specific person must do with il faut que + subjunctive",
+          "promptSeed": "Role-play two friends rushing to get ready before an urgent departure. Model il faut que + subjunctive — 'Il faut que je parte tout de suite', 'Il faut que tu sois prêt', 'Il faut que nous fassions attention' — then elicit it: 'Qu'est-ce qu'il faut que tu fasses avant de partir ?'. Contrast the A2 general form (il faut manger) with the specific person (il faut que tu manges). Draw out partir (que je parte) and the Lesson 1 irregulars (sois, ailles, fassions), plus prêt, nécessaire and urgent. Recast an infinitive kept after il faut que into 'il faut que tu partes'."
+        }
+      },
+      {
+        "id": "b1-u6-l3",
+        "order": 3,
+        "canDoEn": "I can say what I want someone else to do with 'vouloir que'.",
+        "canDoFr": "Je peux dire je veux que tu viennes.",
+        "grammarTarget": "vouloir que / aimer que + subjunctive (wanting someone else to act); subjunctive of venir (ils viennent → vienn- → que tu viennes)",
+        "teachEn": "When you want SOMEONE ELSE to do something, French cannot say 'I want that you…' with a plain verb — it needs the subjunctive after vouloir que and aimer que: 'Je veux que tu viennes' (I want you to come), 'J'aimerais que tu restes' (I would like you to stay). Careful with subjects: if it is the SAME person, use a plain infinitive — 'Je veux partir' (I want to leave) — but with a DIFFERENT subject, switch to que + subjunctive: 'Je veux que tu partes.' Build the subjunctive of venir the regular way: ils viennent → drop -ent → vienn- → que je vienne, que tu viennes, qu'il vienne (and, from the nous form, que nous venions). Keep using your other subjunctives too: 'Je veux que tu sois content', 'J'aimerais que nous fassions un voyage.'",
+        "teachFr": "Ce soir, j'organise une réunion et je veux que tu viennes ! Je veux partir à six heures, mais je veux que tu arrives à cinq heures. J'aimerais que tu restes après aussi. Je souhaite que nous fassions un bon projet ensemble. Il faut que tout soit prêt !",
+        "vocab": [
+          {
+            "fr": "vouloir que",
+            "en": "to want someone to (+ subjunctive: je veux que tu viennes)"
+          },
+          {
+            "fr": "que tu viennes",
+            "en": "that you come (subjunctive of venir: ils viennent → vienn-)"
+          },
+          {
+            "fr": "aimer que",
+            "en": "to want / would like that (+ subjunctive: j'aimerais que tu restes)"
+          },
+          {
+            "fr": "souhaiter",
+            "en": "to wish (je souhaite que tu viennes)"
+          },
+          {
+            "fr": "que tu restes",
+            "en": "that you stay (subjunctive of rester, an -er verb = the present)"
+          },
+          {
+            "fr": "une réunion",
+            "en": "a meeting (je veux que tu viennes à la réunion)"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je veux que tu viennes",
+          "goalEn": "Say what you want someone else to do with vouloir que + subjunctive",
+          "promptSeed": "Role-play organizing an evening and inviting a friend. Model vouloir que and aimer que + subjunctive — 'Je veux que tu viennes ce soir', 'J'aimerais que tu restes', 'Je souhaite que nous fassions un bon projet' — then elicit them: 'Qu'est-ce que tu veux que je fasse ?', 'Tu veux que je vienne à quelle heure ?'. Contrast the same-subject infinitive ('je veux partir') with the different-subject subjunctive ('je veux que tu partes'). Bring in venir (que tu viennes), souhaiter and une réunion, and recast 'je veux que tu viens' into 'je veux que tu viennes'."
+        }
+      },
+      {
+        "id": "b1-u6-l4",
+        "order": 4,
+        "canDoEn": "I can express feelings about what someone does, using the subjunctive.",
+        "canDoFr": "Je peux dire je suis content que tu sois là.",
+        "grammarTarget": "Emotion + subjunctive: être content/triste que, avoir peur que, c'est dommage que + subjunctive",
+        "teachEn": "Feelings about what someone ELSE does also trigger the subjunctive. After an emotion + que, use the subjunctive: être content que (to be happy that), être triste que (to be sad that), avoir peur que (to be afraid that), and c'est dommage que (it's a shame that): 'Je suis content que tu sois là', 'Je suis triste que tu partes', 'J'ai peur qu'il soit en retard', 'C'est dommage qu'il ne puisse pas rester.' As with vouloir que, if the feeling and the action share ONE subject, use de + infinitive — 'Je suis content de partir' — but for TWO subjects, switch to que + subjunctive: 'Je suis content que tu partes.' Keep using the subjunctives you know: que tu sois, qu'il aille, que nous fassions, que tu viennes.",
+        "teachFr": "Je suis content que tu sois là ce soir ! Mais je suis triste que ton frère parte demain. J'ai un peu peur qu'il soit fatigué pour le voyage. C'est dommage qu'il ne puisse pas rester ! Je suis surprise que tu viennes ce soir. Quel beau sentiment !",
+        "vocab": [
+          {
+            "fr": "être content que",
+            "en": "to be happy that (+ subjunctive: je suis content que tu sois là)"
+          },
+          {
+            "fr": "être triste que",
+            "en": "to be sad that (+ subjunctive: je suis triste que tu partes)"
+          },
+          {
+            "fr": "avoir peur que",
+            "en": "to be afraid that (+ subjunctive: j'ai peur qu'il parte)"
+          },
+          {
+            "fr": "c'est dommage que",
+            "en": "it's a shame that (+ subjunctive: c'est dommage qu'il parte)"
+          },
+          {
+            "fr": "surpris / surprise",
+            "en": "surprised (je suis surprise que tu viennes)"
+          },
+          {
+            "fr": "un sentiment",
+            "en": "a feeling"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Je suis content que tu sois là",
+          "goalEn": "Express feelings about what someone does, using the subjunctive",
+          "promptSeed": "Role-play two friends at a farewell gathering, sharing their feelings. Model emotion + subjunctive — 'Je suis content que tu sois là', 'Je suis triste que ton frère parte', 'J'ai peur qu'il soit fatigué', 'C'est dommage qu'il ne puisse pas rester' — then elicit them: 'Tu es content que je sois là ?'. Draw out être content que, être triste que, avoir peur que and c'est dommage que, with subjunctives from earlier lessons (sois, parte, viennes, puisse). Bring in surpris and un sentiment, and remember: 'content de partir' (one subject) versus 'content que tu partes' (two subjects)."
+        }
+      },
+      {
+        "id": "b1-u6-l5",
+        "order": 5,
+        "canDoEn": "I can give advice and express wishes using the subjunctive in a real conversation.",
+        "canDoFr": "Je peux donner des conseils et dire mes souhaits avec le subjonctif.",
+        "grammarTarget": "B1 capstone: advising and wishing — il faut que, vouloir que, and emotion triggers with the subjunctive together",
+        "teachEn": "The B1 capstone: use everything to advise and encourage a friend before a big day. Trigger the subjunctive with all three families — necessity (il faut que), will (je veux que, j'aimerais que), and emotion (je suis content que, j'ai peur que): 'Il faut que tu sois prêt', 'Je veux que tu te reposes', 'J'ai peur que tu aies froid', 'Je suis content que tu fasses un effort.' New words for this milestone: un examen (an exam), encourager (to encourage), un effort (an effort), and le succès (success). Remember the one-subject shortcut: with the SAME subject, use the infinitive ('Je veux réussir'); with a DIFFERENT subject, use que + subjunctive ('Je veux que tu viennes'). You have reached the edge of B2 — bravo !",
+        "teachFr": "Un ami doit encourager un ami ! Demain, tu as un examen difficile : il faut que tu sois prêt ! Je veux que tu te reposes ce soir et il faut que tu ailles au lit tôt. J'ai un peu peur que tu aies froid ce soir. Je suis content que tu fasses un effort. Tu vas réussir, j'en suis sûr ! Je veux que tu viennes chez moi après pour parler de ton succès. Bon courage et bravo !",
+        "vocab": [
+          {
+            "fr": "un examen",
+            "en": "an exam, a test"
+          },
+          {
+            "fr": "encourager",
+            "en": "to encourage (encourager un ami)"
+          },
+          {
+            "fr": "un effort",
+            "en": "an effort (faire un effort)"
+          },
+          {
+            "fr": "le succès",
+            "en": "success (le succès de ton projet)"
+          },
+          {
+            "fr": "Bon courage !",
+            "en": "Good luck! Hang in there! (encouragement)"
+          },
+          {
+            "fr": "Bravo !",
+            "en": "Well done! Bravo!"
+          }
+        ],
+        "conversationScenario": {
+          "titleFr": "Bon courage !",
+          "goalEn": "Give advice and express wishes using the subjunctive together — the B1 milestone",
+          "promptSeed": "Role-play encouraging a friend before a big day, such as an exam or a trip — the B1 capstone. Cheer them on with all three subjunctive triggers: necessity ('Il faut que tu sois prêt'), will ('Je veux que tu te reposes'), and emotion ('Je suis content que tu viennes', 'J'ai peur que tu aies froid'). Then invite the learner to encourage YOU back the same way. Use only this unit's subjunctives (sois, aies, aille, fasse, viennes, parte), bring in un examen, encourager and le succès, and close with 'Bon courage et bravo !'."
+        }
+      }
+    ]
+  }
+}
