@@ -250,20 +250,21 @@ export default function ConversationTopicsScreen() {
         {/* Row 4: Stat chips */}
         <View className="flex-row gap-2 mt-6 flex-wrap">
           {[
-            `\uD83D\uDD25 ${streak} day streak`,
-            "\uD83D\uDCAC Practice",
-            `\u2B50 ${userLevel}`,
-          ].map((label) => (
+            { icon: "zap" as const, text: `${streak} day streak` },
+            { icon: "message-circle" as const, text: "Practice" },
+            { icon: "star" as const, text: userLevel },
+          ].map(({ icon, text }) => (
             <View
-              key={label}
-              className="rounded-lg px-[10px] py-[6px]"
+              key={text}
+              className="flex-row items-center gap-1 rounded-lg px-[10px] py-[6px]"
               style={{ backgroundColor: skillTint(Colors.surfaceWhite, 0.1) }}
             >
+              <Icon name={icon} size={11} color={skillTint(Colors.surfaceWhite, 0.85)} />
               <Text
                 className="text-[11px] font-semibold"
                 style={{ color: skillTint(Colors.surfaceWhite, 0.85) }}
               >
-                {label}
+                {text}
               </Text>
             </View>
           ))}
@@ -379,17 +380,7 @@ export default function ConversationTopicsScreen() {
                 titlePrimary="Continue my lesson"
                 titleSecondary={continueLesson.canDoFr}
                 description={continueLesson.canDoEn}
-                rightContent={
-                  <Text
-                    className="text-lg font-bold"
-                    style={{ color: Colors.accent }}
-                    accessible={false}
-                    accessibilityElementsHidden
-                    importantForAccessibility="no"
-                  >
-                    {"\u2192"}
-                  </Text>
-                }
+                rightContent={<Icon name="chevron-right" size={20} color={Colors.accent} />}
                 accessibilityLabel={`Continue my lesson: ${continueLesson.canDoEn}`}
                 accessibilityHint="Double tap to open your next lesson"
                 onPress={() =>

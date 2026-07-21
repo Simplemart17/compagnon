@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 
 import { Colors } from "@/src/lib/design";
 import { captureError } from "@/src/lib/sentry";
+import { Icon } from "@/src/components/common/Icon";
 
 interface Props {
   children: ReactNode;
@@ -41,7 +42,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <View className="flex-1 items-center justify-center bg-surface p-8">
-          <Text className="mb-4 text-5xl">{"\u26A0\uFE0F"}</Text>
+          <View className="mb-4">
+            <Icon name="alert-triangle" size={48} color={Colors.error} />
+          </View>
           <Text className="mb-2 text-center text-xl font-bold text-primary">
             Something went wrong
           </Text>

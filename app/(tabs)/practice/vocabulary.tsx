@@ -325,9 +325,9 @@ export default function VocabularyScreen() {
       <View>
         {/* Search bar */}
         <View className="bg-white rounded-xl border border-surface-300 px-4 py-3 mb-4 flex-row items-center">
-          <Text className="text-base mr-2" style={{ color: Colors.textTertiary }}>
-            {"🔍"}
-          </Text>
+          <View className="mr-2">
+            <Icon name="search" size={16} color={Colors.textTertiary} />
+          </View>
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -344,9 +344,7 @@ export default function VocabularyScreen() {
               accessibilityRole="button"
               accessibilityLabel="Clear search"
             >
-              <Text className="text-base" style={{ color: Colors.textTertiary }}>
-                {"✕"}
-              </Text>
+              <Icon name="x" size={16} color={Colors.textTertiary} />
             </TouchableOpacity>
           )}
         </View>

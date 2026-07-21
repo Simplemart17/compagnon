@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 
 import { Colors, Typography, Radii, skillTint } from "@/src/lib/design";
+import { Icon, type IconName } from "@/src/components/common/Icon";
 
 export interface SessionComparisonMetric {
   label: string;
@@ -14,14 +15,14 @@ interface SessionComparisonProps {
   metrics: SessionComparisonMetric[];
 }
 
-function directionIndicator(direction: "up" | "down" | "same"): string {
+function directionIcon(direction: "up" | "down" | "same"): IconName {
   switch (direction) {
     case "up":
-      return "\u2191";
+      return "trending-up";
     case "down":
-      return "\u2193";
+      return "trending-down";
     case "same":
-      return "=";
+      return "minus";
   }
 }
 
@@ -68,15 +69,11 @@ function SessionComparisonInner({ metrics }: SessionComparisonProps) {
           <Text style={Typography.caption}>{metric.label}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text style={Typography.caption}>{metric.previous}</Text>
-            <Text
-              style={{
-                ...Typography.caption,
-                fontWeight: "700",
-                color: directionColor(metric.direction),
-              }}
-            >
-              {directionIndicator(metric.direction)}
-            </Text>
+            <Icon
+              name={directionIcon(metric.direction)}
+              size={14}
+              color={directionColor(metric.direction)}
+            />
             <Text
               style={[
                 Typography.bodySecondary,

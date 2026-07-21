@@ -24,6 +24,7 @@ import { MCQCard } from "@/src/components/practice/MCQCard";
 import { ScoreCard } from "@/src/components/practice/ScoreCard";
 import type { CEFRLevel } from "@/src/types/cefr";
 import { Colors, Shadows, Typography } from "@/src/lib/design";
+import { Icon } from "@/src/components/common/Icon";
 import { OfflineFallback } from "@/src/components/common/OfflineFallback";
 
 export default function GrammarScreen() {
@@ -138,7 +139,13 @@ export default function GrammarScreen() {
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
         >
           <View className="items-center pt-10">
-            <Text className="text-[64px] mb-4">{allCorrect ? "\u2705" : "\uD83D\uDCAA"}</Text>
+            <View className="mb-4">
+              {allCorrect ? (
+                <Icon name="check-circle" size={64} color={Colors.success} />
+              ) : (
+                <Icon name="zap" size={64} color={Colors.accent} />
+              )}
+            </View>
             <Text className="text-[22px] font-bold text-primary mb-2">
               {allCorrect ? "Perfect!" : "Nice work!"}
             </Text>

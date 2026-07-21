@@ -73,7 +73,22 @@ export type IconName =
   | "chevron-left" // back-nav chrome (conversation screen)
   | "send" // send-typed-message chrome (conversation text input)
   | "type" // voice↔text toggle chrome (conversation screen)
-  | "wifi-off"; // connection-lost chrome (conversation disconnected state)
+  | "wifi-off" // connection-lost chrome (conversation disconnected state)
+  | "arrow-left" // back-nav chrome (terms / privacy-policy)
+  | "chevron-right" // row/nav "go" affordance (cards, settings rows)
+  | "chevron-up" // previous-match chrome (history search)
+  | "chevron-down" // next-match chrome (history search)
+  | "x" // close/clear chrome (history search + modals)
+  | "bell" // notification chrome (home header)
+  | "play" // audio-playback chrome (dictation / translation / echo)
+  | "alert-triangle" // error-state chrome (ErrorBoundary)
+  | "search" // search-input + no-results chrome (history)
+  | "square" // stop-recording chrome (pronunciation / echo / translation record toggles)
+  | "star" // level stat-chip chrome (conversation landing hero)
+  | "pause" // audio pause chrome (mock-test / listening playback toggles)
+  | "trending-up" // improved-trend indicator (session comparison)
+  | "trending-down" // declined-trend indicator (session comparison)
+  | "minus"; // no-change indicator (session comparison)
 
 export interface IconProps {
   name: IconName;

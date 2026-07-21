@@ -213,14 +213,7 @@ function ResumeInProgressRow({
         // `accessibilityElementsHidden` alone is iOS-only — Android
         // TalkBack still focuses + announces "right arrow". The 3-prop
         // combination is required for both platforms.
-        <Text
-          style={[Typography.cardTitle, { color: Colors.accent }]}
-          accessible={false}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-        >
-          →
-        </Text>
+        <Icon name="chevron-right" size={20} color={Colors.accent} />
       }
       onPress={onPress}
       accessibilityLabel={`Resume ${RESUME_TITLES[inProgress.testType]}, ${progressLine}, ${timeLine}`}

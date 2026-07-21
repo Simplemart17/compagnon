@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { OfflineFallback } from "@/src/components/common/OfflineFallback";
 import { NetworkBanner } from "@/src/components/common/NetworkBanner";
+import { Icon } from "@/src/components/common/Icon";
 import { useEchoPractice } from "@/src/hooks/use-echo-practice";
 import type { EchoPracticeSentenceResult } from "@/src/hooks/use-echo-practice";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
@@ -259,7 +260,9 @@ export default function EchoPracticeScreen() {
           entering={FadeIn.duration(400)}
           className="flex-1 justify-center items-center p-6"
         >
-          <Text className="text-[64px] mb-4">{"\uD83C\uDF99\uFE0F"}</Text>
+          <View className="mb-4">
+            <Icon name="repeat" size={64} color={Colors.skillListening} />
+          </View>
           <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
             Echo Practice
           </Text>
@@ -404,7 +407,7 @@ export default function EchoPracticeScreen() {
                   accessibilityLabel="Playing audio"
                 />
               ) : (
-                <Text className="text-xl">{"\u25B6\uFE0F"}</Text>
+                <Icon name="play" size={18} color={Colors.surfaceWhite} />
               )}
               <Text
                 className="text-[15px] font-bold"
@@ -435,7 +438,11 @@ export default function EchoPracticeScreen() {
                 minHeight: 44,
               }}
             >
-              <Text className="text-base">{"\uD83D\uDC22"}</Text>
+              <Icon
+                name="play"
+                size={16}
+                color={echo.audioPlayer.isPlaying ? Colors.gray500 : Colors.primary}
+              />
               <Text
                 className="text-[15px] font-semibold"
                 style={{
@@ -539,9 +546,11 @@ export default function EchoPracticeScreen() {
                 backgroundColor: echo.pronunciation.isRecording ? Colors.error : Colors.primary,
               }}
             >
-              <Text className="text-[28px]">
-                {echo.pronunciation.isRecording ? "\u23F9" : "\uD83C\uDF99\uFE0F"}
-              </Text>
+              {echo.pronunciation.isRecording ? (
+                <Icon name="square" size={28} color={Colors.surfaceWhite} />
+              ) : (
+                <Icon name="mic" size={28} color={Colors.surfaceWhite} />
+              )}
             </TouchableOpacity>
 
             {echo.pronunciation.isRecording && (

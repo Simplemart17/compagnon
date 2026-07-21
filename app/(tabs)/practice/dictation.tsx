@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
 import { OfflineFallback } from "@/src/components/common/OfflineFallback";
+import { Icon } from "@/src/components/common/Icon";
 import { useDictation } from "@/src/hooks/use-dictation";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import type { DifficultyTag, WordResult } from "@/src/hooks/use-dictation";
@@ -211,7 +212,9 @@ export default function DictationScreen() {
           entering={FadeIn.duration(400)}
           className="flex-1 justify-center items-center p-6"
         >
-          <Text className="text-[64px] mb-4">{"\uD83D\uDCDD"}</Text>
+          <View className="mb-4">
+            <Icon name="file-text" size={64} color={Colors.skillDictation} />
+          </View>
           <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
             Dictation Practice
           </Text>
@@ -357,9 +360,13 @@ export default function DictationScreen() {
               borderColor: skillTint(latestResult.isFullyCorrect ? SUCCESS : ACCENT, 0x30 / 255),
             }}
           >
-            <Text className="text-[28px] mb-1">
-              {latestResult.isFullyCorrect ? "\u2705" : "\uD83D\uDD0D"}
-            </Text>
+            <View className="mb-1">
+              {latestResult.isFullyCorrect ? (
+                <Icon name="check-circle" size={28} color={SUCCESS} />
+              ) : (
+                <Icon name="search" size={28} color={ACCENT} />
+              )}
+            </View>
             <Text
               className="text-base font-bold"
               style={{ color: latestResult.isFullyCorrect ? SUCCESS : ACCENT }}
@@ -587,7 +594,9 @@ export default function DictationScreen() {
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-2">
-                  {r.isFullyCorrect && <Text className="text-sm">{"\u2705"}</Text>}
+                  {r.isFullyCorrect && (
+                    <Icon name="check-circle" size={16} color={Colors.success} />
+                  )}
                   <View className="w-[50px] h-1.5 rounded-sm bg-surface-200 overflow-hidden">
                     <View
                       style={{
@@ -735,7 +744,7 @@ export default function DictationScreen() {
                   accessibilityLabel="Playing audio"
                 />
               ) : (
-                <Text className="text-xl">{"\u25B6\uFE0F"}</Text>
+                <Icon name="play" size={18} color={Colors.surfaceWhite} />
               )}
               <Text
                 className="text-[15px] font-bold"
@@ -759,7 +768,7 @@ export default function DictationScreen() {
                 borderColor: d.isPlayingAudio ? Colors.border : skillTint(PRIMARY, 0x30 / 255),
               }}
             >
-              <Text className="text-base">{"\uD83D\uDC22"}</Text>
+              <Icon name="play" size={16} color={d.isPlayingAudio ? Colors.gray500 : PRIMARY} />
               <Text
                 className="text-[15px] font-semibold"
                 style={{ color: d.isPlayingAudio ? Colors.gray500 : PRIMARY }}

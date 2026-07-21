@@ -361,14 +361,15 @@ describe("Story 14-1 — chrome strings converted to English (per touched file)"
     expect(src).toMatch(/Privacy policy/);
     expect(src).not.toMatch(/Conditions d&apos;utilisation/);
     expect(src).toMatch(/Terms of service/);
-    // "View →" text (the arrow is the `→` escape sequence; the
-    // whitespace-tolerant match accepts the text wherever it lands).
-    expect(src).not.toMatch(/\bVoir \{/);
-    expect(src).toMatch(/\bView \{/);
+    // "View" nav-row label + "Settings" back label (Story 14-1). The
+    // trailing → / leading ← glyph affordances were migrated to Feather
+    // icons (icon-cleanup pass), so each English label now stands alone.
+    expect(src).not.toMatch(/>\s*Voir\s*</);
+    expect(src).toMatch(/>\s*View\s*</);
     expect(src).not.toMatch(/Exporter mes données/);
     expect(src).toMatch(/Export my data/);
     expect(src).not.toMatch(/>Paramètres</);
-    expect(src).toMatch(/>← Settings</);
+    expect(src).toMatch(/>\s*Settings\s*</);
     expect(src).not.toMatch(/Se déconnecter/);
     expect(src).toMatch(/>Sign out</);
   });
@@ -432,8 +433,10 @@ describe("Story 14-1 — chrome strings converted to English (per touched file)"
     expect(src).toMatch(/Enter your email address/);
     expect(src).not.toMatch(/Envoyer le lien/);
     expect(src).toMatch(/Send link/);
-    expect(src).not.toMatch(/← Retour/);
-    expect(src).toMatch(/← Back/);
+    // Back-link label (Story 14-1). The leading ← glyph was migrated to a
+    // Feather arrow-left icon (icon-cleanup pass); the English label remains.
+    expect(src).not.toMatch(/>\s*Retour\s*</);
+    expect(src).toMatch(/>\s*Back\s*</);
   });
 
   // ============================================================

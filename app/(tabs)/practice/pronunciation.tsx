@@ -20,6 +20,7 @@ import Animated, {
 import { useRouter } from "expo-router";
 
 import { SkeletonBar } from "@/src/components/common/SkeletonBar";
+import { Icon } from "@/src/components/common/Icon";
 import { usePronunciation } from "@/src/hooks/use-pronunciation";
 import { useSlowLoading } from "@/src/hooks/use-slow-loading";
 import { useAuthStore } from "@/src/store/auth-store";
@@ -249,7 +250,9 @@ export default function PronunciationScreen() {
     return (
       <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ flexGrow: 1 }}>
         <View className="flex-1 justify-center items-center p-6">
-          <Text className="text-[64px] mb-4">{"\uD83C\uDF99"}</Text>
+          <View className="mb-4">
+            <Icon name="mic" size={64} color={Colors.skillPronunciation} />
+          </View>
           <Text accessibilityRole="header" className="text-[22px] font-bold text-primary mb-2">
             Pronunciation Practice
           </Text>
@@ -549,9 +552,11 @@ export default function PronunciationScreen() {
                 opacity: pronunciation.isAssessing ? 0.5 : 1,
               }}
             >
-              <Text className="text-[36px] text-white">
-                {pronunciation.isRecording ? "\u23F9" : "\uD83C\uDF99"}
-              </Text>
+              {pronunciation.isRecording ? (
+                <Icon name="square" size={36} color={Colors.surfaceWhite} />
+              ) : (
+                <Icon name="mic" size={36} color={Colors.surfaceWhite} />
+              )}
             </TouchableOpacity>
           </Animated.View>
 
