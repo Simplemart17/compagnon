@@ -88,7 +88,7 @@
         "conversationScenario": {
           "titleFr": "En même temps",
           "goalEn": "Use the gérondif to mean while, by, and if",
-          "promptSeed": "Role-play describing how you juggle daily life. Model the three meanings of the gérondif — simultaneity ('Je mange en regardant la télévision'), manner/means ('Je parle mieux en écoutant de la musique'), and condition ('En finissant tôt, tu seras libre') — then elicit them: 'Qu'est-ce que tu fais en même temps ?', 'Comment tu apprends le français ?'. Draw out en même temps, en regardant, en mangeant, en écoutant, en jouant and la télévision. Remember the gérondif's subject is the same as the main verb's. Recast two different subjects, and keep utterances short."
+          "promptSeed": "Role-play describing how you juggle daily life. Model the three meanings of the gérondif — simultaneity ('Je mange en regardant la télévision'), manner/means ('Je parle mieux en écoutant de la musique'), and condition ('En finissant tôt, tu seras libre') — then elicit them: 'Qu'est-ce que tu fais en même temps ?', 'Comment tu fais pour bien travailler ?'. Draw out en même temps, en regardant, en mangeant, en écoutant, en jouant and la télévision. Remember the gérondif's subject is the same as the main verb's. Recast two different subjects, and keep utterances short."
         }
       },
       {
@@ -194,7 +194,7 @@
           },
           {
             "fr": "en essayant",
-            "en": "while/by trying (gérondif of essayer)"
+            "en": "while/by trying — essayer keeps its y: nous essayons → essayant"
           },
           {
             "fr": "en continuant",
