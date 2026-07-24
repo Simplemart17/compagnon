@@ -52,7 +52,7 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
-      "versionCode": 3
+      "versionCode": 6
     },
     "web": {
       "bundler": "metro",
@@ -93,6 +93,7 @@
         }
       ],
       "./plugins/withIosPodsDeploymentTarget",
+      "./plugins/withAndroidKotlinJvmTarget",
       "expo-localization"
     ],
     "experiments": {
