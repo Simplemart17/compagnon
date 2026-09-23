@@ -47,6 +47,7 @@
         "appleTeamId": "$EXPO_APPLE_TEAM_ID"
       },
       "android": {
+        "serviceAccountKeyPath": "$EXPO_GOOGLE_SERVICE_ACCOUNT_KEY",
         "track": "alpha",
         "releaseStatus": "completed"
       }
