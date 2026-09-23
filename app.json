@@ -21,20 +21,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.compagnon.ios",
+      "bundleIdentifier": "ca.compagnon.ios",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Companion needs microphone access to practice French speaking and pronunciation.",
-        "NSSpeechRecognitionUsageDescription": "Companion uses speech recognition to assess your French pronunciation.",
-        "UIApplicationSceneManifest": {
-          "UIApplicationSupportsMultipleScenes": false,
-          "UISceneConfigurations": {
-            "UIWindowSceneSessionRoleApplication": [
-              {
-                "UISceneConfigurationName": "Default Configuration"
-              }
-            ]
-          }
-        }
+        "NSSpeechRecognitionUsageDescription": "Companion uses speech recognition to assess your French pronunciation."
       }
     },
     "android": {
@@ -93,6 +83,7 @@
         }
       ],
       "./plugins/withIosPodsDeploymentTarget",
+      "./plugins/withIosSceneLifecycle",
       "./plugins/withAndroidKotlinJvmTarget",
       "expo-localization"
     ],
