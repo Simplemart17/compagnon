@@ -71,7 +71,7 @@ Check off each item as you complete it.
 ## 6. Apple Developer (iOS)
 
 - [ ] Enrol in the Apple Developer Program ($99/year) at developer.apple.com
-- [ ] Create an App ID for `com.compagnon.ios`
+- [ ] Create an App ID for `ca.compagnon.ios`
 - [ ] Create an app record in App Store Connect
 - [ ] Configure push notifications if needed (not currently used)
 - [ ] Prepare screenshots (see `store/ios-metadata.md`)

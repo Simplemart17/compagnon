@@ -28,6 +28,7 @@
  * SVG stroke paths so no icon font is required.
  */
 
+import { Buffer } from "node:buffer";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -56,7 +57,6 @@ const INK_2 = "#5A6B82";
 const INK_3 = "#637085";
 const SUCCESS = "#34C759";
 const ERROR = "#E5533D";
-const BORDER = "#E6E6DA";
 const C_LISTEN = "#3B82F6";
 const C_READ = "#10B981";
 const C_SPEAK = "#EC4899";

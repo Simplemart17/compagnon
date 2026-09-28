@@ -1,7 +1,7 @@
 name: EAS Submit
 
 # Manually triggered. Submits a previously-built native binary to TestFlight
-# (iOS) and the Play Store internal track (Android). Per story 9-9, the submit
+# (iOS) and the Play Store alpha track (Android). Per story 9-9, the submit
 # step is intentionally decoupled from `eas build` — operators decide which
 # build to ship after confirming it succeeded in the EAS dashboard. The
 # `production` environment gate (configurable at Settings → Environments)
@@ -105,11 +105,3 @@ jobs:
             --platform "$PLATFORM" \
             $BUILD_FLAG \
             --non-interactive
-
-      - name: Android draft promotion reminder
-        if: success() && (github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all')
-        run: |
-          # `eas.json` sets `releaseStatus: "draft"` for Android — internal
-          # testers do NOT see the build until the operator manually promotes
-          # it in Play Console. Surface the required next step (P14 review).
-          echo "::notice title=Android submission is a DRAFT::Internal testers will NOT see this build until you promote it in Play Console → Internal testing → Edit release → Roll out to Internal testing."
