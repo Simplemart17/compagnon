@@ -21,7 +21,9 @@
     "generate-store-assets": "node scripts/generate-store-assets.mjs",
     "prepare": "husky",
     "release:android": "eas build --platform android --profile production --auto-submit",
-    "submit:android": "eas submit --platform android --latest"
+    "submit:android": "eas submit --platform android --latest",
+    "release:ios": "eas build --platform ios --profile production --auto-submit",
+    "submit:ios": "eas submit --platform ios --latest"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
